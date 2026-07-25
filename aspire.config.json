@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/root/AiOrchestrator.AppHost/AiOrchestrator.AppHost.csproj"
+  }
+}

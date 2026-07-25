@@ -1,0 +1,70 @@
+# design-contract Specification
+
+## Purpose
+TBD - created by archiving change design-system. Update Purpose after archive.
+## Requirements
+### Requirement: derivation is strictly one-way
+
+The design system SHALL have four layers with a single direction of derivation: canonical
+`docs/design-system/` → generated `DESIGN.md` → generated runtime token adapter → the value-free
+design skill. A conflict between layers SHALL be resolved by regenerating downward. A lower layer
+SHALL NOT be edited to match reality.
+
+#### Scenario: a generated file disagrees with the canonical tokens
+
+- **WHEN** `DESIGN.md` or the adapter no longer matches `docs/design-system/`
+- **THEN** they are regenerated; the canonical tokens are not edited to match them
+
+### Requirement: DESIGN.md is the agent-facing contract at a predictable path
+
+`DESIGN.md` SHALL live at the repository root and SHALL contain a generated token block plus
+value-free prose on applying the system. It is the one file an agent reads before UI work, and it
+SHALL be guaranteed current by the drift gate.
+
+#### Scenario: an agent starts UI work
+
+- **WHEN** any agent begins a frontend task
+- **THEN** `DESIGN.md` at the repo root tells it the tokens and the rules, without hunting
+
+### Requirement: generated files declare themselves
+
+Every generated artifact SHALL carry a header stating that it is generated, that it must not be
+edited by hand, and the exact command that regenerates it.
+
+#### Scenario: someone opens the adapter to change a value
+
+- **WHEN** a contributor opens the generated token adapter
+- **THEN** its first lines tell them where to edit instead and how to regenerate
+
+### Requirement: the generator is dependency-free and runs the same everywhere
+
+Generation SHALL be a single script requiring no package installation beyond the runtime already
+present, and SHALL support a `--check` mode that reports drift without writing.
+
+#### Scenario: check mode in CI
+
+- **WHEN** the generator runs with `--check` and the working tree is current
+- **THEN** it exits zero and writes nothing
+
+### Requirement: the runtime adapter binds names, not copied values
+
+The generated TypeScript adapter SHALL expose token **names** bound to their CSS variable
+references, so that changing a token's value in the canonical layer cannot leave the adapter
+stale. Copying literal colour or size values into TypeScript SHALL NOT occur.
+
+#### Scenario: a token value changes
+
+- **WHEN** a colour's value changes in the canonical CSS
+- **THEN** the running application reflects it with no change to the adapter's contents
+
+### Requirement: the design skill contains no values
+
+The design skill SHALL be a procedural router — read `DESIGN.md` first, compose kit components
+rather than inlining styles, resolve copy through the i18n catalogue, run the validator — and
+SHALL contain no literal token values, so it cannot drift.
+
+#### Scenario: skill hygiene
+
+- **WHEN** the design skill's files are scanned for literal colour or size values
+- **THEN** none are found
+

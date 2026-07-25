@@ -1,0 +1,29 @@
+/* CANONICAL — elevation and focus.
+ *
+ * Two elevations only: sh-1 for resting surfaces, sh-2 for things that float above them
+ * (menus, dialogs, toasts). Depth is carried mostly by surface colour and border; shadow is the
+ * accent, not the mechanism — which is what keeps the dark theme from turning muddy.
+ *
+ * --sh-focus is the one focus treatment in the system. Every interactive element uses it, so
+ * focus is never invisible and never bespoke.
+ */
+
+:root {
+  --sh-1: 0 1px 0 #1418240a, 0 1px 2px #1418240a;
+  --sh-2: 0 4px 12px #1418240f, 0 1px 2px #1418240a;
+  --sh-focus: 0 0 0 3px oklch(55% 0.14 258 / 0.22);
+}
+
+[data-theme="dark"] {
+  --sh-1: 0 1px 0 #0003, 0 1px 3px #0000004d;
+  --sh-2: 0 4px 16px #0006, 0 1px 3px #0000004d;
+  --sh-focus: 0 0 0 3px oklch(55% 0.14 258 / 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sh-1: 0 1px 0 #0003, 0 1px 3px #0000004d;
+    --sh-2: 0 4px 16px #0006, 0 1px 3px #0000004d;
+    --sh-focus: 0 0 0 3px oklch(55% 0.14 258 / 0.35);
+  }
+}

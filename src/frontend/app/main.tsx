@@ -3,6 +3,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
 import { queryClient } from "@/shared/query/queryClient";
+import "@/shared/design/design-system.css";
 import { AppRoutes } from "./routes";
 
 createRoot(document.getElementById("root")!).render(

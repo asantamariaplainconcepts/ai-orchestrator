@@ -1,0 +1,15 @@
+/* CANONICAL — corner radii.
+ *
+ * r-1/r-2 for small controls and badges, r-3 for cards and inputs, r-4/r-5 for containers.
+ * --r-full is for pills only (avatars, status chips) — never for a rectangle that should read
+ * as a panel.
+ */
+
+:root {
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 8px;
+  --r-4: 10px;
+  --r-5: 12px;
+  --r-full: 999px;
+}

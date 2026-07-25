@@ -1,0 +1,16 @@
+/* CANONICAL — spacing scale.
+ *
+ * Every gap, pad and margin comes from here. The scale is deliberately short: a layout that
+ * needs a value between two steps is usually a layout that should pick one of them.
+ */
+
+:root {
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 14px;
+  --sp-5: 16px;
+  --sp-6: 20px;
+  --sp-7: 24px;
+  --sp-8: 32px;
+}

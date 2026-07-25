@@ -146,3 +146,33 @@ times in the project this framework came from.
   free port" would be ceremony without content. Recorded here as a **standing defect to fix in a
   `lane:spec-less` change before Phase 5**, when loop metrics start mattering. If the fix turns
   out to need a real decision, it graduates then.
+
+## 2026-07-25 — design-system
+
+- **Worked:** Fetching the reference's actual stylesheet instead of describing it from a
+  screenshot turned the whole change from guesswork into measurement — and the palette derived
+  that way proved **sufficient for the real interface with nothing added**: when the running app
+  was later inspected, its active-nav fill and text were exactly the `--brand-soft` and `--brand`
+  values already in the token file. Every gate was probed in both directions before being
+  trusted, which is why five deliberate violations and one clean tree all behaved as specified.
+- **Didn't:** I nearly shipped an accessibility failure **by being faithful**. The reference's
+  dark brand gives white button text 3.98:1, under the 4.5:1 AA threshold; copying it accurately
+  would have copied the defect. Worse, my first contrast measurement reported a confident
+  `1.00` for everything because it parsed `oklch()` values as `rgb()` — a wrong answer that looks
+  like an answer is far more dangerous than an error, and I only caught it because 1.00 was
+  absurd on its face. Two more self-inflicted collisions followed: Prettier and the generator
+  both claimed the generated adapter, and Prettier's line-wrapping of the canonical font stacks
+  silently broke the token parser so the font tokens vanished from generated output with no
+  error. The drift gate caught that one, which is the gate doing exactly its job.
+- **Next time:** When adopting anything from a reference, **verify the property that actually
+  matters** — contrast, accessibility, performance — rather than assuming a shipped product
+  already did. And give every measurement a known-answer sanity check before trusting its output:
+  had I measured a black-on-white control first, the broken parser would have announced itself in
+  seconds instead of surviving into a decision.
+- **Time invested:** human ~0.6 h (spec review, supplying the app screenshot, sync confirmations),
+  agent ~2.0 h, cost not measured (source: **manual** — `collect-usage` found zero mapped
+  sessions and no `usage.jsonl`; **fourth consecutive change with no attributable telemetry**)
+- **ADR:** [ADR-0003](../adr/0003-a-derived-artifact-has-exactly-one-owner.md) — *a derived
+  artifact has exactly one owner*. Second occurrence of the shape: Phase 1's `wwwroot` was tracked
+  by git while the build rewrote it, and here Prettier and the generator both claimed `tokens.ts`.
+  Graduated in the change that noticed the recurrence, per the rule.

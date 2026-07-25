@@ -1,0 +1,35 @@
+/* CANONICAL — typography tokens.
+ *
+ * A small closed scale. A size outside it is a design decision, not a convenience: extend the
+ * scale here rather than writing a one-off value in a component. The scale is chosen so the UI
+ * stays legible on the fallback stack — nothing depends on Geist's specific metrics.
+ *
+ * Monospace is for identifiers the user may need to copy or compare: Run ids, story keys,
+ * branch names, log lines.
+ */
+
+:root {
+  --font-sans:
+    "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono:
+    "Geist Mono", ui-monospace, "SF Mono", "JetBrains Mono", monospace;
+
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --fs-26: 26px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  --lh-tight: 1.25;
+  --lh-normal: 1.6;
+
+  /* Headings tighten slightly as they grow; body text never does. */
+  --ls-heading: -0.01em;
+  --ls-normal: 0;
+}

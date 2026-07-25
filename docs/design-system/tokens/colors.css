@@ -1,0 +1,158 @@
+/* CANONICAL — colour tokens. Humans edit here; DESIGN.md and tokens.ts are generated from it.
+ *
+ * OKLCH throughout, on one brand/neutral hue (258). The neutrals deliberately carry that hue at
+ * very low chroma — that is why the greys read as part of the palette rather than as dead grey.
+ * Semantic families each ship a triple: base (text/icon), -soft (fill), -border.
+ *
+ * Both themes are first-class. :root is light; [data-theme="dark"] overrides the same names.
+ * Components must never branch on theme — they consume variables whose values the theme swaps.
+ */
+
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --brand: oklch(45% 0.13 258);
+  --brand-hover: oklch(40% 0.13 258);
+  --brand-soft: oklch(96% 0.02 258);
+  --brand-border: oklch(88% 0.04 258);
+  --brand-on: #fff;
+
+  /* Backgrounds and surfaces */
+  --bg: oklch(98.5% 0.003 250);
+  --bg-muted: oklch(96.5% 0.004 250);
+  --bg-subtle: oklch(96.5% 0.004 250);
+  --surface: #fff;
+  --surface-2: oklch(98.5% 0.003 250);
+  --surface-3: oklch(97% 0.005 250);
+
+  /* Foregrounds */
+  --fg: oklch(22% 0.02 258);
+  --fg-2: oklch(36% 0.02 258);
+  --fg-muted: oklch(52% 0.015 258);
+  --fg-subtle: oklch(65% 0.012 258);
+
+  /* Borders */
+  --border: oklch(91% 0.005 258);
+  --border-strong: oklch(85% 0.008 258);
+
+  /* Semantic — success */
+  --ok: oklch(52% 0.13 155);
+  --ok-soft: oklch(95% 0.04 155);
+  --ok-border: oklch(85% 0.07 155);
+
+  /* Semantic — warning */
+  --warn: oklch(62% 0.13 75);
+  --warn-text: oklch(42% 0.13 75);
+  --warn-soft: oklch(95% 0.05 75);
+  --warn-border: oklch(85% 0.08 75);
+
+  /* Semantic — danger */
+  --danger: oklch(52% 0.18 25);
+  --danger-soft: oklch(96% 0.04 25);
+  --danger-border: oklch(86% 0.07 25);
+
+  /* Semantic — info */
+  --info: oklch(52% 0.13 230);
+  --info-soft: oklch(95% 0.04 230);
+  --info-border: oklch(85% 0.05 230);
+
+  /* Accents — used for Run states that are neither success nor failure */
+  --violet: oklch(50% 0.16 305);
+  --violet-soft: oklch(95% 0.04 305);
+  --violet-border: oklch(85% 0.06 305);
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --brand: oklch(54% 0.13 258);
+  --brand-hover: oklch(49% 0.13 258);
+  --brand-soft: oklch(20% 0.05 258);
+  --brand-border: oklch(30% 0.08 258);
+  --brand-on: #fff;
+
+  --bg: oklch(13% 0.01 258);
+  --bg-muted: oklch(16% 0.01 258);
+  --bg-subtle: oklch(15% 0.01 258);
+  --surface: oklch(18% 0.01 258);
+  --surface-2: oklch(21% 0.01 258);
+  --surface-3: oklch(24% 0.012 258);
+
+  --fg: oklch(93% 0.005 258);
+  --fg-2: oklch(78% 0.008 258);
+  --fg-muted: oklch(60% 0.012 258);
+  --fg-subtle: oklch(47% 0.01 258);
+
+  --border: oklch(26% 0.01 258);
+  --border-strong: oklch(32% 0.012 258);
+
+  --ok: oklch(65% 0.13 155);
+  --ok-soft: oklch(18% 0.06 155);
+  --ok-border: oklch(30% 0.08 155);
+
+  --warn: oklch(72% 0.13 75);
+  --warn-text: oklch(82% 0.11 75);
+  --warn-soft: oklch(18% 0.05 75);
+  --warn-border: oklch(32% 0.08 75);
+
+  --danger: oklch(65% 0.18 25);
+  --danger-soft: oklch(18% 0.06 25);
+  --danger-border: oklch(32% 0.1 25);
+
+  --info: oklch(65% 0.13 230);
+  --info-soft: oklch(18% 0.05 230);
+  --info-border: oklch(30% 0.07 230);
+
+  --violet: oklch(65% 0.16 305);
+  --violet-soft: oklch(18% 0.06 305);
+  --violet-border: oklch(32% 0.1 305);
+}
+
+/* A first visit follows the operating system; setting data-theme on <html> overrides it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --brand: oklch(54% 0.13 258);
+    --brand-hover: oklch(49% 0.13 258);
+    --brand-soft: oklch(20% 0.05 258);
+    --brand-border: oklch(30% 0.08 258);
+
+    --bg: oklch(13% 0.01 258);
+    --bg-muted: oklch(16% 0.01 258);
+    --bg-subtle: oklch(15% 0.01 258);
+    --surface: oklch(18% 0.01 258);
+    --surface-2: oklch(21% 0.01 258);
+    --surface-3: oklch(24% 0.012 258);
+
+    --fg: oklch(93% 0.005 258);
+    --fg-2: oklch(78% 0.008 258);
+    --fg-muted: oklch(60% 0.012 258);
+    --fg-subtle: oklch(47% 0.01 258);
+
+    --border: oklch(26% 0.01 258);
+    --border-strong: oklch(32% 0.012 258);
+
+    --ok: oklch(65% 0.13 155);
+    --ok-soft: oklch(18% 0.06 155);
+    --ok-border: oklch(30% 0.08 155);
+
+    --warn: oklch(72% 0.13 75);
+    --warn-text: oklch(82% 0.11 75);
+    --warn-soft: oklch(18% 0.05 75);
+    --warn-border: oklch(32% 0.08 75);
+
+    --danger: oklch(65% 0.18 25);
+    --danger-soft: oklch(18% 0.06 25);
+    --danger-border: oklch(32% 0.1 25);
+
+    --info: oklch(65% 0.13 230);
+    --info-soft: oklch(18% 0.05 230);
+    --info-border: oklch(30% 0.07 230);
+
+    --violet: oklch(65% 0.16 305);
+    --violet-soft: oklch(18% 0.06 305);
+    --violet-border: oklch(32% 0.1 305);
+  }
+}

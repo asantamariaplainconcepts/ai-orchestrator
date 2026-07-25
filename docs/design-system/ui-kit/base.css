@@ -1,0 +1,66 @@
+/* UI KIT — element defaults.
+ *
+ * The smallest layer that makes unstyled HTML look like this product. Everything below consumes
+ * tokens only; there is not a literal colour or size in this file.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+  color: var(--fg);
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-heading);
+}
+
+h1 {
+  font-size: var(--fs-26);
+}
+
+h2 {
+  font-size: var(--fs-20);
+}
+
+h3 {
+  font-size: var(--fs-16);
+}
+
+p {
+  margin: 0;
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-size: var(--fs-13);
+}
+
+/* One focus treatment for the whole system. Never remove it without replacing it. */
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 1px;
+}
