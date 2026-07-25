@@ -10,8 +10,8 @@ run visible and governable from the website.
 Requires the .NET 10 SDK, Node 22 + pnpm, Docker, and the [Aspire CLI](https://aka.ms/aspire/cli).
 
 ```bash
-cd src/frontend && pnpm install && cd ..
-aspire run --project root/AiOrchestrator.AppHost
+cd src/frontend && pnpm install && cd ../..
+aspire run --apphost src/root/AiOrchestrator.AppHost
 ```
 
 That is the whole inner loop: it starts PostgreSQL, Azurite, the API host, and the Vite dev
