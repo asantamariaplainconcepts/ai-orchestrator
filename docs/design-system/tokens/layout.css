@@ -1,0 +1,15 @@
+/* CANONICAL — layout constants.
+ *
+ * The shell's fixed dimensions. They live here rather than in the shell CSS because the sidebar
+ * width is referenced by content that must not slide under it.
+ */
+
+:root {
+  --sidebar-w-expanded: 280px;
+  --sidebar-w-collapsed: 64px;
+  --sidebar-w: var(--sidebar-w-expanded);
+  --header-h: 64px;
+
+  /* Reading measure for prose and form columns — long lines are hard to scan. */
+  --measure: 72ch;
+}

@@ -28,6 +28,7 @@ locked by DEC-005: *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Pla
 | Definition of Ready | `docs/process/definition-of-ready.md` |
 | How we work (the loop, for humans) | `CONTRIBUTING.md` |
 | Workflow tunables (WIP limit, …) | `.claude/workflow.json` |
+| Design contract (read before UI work) | `DESIGN.md` — generated from canonical `docs/design-system/` |
 | Skill-authoring craft | `.claude/skills/writing-great-skills/` |
 | Bootstrap state | `BOOTSTRAP.md`, `BOOTSTRAP-CHECKLIST.md` |
 

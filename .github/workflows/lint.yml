@@ -82,3 +82,8 @@ jobs:
         run: pnpm lint
       - name: TypeScript
         run: pnpm typecheck
+      # Design system: adherence (tokens not literals), drift (generated matches canonical),
+      # and skill hygiene. Same script contributors run locally, so verdicts cannot disagree.
+      - name: Design system
+        working-directory: ${{ github.workspace }}
+        run: bash .claude/skills/aio-design/scripts/validate-design-system.sh

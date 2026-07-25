@@ -1,0 +1,21 @@
+/* CANONICAL — motion.
+ *
+ * Two durations. t-fast for state feedback the user caused (hover, press); t-base for anything
+ * that moves or resizes. Longer than this reads as sluggish in an operations tool where people
+ * are scanning, not admiring.
+ *
+ * Motion is suppressed entirely for users who ask for that — the app must remain fully usable.
+ */
+
+:root {
+  --t-fast: 0.12s;
+  --t-base: 0.18s;
+  --ease: cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --t-fast: 0.01ms;
+    --t-base: 0.01ms;
+  }
+}

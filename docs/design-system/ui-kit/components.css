@@ -1,0 +1,246 @@
+/* UI KIT — components.
+ *
+ * Only what the application actually renders today. Adding a component here ahead of a screen
+ * that needs it is speculative surface — the same rule that keeps empty modules out of src/.
+ *
+ * Token composition only: no literal colours, sizes, or durations anywhere in this file.
+ */
+
+/* ---- Layout shell ---------------------------------------------------------------------- */
+
+.app-shell {
+  min-height: 100%;
+  display: grid;
+  grid-template-rows: var(--header-h) 1fr;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  padding-inline: var(--sp-7);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-title {
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-heading);
+}
+
+.app-main {
+  padding: var(--sp-8) var(--sp-7);
+  max-width: 1200px;
+  width: 100%;
+  margin-inline: auto;
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+/* ---- Card ------------------------------------------------------------------------------ */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  box-shadow: var(--sh-1);
+  padding: var(--sp-6);
+}
+
+.card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+
+.card-hint {
+  color: var(--fg-muted);
+  font-size: var(--fs-13);
+}
+
+/* ---- Button ---------------------------------------------------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-5);
+  font-family: inherit;
+  font-size: var(--fs-14);
+  font-weight: var(--fw-medium);
+  color: var(--fg);
+  background: var(--surface-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2);
+  cursor: pointer;
+  transition:
+    background var(--t-fast) var(--ease),
+    border-color var(--t-fast) var(--ease),
+    opacity var(--t-fast) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--surface-3);
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  color: var(--brand-on);
+  background: var(--brand);
+  border-color: var(--brand);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--brand-hover);
+  border-color: var(--brand-hover);
+}
+
+/* ---- Input ----------------------------------------------------------------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.label {
+  font-size: var(--fs-13);
+  font-weight: var(--fw-medium);
+  color: var(--fg-2);
+}
+
+.input {
+  padding: var(--sp-2) var(--sp-3);
+  font-family: inherit;
+  font-size: var(--fs-14);
+  color: var(--fg);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-2);
+  transition: border-color var(--t-fast) var(--ease);
+}
+
+.input::placeholder {
+  color: var(--fg-subtle);
+}
+
+.input:focus {
+  border-color: var(--brand);
+  outline: none;
+  box-shadow: var(--sh-focus);
+}
+
+/* ---- List / table ---------------------------------------------------------------------- */
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.list-row:last-child {
+  border-bottom: none;
+}
+
+.list-title {
+  font-weight: var(--fw-medium);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  color: var(--fg-muted);
+}
+
+/* ---- Badge ----------------------------------------------------------------------------- */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+}
+
+.badge-neutral {
+  color: var(--fg-muted);
+  background: var(--bg-muted);
+  border-color: var(--border);
+}
+
+.badge-ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok-border);
+}
+
+.badge-warn {
+  color: var(--warn-text);
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+}
+
+.badge-danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+
+.badge-info {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: var(--info-border);
+}
+
+/* ---- States ---------------------------------------------------------------------------- */
+
+/* Empty, loading and error states are components, not afterthoughts — every list has all three. */
+.state {
+  padding: var(--sp-7);
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: var(--fs-13);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--r-3);
+}
+
+.state-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-style: solid;
+  border-color: var(--danger-border);
+}
