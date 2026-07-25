@@ -56,12 +56,13 @@ Charter gate:
 
 ## Phase 3 — Ceremonies *(doc 04)*
 
-- [ ] **FIRST: write the two overdue ADRs** — both reached their second occurrence and are named in full in the retro log: (1) verify claims by exercising them, never by reading configuration; (2) a test tier that provisions its own preconditions hides their absence from the application
-- [ ] Nine `status:*` labels created (one-time `gh label create`)
-- [ ] Definition of Ready written on the corpus RULE catalog
-- [ ] Append-only retro log + ADR template + `CONTRIBUTING.md` + `ONBOARDING.md` (≤ ~40 lines)
-- [ ] Solo/team review path (A5) and spec-less lane (A10) documented
-- [ ] Issue/PR templates in place, "Time invested" section kept
+- [x] **FIRST: the two overdue ADRs written** — [ADR-0001](docs/adr/0001-verify-claims-by-exercising-them.md) (verify claims by exercising them) and [ADR-0002](docs/adr/0002-test-tiers-must-not-provision-their-own-preconditions.md) (a test tier must not hide a precondition the application lacks). Each cites its incidents and names the check that catches the class; both linked from their triggering retro entries
+- [x] Nine `status:*` labels created (one-time `gh label create`), plus `lane:spec-less` — ten total, verified present
+- [x] Definition of Ready written **as citations** of `RULE-001..007`, not copies, so a rule change propagates without editing it; names the three open OPNs blocking work today
+- [x] Append-only retro log (4 entries) + ADR template + README + `CONTRIBUTING.md` + `ONBOARDING.md` at **exactly 40 lines** (trimmed from 49 by moving facts to canonical homes — design D4's prediction observed working)
+- [x] Solo path (DEC-016) and spec-less lane (DEC-025) documented in `CONTRIBUTING.md`, along with the no-branch-protection decision stated with its cost
+- [x] Issue/PR templates re-checked against the lifecycle — both apply `status:backlog`, "Time invested" retained; no edit needed
+- [x] **Synced to main** via `/aio:sync` — retro appended, 4 delta specs folded in (15 living specs), archived as `2026-07-25-ceremonies`, squash-merged as one commit (`c5c11ef`), message linted pre-merge (exit 0, longest line 79/100), no `[skip ci]` leak, CI green on main
 - [ ] **Human approved** → `Proceed with Phase 4.` (or skip per charter)
 
 ## Phase 4 — Design system *(doc 07 — skip if deferred via A8 OPN)*
