@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace AiOrchestrator.BuildingBlocks.Api;
@@ -10,8 +11,10 @@ namespace AiOrchestrator.BuildingBlocks.Api;
 /// The one exception handler: input-validation failures become 400 ValidationProblemDetails,
 /// everything else a 500 ProblemDetails. No endpoint writes its own error body.
 /// </summary>
-public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger)
-    : IExceptionHandler
+public sealed partial class GlobalExceptionHandler(
+    ILogger<GlobalExceptionHandler> logger,
+    IHostEnvironment environment
+) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext,
@@ -36,11 +39,17 @@ public sealed partial class GlobalExceptionHandler(ILogger<GlobalExceptionHandle
 
         LogUnhandled(logger, exception);
 
+        // Outside production the body names the exception — dev and E2E failures must explain
+        // themselves. Production keeps the opaque detail; the logs carry the truth there.
+        var detail = environment.IsProduction()
+            ? "An unexpected error occurred."
+            : exception.ToString();
+
         await Results
             .Problem(
                 statusCode: StatusCodes.Status500InternalServerError,
                 title: "Server Error",
-                detail: "An unexpected error occurred."
+                detail: detail
             )
             .ExecuteAsync(httpContext);
         return true;
