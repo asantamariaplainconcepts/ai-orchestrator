@@ -176,3 +176,34 @@ times in the project this framework came from.
   artifact has exactly one owner*. Second occurrence of the shape: Phase 1's `wwwroot` was tracked
   by git while the build rewrote it, and here Prettier and the generator both claimed `tokens.ts`.
   Graduated in the change that noticed the recurrence, per the rule.
+
+## 2026-07-25 — fix-telemetry-collector-port (spec-less lane)
+
+- **Worked:** The spec-less lane did exactly its job on first use — issue, branch, PR, CI, retro,
+  and no bundle to archive because there was no behavioural delta to archive. The lane is now
+  exercised rather than merely documented. And once guessing had failed, **bisecting our config
+  against a minimal one found the real cause in minutes**: same config with the viewer removed
+  wrote the file immediately.
+- **Didn't:** I fixed the *reported* problem and nearly declared victory. The port was moved, the
+  collector started, and telemetry still did not land — because the actual defect was elsewhere:
+  the **optional Grafana viewer's retry queue was silently disabling the durable sink**. That is
+  the precise opposite of what the `usage-telemetry` spec promises ("dashboards are disposable
+  viewers", "losing the dashboard loses nothing"). The spec was right; the implementation had
+  contradicted it for four consecutive changes without producing a single symptom, because the
+  failure mode is **silence**. The original preflight had the same shape: it asked "is the port
+  occupied?" when the question was "is *our* collector running?" — and an occupied port answered
+  the wrong question convincingly.
+- **Next time:** For anything whose failure mode is silence, **the acceptance test is the
+  observable artifact, not the configuration change**. "The port is now free" is not "telemetry is
+  captured". This change is only finished because a synthetic payload was pushed through and the
+  bytes were read back out of `usage.jsonl` — had I stopped at "the container is running", the
+  fix would have shipped still broken, and the next four changes would also have measured nothing.
+- **Time invested:** human ~0.1 h (the call to fix this before Phase 5), agent ~0.8 h, cost not
+  measured (source: **manual** — this change could not measure itself: it is the change that makes
+  measurement possible, and its own work predates the fix. The four earlier changes stay `manual`
+  permanently; nothing can recover telemetry that was never written.)
+- **ADR:** none — recorded as a **first** occurrence of *an optional component must not be able to
+  disable a required one*. It is a genuinely different shape from
+  [ADR-0003](../adr/0003-a-derived-artifact-has-exactly-one-owner.md) (two owners for one
+  artifact) and from the "gate ran too late" family. Graduate it if it recurs; writing an ADR from
+  a single instance would be guessing at the general rule.
