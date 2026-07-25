@@ -88,7 +88,27 @@ telemetry, then skills, then the commands that compose them.
       real both ways:** a 140-char body line fails commitlint (exit 1), a wrapped body passes
       (exit 0) — the exact Phase 1 defect is now caught pre-merge.
 
-## 6. Close-out
+## 6. What the E2E lane found during this change (post-implementation)
+
+The lane went intermittently red on unchanged application code and stayed red across two
+hypothesis-driven fixes; the third round of diagnostics named the real defect:
+
+- **A kernel-level scoping bug.** `Sender` was a singleton, so it resolved handlers from the
+  root provider and scoped `DbContext`s silently degraded to root-cached instances — one
+  context shared across concurrent requests (`"a second operation was started on this context
+  instance"`). Development's default `ValidateScopes` would have thrown at first resolution;
+  E2E/production run without it, so only concurrent traffic (the browser test's SPA fetch
+  racing the API test) could surface it. Fixed: `Sender` is scoped; scope validation is now
+  **unconditional** in the host; a 16-parallel-reads functional test pins the regression.
+- Along the way, three durable diagnostics improvements landed: non-production error bodies
+  name the exception; the E2E fixture streams host logs keyed by runtime ResourceId (watching
+  by declared name yields an empty stream) with a drain delay on failure; and the module's
+  health check now includes its database (plus Npgsql retry-on-failure) — kept because health
+  should mean "can serve requests", even though it was not the culprit here.
+- Retro shape, again: the sequential test suite structurally could not see this bug. The E2E
+  lane has now caught real defects on every first encounter — third time in two changes.
+
+## 7. Close-out
 
 - [x] 6.1 `AGENTS.md` lookup table carries the paths this change created (`.claude/workflow.json`,
       skills, commands, telemetry).
