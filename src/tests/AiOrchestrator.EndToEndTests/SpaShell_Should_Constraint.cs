@@ -33,6 +33,9 @@ public class SpaShell_Should_Constraint(AppHostFixture fixture)
 
         var response = await page.APIRequest.GetAsync($"{fixture.ServerBaseUrl}api/projects");
 
-        response.Status.ShouldBe(200);
+        response.Status.ShouldBe(
+            200,
+            $"body: {await response.TextAsync()}\n\n{fixture.ServerLogTail()}"
+        );
     }
 }

@@ -1,6 +1,7 @@
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Playwright;
 
 namespace AiOrchestrator.EndToEndTests;
@@ -11,9 +12,12 @@ namespace AiOrchestrator.EndToEndTests;
 /// </summary>
 public sealed class AppHostFixture : IAsyncLifetime
 {
+    readonly List<string> _serverLogs = [];
+
     DistributedApplication? _app;
     IPlaywright? _playwright;
     IBrowser? _browser;
+    CancellationTokenSource? _logWatch;
 
     public string ServerBaseUrl { get; private set; } = string.Empty;
 
@@ -45,14 +49,53 @@ public sealed class AppHostFixture : IAsyncLifetime
             .ResourceNotifications.WaitForResourceHealthyAsync("server")
             .WaitAsync(TimeSpan.FromMinutes(5));
 
+        // Without the host's own logs, an E2E failure tells you a status code and nothing about
+        // why — the ProblemDetails body deliberately says nothing. Capture them so a red run
+        // explains itself.
+        _logWatch = new CancellationTokenSource();
+        var loggers = _app.Services.GetRequiredService<ResourceLoggerService>();
+        _ = Task.Run(
+            async () =>
+            {
+                await foreach (
+                    var batch in loggers.WatchAsync("server").WithCancellation(_logWatch.Token)
+                )
+                {
+                    foreach (var line in batch)
+                    {
+                        lock (_serverLogs)
+                        {
+                            _serverLogs.Add(line.Content);
+                        }
+                    }
+                }
+            },
+            _logWatch.Token
+        );
+
         ServerBaseUrl = _app.GetEndpoint("server", "http").ToString();
 
         _playwright = await Playwright.CreateAsync();
         _browser = await _playwright.Chromium.LaunchAsync();
     }
 
+    /// <summary>The tail of the host's console output, for failure messages.</summary>
+    public string ServerLogTail(int lines = 40)
+    {
+        lock (_serverLogs)
+        {
+            return string.Join(Environment.NewLine, _serverLogs.TakeLast(lines));
+        }
+    }
+
     public async Task DisposeAsync()
     {
+        if (_logWatch is not null)
+        {
+            await _logWatch.CancelAsync();
+            _logWatch.Dispose();
+        }
+
         if (_browser is not null)
         {
             await _browser.DisposeAsync();
