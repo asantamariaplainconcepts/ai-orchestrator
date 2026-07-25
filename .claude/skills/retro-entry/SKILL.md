@@ -1,6 +1,6 @@
 ---
 name: retro-entry
-description: Append one entry to docs/process/retro-log.md after a change is synced. Use when closing the loop on a change (e.g. from /ds:refine).
+description: Append one entry to docs/process/retro-log.md after a change is synced. Use when closing the loop on a change (e.g. from /aio:refine).
 ---
 
 Append one retro-log entry — one responsibility.

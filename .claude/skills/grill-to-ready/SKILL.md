@@ -18,7 +18,7 @@ Turn a fuzzy input, or an existing issue's current state, into a Definition-of-R
 
 ## Mode: existing issue (challenge, don't draft)
 
-Used when `/ds:grill` is given an issue number instead of raw input. The orchestrating command supplies the issue's current title/body (via `read-issue`); this mode evaluates rather than interrogates from scratch.
+Used when `/aio:grill` is given an issue number instead of raw input. The orchestrating command supplies the issue's current title/body (via `read-issue`); this mode evaluates rather than interrogates from scratch.
 
 1. **Evaluate.** Check the issue's current title/body against every Definition-of-Ready field (same rubric as above — do not re-derive it here). No back-and-forth grilling; this is a one-shot gap check against what's already written.
    - Done when: every DoR field is judged met or unmet.

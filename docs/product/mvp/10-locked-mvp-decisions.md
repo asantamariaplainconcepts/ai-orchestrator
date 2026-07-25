@@ -83,6 +83,15 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   deliberately, knowing it doubles job orchestration.
 - **DEC-041 — Cancellation in MVP** for both queued and running states (BR-012).
 
+## Phase 2 decisions
+
+- **DEC-043 — Workflow command prefix is `/aio:*`.** The reference kit's `/ds:*` prefix
+  abbreviated its source project's domain (dental system) and carried no meaning here; the
+  owner locked `aio` (AI Orchestrator) before the AI-layer change merged. The prefix is coined
+  vocabulary like DEC-005's terms: renaming it later is churn across commands, skills, docs,
+  and muscle memory. The retro log's existing `/ds:*` mentions stay as written — it is
+  append-only history.
+
 ## Phase 1 decisions
 
 - **DEC-042 — The framework kit stays out of the public repo.** `docs/framework/`

@@ -32,7 +32,7 @@ telemetry, then skills, then the commands that compose them.
 - [x] 3.3 `.claude/settings.json`: OTLP export env + the two SessionStart hooks by absolute
       `$CLAUDE_PROJECT_DIR` path.
 - [x] 3.4 Legacy env-tag hook (`tag-session-change.mjs`) dropped — it is the mechanism DEC-022
-      records as broken. `/ds:propose`/`/ds:implement` lost their tag-write steps accordingly.
+      records as broken. `/aio:propose`/`/aio:implement` lost their tag-write steps accordingly.
 - [x] 3.5 Verify, executed for real: a fake session payload through `map-session-change.mjs`
       appended a correct record — and attributed this very branch to `change=ai-delivery-layer`;
       malformed stdin exits 0 quietly; `ensure-collector.mjs` fast-paths when :4317 is held;
@@ -72,7 +72,7 @@ telemetry, then skills, then the commands that compose them.
 
 - [x] 5.1 `.claude/workflow.json`: `wipLimit: 2` (DEC-017), `squashBodyMaxLineLength: 100`, the
       nine lifecycle labels, the spec-less lane label. Commands read it; none hardcodes a value.
-- [x] 5.2 Six `/ds:*` commands written with every spec'd gate: worktree preflight on all mutating
+- [x] 5.2 Six `/aio:*` commands written with every spec'd gate: worktree preflight on all mutating
       commands; propose's fresh-base + branch-ends-with-slug + default-branch checks; implement's
       WIP gate (limit from workflow.json) + advisory overlap warning + in-progress-before-first-
       commit; sync's green-before-`[skip ci]` ordering, overlap re-check widened to `code-review`
@@ -82,7 +82,7 @@ telemetry, then skills, then the commands that compose them.
       automatic via the session hook), branch-protection guardrail rewritten for a public repo
       (verify rulesets with `gh api`, don't assume).
 - [x] 5.3 Verify by dry-run against real state: no open issues → propose's read-issue gate
-      refuses toward `/ds:grill`; `wipLimit` reads 2 from the single source with 0 in-progress;
+      refuses toward `/aio:grill`; `wipLimit` reads 2 from the single source with 0 in-progress;
       zero `status:*` labels exist → grill/set-issue-status fail loudly toward Phase 3 (by
       design); worktree preflight passes in this checkout. **The squash-lint gate was probed for
       real both ways:** a 140-char body line fails commitlint (exit 1), a wrapped body passes
@@ -114,7 +114,7 @@ hypothesis-driven fixes; the third round of diagnostics named the real defect:
       skills, commands, telemetry).
 - [x] 6.2 Verify sweep above; CI on this PR runs lint + spec-validate (no application code — the
       code-less-skip gate applies).
-- [x] 6.3 **Enforcement honesty (design D6), recorded:** every gate in the `/ds:*` commands is
+- [x] 6.3 **Enforcement honesty (design D6), recorded:** every gate in the `/aio:*` commands is
       agent-enforced Markdown — worktree preflight, DoR gate, WIP cap, overlap checks, the
       green-before-close-out ordering, and the squash lint included. Machine-enforced remain:
       analyzers/ArchTests (build), Husky hooks (commit), CI lanes (PR), the draft-PR state

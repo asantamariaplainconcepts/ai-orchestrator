@@ -1,12 +1,12 @@
 ---
-name: "DS: Refine"
+name: "AIO: Refine"
 description: Append a follow-up retro-log entry after a change has merged (post-merge findings or a backfill)
 category: Workflow
-tags: [workflow, ds, retro, refine]
+tags: [workflow, aio, retro, refine]
 ---
 
 Append a retro entry for a change that has **already merged**. The normal retro is captured
-*inside* `/ds:sync`, on the branch before the merge. Use `/ds:refine` only for what that
+*inside* `/aio:sync`, on the branch before the merge. Use `/aio:refine` only for what that
 pre-merge retro couldn't see:
 
 - a **post-merge finding** — something that surfaced during or after the merge (a deploy
@@ -28,7 +28,7 @@ pre-merge retro couldn't see:
    second occurrence is the graduation rule.
 
 **Guardrails**
-- Append-only: if `/ds:sync` already wrote a pre-merge entry for this change, add a new dated
+- Append-only: if `/aio:sync` already wrote a pre-merge entry for this change, add a new dated
   follow-up entry — never rewrite the original.
 - Time invested comes from telemetry via `collect-usage`; if telemetry is missing, the entry
   says so (manual).

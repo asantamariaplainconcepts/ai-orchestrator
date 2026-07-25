@@ -38,7 +38,7 @@ condition and the command that resolves it.
 
 - **WHEN** work is attempted on an issue that is not `status:ready-for-proposal`
 - **THEN** the refusal states the issue's actual status and instructs the reader to run
-  `/ds:grill <issue>`
+  `/aio:grill <issue>`
 
 ### Requirement: single source of truth for rubrics and lifecycles
 

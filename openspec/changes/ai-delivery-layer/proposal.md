@@ -24,7 +24,7 @@ Four new capabilities (delta specs under `specs/`):
    responsibility, none calling another. Mutating skills confirm before touching shared state;
    refusals name the command that unblocks them. Includes vendoring `writing-great-skills`
    (MIT, Matt Pocock) **with its NOTICE**, adopted as the review standard for every skill we author.
-3. **workflow-commands** — the `/ds:*` layer: `grill`, `propose`, `implement`, `sync`, `refine`,
+3. **workflow-commands** — the `/aio:*` layer: `grill`, `propose`, `implement`, `sync`, `refine`,
    `status`. Commands orchestrate skills and own every gate; OpenSpec stays an implementation
    detail behind `/opsx:*`. Carries the full doc-05 catalog **including its "known gaps"**, plus
    one gap this project discovered on its own (below).
@@ -38,7 +38,7 @@ Doc 05's "known gaps" are inherited. This one is ours: the Phase 1 squash commit
 on `main`, because a squash message is authored at merge time on the platform where **no local
 hook can see it**, and the only gate that checks it runs after the merge is irreversible.
 
-`/ds:sync` already sets the squash subject and body explicitly, so it is the single place that can
+`/aio:sync` already sets the squash subject and body explicitly, so it is the single place that can
 validate them while the merge is still preventable. It will. Generalized as a requirement:
 *every artifact that will become main's history is validated before the merge, not after.*
 

@@ -1,5 +1,5 @@
 {
-  "_comment": "The single home for tunable process values (workflow-commands spec). Every /ds:* command reads these from here; no command or doc may hardcode them. Raising wipLimit requires an ADR (DEC-017).",
+  "_comment": "The single home for tunable process values (workflow-commands spec). Every /aio:* command reads these from here; no command or doc may hardcode them. Raising wipLimit requires an ADR (DEC-017).",
   "wipLimit": 2,
   "squashBodyMaxLineLength": 100,
   "lifecycleLabels": [

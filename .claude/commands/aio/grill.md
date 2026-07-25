@@ -1,8 +1,8 @@
 ---
-name: "DS: Grill"
+name: "AIO: Grill"
 description: Interrogate an idea or a markdown source to Definition of Ready, then create the GitHub issue
 category: Workflow
-tags: [workflow, ds, issue, grill]
+tags: [workflow, aio, issue, grill]
 ---
 
 Take a raw input, or an existing issue, to `status:ready-for-proposal`. This is the public entry
@@ -24,7 +24,7 @@ or an existing GitHub issue number. If omitted, ask what to grill.
 4. Invoke **`set-issue-status`** to set the new issue to `status:ready-for-proposal`. If the
    label does not exist in the repository, stop and report that the lifecycle labels have not
    been created yet (bootstrap Phase 3) — never create labels ad hoc.
-5. Report the issue number/URL and that it's ready for `/ds:propose`.
+5. Report the issue number/URL and that it's ready for `/aio:propose`.
 
 **Steps — existing issue number**
 
@@ -36,7 +36,7 @@ or an existing GitHub issue number. If omitted, ask what to grill.
    specific missing DoR fields from step 2, then invoke **`set-issue-status`** to set/keep
    `status:needs-refinement`. Stop — do not advance until the gaps are resolved.
 4. **If met**: invoke **`set-issue-status`** to move the issue to `status:ready-for-proposal`.
-5. Report the outcome and, if advanced, that it's ready for `/ds:propose`.
+5. Report the outcome and, if advanced, that it's ready for `/aio:propose`.
 
 **Guardrails**
 - Do not create a new issue, or advance an existing one to `status:ready-for-proposal`, until the
@@ -47,5 +47,5 @@ or an existing GitHub issue number. If omitted, ask what to grill.
 - Issues seeded in bulk from `docs/product/mvp/` still pass through this grill individually.
 - A DoR-gap comment names the specific missing fields — never a bare rejection.
 - A hotfix or pure infra/tooling item may take the spec-less lane instead (DEC-025): label it
-  `lane:spec-less` here, and it skips `/ds:propose` — but it still needs an issue, a branch, a
+  `lane:spec-less` here, and it skips `/aio:propose` — but it still needs an issue, a branch, a
   PR, CI, and a retro entry at sync.

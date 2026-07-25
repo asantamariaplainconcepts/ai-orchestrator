@@ -7,7 +7,7 @@
 - **No `status:*` labels exist yet.** Phase 3 creates them. Consequence for this change: commands
   must fail loudly on a missing label rather than silently proceeding or creating one.
 - **The solo path is real, not theoretical** (DEC-016): GitHub forbids self-approval, so
-  `/ds:sync` cannot gate on "PR approved". It gates on the label transition and a green check
+  `/aio:sync` cannot gate on "PR approved". It gates on the label transition and a green check
   rollup instead.
 - OpenSpec 1.6.0 is installed and the archive mechanics work end to end — exercised for real by
   the Phase 1 sync, not inferred.
@@ -18,7 +18,7 @@
 
 ```
 AGENTS.md (tool-neutral router)
-   └── /ds:*   commands   ← orchestration + gates (the public API)
+   └── /aio:*   commands   ← orchestration + gates (the public API)
          └── skills       ← atomic, one responsibility, never call each other
                └── tools  ← OpenSpec CLI, gh, git, telemetry scripts
 ```
@@ -31,7 +31,7 @@ change.
 ### D2 — Gates are refusals, and they point forward
 
 A command that cannot run says which command unblocks it (`not ready-for-proposal → run
-/ds:grill 12`), never a bare refusal. Lifecycle gates never warn-and-continue; advisory checks
+/aio:grill 12`), never a bare refusal. Lifecycle gates never warn-and-continue; advisory checks
 (branch-footprint overlap) may warn without blocking. The distinction is explicit per gate in the
 spec, so nobody has to guess which kind they are looking at.
 
@@ -61,13 +61,13 @@ All seven of doc 05's, plus ours. Each becomes a testable requirement rather tha
 | Gap | Where it lands |
 |---|---|
 | Worktree preflight | every mutating command asserts `git rev-parse --show-toplevel` first |
-| Branch-name normalization | `/ds:propose` requires the branch to end with the change slug |
-| Fresh-base check | `/ds:propose` verifies the base is current `origin/main` and targets the real default branch |
-| ADR numbering against `origin/main` | `write-adr` allocates there; `/ds:sync` re-verifies |
+| Branch-name normalization | `/aio:propose` requires the branch to end with the change slug |
+| Fresh-base check | `/aio:propose` verifies the base is current `origin/main` and targets the real default branch |
+| ADR numbering against `origin/main` | `write-adr` allocates there; `/aio:sync` re-verifies |
 | Pipe discipline | gating shell steps set `pipefail` or check exit codes explicitly |
 | Single source for tunables | D4 |
-| Overlap check re-run at sync, widened to `code-review` PRs | `/ds:sync` precondition |
-| **Squash message validated before merge (ours)** | `/ds:sync` lints the subject and body it is about to use |
+| Overlap check re-run at sync, widened to `code-review` PRs | `/aio:sync` precondition |
+| **Squash message validated before merge (ours)** | `/aio:sync` lints the subject and body it is about to use |
 
 ### D6 — Commands are Markdown, deliberately
 

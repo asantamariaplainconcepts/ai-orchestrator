@@ -4,14 +4,14 @@
 
 ### Requirement: the commands are the public API
 
-Contributors SHALL drive the workflow through `/ds:grill`, `/ds:propose`, `/ds:implement`,
-`/ds:sync`, `/ds:refine`, and `/ds:status`. OpenSpec SHALL be reachable only through `/opsx:*`
+Contributors SHALL drive the workflow through `/aio:grill`, `/aio:propose`, `/aio:implement`,
+`/aio:sync`, `/aio:refine`, and `/aio:status`. OpenSpec SHALL be reachable only through `/opsx:*`
 primitives that skills wrap, so the spec engine stays replaceable without touching workflow policy.
 
 #### Scenario: swapping the spec engine
 
 - **WHEN** the spec tool changes
-- **THEN** the `/opsx:*` layer and its skills change, and the `/ds:*` gates do not
+- **THEN** the `/opsx:*` layer and its skills change, and the `/aio:*` gates do not
 
 ### Requirement: every mutating command asserts its worktree first
 
@@ -26,7 +26,7 @@ does not.
 
 ### Requirement: grill gates on the Definition of Ready
 
-`/ds:grill` SHALL interrogate an idea field by field until it satisfies the Definition of Ready,
+`/aio:grill` SHALL interrogate an idea field by field until it satisfies the Definition of Ready,
 then create the issue with `status:ready-for-proposal`. For an existing issue it SHALL perform a
 gap check and comment the unmet fields **by name** on the issue. It SHALL refuse to mark ready any
 item that depends on an open decision (`OPN-*`), directing the reader to close that decision first.
@@ -38,15 +38,15 @@ item that depends on an open decision (`OPN-*`), directing the reader to close t
 
 ### Requirement: propose opens a draft PR and nothing else
 
-`/ds:propose` SHALL refuse unless the issue is `status:ready-for-proposal`. It SHALL create a
+`/aio:propose` SHALL refuse unless the issue is `status:ready-for-proposal`. It SHALL create a
 branch whose name **ends with the change's kebab-case slug**, verify the branch base is current
 `origin/main` and that the PR targets the repository's real default branch, create the OpenSpec
 change, and open a **draft** PR. It SHALL NOT write application code.
 
 #### Scenario: wrong status
 
-- **WHEN** `/ds:propose` runs on an issue labelled `status:backlog`
-- **THEN** it refuses, states the actual label, and instructs the reader to run `/ds:grill`
+- **WHEN** `/aio:propose` runs on an issue labelled `status:backlog`
+- **THEN** it refuses, states the actual label, and instructs the reader to run `/aio:grill`
 
 #### Scenario: stale base
 
@@ -61,7 +61,7 @@ change, and open a **draft** PR. It SHALL NOT write application code.
 
 ### Requirement: implement respects the WIP cap and the same PR
 
-`/ds:implement` SHALL refuse unless the issue is `status:ready-for-implementation`. It SHALL
+`/aio:implement` SHALL refuse unless the issue is `status:ready-for-implementation`. It SHALL
 refuse when the number of issues already `status:in-progress` has reached the configured WIP limit.
 It SHALL set `status:in-progress` **before** the first commit, reuse the proposal's PR rather than
 opening a second, and warn — without blocking — when the branch's file footprint overlaps another
@@ -70,7 +70,7 @@ in-flight change.
 #### Scenario: WIP cap reached
 
 - **WHEN** the WIP limit is 2 and two issues are already in progress
-- **THEN** implement refuses, lists the in-progress issues, and names `/ds:sync` as the way to
+- **THEN** implement refuses, lists the in-progress issues, and names `/aio:sync` as the way to
   free a slot
 
 #### Scenario: overlap is advisory
@@ -90,7 +90,7 @@ The WIP limit and any other tunable process value SHALL be defined once, in
 
 ### Requirement: sync verifies green before suppressing any signal
 
-`/ds:sync` SHALL, in this order: refuse a draft PR; refuse when the check rollup is failing or
+`/aio:sync` SHALL, in this order: refuse a draft PR; refuse when the check rollup is failing or
 pending; **verify CI is green while the last implementation commit is still the PR head**; re-run
 the overlap check against both `status:in-progress` issues and open `status:code-review` PRs;
 append the retro entry; archive the OpenSpec change on the branch; and only then create the
@@ -108,7 +108,7 @@ close-out commit that carries `[skip ci]`.
 
 ### Requirement: sync validates the squash message before merging
 
-`/ds:sync` SHALL lint the exact subject and body it is about to use for the squash commit against
+`/aio:sync` SHALL lint the exact subject and body it is about to use for the squash commit against
 the repository's commit conventions, and SHALL refuse to merge if they do not pass. The squash
 subject SHALL be the PR title, and the body SHALL NOT contain `[skip ci]`.
 
@@ -137,7 +137,7 @@ with the change's specs folded into `openspec/specs/`, its bundle archived under
 
 ### Requirement: status is read-only
 
-`/ds:status` SHALL report an issue's lifecycle position, its PR state, and any drift between the
+`/aio:status` SHALL report an issue's lifecycle position, its PR state, and any drift between the
 two, and SHALL NOT modify anything.
 
 #### Scenario: drift is reported, not corrected

@@ -1,8 +1,8 @@
 ---
-name: "DS: Implement"
+name: "AIO: Implement"
 description: For a validated proposal, implement on the same branch/PR and mark it ready for code review
 category: Workflow
-tags: [workflow, ds, openspec, implement]
+tags: [workflow, aio, openspec, implement]
 ---
 
 Implement a validated change on the **same branch and PR** as its proposal, then mark that PR
@@ -16,10 +16,10 @@ ready for review (HITL #2). Wraps OpenSpec's apply.
    directory; abort on mismatch before touching anything.
 2. Invoke **`read-issue`**. **Gate:** if it is not `status:ready-for-implementation`, stop and
    report the actual status plus the next step (an unvalidated proposal needs its spec review;
-   an ungrilled issue needs `/ds:grill <n>`). Do not proceed.
+   an ungrilled issue needs `/aio:grill <n>`). Do not proceed.
 3. **WIP gate.** Read `wipLimit` from `.claude/workflow.json` (never hardcode it), then run
    `gh issue list --label status:in-progress --state open`. If the count has reached the limit,
-   refuse to start: report the limit, list the issues holding it, and name `/ds:sync` as the way
+   refuse to start: report the limit, list the issues holding it, and name `/aio:sync` as the way
    to free a slot.
    - **Branch-overlap warning (non-blocking):** once the count check passes, derive this change's
      declared touch-set (file paths named in its `tasks.md` and spec deltas) and, for each other

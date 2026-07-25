@@ -19,5 +19,5 @@ Flip one existing draft PR to ready-for-review — one responsibility. Never ope
 ## Do not
 
 - Create a new PR — reuse the proposal's PR.
-- Merge — that's `/ds:sync`.
-- Retitle for the squash subject — making the PR title describe the implementation before merge is `/ds:sync`'s job, not this skill's (improving the title here is welcome but optional).
+- Merge — that's `/aio:sync`.
+- Retitle for the squash subject — making the PR title describe the implementation before merge is `/aio:sync`'s job, not this skill's (improving the title here is welcome but optional).

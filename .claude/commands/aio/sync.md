@@ -1,8 +1,8 @@
 ---
-name: "DS: Sync"
+name: "AIO: Sync"
 description: Close out an approved change on its branch (retro + archive + sync), lint the squash message, then squash-merge one commit to main
 category: Workflow
-tags: [workflow, ds, openspec, sync, archive, retro]
+tags: [workflow, aio, openspec, sync, archive, retro]
 ---
 
 Close out an approved change and land it. The retro, the archive, and the spec sync all happen
@@ -91,12 +91,12 @@ change. **Merge = archive = sync = retro**, one commit.
   required-status-check rule is ever enabled on `main`, revisit steps 6–7: the `[skip ci]`
   close-out commit has no check runs, and a required check with no run would deadlock the merge.
   Verify the actual protection state with `gh api repos/{owner}/{repo}/rulesets` — do not assume.
-- `/ds:sync` is the **sole owner** of the accurate-subject guarantee: never squash-merge while
+- `/aio:sync` is the **sole owner** of the accurate-subject guarantee: never squash-merge while
   the title still describes the proposal. Whatever set the title upstream, verify it here.
 - Never set `status:done` before the merge has actually completed.
 - Retro time comes from `collect-usage`; if telemetry is missing, the entry says so (manual).
   The retro log is append-only.
-- A genuinely post-merge finding is appended afterwards with `/ds:refine` — never by rewriting
+- A genuinely post-merge finding is appended afterwards with `/aio:refine` — never by rewriting
   this change's entry.
 - Archive on the branch before merging, exactly one archive directory per change. Merges are
   sequential — step 3 always completes before the archive.

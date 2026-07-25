@@ -1,6 +1,6 @@
 ---
 name: writing-great-skills
-description: Reference for writing and editing skills well. Use when authoring, reviewing, or refactoring a skill (including the /ds:* skills) — the vocabulary and principles that make a skill predictable.
+description: Reference for writing and editing skills well. Use when authoring, reviewing, or refactoring a skill (including the /aio:* skills) — the vocabulary and principles that make a skill predictable.
 ---
 
 <!--
@@ -71,9 +71,9 @@ A **leading word** is a compact concept already in the model's pretraining that 
 On top of the above, ai-orchestrator skills MUST:
 
 - **Do one thing.** One responsibility per skill (`grill-to-ready`, `set-issue-status`, …).
-- **Never call another skill.** Composition happens in the `/ds:*` commands, not between skills.
+- **Never call another skill.** Composition happens in the `/aio:*` commands, not between skills.
 - **Be portable.** Plain Markdown that travels with the repo; no hidden host-specific behaviour.
 - **Be secure.** No secrets; confirm shared-state actions (issues, labels, PRs, GitHub edits) before executing.
 - **Progressively disclose.** Push reference detail (label definitions, the Definition of Ready rubric) into linked docs, not the skill body.
 
-The `/ds:*` toolkit is the worked example: atomic skills authored against this guide, orchestrated by commands.
+The `/aio:*` toolkit is the worked example: atomic skills authored against this guide, orchestrated by commands.

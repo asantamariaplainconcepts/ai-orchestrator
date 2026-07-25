@@ -41,7 +41,7 @@ locked by DEC-005: *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Pla
 | --- | --- | --- |
 | **Rules** | `AGENTS.md` | Claude Code: `CLAUDE.md` → here · opencode: reads `AGENTS.md` natively · Copilot: `.github/copilot-instructions.md` → here |
 | **Skills** | `.claude/skills/*/SKILL.md` | Claude Code: native · opencode: native (Claude-compat) · Copilot: N/A |
-| **Commands** | `.claude/commands/**/*.md` | Claude Code: native (`/ds:grill`) · opencode: Claude-compat · Copilot: N/A |
+| **Commands** | `.claude/commands/**/*.md` | Claude Code: native (`/aio:grill`) · opencode: Claude-compat · Copilot: N/A |
 | **Project config** | `.claude/settings.json` | Claude Code: native · opencode: `opencode.json` at repo root · Copilot: N/A |
 
 **Known gap — telemetry.** The OTel session hooks are Claude Code lifecycle; opencode sessions
@@ -52,28 +52,28 @@ instructions any agent can interpret.
 
 ## The workflow loop
 
-Spec-first, through the project-owned `/ds:*` commands that wrap OpenSpec. One issue rides **one
+Spec-first, through the project-owned `/aio:*` commands that wrap OpenSpec. One issue rides **one
 branch and one PR**, reviewed twice. The lifecycle is nine `status:*` states:
 `backlog → needs-refinement → ready-for-proposal → proposal-review → ready-for-implementation →
 in-progress → code-review → done` (plus `blocked`, reachable from any state). The `status:*`
 label is the **sole** lifecycle state.
 
-1. **`/ds:grill`** — interrogate an idea (or an existing issue, or a `docs/product/mvp/` item) to
+1. **`/aio:grill`** — interrogate an idea (or an existing issue, or a `docs/product/mvp/` item) to
    the Definition of Ready, then create/advance the issue. Items depending on an open `OPN-*`
    decision are blocked, never guessed at.
-2. **`/ds:propose`** — `ready-for-proposal` issue → branch (name ends with the change slug, fresh
+2. **`/aio:propose`** — `ready-for-proposal` issue → branch (name ends with the change slug, fresh
    `origin/main` base) → OpenSpec change → **draft PR**. **HITL #1**: the spec is reviewed as text.
 3. Reviewer moves the label → `ready-for-implementation`.
-4. **`/ds:implement`** — refuses beyond the WIP limit (`.claude/workflow.json`); sets
+4. **`/aio:implement`** — refuses beyond the WIP limit (`.claude/workflow.json`); sets
    `in-progress` before its first commit; same branch, same PR, marks it ready → `code-review`.
    **HITL #2**: code and observed behaviour.
-5. **`/ds:sync`** — the only merge path. Verifies CI green on the PR head **before** creating the
+5. **`/aio:sync`** — the only merge path. Verifies CI green on the PR head **before** creating the
    `[skip ci]` close-out commit; retro + archive + spec-sync on the branch; **lints the squash
    subject and body against commitlint before merging**; squash-merges exactly one commit whose
    subject is the PR title; sets `done`.
-6. **`/ds:refine`** — append a post-merge retro finding.
+6. **`/aio:refine`** — append a post-merge retro finding.
 
-`/ds:status` is read-only and reports where an issue sits plus the next command.
+`/aio:status` is read-only and reports where an issue sits plus the next command.
 
 **Solo path (DEC-016):** GitHub forbids self-approval, so review gates are recorded as the label
 transition + the PR checklist, not as a formal PR approval.
@@ -88,7 +88,7 @@ archive at sync.
   fail the build otherwise. ArchTests catch what analyzers structurally cannot (see
   `ARCHITECTURE.md`).
 - **Don't skip the gates.** No proposing an issue that isn't ready; no implementing an
-  unvalidated proposal; no exceeding the WIP limit; no merge outside `/ds:sync`.
+  unvalidated proposal; no exceeding the WIP limit; no merge outside `/aio:sync`.
 - **Verify infrastructure claims by exercising them** — a config existing or a step passing once
   is not evidence it works now (Phase 1's E2E lane proved this twice).
 - **Assert your worktree** (`git rev-parse --show-toplevel` matches the session directory) before

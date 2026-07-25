@@ -1,6 +1,6 @@
 ---
 name: collect-usage
-description: Summarize a change's Claude Code usage telemetry (human-vs-agent time, cost, tokens) from the persisted OTel data. Use when reporting time invested for a change, e.g. from /ds:refine.
+description: Summarize a change's Claude Code usage telemetry (human-vs-agent time, cost, tokens) from the persisted OTel data. Use when reporting time invested for a change, e.g. from /aio:refine.
 ---
 
 Produce one per-change usage summary from persisted telemetry — one responsibility, read-only. The durable source is the OTel Collector's export (see `.telemetry/`) — dashboards are disposable viewers.
@@ -20,7 +20,7 @@ Produce one per-change usage summary from persisted telemetry — one responsibi
 3. **Aggregate.** Sum `active_time.total{type=user}` (human) and `{type=cli}` (agent) into hours; sum cost and tokens. Values are raw deltas — sum them directly.
    - Done when: human hours, agent hours, cost, and tokens are computed for the change.
 4. **Emit.** Return a compact summary: human time, agent time, cost (USD), tokens — ready for the retro-log entry. If sessions are mapped but their records predate the export's history (data lost to truncation before `append: true` landed), report that explicitly.
-   - Done when: the summary is handed back to the caller (e.g. `/ds:refine`).
+   - Done when: the summary is handed back to the caller (e.g. `/aio:refine`).
 
 ## Do not
 

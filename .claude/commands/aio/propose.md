@@ -1,8 +1,8 @@
 ---
-name: "DS: Propose"
+name: "AIO: Propose"
 description: For a ready issue, create the OpenSpec change on a branch and open a draft PR for spec review
 category: Workflow
-tags: [workflow, ds, openspec, propose]
+tags: [workflow, aio, openspec, propose]
 ---
 
 Turn a `ready-for-proposal` issue into an OpenSpec proposal on a branch, opened as a **draft PR**
@@ -16,7 +16,7 @@ for human review (HITL #1). Wraps OpenSpec — the developer never calls `/opsx:
    directory. If it doesn't, abort and report both paths — do not mutate anything.
 2. Invoke **`read-issue`** for the number. **Gate:** if it is not `status:ready-for-proposal`,
    stop — do not proceed. Report the current status and the actionable next step: run
-   `/ds:grill <n>` to close the Definition-of-Ready gaps.
+   `/aio:grill <n>` to close the Definition-of-Ready gaps.
 3. **Fresh base.** `git fetch origin`, confirm the repository's real default branch
    (`gh repo view --json defaultBranchRef`), and create the branch from current
    `origin/<default>`. **The branch name must end with the change's kebab-case slug**
@@ -36,7 +36,7 @@ for human review (HITL #1). Wraps OpenSpec — the developer never calls `/opsx:
 
 **Guardrails**
 - Never propose an issue that isn't `status:ready-for-proposal` — on gate failure, point to
-  `/ds:grill <n>`, never a bare refusal.
+  `/aio:grill <n>`, never a bare refusal.
 - Never propose scope that depends on an open `OPN-*` decision.
 - The PR is a draft on purpose (unmergeable) — it enforces the spec-review gate.
 - The branch base must be current `origin/<default>` at creation; the branch name must end with

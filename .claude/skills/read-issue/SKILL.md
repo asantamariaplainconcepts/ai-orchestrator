@@ -17,4 +17,4 @@ Fetch one issue's state — one responsibility, read-only.
 ## Do not
 
 - Change any GitHub state (labels, body, comments).
-- Infer a status that isn't present — report it missing so the command can route to `/ds:grill`.
+- Infer a status that isn't present — report it missing so the command can route to `/aio:grill`.

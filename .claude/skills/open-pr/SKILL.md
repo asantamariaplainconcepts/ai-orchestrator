@@ -9,7 +9,7 @@ Open one **draft** PR — one responsibility. Draft status is deliberate: it can
 
 1. **Confirm.** Show the base branch, head branch, title, and body (link the issue with `Closes #<n>` and the change name). Proceed only on confirmation.
    - Done when: the human approves.
-2. **Open as draft.** Run `gh pr create --draft --base <base> --head <branch> --title "…" --body "…"` using the repository's PR template. Title it `docs(openspec): propose <change> (<ids>, #<issue>)` — this proposal-time pattern is the convention `/ds:sync` detects and replaces when it refreshes the squash subject before merging.
+2. **Open as draft.** Run `gh pr create --draft --base <base> --head <branch> --title "…" --body "…"` using the repository's PR template. Title it `docs(openspec): propose <change> (<ids>, #<issue>)` — this proposal-time pattern is the convention `/aio:sync` detects and replaces when it refreshes the squash subject before merging.
    - Done when: `gh` returns the PR URL and it is marked draft.
 3. **Report.** Return the PR number/URL.
    - Done when: number + URL handed back.
