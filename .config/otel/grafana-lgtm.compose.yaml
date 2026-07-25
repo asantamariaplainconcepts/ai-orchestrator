@@ -1,0 +1,30 @@
+# Local Grafana + Prometheus + Loki + Tempo viewer for the OTel Collector's telemetry
+# (metrics-dashboard). This stack is a VIEWER ONLY, fed by ai-orchestrator-otel-collector over
+# the shared ai-orchestrator-otel network — the Collector's file export under
+# .telemetry/ remains the durable source of truth regardless of whether this
+# stack is running.
+#
+# Opt-in, not started by the SessionStart hook (heavier than the Collector alone).
+# Start together with the Collector:
+#   docker compose -f .config/otel/otel-collector.compose.yaml -f .config/otel/grafana-lgtm.compose.yaml up -d
+# Then open http://localhost:3000 — the "Agentic usage" dashboard is provisioned automatically.
+
+services:
+  grafana-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: ai-orchestrator-grafana-lgtm
+    restart: unless-stopped
+    ports:
+      - "3000:3000" # Grafana UI
+    volumes:
+      - ./grafana-provisioning/dashboards/agentic-usage.json:/otel-lgtm/grafana/conf/provisioning/dashboards/custom/agentic-usage.json:ro
+      - ./grafana-provisioning/dashboards/custom.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/custom.yaml:ro
+    environment:
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /otel-lgtm/grafana/conf/provisioning/dashboards/custom/agentic-usage.json
+    networks:
+      - ai-orchestrator-otel
+
+networks:
+  ai-orchestrator-otel:
+    external: true
+    name: ai-orchestrator-otel

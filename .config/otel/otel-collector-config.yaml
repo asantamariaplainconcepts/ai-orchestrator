@@ -1,0 +1,69 @@
+# OpenTelemetry Collector — the DURABLE sink for agent usage telemetry.
+# The agent exports here (OTLP :4317). The Collector persists to .telemetry/ (gitignored —
+# the repo is public and this data carries user identifiers, DEC-022) AND fans out to the
+# optional local Grafana stack for live viewing. If the viewer is down, nothing is lost —
+# the file export is the system of record.
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+  # Sum metrics (active_time.total, cost.usage, token.usage) arrive with delta temporality;
+  # Prometheus (fed via the Grafana stack) wants cumulative for rate()/increase(). Only the
+  # Grafana-bound pipelines use this — the durable file export keeps the raw deltas.
+  deltatocumulative: {}
+  # The Collector stamps the project tag itself: the desktop client drops
+  # OTEL_RESOURCE_ATTRIBUTES from its exported resources, so the sender cannot be trusted
+  # to tag itself. `upsert` keeps a sender-supplied value when present.
+  resource/project:
+    attributes:
+      - key: project
+        value: ai-orchestrator
+        action: upsert
+
+exporters:
+  # Durable retention: newline-delimited JSON. `append: true` is load-bearing — the file
+  # exporter TRUNCATES on Collector start by default, and with `restart: unless-stopped`
+  # every host restart would wipe the history.
+  file:
+    path: /export/usage.jsonl
+    append: true
+  # Live view: the local Grafana/otel-lgtm stack, reached by compose service name on the
+  # shared network. Optional; unreachable is non-fatal for the durable pipelines.
+  otlp/grafana:
+    endpoint: grafana-lgtm:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    metrics/durable:
+      receivers: [otlp]
+      processors: [resource/project, batch]
+      exporters: [file]
+    metrics/grafana:
+      receivers: [otlp]
+      processors: [resource/project, batch, deltatocumulative]
+      exporters: [otlp/grafana]
+    logs/durable:
+      receivers: [otlp]
+      processors: [resource/project, batch]
+      exporters: [file]
+    logs/grafana:
+      receivers: [otlp]
+      processors: [resource/project, batch]
+      exporters: [otlp/grafana]
+    traces/durable:
+      receivers: [otlp]
+      processors: [resource/project, batch]
+      exporters: [file]
+    traces/grafana:
+      receivers: [otlp]
+      processors: [resource/project, batch]
+      exporters: [otlp/grafana]

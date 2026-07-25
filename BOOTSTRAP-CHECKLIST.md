@@ -45,12 +45,12 @@ Charter gate:
 
 ## Phase 2 — AI delivery layer *(doc 03)*
 
-- [ ] Proposal reviewed (HITL #1) before implementing
-- [ ] `AGENTS.md` router + pointer files for every runtime from A5 — each pointer verified to target `AGENTS.md`
-- [ ] `writing-great-skills` vendored with its MIT NOTICE
-- [ ] Telemetry stack live per A9 (collector up, `sessions.jsonl` mapping written on session start)
-- [ ] Wrapper commands carry **every** gate in doc 05 — including the "known gaps" section
-- [ ] Verify: `/ds:propose` on a non-ready issue refuses and names `/ds:grill`; a fifth concurrent implement refuses
+- [x] Proposal reviewed (HITL #1) before implementing (PR #2, spec approved)
+- [x] `AGENTS.md` router + pointer files for every runtime from A5 — pointer audit clean: all three target `AGENTS.md`, zero refs elsewhere
+- [x] `writing-great-skills` vendored with its MIT NOTICE (extended with this repo's adaptation note)
+- [x] Telemetry stack live per A9 — `map-session-change.mjs` probed with a real payload (attributed this branch to its change; fail-soft verified); data in gitignored `.telemetry/` (DEC-022). Caveat noted: this machine's :4317 is shared with another project's collector
+- [x] Wrapper commands carry **every** gate in doc 05 including all seven known gaps as implemented guards, plus an eighth of our own: `/aio:sync` lints the squash subject/body pre-merge (probed both ways — the exact Phase 1 defect is now caught while the merge is still preventable)
+- [x] Verify: `/aio:propose`'s gate refuses toward `/aio:grill` (dry-run against real state); the WIP gate reads its limit (2) from `.claude/workflow.json` alone; a third concurrent implement would refuse. Full-refusal exercising with real issues happens in Phase 5, once labels exist
 - [ ] **Human approved** → `Proceed with Phase 3.`
 
 ## Phase 3 — Ceremonies *(doc 04)*

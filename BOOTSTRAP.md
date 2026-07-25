@@ -90,7 +90,7 @@ answer) or **OPN** (deliberately open, naming what it blocks). No third state.
 - **DEC-016 — Solo path from day 0.** Owner is both HITL reviewers. Per the kit's
   ADR-0011 story: self-review checklist on the PR + the `status:*` label transition is
   the recorded gate; no formal PR approval required (GitHub forbids self-approval).
-- **DEC-017 — WIP limit 2**, enforced by the `/ds:implement` command's refusal.
+- **DEC-017 — WIP limit 2**, enforced by the `/aio:implement` command's refusal.
   Raising it requires an ADR.
 - **DEC-018 — Runtimes & hosting.** Contributor agent runtimes: **Claude Code,
   opencode, GitHub Copilot** → Phase 2 creates `CLAUDE.md` and
@@ -168,7 +168,7 @@ answer) or **OPN** (deliberately open, naming what it blocks). No third state.
 ## Accepted kit defaults (unmodified)
 
 Nine-state label lifecycle · one issue = one branch = one PR with two HITL gates ·
-OpenSpec (`@fission-ai/openspec`) behind `/ds:*` wrapper commands · hard guardrails of
+OpenSpec (`@fission-ai/openspec`) behind `/aio:*` wrapper commands · hard guardrails of
 doc 05 including its "known gaps" from day 0 · four-tier test pyramid · Husky hooks
 mirrored in CI · docs-as-maps with stable IDs (ACT/BC/UC/BR/RULE/DEC/OPN) ·
 append-only retro log · ADR template · ~40-line onboarding.
@@ -179,7 +179,7 @@ append-only retro log · ADR template · ~40-line onboarding.
 |---|---|---|
 | 0 — Product corpus | Eleven-catalog corpus in `docs/product/mvp/`, product-deep grill | Carries this DEC/OPN log in; closes OPN-001 |
 | 1 — Technical scaffolding | OpenSpec + project-scaffolding proposal (zero code) → HITL #1 → implement from `references/` | Folder/repo rename (DEC-004) happens first; verify branch protection (DEC-018) |
-| 2 — AI delivery layer | AGENTS.md router + 3 runtime pointers, vendored writing-great-skills, telemetry stack (DEC-022), `/ds:*` gates incl. known gaps | |
+| 2 — AI delivery layer | AGENTS.md router + 3 runtime pointers, vendored writing-great-skills, telemetry stack (DEC-022), `/aio:*` gates incl. known gaps | |
 | 3 — Ceremonies | 9 labels, DoR on RULE catalog, retro log, ADR template, CONTRIBUTING, ONBOARDING, solo path (DEC-016), spec-less lane (DEC-025) | |
 | 4 — Design system | Atlas-style tokens (DEC-021), DESIGN.md + adapter, drift gate in CI, design-router skill | Not deferred |
 | 5 — Prove the loop | One small real feature through grill→propose→implement→sync→refine; smoke E2E for auth | Requires OPN-002 closed |

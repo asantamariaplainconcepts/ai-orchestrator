@@ -33,9 +33,20 @@ public class SpaShell_Should_Constraint(AppHostFixture fixture)
 
         var response = await page.APIRequest.GetAsync($"{fixture.ServerBaseUrl}api/projects");
 
-        response.Status.ShouldBe(
-            200,
-            $"body: {await response.TextAsync()}\n\n{fixture.ServerLogTail()}"
-        );
+        if (response.Status != 200)
+        {
+            // The health verdict at failure time distinguishes "database unusable" (the DB
+            // check fails) from "endpoint bug" (health green while the endpoint 500s). The
+            // delay lets the resource log stream drain — the request-time exception lags the
+            // failure by a couple of seconds and an eager read misses it.
+            var health = await page.APIRequest.GetAsync($"{fixture.ServerBaseUrl}api/health");
+            await Task.Delay(TimeSpan.FromSeconds(4));
+            response.Status.ShouldBe(
+                200,
+                $"body: {await response.TextAsync()}\n"
+                    + $"health: {health.Status} {await health.TextAsync()}\n\n"
+                    + fixture.ServerLogTail(lines: 100)
+            );
+        }
     }
 }

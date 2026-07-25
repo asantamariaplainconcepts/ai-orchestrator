@@ -22,12 +22,26 @@ public sealed class ProjectsModule : ModuleBase
         await database.Database.MigrateAsync(cancellationToken);
     }
 
-    public override void Add(IServiceCollection services, IConfiguration configuration) =>
+    public override void Add(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddDbContext<ProjectsDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString(ConnectionStringName),
                 npgsql =>
-                    npgsql.MigrationsHistoryTable("__EFMigrationsHistory", ProjectsDbContext.Schema)
+                {
+                    npgsql.MigrationsHistoryTable(
+                        "__EFMigrationsHistory",
+                        ProjectsDbContext.Schema
+                    );
+                    // Transient connection failures (container restarts, pool churn) retry
+                    // instead of surfacing as a 500 — first seen as an intermittent E2E red.
+                    npgsql.EnableRetryOnFailure();
+                }
             )
         );
+
+        // Health must mean "can serve requests", which for this module includes its database.
+        // The self-only check let the host report healthy before the DB was usable.
+        services.AddHealthChecks().AddDbContextCheck<ProjectsDbContext>("projects-db");
+    }
 }

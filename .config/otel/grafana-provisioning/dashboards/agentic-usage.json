@@ -1,0 +1,99 @@
+{
+  "title": "Agentic usage (ds-connect)",
+  "uid": "ds-connect-agentic-usage",
+  "tags": ["ds-connect", "claude-code"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-24h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Human vs. agent active time",
+      "description": "claude_code_active_time_seconds_total split by type=user (human) vs type=cli (agent). Cumulative after the Collector's delta-to-cumulative conversion.",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "s", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (type) (claude_code_active_time_seconds_total{project=\"ds-connect\"})",
+          "legendFormat": "{{type}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Tokens by type",
+      "description": "claude_code_token_usage_tokens_total split by type=input/output/cacheRead/cacheCreation.",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": { "unit": "short", "custom": { "fillOpacity": 20, "stacking": { "mode": "normal" } } },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (type) (claude_code_token_usage_tokens_total{project=\"ds-connect\"})",
+          "legendFormat": "{{type}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "table",
+      "title": "Time & tokens by spec",
+      "description": "One row per change=<name> resource attribute: human active time (target A, type=user), agent active time (target B, type=cli), total tokens (target C). Joined with the merge transform since the three come from two different metrics/label values, not one query. Sessions that never exported OTEL_RESOURCE_ATTRIBUTES with a change tag show under \"unattributed\" — see docs/process/metrics/README.md. No cost figure appears on this dashboard; claude_code.cost.usage remains in the durable file export for collect-usage.",
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": { "defaults": { "unit": "short" }, "overrides": [] },
+      "transformations": [
+        { "id": "merge", "options": {} },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": { "Time": true },
+            "renameByName": {
+              "change_name": "spec",
+              "Value #A": "human_time_s",
+              "Value #B": "agent_time_s",
+              "Value #C": "tokens"
+            }
+          }
+        }
+      ],
+      "targets": [
+        {
+          "refId": "A",
+          "format": "table",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (change_name) (label_replace(label_replace(claude_code_active_time_seconds_total{project=\"ds-connect\", type=\"user\"}, \"change_name\", \"$1\", \"change\", \"(.+)\"), \"change_name\", \"unattributed\", \"change\", \"^$\"))"
+        },
+        {
+          "refId": "B",
+          "format": "table",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (change_name) (label_replace(label_replace(claude_code_active_time_seconds_total{project=\"ds-connect\", type=\"cli\"}, \"change_name\", \"$1\", \"change\", \"(.+)\"), \"change_name\", \"unattributed\", \"change\", \"^$\"))"
+        },
+        {
+          "refId": "C",
+          "format": "table",
+          "instant": true,
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "expr": "sum by (change_name) (label_replace(label_replace(claude_code_token_usage_tokens_total{project=\"ds-connect\"}, \"change_name\", \"$1\", \"change\", \"(.+)\"), \"change_name\", \"unattributed\", \"change\", \"^$\"))"
+        }
+      ]
+    }
+  ]
+}

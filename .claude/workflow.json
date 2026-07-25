@@ -1,0 +1,17 @@
+{
+  "_comment": "The single home for tunable process values (workflow-commands spec). Every /aio:* command reads these from here; no command or doc may hardcode them. Raising wipLimit requires an ADR (DEC-017).",
+  "wipLimit": 2,
+  "squashBodyMaxLineLength": 100,
+  "lifecycleLabels": [
+    "status:backlog",
+    "status:needs-refinement",
+    "status:ready-for-proposal",
+    "status:proposal-review",
+    "status:ready-for-implementation",
+    "status:in-progress",
+    "status:code-review",
+    "status:done",
+    "status:blocked"
+  ],
+  "specLessLaneLabel": "lane:spec-less"
+}
