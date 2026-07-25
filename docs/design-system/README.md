@@ -112,27 +112,34 @@ a style reference, not a brand transfer.
 
 ## Reference observations, for screens we have not built yet
 
-The reference application was reviewed in use, not just at its sign-in page. These patterns are
-**recorded, not implemented** — the kit deliberately contains only what our app renders today,
-and adding components ahead of a screen is speculative surface. When the screen arrives, start
-here rather than re-deciding:
+The reference application was inspected in use and its components **measured**, not eyeballed.
+These patterns are **recorded, not implemented** — the kit deliberately contains only what our app
+renders today, and adding components ahead of a screen is speculative surface. When the screen
+arrives, start here rather than re-deciding. Values below are expressed in our tokens:
 
-- **Shell.** Fixed left sidebar with the product mark at top and a user card pinned at the bottom;
-  nav grouped under small uppercase, letter-spaced, muted section labels. The active item is
-  `--brand-soft` fill with `--brand` text and icon — not a heavy highlight.
-- **Page head.** Breadcrumbs, then the page title, then tabs with an underline indicator on the
-  active tab.
-- **Filter/stat cards.** A row of cards, each carrying a **coloured left border** in a semantic
-  colour, with the label left and a large count right. They double as filters — clicking one
-  narrows the table below.
-- **Filter bar.** Labelled controls in a grid inside a single card, above the table.
-- **Table.** Dense rows, a muted header, numeric columns right-aligned with tabular figures,
-  status shown as a soft pill with a leading dot, and `—` for absent values. A toolbar above it
-  carries column-visibility and export controls.
+- **Sidebar** — `--sidebar-w-expanded` wide, `--surface` background, product mark at the top and a
+  user card pinned at the bottom.
+- **Nav item** — `--sp-2`/`--sp-3` padding, `--r-2` radius, regular weight. **Active state is
+  `--brand-soft` fill with `--brand` text and medium weight** — a tint, not a heavy highlight.
+  (Measured exactly: the reference's active background and text are the same two values our
+  `--brand-soft` and `--brand` already hold.)
+- **Section label** — `--fs-11`, semibold, uppercase, roughly `0.06em` tracking, `--fg-subtle`.
+- **User card** — `--bg-muted` fill, `1px --border`, `--r-3`, `--sp-2` padding.
+- **Top bar** — `--surface`, `--sp-4` block / `--sp-7` inline padding.
+- **Breadcrumbs** — `--fs-12`, `--fg-muted`, small gap; then the page title row beneath.
+- **Filter/stat cards** — a row of cards each with a **coloured left border** in a semantic colour,
+  label left and large count right. They double as filters: clicking one narrows the table.
+- **Table** — dense rows, muted header, numeric columns right-aligned with tabular figures, status
+  as a soft pill with a leading dot, `—` for absent values, and a toolbar above carrying
+  column-visibility and export controls.
 
-Our token set already covers all of it — `--brand-soft` for active nav, `--ok-soft` for status
-pills, `--violet` for the percentage emphasis, the semantic families for the card borders — which
-is a useful signal that the palette is sufficient rather than merely pretty.
+**The palette needed nothing added.** Every treatment maps to a token already here — `--brand-soft`
+for active nav, `--ok-soft` for status pills, `--violet` for percentage emphasis, the semantic
+families for card borders. That is a signal the palette is sufficient, not merely pretty.
+
+**Where we will diverge:** the reference uses a few off-scale values (a ~13.5px nav label, a small
+global negative tracking). We snap to the scale — `--fs-13` — rather than reproducing them. A
+closed scale is worth more than a pixel of fidelity.
 
 ## Changing something
 
