@@ -17,7 +17,11 @@ public static class CqsServiceCollectionExtensions
     )
     {
         services.AddMemoryCache();
-        services.AddSingleton<ISender, Sender>();
+        // Scoped, not singleton: Sender resolves handlers from the provider injected into it.
+        // As a singleton that provider is the root, and scoped handlers (with their DbContexts)
+        // silently degrade to root-cached instances — one DbContext shared across concurrent
+        // requests. Found by the E2E lane as an intermittent 500 nothing else could produce.
+        services.AddScoped<ISender, Sender>();
 
         services.Scan(scan =>
             scan.FromAssemblies(assemblies)

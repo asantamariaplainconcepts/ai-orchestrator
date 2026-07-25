@@ -6,6 +6,16 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Unconditional, not Development-only: the default leaves scope validation off outside
+// Development, which let a scoped-service-from-root bug ship silently and surface only as an
+// intermittent E2E 500. Startup cost is negligible; the guardrail must not depend on which
+// environment happens to be running.
+builder.Host.UseDefaultServiceProvider(options =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = true;
+});
+
 builder.AddServiceDefaults();
 
 var modules = ModuleRegistration.Discover();
