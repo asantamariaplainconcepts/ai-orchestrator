@@ -1,0 +1,28 @@
+# Runs the OTel Collector locally as the durable telemetry sink.
+# Start:  docker compose -f .config/otel/otel-collector.compose.yaml up -d
+# The SessionStart hook (ensure-collector.mjs) starts this automatically when it's not up.
+# To also see the data live, add the Grafana viewer (on demand, never by the hook):
+#   docker compose -f .config/otel/otel-collector.compose.yaml -f .config/otel/grafana-lgtm.compose.yaml up -d
+
+services:
+  otel-collector:
+    # Pinned: `latest` + `restart: unless-stopped` means an unattended image bump could
+    # silently break config compatibility on any host restart.
+    image: otel/opentelemetry-collector-contrib:0.156.0
+    container_name: ai-orchestrator-otel-collector
+    restart: unless-stopped
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml:ro
+      # Persist usage where collect-usage reads it. Relative to this compose file
+      # (.config/otel), ../../.telemetry is the repo's gitignored telemetry folder (DEC-022).
+      - ../../.telemetry:/export
+    ports:
+      - "4317:4317" # OTLP gRPC (the agent exports here)
+      - "4318:4318" # OTLP HTTP
+    networks:
+      - ai-orchestrator-otel
+
+networks:
+  ai-orchestrator-otel:
+    name: ai-orchestrator-otel
