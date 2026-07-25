@@ -1,0 +1,58 @@
+name: E2E
+
+on:
+  workflow_call:
+
+jobs:
+  e2e:
+    # Boots the real AppHost (Postgres + Azurite + host + Vite) and drives it with Playwright.
+    # Emulator mode only — the cloud-backed variant arrives with the deploy lane.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
+
+      # The E2E host runs in the E2E environment, which serves the built SPA from wwwroot rather
+      # than proxying the dev server — so the static build has to exist before the run.
+      - name: Build frontend
+        working-directory: src/frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Build
+        run: dotnet build src/AiOrchestrator.slnx --configuration Release
+
+      - name: Install Playwright browsers
+        run: >-
+          pwsh src/tests/AiOrchestrator.EndToEndTests/bin/Release/net10.0/playwright.ps1
+          install chromium --with-deps
+
+      - name: Run E2E
+        run: >-
+          dotnet test src/tests/AiOrchestrator.EndToEndTests/AiOrchestrator.EndToEndTests.csproj
+          --configuration Release --no-build
+          --logger "trx;LogFileName=e2e-results.trx"
+          --results-directory ${{ github.workspace }}/e2e-results
+
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-diagnostics
+          path: |
+            e2e-results/
+            src/tests/AiOrchestrator.EndToEndTests/bin/Release/net10.0/playwright-traces/
+          retention-days: 7

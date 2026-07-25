@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.4.6" />
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AiOrchestrator.AppHost</RootNamespace>
+    <IsAspireHost>true</IsAspireHost>
+    <UserSecretsId>aiorchestrator-apphost</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AiOrchestrator.Server\AiOrchestrator.Server.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.Azure.Storage" />
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,21 @@
+#!/bin/sh
+if [ "$HUSKY" = "0" ]; then
+  exit 0
+fi
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+COMMIT_MSG_FILE="$1"
+# Absolute paths pass through — POSIX (/…) or Windows drive-letter (C:\…), the latter being what
+# git passes in a linked worktree on Windows; anything else is relative to the worktree root.
+case "$COMMIT_MSG_FILE" in
+  /* | [A-Za-z]:[/\\]*) ;;
+  *) COMMIT_MSG_FILE="$REPO_ROOT/$COMMIT_MSG_FILE" ;;
+esac
+
+# commitlint validates every commit repo-wide (not just frontend changes), so its config lives
+# in the repo-root .config/ alongside dotnet-tools.json; frontend/node_modules just supplies the
+# commitlint binary, since that's the only place JS tooling is installed.
+cd "$REPO_ROOT/src/frontend"
+pnpm exec commitlint --config "$REPO_ROOT/.config/commitlint.config.js" --edit "$COMMIT_MSG_FILE"

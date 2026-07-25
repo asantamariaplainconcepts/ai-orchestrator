@@ -1,0 +1,49 @@
+name: Bug
+description: Observed behaviour that contradicts a spec or business rule
+labels: ["status:backlog"]
+body:
+  - type: textarea
+    id: observed
+    attributes:
+      label: What happened
+      description: Observed behaviour, with the exact steps that produced it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+      description: Cite the spec, UC, or BR it contradicts.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module / area
+      options:
+        [Projects, Backlog, Agents, Host, Shared, Frontend, Infra/CI, Unknown]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: lane
+    attributes:
+      label: Lane
+      description: A hotfix may use the spec-less lane (DEC-025); anything user-visible goes through the full loop.
+      options: [Full loop, "Hotfix (lane:spec-less)"]
+    validations:
+      required: true
+
+  - type: input
+    id: change-id
+    attributes:
+      label: Change / spec ID
+      placeholder: fix-connector-timeout
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Local / CI / deployed, plus anything unusual about it.

@@ -8,6 +8,9 @@ artifacts/
 node_modules/
 dist/
 
+# Generated: `pnpm build` copies the SPA here for same-origin serving
+src/root/AiOrchestrator.Server/wwwroot/
+
 # Framework kit — internal reference material, local-only tooling (DEC-042)
 docs/framework/
 

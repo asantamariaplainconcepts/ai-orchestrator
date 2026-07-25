@@ -1,0 +1,25 @@
+<Solution>
+  <Folder Name="/modules/" />
+  <Folder Name="/modules/Projects/">
+    <Project Path="modules/Projects/AiOrchestrator.Modules.Projects/AiOrchestrator.Modules.Projects.csproj" />
+  </Folder>
+  <Folder Name="/root/">
+    <Project Path="root/AiOrchestrator.AppHost/AiOrchestrator.AppHost.csproj" />
+    <Project Path="root/AiOrchestrator.Server/AiOrchestrator.Server.csproj" />
+  </Folder>
+  <Folder Name="/shared/">
+    <Project Path="shared/AiOrchestrator.ArchitectureAnalyzers/AiOrchestrator.ArchitectureAnalyzers.csproj" />
+    <Project Path="shared/AiOrchestrator.BuildingBlocks/AiOrchestrator.BuildingBlocks.csproj" />
+    <Project Path="shared/AiOrchestrator.ServiceDefaults/AiOrchestrator.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/AiOrchestrator.ArchTests/AiOrchestrator.ArchTests.csproj" />
+    <Project Path="tests/AiOrchestrator.EndToEndTests/AiOrchestrator.EndToEndTests.csproj" />
+    <Project Path="tests/AiOrchestrator.SharedFunctionalTests/AiOrchestrator.SharedFunctionalTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/modules/" />
+  <Folder Name="/tests/modules/Projects/">
+    <Project Path="tests/modules/Projects/AiOrchestrator.Modules.Projects.FunctionalTests/AiOrchestrator.Modules.Projects.FunctionalTests.csproj" />
+    <Project Path="tests/modules/Projects/AiOrchestrator.Modules.Projects.UnitTests/AiOrchestrator.Modules.Projects.UnitTests.csproj" />
+  </Folder>
+</Solution>

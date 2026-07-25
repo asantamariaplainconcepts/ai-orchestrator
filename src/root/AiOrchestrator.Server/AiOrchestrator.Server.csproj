@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>AiOrchestrator.Server</RootNamespace>
+    <!-- The functional test host drives this assembly through WebApplicationFactory. -->
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+    <!-- Modules are discovered at runtime, but must be built and copied beside the host. -->
+    <ProjectReference Include="..\..\modules\Projects\AiOrchestrator.Modules.Projects\AiOrchestrator.Modules.Projects.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.AspNetCore.SpaServices.Extensions" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Scalar.AspNetCore" />
+  </ItemGroup>
+</Project>

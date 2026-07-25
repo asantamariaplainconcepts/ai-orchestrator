@@ -1,0 +1,84 @@
+name: Lint
+
+# Mirrors the local Husky hooks exactly, so `--no-verify` is still caught here.
+on:
+  workflow_call:
+    inputs:
+      frontend:
+        type: boolean
+        default: true
+      backend:
+        type: boolean
+        default: true
+
+jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
+      # commitlint lives in src/frontend (the only place JS tooling is installed) and reads the
+      # repo-root config — the same arrangement the .husky/commit-msg hook uses, so CI and the
+      # local hook cannot disagree about what a valid message is.
+      - name: Install tooling
+        working-directory: src/frontend
+        run: pnpm install --frozen-lockfile
+      - name: Lint PR commit messages
+        if: github.event_name == 'pull_request'
+        working-directory: src/frontend
+        run: >-
+          pnpm exec commitlint --config ../../.config/commitlint.config.js
+          --from ${{ github.event.pull_request.base.sha }}
+          --to ${{ github.event.pull_request.head.sha }}
+      - name: Lint pushed commit message
+        if: github.event_name == 'push'
+        working-directory: src/frontend
+        run: >-
+          pnpm exec commitlint --config ../../.config/commitlint.config.js
+          --from HEAD~1 --to HEAD
+
+  backend-format:
+    if: inputs.backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+      - run: dotnet tool restore
+      - name: CSharpier check
+        run: dotnet csharpier check src
+
+  frontend-lint:
+    if: inputs.frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Prettier check
+        run: pnpm format:check
+      # Also the i18n gate: hardcoded user-facing copy in JSX fails here.
+      - name: ESLint
+        run: pnpm lint
+      - name: TypeScript
+        run: pnpm typecheck
