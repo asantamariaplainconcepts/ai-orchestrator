@@ -49,10 +49,11 @@ times in the project this framework came from.
 - **Time invested:** human ~1.0 h (charter and corpus grill answers, spec review), agent ~2.5 h,
   cost not measured (source: manual — the telemetry stack lands in bootstrap Phase 2, so these
   are estimates and should be read as such)
-- **ADR:** none yet. Two candidates are on their second occurrence and should graduate as soon as
-  `docs/adr/` exists in Phase 3: *verify infrastructure claims by exercising them* (the endpoint
-  and migration defects were both assumed-working), and *a test tier that provisions its own
-  preconditions can hide their absence from the application* (the fixture's private migration).
+- **ADR:** graduated in the `ceremonies` change —
+  [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md) (the endpoint and migration defects
+  were both assumed-working) and
+  [ADR-0002](../adr/0002-test-tiers-must-not-provision-their-own-preconditions.md) (the fixture's
+  private migration). *Links added when the ADRs were written; the reflection above is unchanged.*
 
 ## 2026-07-25 — project-scaffolding (post-merge finding)
 
@@ -105,10 +106,12 @@ times in the project this framework came from.
   confirmations), agent ~1.8 h, cost not measured (source: **manual** — `collect-usage` found no
   `usage.jsonl`; the OTLP port is held by a foreign collector, so this change produced no
   attributable telemetry despite the mapping hook working correctly)
-- **ADR:** **two are now due and are Phase 3's first task, before anything else.** Both patterns
+- **ADR:** **written in the `ceremonies` change as its first task** —
+  [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md) and
+  [ADR-0002](../adr/0002-test-tiers-must-not-provision-their-own-preconditions.md). Both patterns
   reached their second occurrence in this change, and the kit's own post-mortem records what
   happens when graduation slips — patterns recurring ten times while everyone waits for a
-  tidier moment. They are named here in full so Phase 3 only has to format them:
+  tidier moment. They were named here in full so Phase 3 only had to format them:
   1. **Verify claims by exercising them, never by reading configuration.** Phase 1: the host was
      assumed to have an endpoint and to apply migrations; neither was true. Here: health was
      assumed to mean "can serve", and the log watch was assumed to work because it compiled.
