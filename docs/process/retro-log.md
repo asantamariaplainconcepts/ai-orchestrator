@@ -119,3 +119,30 @@ times in the project this framework came from.
      application.** Phase 1: the functional fixture migrated privately, concealing that the app
      never did. Here: an all-sequential suite structurally could not observe a concurrency bug.
      Corollary: tests must exercise the app's own paths, and at least one must run in parallel.
+
+## 2026-07-25 — ceremonies
+
+- **Worked:** The ADRs went **first**, and they cite real incidents plus the check that now
+  catches each class — so they graduate toward gates instead of becoming wall art. The Definition
+  of Ready cites `RULE-001..007` rather than copying them, so a backlog-rule change propagates
+  without editing it. And the 40-line onboarding limit did exactly what design D4 predicted: the
+  file arrived at 49 lines and three rounds of trimming each deleted a *duplicated* fact rather
+  than a useful one, landing at 40. That is a design prediction observed working, not asserted.
+- **Didn't:** This change went smoothly, and that is itself the finding. It was pure documentation
+  with **no executable surface**, so CI could only run lint and spec-validate — nothing here is
+  verified by anything that runs. That is precisely the situation
+  [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md) warns about, written in this very
+  change: the 49-line overrun was caught by a human reading a number, and a broken link would
+  have been caught the same way or not at all. Separately, telemetry produced nothing for the
+  **third consecutive change** — zero sessions mapped, no `usage.jsonl`, because another
+  project's collector still holds port 4317 on this machine.
+- **Next time:** Give ceremony docs a machine check wherever one is cheap. A link-resolution pass
+  and an `ONBOARDING.md` line-count assertion in the lint lane would have caught the overrun
+  before review rather than during it — the scripted sweeps I ran by hand should be steps in CI.
+- **Time invested:** human ~0.3 h (spec review, sync confirmations), agent ~0.7 h, cost not
+  measured (source: **manual** — `collect-usage` found zero mapped sessions and no `usage.jsonl`)
+- **ADR:** none. The telemetry gap is on its third occurrence, but the fix is **operational, not
+  architectural** — one collector per project, on a port this repo owns. An ADR saying "use a
+  free port" would be ceremony without content. Recorded here as a **standing defect to fix in a
+  `lane:spec-less` change before Phase 5**, when loop metrics start mattering. If the fix turns
+  out to need a real decision, it graduates then.
