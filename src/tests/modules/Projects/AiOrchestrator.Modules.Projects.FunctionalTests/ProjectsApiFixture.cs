@@ -11,12 +11,6 @@ namespace AiOrchestrator.Modules.Projects.FunctionalTests;
 public sealed class ProjectsApiFixture : ApiServiceFixtureBase
 {
     protected override string[] SchemasToReset => [ProjectsDbContext.Schema];
-
-    protected override async Task MigrateAsync()
-    {
-        var database = GetRequiredService<ProjectsDbContext>();
-        await database.Database.MigrateAsync();
-    }
 }
 
 [CollectionDefinition(Name)]

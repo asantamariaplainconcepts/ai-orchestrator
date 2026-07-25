@@ -64,6 +64,22 @@ public static class ModuleRegistration
         return endpoints;
     }
 
+    /// <summary>
+    /// Runs every module's migrations. Call this only where automatic schema changes are
+    /// acceptable — production schema changes belong to a deliberate deploy step, not to app start.
+    /// </summary>
+    public static async Task MigrateModules(
+        this IServiceProvider services,
+        IReadOnlyList<IModule> modules,
+        CancellationToken cancellationToken = default
+    )
+    {
+        foreach (var module in modules)
+        {
+            await module.Migrate(services, cancellationToken);
+        }
+    }
+
     public static Assembly[] Assemblies(this IReadOnlyList<IModule> modules) =>
         [.. modules.Select(module => module.GetType().Assembly).Distinct()];
 }

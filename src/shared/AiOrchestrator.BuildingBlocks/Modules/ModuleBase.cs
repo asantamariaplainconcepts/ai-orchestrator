@@ -21,4 +21,8 @@ public abstract class ModuleBase : IModule
             useCase.Invoke(null, [endpoints]);
         }
     }
+
+    /// <summary>No-op by default: a module without persistence has nothing to migrate.</summary>
+    public virtual Task Migrate(IServiceProvider services, CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }

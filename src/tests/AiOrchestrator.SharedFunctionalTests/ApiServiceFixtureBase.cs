@@ -45,7 +45,11 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
     {
         await Task.WhenAll(_database.StartAsync(), _storage.StartAsync());
 
-        await MigrateAsync();
+        // Starting the host applies the modules' migrations through the same startup path the
+        // real application uses, so the tests cover that path instead of a parallel one. It also
+        // has to happen before Respawner is created: Respawner captures the schema graph up
+        // front, and against an empty database it would capture nothing and reset nothing.
+        CreateClient().Dispose();
 
         _respawnConnection = new NpgsqlConnection(DatabaseConnectionString);
         await _respawnConnection.OpenAsync();
@@ -58,9 +62,6 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
             }
         );
     }
-
-    /// <summary>Applies the module's migrations to the freshly started container.</summary>
-    protected abstract Task MigrateAsync();
 
     public async Task ResetDatabase()
     {

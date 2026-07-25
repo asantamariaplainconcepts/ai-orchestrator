@@ -18,6 +18,14 @@ builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
+// Outside production the database is disposable and the loop should just work — a fresh clone,
+// or a fresh E2E container, boots with an up-to-date schema. Production schema changes are a
+// deliberate deploy step, never a side effect of a process starting.
+if (!app.Environment.IsProduction())
+{
+    await app.Services.MigrateModules(modules);
+}
+
 app.UseExceptionHandler();
 
 if (app.Environment.IsDevelopment())

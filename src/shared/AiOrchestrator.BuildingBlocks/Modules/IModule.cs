@@ -15,4 +15,10 @@ public interface IModule
     void Add(IServiceCollection services, IConfiguration configuration);
 
     void MapEndpoints(IEndpointRouteBuilder endpoints);
+
+    /// <summary>
+    /// Brings the module's own schema up to date. Each module owns its migrations, so the host
+    /// cannot do this for them — it only decides when it is allowed to happen.
+    /// </summary>
+    Task Migrate(IServiceProvider services, CancellationToken cancellationToken);
 }
