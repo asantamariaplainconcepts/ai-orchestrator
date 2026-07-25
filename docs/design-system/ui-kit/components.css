@@ -181,6 +181,15 @@
   font-family: var(--font-mono);
   font-size: var(--fs-12);
   color: var(--fg-muted);
+  /* Tabular figures so ids, costs and counts align in a column and can be compared by eye —
+     the reference's data tables rely on this and it is wrong to discover it later. */
+  font-variant-numeric: tabular-nums;
+}
+
+/* Absent values read as an em dash, never as blank or "N/A" — a blank cell is ambiguous
+   between "no value" and "failed to load". */
+.empty-value {
+  color: var(--fg-subtle);
 }
 
 /* ---- Badge ----------------------------------------------------------------------------- */

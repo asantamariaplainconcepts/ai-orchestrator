@@ -60,6 +60,25 @@ thing it guards would mean writing a check with nothing to check.
 - [x] 6.2 Verify sweep: validator green, `format:check`/`lint`/`typecheck`/`build` green,
       19 backend tests pass, `openspec validate` green.
 
+### Reference reviewed in use, mid-review
+
+The owner supplied a view of the reference application's interior (its sign-in page was all that
+had been inspectable). Two outcomes:
+
+- **The palette is validated, not just plausible.** Every treatment the real interface uses maps
+  to a token already derived: `--brand-soft` for active navigation, `--ok-soft` for status pills,
+  `--violet` for percentage emphasis, and the semantic families for the coloured card borders.
+  Nothing had to be added.
+- **Two conventions adopted now, because they are cheap and hard to retrofit:** monospace figures
+  are `tabular-nums` so columns of ids and costs align, and absent values render as an em dash
+  rather than blank (a blank cell is ambiguous between "no value" and "failed to load").
+
+Everything else observed — the sidebar shell, breadcrumbs and tabs, filter/stat cards with
+coloured left borders, the dense data table — is **recorded in the canonical README and
+deliberately not built**. The kit contains only what a screen renders today; building ahead of a
+screen is the speculative surface design D4 rejects. When those screens arrive, the patterns are
+already agreed rather than re-litigated.
+
 ### What verification found (and what it changed)
 
 Three defects, none of which a visual check would have caught:

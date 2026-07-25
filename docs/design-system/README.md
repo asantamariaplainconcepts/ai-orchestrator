@@ -80,9 +80,13 @@ outcome — "Create project", "Approve plan", "Cancel run" — never "OK", "Subm
 | Error        | What failed, in the user's terms; never a stack trace or an error code | "Could not load projects."                               |
 | Confirmation | Name the exact object and the consequence                              | "Cancel run for story #42? The Agent stops immediately." |
 
-**Numbers and identifiers.** Ids, branch names and story keys are monospace (`.mono`) so they can
-be compared at a glance. Timestamps are relative for recency ("2 minutes ago") and absolute once
-older than a day.
+**Numbers and identifiers.** Ids, branch names and story keys are monospace (`.mono`) with
+tabular figures so a column of them aligns and can be compared by eye. Numeric columns are
+right-aligned. Timestamps are relative for recency ("2 minutes ago") and absolute once older than
+a day.
+
+**Absent values are an em dash (`—`), never blank and never "N/A".** A blank cell is ambiguous
+between "there is no value" and "we failed to load it"; the dash says the first explicitly.
 
 ## Provenance
 
@@ -105,6 +109,30 @@ a style reference, not a brand transfer.
   threshold this system requires for body-sized text. Our dark `--brand` is therefore
   `oklch(54% …)` rather than `oklch(60% …)`, measuring **5.10:1**. Light mode needed no change
   (7.55:1). Verified by measuring computed values in a browser, not by eye.
+
+## Reference observations, for screens we have not built yet
+
+The reference application was reviewed in use, not just at its sign-in page. These patterns are
+**recorded, not implemented** — the kit deliberately contains only what our app renders today,
+and adding components ahead of a screen is speculative surface. When the screen arrives, start
+here rather than re-deciding:
+
+- **Shell.** Fixed left sidebar with the product mark at top and a user card pinned at the bottom;
+  nav grouped under small uppercase, letter-spaced, muted section labels. The active item is
+  `--brand-soft` fill with `--brand` text and icon — not a heavy highlight.
+- **Page head.** Breadcrumbs, then the page title, then tabs with an underline indicator on the
+  active tab.
+- **Filter/stat cards.** A row of cards, each carrying a **coloured left border** in a semantic
+  colour, with the label left and a large count right. They double as filters — clicking one
+  narrows the table below.
+- **Filter bar.** Labelled controls in a grid inside a single card, above the table.
+- **Table.** Dense rows, a muted header, numeric columns right-aligned with tabular figures,
+  status shown as a soft pill with a leading dot, and `—` for absent values. A toolbar above it
+  carries column-visibility and export controls.
+
+Our token set already covers all of it — `--brand-soft` for active nav, `--ok-soft` for status
+pills, `--violet` for the percentage emphasis, the semantic families for the card borders — which
+is a useful signal that the palette is sufficient rather than merely pretty.
 
 ## Changing something
 
