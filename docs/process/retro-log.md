@@ -53,3 +53,23 @@ times in the project this framework came from.
   `docs/adr/` exists in Phase 3: *verify infrastructure claims by exercising them* (the endpoint
   and migration defects were both assumed-working), and *a test tier that provisions its own
   preconditions can hide their absence from the application* (the fixture's private migration).
+
+## 2026-07-25 — project-scaffolding (post-merge finding)
+
+- **Worked:** Nothing new; this entry exists to record a defect found after the merge.
+- **Didn't:** The squash commit that landed on main failed commitlint —
+  `body-max-line-length` and `footer-max-line-length`, both exceeded because the body was written
+  unwrapped. The rule is correct and the message was wrong, but the timing is the real problem:
+  **a squash commit message is authored at merge time on the platform, so the local commit-msg
+  hook never sees it.** The only gate that checks it runs on main, after the merge is already
+  irreversible. Every branch commit passed; the one commit that becomes main's history did not.
+  This is the same shape as the kit's rule about signal-suppressing actions — a gate placed after
+  the action it is meant to govern cannot govern it.
+- **Next time:** Wrap squash bodies at 100 characters, and validate the intended squash message
+  against commitlint *before* merging rather than discovering it on main. The `/ds:sync` wrapper
+  (Phase 3) should own this: it already sets the squash subject and body explicitly, so it is the
+  single place that can check them while the merge is still preventable.
+- **Time invested:** human ~0 h, agent ~0.1 h (source: manual)
+- **ADR:** candidate — *validate every message and artifact that will become main's history
+  before the merge, not after*. Second occurrence of "the gate ran too late" in this project;
+  graduate it in Phase 3 and implement it as a `/ds:sync` precondition.
