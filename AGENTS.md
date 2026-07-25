@@ -23,10 +23,10 @@ locked by DEC-005: *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Pla
 | A module's context | `src/modules/<Module>/context.md` |
 | **Behavioural source of truth** | `openspec/specs/` |
 | In-flight changes | `openspec/changes/` |
-| Decisions | `docs/adr/` (until it exists: `docs/product/mvp/10-locked-mvp-decisions.md` + `BOOTSTRAP.md`) |
+| Decisions | `docs/adr/` — decisions, immutable once accepted |
 | Retro log (append-only) | `docs/process/retro-log.md` |
-| Definition of Ready | `docs/process/definition-of-ready.md` *(lands in bootstrap Phase 3)* |
-| How we work (the loop, for humans) | `CONTRIBUTING.md` *(lands in bootstrap Phase 3)* |
+| Definition of Ready | `docs/process/definition-of-ready.md` |
+| How we work (the loop, for humans) | `CONTRIBUTING.md` |
 | Workflow tunables (WIP limit, …) | `.claude/workflow.json` |
 | Skill-authoring craft | `.claude/skills/writing-great-skills/` |
 | Bootstrap state | `BOOTSTRAP.md`, `BOOTSTRAP-CHECKLIST.md` |

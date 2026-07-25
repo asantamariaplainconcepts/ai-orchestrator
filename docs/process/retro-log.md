@@ -49,10 +49,11 @@ times in the project this framework came from.
 - **Time invested:** human ~1.0 h (charter and corpus grill answers, spec review), agent ~2.5 h,
   cost not measured (source: manual — the telemetry stack lands in bootstrap Phase 2, so these
   are estimates and should be read as such)
-- **ADR:** none yet. Two candidates are on their second occurrence and should graduate as soon as
-  `docs/adr/` exists in Phase 3: *verify infrastructure claims by exercising them* (the endpoint
-  and migration defects were both assumed-working), and *a test tier that provisions its own
-  preconditions can hide their absence from the application* (the fixture's private migration).
+- **ADR:** graduated in the `ceremonies` change —
+  [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md) (the endpoint and migration defects
+  were both assumed-working) and
+  [ADR-0002](../adr/0002-test-tiers-must-not-provision-their-own-preconditions.md) (the fixture's
+  private migration). *Links added when the ADRs were written; the reflection above is unchanged.*
 
 ## 2026-07-25 — project-scaffolding (post-merge finding)
 
@@ -105,10 +106,12 @@ times in the project this framework came from.
   confirmations), agent ~1.8 h, cost not measured (source: **manual** — `collect-usage` found no
   `usage.jsonl`; the OTLP port is held by a foreign collector, so this change produced no
   attributable telemetry despite the mapping hook working correctly)
-- **ADR:** **two are now due and are Phase 3's first task, before anything else.** Both patterns
+- **ADR:** **written in the `ceremonies` change as its first task** —
+  [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md) and
+  [ADR-0002](../adr/0002-test-tiers-must-not-provision-their-own-preconditions.md). Both patterns
   reached their second occurrence in this change, and the kit's own post-mortem records what
   happens when graduation slips — patterns recurring ten times while everyone waits for a
-  tidier moment. They are named here in full so Phase 3 only has to format them:
+  tidier moment. They were named here in full so Phase 3 only had to format them:
   1. **Verify claims by exercising them, never by reading configuration.** Phase 1: the host was
      assumed to have an endpoint and to apply migrations; neither was true. Here: health was
      assumed to mean "can serve", and the log watch was assumed to work because it compiled.
@@ -116,3 +119,30 @@ times in the project this framework came from.
      application.** Phase 1: the functional fixture migrated privately, concealing that the app
      never did. Here: an all-sequential suite structurally could not observe a concurrency bug.
      Corollary: tests must exercise the app's own paths, and at least one must run in parallel.
+
+## 2026-07-25 — ceremonies
+
+- **Worked:** The ADRs went **first**, and they cite real incidents plus the check that now
+  catches each class — so they graduate toward gates instead of becoming wall art. The Definition
+  of Ready cites `RULE-001..007` rather than copying them, so a backlog-rule change propagates
+  without editing it. And the 40-line onboarding limit did exactly what design D4 predicted: the
+  file arrived at 49 lines and three rounds of trimming each deleted a *duplicated* fact rather
+  than a useful one, landing at 40. That is a design prediction observed working, not asserted.
+- **Didn't:** This change went smoothly, and that is itself the finding. It was pure documentation
+  with **no executable surface**, so CI could only run lint and spec-validate — nothing here is
+  verified by anything that runs. That is precisely the situation
+  [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md) warns about, written in this very
+  change: the 49-line overrun was caught by a human reading a number, and a broken link would
+  have been caught the same way or not at all. Separately, telemetry produced nothing for the
+  **third consecutive change** — zero sessions mapped, no `usage.jsonl`, because another
+  project's collector still holds port 4317 on this machine.
+- **Next time:** Give ceremony docs a machine check wherever one is cheap. A link-resolution pass
+  and an `ONBOARDING.md` line-count assertion in the lint lane would have caught the overrun
+  before review rather than during it — the scripted sweeps I ran by hand should be steps in CI.
+- **Time invested:** human ~0.3 h (spec review, sync confirmations), agent ~0.7 h, cost not
+  measured (source: **manual** — `collect-usage` found zero mapped sessions and no `usage.jsonl`)
+- **ADR:** none. The telemetry gap is on its third occurrence, but the fix is **operational, not
+  architectural** — one collector per project, on a port this repo owns. An ADR saying "use a
+  free port" would be ceremony without content. Recorded here as a **standing defect to fix in a
+  `lane:spec-less` change before Phase 5**, when loop metrics start mattering. If the fix turns
+  out to need a real decision, it graduates then.
