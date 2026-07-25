@@ -51,10 +51,12 @@ Charter gate:
 - [x] Telemetry stack live per A9 — `map-session-change.mjs` probed with a real payload (attributed this branch to its change; fail-soft verified); data in gitignored `.telemetry/` (DEC-022). Caveat noted: this machine's :4317 is shared with another project's collector
 - [x] Wrapper commands carry **every** gate in doc 05 including all seven known gaps as implemented guards, plus an eighth of our own: `/aio:sync` lints the squash subject/body pre-merge (probed both ways — the exact Phase 1 defect is now caught while the merge is still preventable)
 - [x] Verify: `/aio:propose`'s gate refuses toward `/aio:grill` (dry-run against real state); the WIP gate reads its limit (2) from `.claude/workflow.json` alone; a third concurrent implement would refuse. Full-refusal exercising with real issues happens in Phase 5, once labels exist
+- [x] **Synced to main** via `/aio:sync`'s own steps (its first real run) — retro appended, 4 delta specs folded in (11 living specs), archived as `2026-07-25-ai-delivery-layer`, squash-merged as one commit (`5e8d6e4`), no `[skip ci]` leak, CI green on main. **The squash-lint gate worked in production:** the message was validated (exit 0, longest line 81/100) before the merge — the Phase 1 defect cannot recur
 - [ ] **Human approved** → `Proceed with Phase 3.`
 
 ## Phase 3 — Ceremonies *(doc 04)*
 
+- [ ] **FIRST: write the two overdue ADRs** — both reached their second occurrence and are named in full in the retro log: (1) verify claims by exercising them, never by reading configuration; (2) a test tier that provisions its own preconditions hides their absence from the application
 - [ ] Nine `status:*` labels created (one-time `gh label create`)
 - [ ] Definition of Ready written on the corpus RULE catalog
 - [ ] Append-only retro log + ADR template + `CONTRIBUTING.md` + `ONBOARDING.md` (≤ ~40 lines)
