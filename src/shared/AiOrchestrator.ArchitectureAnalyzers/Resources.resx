@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+
+  <data name="MOD001Title" xml:space="preserve"><value>CQS request type must be internal</value></data>
+  <data name="MOD001MessageFormat" xml:space="preserve"><value>'{0}' implements ICommand/IQuery and must be declared 'internal', not 'public'</value></data>
+  <data name="MOD001Description" xml:space="preserve"><value>Commands and queries are module-internal wiring; only .Contracts types cross the module boundary.</value></data>
+
+  <data name="MOD002Title" xml:space="preserve"><value>Cross-module reference must go through .Contracts</value></data>
+  <data name="MOD002MessageFormat" xml:space="preserve"><value>'{0}' references '{1}' from module '{2}' directly; reference '{2}.Contracts' instead</value></data>
+  <data name="MOD002Description" xml:space="preserve"><value>Modules may only depend on another module's .Contracts assembly, never its implementation assembly.</value></data>
+
+  <data name="MOD003Title" xml:space="preserve"><value>Domain entity must be internal</value></data>
+  <data name="MOD003MessageFormat" xml:space="preserve"><value>'{0}' derives from Aggregate/BaseEntity and must be declared 'internal', not 'public'</value></data>
+  <data name="MOD003Description" xml:space="preserve"><value>Domain entities are module-internal; expose data across the boundary via .Contracts DTOs.</value></data>
+
+  <data name="MOD004Title" xml:space="preserve"><value>MVC controllers are not allowed in modules</value></data>
+  <data name="MOD004MessageFormat" xml:space="preserve"><value>'{0}' derives from an MVC controller base type; modules expose endpoints only via IUseCase minimal APIs</value></data>
+  <data name="MOD004Description" xml:space="preserve"><value>Modules use IUseCase minimal-API endpoints exclusively; MVC controllers are forbidden.</value></data>
+
+  <data name="MOD005Title" xml:space="preserve"><value>Public member must not expose a domain entity</value></data>
+  <data name="MOD005MessageFormat" xml:space="preserve"><value>'{0}' exposes domain entity type '{1}' through a public signature; return/accept a .Contracts DTO instead</value></data>
+  <data name="MOD005Description" xml:space="preserve"><value>Domain entities must never appear in a public parameter or return type, including across module boundaries.</value></data>
+
+  <data name="CQS001Title" xml:space="preserve"><value>CQS handler must be internal sealed</value></data>
+  <data name="CQS001MessageFormat" xml:space="preserve"><value>'{0}' implements IAppCommandHandler/IAppQueryHandler and must be declared 'internal sealed'</value></data>
+  <data name="CQS001Description" xml:space="preserve"><value>CQS handlers are resolved only through DI and dispatched via ISender; they must stay internal and sealed.</value></data>
+</root>

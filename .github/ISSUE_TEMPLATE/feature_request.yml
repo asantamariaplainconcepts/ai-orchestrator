@@ -1,0 +1,94 @@
+name: Feature
+description: A capability to deliver through the loop (grill → propose → implement → sync)
+labels: ["status:backlog"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Fields mirror the Definition of Ready (RULE-001). `/ds:grill` fills the gaps with you —
+        an incomplete form is fine as a starting point, an incomplete *ready* issue is not.
+
+  - type: input
+    id: title
+    attributes:
+      label: Capability
+      description: What the user can do afterwards, in product terms — not the mechanism.
+      placeholder: An Admin can configure a Connector for a project
+    validations:
+      required: true
+
+  - type: textarea
+    id: value
+    attributes:
+      label: Value
+      description: Why this matters, for whom.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: actor
+    attributes:
+      label: Main actor
+      options:
+        [ACT-001 Admin, ACT-002 Member, ACT-003 Agent, ACT-004 Backlog Vendor]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: Module / area
+      options: [Projects, Backlog, Agents, Host, Shared, Frontend, Infra/CI]
+    validations:
+      required: true
+
+  - type: dropdown
+    id: classification
+    attributes:
+      label: Classification (RULE-005)
+      options: [Product, Foundation]
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Deterministic given/when/then. "Works correctly" is not a criterion.
+      placeholder: |
+        Given a project with no Connector
+        When an Admin saves valid GitHub coordinates and a Key Vault reference
+        Then the credential is verified with a live call and the Connector is stored
+    validations:
+      required: true
+
+  - type: input
+    id: product-ids
+    attributes:
+      label: Product IDs
+      description: Use cases and business rules this serves (UC-xxx, BR-xxx). ≥1 UC for Product items.
+      placeholder: UC-004, BR-010
+    validations:
+      required: true
+
+  - type: input
+    id: change-id
+    attributes:
+      label: Change / spec ID
+      description: The kebab-case change slug. Correlates issue → branch → PR → telemetry → retro.
+      placeholder: connector-configuration
+    validations:
+      required: true
+
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Explicitly out of scope
+    validations:
+      required: true
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies / open decisions
+      description: Blocking issues, and any OPN-xxx this depends on (RULE-006 blocks work on open decisions).

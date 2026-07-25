@@ -1,0 +1,53 @@
+name: Build & Test
+
+on:
+  workflow_call:
+
+jobs:
+  build-test:
+    # Docker-capable: functional tests run against real PostgreSQL and Azurite containers.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: src/global.json
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
+
+      - name: Restore
+        run: dotnet restore src/AiOrchestrator.slnx
+
+      - name: Build (Release, warnings are errors)
+        run: dotnet build src/AiOrchestrator.slnx --configuration Release --no-restore
+
+      # Unit + functional + ArchTests. E2E is its own lane — it boots the whole AppHost.
+      - name: Test
+        run: >-
+          dotnet test src/AiOrchestrator.slnx --configuration Release --no-build
+          --filter "Category!=E2E"
+          --logger "trx;LogFileName=test-results.trx"
+          --results-directory ${{ github.workspace }}/test-results
+
+      - name: Frontend build
+        working-directory: src/frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      # Failure-only: a shared artifact-quota hit must never red an otherwise green run.
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+          retention-days: 7

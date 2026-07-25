@@ -1,0 +1,17 @@
+name: OpenSpec Validate
+
+on:
+  workflow_call:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Package name and version are pinned deliberately: the bare `openspec` npm package is a
+      # different project, and taking it by accident fails in confusing ways.
+      - name: Validate active changes
+        run: npx --yes @fission-ai/openspec@1.6.0 validate --changes

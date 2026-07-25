@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push cancels the superseded PR run; main runs are never cancelled.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# Thin orchestrator over the sibling reusable workflows (GitHub requires them flat in
+# .github/workflows/). Gating uses the `changes` job + job-level `if` rather than native
+# `on.paths`, which would leave required checks unreported — a doc-only PR must still show
+# every required check as satisfied, not pending forever.
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.scope.outputs.frontend }}
+      openspec: ${{ steps.scope.outputs.openspec }}
+      e2e: ${{ steps.scope.outputs.e2e }}
+      workflows: ${{ steps.scope.outputs.workflows }}
+    steps:
+      # Only push events need a checkout to diff; PR events use the API.
+      - uses: actions/checkout@v4
+        if: github.event_name == 'push'
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # 'every' = AND-of-exclusions (a file must match '**' AND fail every '!' pattern);
+          # the default 'some' ORs the patterns, which would make `code` true for every PR.
+          predicate-quantifier: every
+          filters: |
+            code:
+              - '**'
+              - '!openspec/**'
+              - '!docs/**'
+              - '!**/*.md'
+            backend:
+              - 'src/**'
+              - '!src/frontend/**'
+      # Default 'some' quantifier: any matching pattern fires the filter (OR-of-includes).
+      - uses: dorny/paths-filter@v3
+        id: scope
+        with:
+          filters: |
+            openspec:
+              - 'openspec/**'
+            frontend:
+              - 'src/frontend/**'
+            e2e:
+              - 'src/**'
+              - '.config/**'
+            workflows:
+              - '.github/**'
+
+  # Always runs — commitlint applies to docs-only changes too.
+  lint:
+    needs: changes
+    uses: ./.github/workflows/lint.yml
+    with:
+      frontend: ${{ needs.changes.outputs.frontend == 'true' || needs.changes.outputs.workflows == 'true' }}
+      backend: ${{ needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true' }}
+
+  build-test:
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    uses: ./.github/workflows/build-test.yml
+
+  # Most expensive lane: only after a green build-test, only on runtime-affecting paths.
+  e2e:
+    needs: [changes, build-test]
+    if: needs.changes.outputs.e2e == 'true' || needs.changes.outputs.workflows == 'true'
+    uses: ./.github/workflows/e2e.yml
+
+  # Spec-only PRs skip the heavy lanes, so the spec change is validated here instead.
+  openspec-validate:
+    needs: changes
+    if: needs.changes.outputs.openspec == 'true'
+    uses: ./.github/workflows/openspec-validate.yml
