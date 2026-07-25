@@ -19,8 +19,10 @@ public class SpaShell_Should_Constraint(AppHostFixture fixture)
         await page.GotoAsync(fixture.ServerBaseUrl);
 
         // The heading comes from the i18n catalog, so seeing it proves the bundle executed —
-        // not merely that some HTML was returned.
-        var heading = page.GetByRole(AriaRole.Heading, new() { Name = "Projects" });
+        // not merely that some HTML was returned. Pinned to level 1: matching any heading made
+        // this assertion ambiguous the moment a second one shared the text, which is a fragility
+        // in the test rather than in the page.
+        var heading = page.GetByRole(AriaRole.Heading, new() { Name = "Projects", Level = 1 });
         await heading.WaitForAsync(new() { Timeout = 30_000 });
 
         (await heading.IsVisibleAsync()).ShouldBeTrue();

@@ -76,6 +76,13 @@ Three defects, none of which a visual check would have caught:
    the generated output with no error. The parser now splits on declarations rather than lines.
    The drift stage is what surfaced it, which is the gate doing precisely its job.
 
+4. **The restyled screen had two identical headings.** The E2E smoke journey failed on a
+   Playwright strict-mode violation: `<h1>Projects</h1>` and `<h2>Projects</h2>` on one page. It
+   is a real design flaw, not just a test problem — duplicate headings give screen-reader users
+   two identical landmarks. Fixed on the page (the count badge moved beside the `h1`; the list
+   card carries an `aria-label` instead of a repeated heading), and the assertion was pinned to
+   level 1 so it is unambiguous by construction.
+
 My first contrast measurement was also silently wrong: the computed values are `oklch()`, and the
 naive parser read them as `rgb()`, reporting a meaningless `1.00` for everything. Resolving
 colours through a canvas fixed it. Worth noting because a measurement that returns a plausible

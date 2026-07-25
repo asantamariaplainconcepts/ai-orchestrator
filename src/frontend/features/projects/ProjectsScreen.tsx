@@ -23,7 +23,14 @@ export function ProjectsScreen() {
       <main className="app-main">
         <div className="stack">
           <div>
-            <h1>{t("projects.heading")}</h1>
+            <div className="row">
+              <h1>{t("projects.heading")}</h1>
+              {projects.data ? (
+                <span className="badge badge-neutral">
+                  {projects.data.length} {t("projects.count")}
+                </span>
+              ) : null}
+            </div>
             <p className="card-hint">{t("projects.subtitle")}</p>
           </div>
 
@@ -49,16 +56,9 @@ export function ProjectsScreen() {
             </form>
           </section>
 
-          <section className="card">
-            <div className="card-header">
-              <h2>{t("projects.heading")}</h2>
-              {projects.data ? (
-                <span className="badge badge-neutral">
-                  {projects.data.length} {t("projects.count")}
-                </span>
-              ) : null}
-            </div>
-
+          {/* No heading here: the page's h1 already names this content, and repeating it would
+              give screen-reader users two identical landmarks to choose between. */}
+          <section className="card" aria-label={t("projects.heading")}>
             {/* All four states, every time — the kit provides each one. */}
             {projects.isPending && <p className="state">{t("projects.loading")}</p>}
             {projects.isError && (
