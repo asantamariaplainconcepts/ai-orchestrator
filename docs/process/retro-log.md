@@ -73,3 +73,46 @@ times in the project this framework came from.
 - **ADR:** candidate — *validate every message and artifact that will become main's history
   before the merge, not after*. Second occurrence of "the gate ran too late" in this project;
   graduate it in Phase 3 and implement it as a `/ds:sync` precondition.
+
+## 2026-07-25 — ai-delivery-layer
+
+- **Worked:** Spec-first held again — the enforcement honesty in `design.md` (D6: these gates are
+  agent-enforced Markdown, not machine-enforced) got settled as text before anyone could mistake
+  the commands for airtight. The previous change's post-merge finding shipped here as a *gate*
+  rather than a note: `/aio:sync` now lints the squash subject and body before merging, and it
+  was probed both ways (a 140-character body line refused, a wrapped one accepted). Probing
+  every mechanism instead of trusting it kept paying — the session-mapping hook was verified by
+  watching it attribute its own branch, and the E2E lane found a genuine kernel defect.
+- **Didn't:** I shipped **two speculative fixes before I could see the error**. The lane went
+  intermittently red, and rather than fix the diagnostics first I inferred a cause twice — a
+  database health check, then Npgsql retry-on-failure — and pushed each as a fix. Both were
+  reasonable, neither was the bug, and each cost a full CI round. Worse, the diagnostic I *had*
+  built was itself broken twice over: the log watch keyed on the resource's declared name (the
+  stream is keyed by runtime ResourceId, so it silently yielded nothing) and started after
+  `StartAsync`, missing the startup backlog. Three rounds passed before the failure could
+  explain itself — at which point it named itself immediately: `Sender` was registered as a
+  singleton, so it resolved handlers from the **root** provider and scoped `DbContext`s degraded
+  to root-cached instances, one context shared across concurrent requests. Telemetry also
+  produced nothing usable: `usage.jsonl` never appeared because the collector holding :4317 on
+  this machine belongs to another project, so the times below are hand-estimated.
+- **Next time:** When a lane goes red intermittently, **fix the diagnostics first, then
+  diagnose, then fix** — never ship a hypothesis as a fix. A red run that cannot explain itself
+  is a tooling defect, and it outranks the bug it is hiding. Corollary applied here: prefer the
+  framework-level guard over the instance fix — `ValidateScopes`/`ValidateOnBuild` are now
+  unconditional in every environment rather than left to Development's default, so this entire
+  class of bug fails at startup instead of surfacing as an intermittent 500 under load.
+- **Time invested:** human ~0.5 h (spec review, the `/ds:*` → `/aio:*` rename call, sync
+  confirmations), agent ~1.8 h, cost not measured (source: **manual** — `collect-usage` found no
+  `usage.jsonl`; the OTLP port is held by a foreign collector, so this change produced no
+  attributable telemetry despite the mapping hook working correctly)
+- **ADR:** **two are now due and are Phase 3's first task, before anything else.** Both patterns
+  reached their second occurrence in this change, and the kit's own post-mortem records what
+  happens when graduation slips — patterns recurring ten times while everyone waits for a
+  tidier moment. They are named here in full so Phase 3 only has to format them:
+  1. **Verify claims by exercising them, never by reading configuration.** Phase 1: the host was
+     assumed to have an endpoint and to apply migrations; neither was true. Here: health was
+     assumed to mean "can serve", and the log watch was assumed to work because it compiled.
+  2. **A test tier that provisions its own preconditions hides their absence from the
+     application.** Phase 1: the functional fixture migrated privately, concealing that the app
+     never did. Here: an all-sequential suite structurally could not observe a concurrency bug.
+     Corollary: tests must exercise the app's own paths, and at least one must run in parallel.
