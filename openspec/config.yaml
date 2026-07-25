@@ -1,0 +1,78 @@
+schema: spec-driven
+context: |
+  Product: AI Orchestrator — an internal web application (Plain Concepts teams) that
+  connects project backlogs (GitHub, Azure DevOps) to AI agents. Users create Projects,
+  configure a Connector (vendor abstraction) and Automations ("story with trigger label
+  X -> Agent performs action Y"); matched stories dispatch KEDA-scaled Azure Container
+  Apps Jobs (Agents) that plan and execute actions (Implement->PR, Refine/comment,
+  Transition state, Estimate). Product scope is locked by docs/product/mvp/ (actors
+  ACT-001..004, bounded contexts BC-001..005, use cases UC-001..021, business rules
+  BR-001..015, locked decisions DEC-001..041, open decisions OPN-*). Do not invent
+  functionality beyond those documents; surface gaps instead. All product copy is
+  English (DEC-021). Coined vocabulary is locked (DEC-005): Agent (never "pod"),
+  Connector, Automation, Run, Plan. Run states: Queued, Planning, AwaitingApproval,
+  Executing, Succeeded, Failed, Cancelled.
+
+  Backend (src/modules, src/shared, src/root): .NET modular monolith with Vertical
+  Slice Architecture — Module -> Features/<Feature> -> UseCases/<UseCase>. Custom CQS
+  mediator (ICommand/IQuery + IAppCommandHandler/IAppQueryHandler, decorator pipeline:
+  logging -> validation -> caching), ErrorOr result types + {Entity}Errors +
+  ApiResults.Problem (RFC 7807), FluentValidation, minimal APIs via IUseCase.AddRoutes,
+  EF Core PostgreSQL with one schema per module, modules auto-discovered from
+  AiOrchestrator.Modules.*.dll (Contracts excluded). Module implementation types are
+  internal sealed; *.Contracts projects are the only public surface, and exist only
+  when another module consumes them. Boundaries enforced by Roslyn analyzers
+  (MOD001-005, CQS001) and NetArchTest (src/tests/AiOrchestrator.ArchTests). Routes
+  follow /api/<module>/<resource>. plain-dotnet-guardrails conventions apply as-is
+  (DEC-015); PostgreSQL is the sole recorded deviation.
+
+  Dispatch & execution: the orchestrator enqueues Run messages on an Azure Storage
+  Queue (Azurite locally); KEDA scales ACA Jobs on queue length (DEC-013). Agent
+  runtimes are pluggable per Automation (DEC-012): Claude Code headless first,
+  opencode second. Secrets (vendor PATs, AI provider keys) live in Azure Key Vault;
+  Postgres stores only references (BR-010). Approval-gated runs are two-phase:
+  plan -> human review in the website -> execute (DEC-040, BR-007).
+
+  Frontend (src/frontend): React web-only SPA (Vite + React Router + TypeScript),
+  pnpm standalone project, served same-origin by the host (dev: Aspire proxy to the
+  Vite dev server; prod: static build copied to wwwroot with index.html fallback,
+  reserved prefixes /api, /openapi, /scalar, /health). TanStack Query for server
+  state. Vertical slices: features/<feature>/ co-locates screen + query hooks + typed
+  API calls + local components + types; app/ holds thin route files; cross-cutting
+  code only in shared/ (http/, query/, session/). No generic services/ or utils/
+  dumping grounds. Token-only styling and a typed English i18n catalog from day 0;
+  hardcoded JSX copy fails CI (DEC-009, DEC-021).
+
+  Design system: docs/design-system/ is the canonical source of truth for ALL UI work
+  once Phase 4 lands — Atlas Plain Concepts style reference (tokens only, no brand
+  assets; DEC-021). Derived DESIGN.md and generated tokens are drift-gated in CI.
+
+  Conventions: conventional commits (commitlint); Husky pre-commit CSharpier +
+  lint-staged Prettier/ESLint, mirrored in CI (--no-verify still caught). Tests: xUnit
+  + Shouldly; functional tests use WebApplicationFactory + Testcontainers (Postgres,
+  Azurite) + Respawn, one container stack per module via ICollectionFixture; test
+  names Subject_Should_Constraint (enforced by ArchTests); per-module test projects
+  under src/tests/modules/<Module>/ as *.UnitTests and *.FunctionalTests. E2E boots
+  the real Aspire AppHost (DistributedApplicationTestingBuilder) + Playwright, with
+  ASPNETCORE_ENVIRONMENT=E2E and Session container lifetimes. Aspire one-command dev
+  loop; OpenTelemetry from day 0 (Azure Monitor exporters in cloud — DEC-023).
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Ground capabilities in existing specs (openspec/specs/) and product docs — cite ACT/BC/UC/BR/DEC/OPN identifiers from docs/product/mvp/ where applicable
+    - Never propose scope beyond docs/product/mvp/; surface gaps instead of inventing
+    - Never propose work that depends on an open decision (OPN-*) — a decision-closure task blocks it (RULE-006)
+    - Mark breaking changes with **BREAKING** and state which integration contracts (Aspire, host csproj, queue message schema, CI) are affected or preserved
+  design:
+    - Record decisions with rationale and rejected alternatives
+    - Explicitly call out any deviation from backend architectural conventions (vertical slices, CQS, contracts-only surface) and justify it
+    - Verify infrastructure claims against reality before they enter the design (ADR-0006 discipline); a CI step existing does not mean it ever succeeded
+    - For UI work, state which design-system artifacts govern the design
+  specs:
+    - Requirements use SHALL/MUST; every requirement has at least one testable scenario
+    - Reference repository artifacts by real path so specs stay verifiable
+  tasks:
+    - Order tasks so prerequisites (shared building blocks, seams, foundations) complete before dependent implementation tasks; sequence dependent slices, never parallel them (RULE-004)
+    - Include verification tasks that run the CI-equivalent gates (CSharpier, Prettier, ESLint --max-warnings=0, tsc --noEmit, dotnet build/test) and, for frontend work, the production build pipeline
+    - Each task must be small, verifiable, and completable in one session

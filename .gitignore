@@ -1,0 +1,26 @@
+# .NET
+bin/
+obj/
+artifacts/
+*.user
+
+# Node
+node_modules/
+dist/
+
+# Framework kit — internal reference material, local-only tooling (DEC-042)
+docs/framework/
+
+# Telemetry — private, never in the public repo (DEC-022)
+.telemetry/
+sessions.jsonl
+
+# Local env
+.env
+.env.*
+*.local
+
+# OS/editor
+.DS_Store
+.idea/
+.vscode/
