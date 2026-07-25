@@ -23,6 +23,15 @@ jobs:
           cache: pnpm
           cache-dependency-path: src/frontend/pnpm-lock.yaml
 
+      # Before the tests, not after: the SPA build output is part of what the host serves, and
+      # the functional tier asserts that same-origin serving. Running the tests first passes only
+      # on a machine with a stale wwwroot lying around.
+      - name: Frontend build
+        working-directory: src/frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
       - name: Restore
         run: dotnet restore src/AiOrchestrator.slnx
 
@@ -36,12 +45,6 @@ jobs:
           --filter "Category!=E2E"
           --logger "trx;LogFileName=test-results.trx"
           --results-directory ${{ github.workspace }}/test-results
-
-      - name: Frontend build
-        working-directory: src/frontend
-        run: |
-          pnpm install --frozen-lockfile
-          pnpm build
 
       # Failure-only: a shared artifact-quota hit must never red an otherwise green run.
       - name: Upload test results

@@ -102,8 +102,15 @@ The first PR run failed three ways, all genuine:
    It passed locally and failed in CI. Now it compares the leading 48-bit big-endian timestamp
    bytes, with the version nibble asserted separately — 5 consecutive local runs green.
 
-CI also confirmed the container setup works against real registries: the functional tier ran
-7/7 green on the runner with no mirror configuration.
+4. **A stale-artifact dependency in my own verification.** The SPA-serving functional tests
+   passed locally only because an earlier `pnpm build` had left `wwwroot` behind; the CI lane
+   built the frontend *after* running the tests, so they failed there. Reproduced locally by
+   deleting `wwwroot` (2 failures, exactly as CI), fixed by building the frontend before the
+   tests in `build-test.yml`, re-verified green. A textbook instance of the kit's own lesson
+   that a green local run and a working system are different facts.
+
+CI also confirmed the container setup works against real registries: the functional tier runs
+green on the runner with no mirror configuration.
 
 ### Close-out note — what was NOT verified locally, and why
 
