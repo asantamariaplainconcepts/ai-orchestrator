@@ -43,15 +43,11 @@ public sealed class AppHostFixture : IAsyncLifetime
         builder.CreateResourceBuilder(server).WithEnvironment("ASPNETCORE_ENVIRONMENT", "E2E");
 
         _app = await builder.BuildAsync();
-        await _app.StartAsync();
-
-        await _app
-            .ResourceNotifications.WaitForResourceHealthyAsync("server")
-            .WaitAsync(TimeSpan.FromMinutes(5));
 
         // Without the host's own logs, an E2E failure tells you a status code and nothing about
-        // why — the ProblemDetails body deliberately says nothing. Capture them so a red run
-        // explains itself.
+        // why — the ProblemDetails body deliberately says nothing. The watch starts BEFORE
+        // StartAsync so the startup/migration backlog is captured too; started after, the first
+        // red run produced an empty tail exactly when it was needed.
         _logWatch = new CancellationTokenSource();
         var loggers = _app.Services.GetRequiredService<ResourceLoggerService>();
         _ = Task.Run(
@@ -73,6 +69,12 @@ public sealed class AppHostFixture : IAsyncLifetime
             _logWatch.Token
         );
 
+        await _app.StartAsync();
+
+        await _app
+            .ResourceNotifications.WaitForResourceHealthyAsync("server")
+            .WaitAsync(TimeSpan.FromMinutes(5));
+
         ServerBaseUrl = _app.GetEndpoint("server", "http").ToString();
 
         _playwright = await Playwright.CreateAsync();
@@ -84,7 +86,9 @@ public sealed class AppHostFixture : IAsyncLifetime
     {
         lock (_serverLogs)
         {
-            return string.Join(Environment.NewLine, _serverLogs.TakeLast(lines));
+            return _serverLogs.Count == 0
+                ? "(no server logs captured — the log watch itself may be broken)"
+                : string.Join(Environment.NewLine, _serverLogs.TakeLast(lines));
         }
     }
 

@@ -40,6 +40,15 @@ telemetry, then skills, then the commands that compose them.
       is held by another project's collector (ds-connect), so cross-project sessions here can
       land in the wrong sink; the `upsert` project stamp keeps CLI sessions correct. One
       machine, one collector port — noted, not fixed here.
+- [x] 3.6 Viewer evaluation (owner request): reviewed `claude-code-kanban`
+      (NikiforovAll) as a lighter alternative to the Grafana stack. Finding: it is not
+      OTel — user-scope shell hooks on lifecycle events writing JSONL under
+      `~/.claude/.cck/` + a local SSE dashboard over `~/.claude` transcripts. It cannot
+      replace the Collector (no token/cost metrics, no change attribution, feeds nothing
+      to `collect-usage`), but it is a good **live activity viewer** without Grafana.
+      Verdict: complementary, user-level opt-in, zero repo changes; the Grafana LGTM
+      compose stays what it already was — optional. Nothing in this change depends on
+      either viewer (the spec's "dashboards are disposable viewers" holds).
 
 ## 4. Skills
 
