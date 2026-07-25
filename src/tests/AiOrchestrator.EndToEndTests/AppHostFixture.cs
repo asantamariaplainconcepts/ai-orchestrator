@@ -45,25 +45,54 @@ public sealed class AppHostFixture : IAsyncLifetime
         _app = await builder.BuildAsync();
 
         // Without the host's own logs, an E2E failure tells you a status code and nothing about
-        // why — the ProblemDetails body deliberately says nothing. The watch starts BEFORE
-        // StartAsync so the startup/migration backlog is captured too; started after, the first
-        // red run produced an empty tail exactly when it was needed.
+        // why — the ProblemDetails body deliberately says nothing. Two hard-won details here:
+        // the watch keys on the resource's runtime ResourceId (not its declared name — watching
+        // "server" by name yielded an empty stream twice), resolved from the notification
+        // events; and it starts before StartAsync so the startup backlog is captured.
         _logWatch = new CancellationTokenSource();
         var loggers = _app.Services.GetRequiredService<ResourceLoggerService>();
+        var notifications = _app.ResourceNotifications;
         _ = Task.Run(
             async () =>
             {
+                var watched = new HashSet<string>();
                 await foreach (
-                    var batch in loggers.WatchAsync("server").WithCancellation(_logWatch.Token)
+                    var resourceEvent in notifications
+                        .WatchAsync(_logWatch.Token)
+                        .WithCancellation(_logWatch.Token)
                 )
                 {
-                    foreach (var line in batch)
+                    if (resourceEvent.Resource.Name != "server")
                     {
-                        lock (_serverLogs)
-                        {
-                            _serverLogs.Add(line.Content);
-                        }
+                        continue;
                     }
+
+                    if (!watched.Add(resourceEvent.ResourceId))
+                    {
+                        continue;
+                    }
+
+                    var resourceId = resourceEvent.ResourceId;
+                    _ = Task.Run(
+                        async () =>
+                        {
+                            await foreach (
+                                var batch in loggers
+                                    .WatchAsync(resourceId)
+                                    .WithCancellation(_logWatch.Token)
+                            )
+                            {
+                                foreach (var line in batch)
+                                {
+                                    lock (_serverLogs)
+                                    {
+                                        _serverLogs.Add(line.Content);
+                                    }
+                                }
+                            }
+                        },
+                        _logWatch.Token
+                    );
                 }
             },
             _logWatch.Token

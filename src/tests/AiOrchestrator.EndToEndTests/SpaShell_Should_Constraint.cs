@@ -33,9 +33,17 @@ public class SpaShell_Should_Constraint(AppHostFixture fixture)
 
         var response = await page.APIRequest.GetAsync($"{fixture.ServerBaseUrl}api/projects");
 
-        response.Status.ShouldBe(
-            200,
-            $"body: {await response.TextAsync()}\n\n{fixture.ServerLogTail()}"
-        );
+        if (response.Status != 200)
+        {
+            // The health verdict at failure time distinguishes "database unusable" (the DB
+            // check fails) from "endpoint bug" (health green while the endpoint 500s).
+            var health = await page.APIRequest.GetAsync($"{fixture.ServerBaseUrl}api/health");
+            response.Status.ShouldBe(
+                200,
+                $"body: {await response.TextAsync()}\n"
+                    + $"health: {health.Status} {await health.TextAsync()}\n\n"
+                    + fixture.ServerLogTail()
+            );
+        }
     }
 }
