@@ -25,3 +25,4 @@ A decision that names no check stays advice; the loop exists to turn advice into
 |---|---|---|
 | [0001](0001-verify-claims-by-exercising-them.md) | Verify claims by exercising them, never by reading configuration | Accepted |
 | [0002](0002-test-tiers-must-not-provision-their-own-preconditions.md) | A test tier must not hide a precondition the application lacks | Accepted |
+| [0003](0003-a-derived-artifact-has-exactly-one-owner.md) | A derived artifact has exactly one owner | Accepted |
