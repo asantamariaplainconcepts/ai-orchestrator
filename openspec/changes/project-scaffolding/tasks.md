@@ -51,8 +51,10 @@ Ordered per doc-02 day-0 sequence; each task is small, verifiable, one-session.
 - [x] 4.2 Projects `UnitTests` (validator + aggregate, 5 tests) and `FunctionalTests`
       (create/list/duplicate/validation + SPA fallback and reserved prefixes, 7 tests).
 - [x] 4.3 `AiOrchestrator.EndToEndTests`: DistributedApplicationTestingBuilder + Playwright,
-      `ASPNETCORE_ENVIRONMENT=E2E` appsettings, Session container lifetimes, smoke journey.
-      **Written and compiling; not executed locally** — see close-out note.
+      Session container lifetimes, smoke journey. The host is forced to
+      `ASPNETCORE_ENVIRONMENT=E2E`, which also puts the journey on the production serving path
+      (static `wwwroot` + fallback) rather than the dev proxy — so E2E proves what ships.
+      **Written and compiling; first real execution is the CI e2e lane** — see close-out note.
 
 ## 5. Frontend skeleton
 
@@ -76,8 +78,8 @@ Ordered per doc-02 day-0 sequence; each task is small, verifiable, one-session.
       (job-level `if`, never `on.paths`), reusable `lint.yml`, `build-test.yml`, `e2e.yml`,
       `openspec-validate.yml` (package + version pinned); artifacts `if: failure()` only.
 - [x] 6.3 Verify: `git commit -m "fixed stuff"` is rejected by commitlint and the commit does
-      not land; a conventional message passes (probed, reverted). CI itself is verified by
-      the PR run — see close-out note.
+      not land; a conventional message passes (probed, reverted). CI verified on PR #1 — the
+      first run found three real defects, listed below.
 
 ## 7. Close-out
 
@@ -86,6 +88,22 @@ Ordered per doc-02 day-0 sequence; each task is small, verifiable, one-session.
 - [x] 7.3 Verify sweep: Release build of 12 projects — 0 errors, 0 warnings;
       `dotnet csharpier check src` clean; frontend `format:check`/`lint`/`typecheck`/`build`
       clean; 17 tests pass (5 unit, 5 arch, 7 functional).
+
+### What CI caught that local verification did not
+
+The first PR run failed three ways, all genuine:
+
+1. **commitlint lane** ran `pnpm exec` at the repo root, which has no package. Fixed by running
+   it from `src/frontend` against the root config — the same arrangement `.husky/commit-msg`
+   uses, so the hook and CI can no longer disagree about what a valid message is.
+2. **Prettier** flagged the generated `pnpm-lock.yaml`. Fixed with `.prettierignore`.
+3. **A flaky test of mine.** `Create_Should_AssignTimeOrderedIdentifier` compared ids with
+   `Guid.CompareTo`, which orders field-by-field and does not reflect GUID v7's time ordering.
+   It passed locally and failed in CI. Now it compares the leading 48-bit big-endian timestamp
+   bytes, with the version nibble asserted separately — 5 consecutive local runs green.
+
+CI also confirmed the container setup works against real registries: the functional tier ran
+7/7 green on the runner with no mirror configuration.
 
 ### Close-out note — what was NOT verified locally, and why
 

@@ -1,4 +1,5 @@
 using Aspire.Hosting;
+using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.Testing;
 using Microsoft.Playwright;
 
@@ -27,6 +28,15 @@ public sealed class AppHostFixture : IAsyncLifetime
         // Containers must not outlive the run: a persistent lifetime leaks state between runs,
         // which is a recurring source of "passes locally, fails in CI" defects.
         builder.Configuration["DcpPublisher:ContainerLifetime"] = "Session";
+
+        // Run the host in its own E2E environment, not Development. This is deliberate on two
+        // counts: dev-convenience configuration must never leak into E2E, and it puts the journey
+        // on the *production* serving path (static wwwroot + index.html fallback) rather than the
+        // dev proxy — so what E2E proves is what ships.
+        var server = builder
+            .Resources.OfType<ProjectResource>()
+            .Single(resource => resource.Name == "server");
+        builder.CreateResourceBuilder(server).WithEnvironment("ASPNETCORE_ENVIRONMENT", "E2E");
 
         _app = await builder.BuildAsync();
         await _app.StartAsync();

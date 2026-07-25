@@ -24,9 +24,13 @@ jobs:
           cache: pnpm
           cache-dependency-path: src/frontend/pnpm-lock.yaml
 
-      - name: Install frontend dependencies
+      # The E2E host runs in the E2E environment, which serves the built SPA from wwwroot rather
+      # than proxying the dev server — so the static build has to exist before the run.
+      - name: Build frontend
         working-directory: src/frontend
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
 
       - name: Build
         run: dotnet build src/AiOrchestrator.slnx --configuration Release
