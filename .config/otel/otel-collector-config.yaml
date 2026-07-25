@@ -35,11 +35,19 @@ exporters:
     path: /export/usage.jsonl
     append: true
   # Live view: the local Grafana/otel-lgtm stack, reached by compose service name on the
-  # shared network. Optional; unreachable is non-fatal for the durable pipelines.
+  # shared network. Optional — and its queue and retry are DISABLED so that staying optional is
+  # actually true. With the defaults, an unreachable viewer backs up its retry queue and the
+  # durable file sink above writes nothing at all: the disposable viewer silently disables the
+  # system of record. Verified by bisection — same config, viewer removed, file appears.
+  # Dropping viewer data instantly is exactly the trade we want.
   otlp/grafana:
     endpoint: grafana-lgtm:4317
     tls:
       insecure: true
+    sending_queue:
+      enabled: false
+    retry_on_failure:
+      enabled: false
 
 service:
   pipelines:

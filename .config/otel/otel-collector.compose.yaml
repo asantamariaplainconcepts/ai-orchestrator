@@ -17,9 +17,13 @@ services:
       # Persist usage where collect-usage reads it. Relative to this compose file
       # (.config/otel), ../../.telemetry is the repo's gitignored telemetry folder (DEC-022).
       - ../../.telemetry:/export
+    # Host ports are this repo's, not the OTLP defaults. One machine often runs several
+    # projects' collectors, and the defaults (4317/4318) are first-come-first-served: whoever
+    # binds them first silently receives everyone's telemetry. Keep these in step with
+    # OTEL_EXPORTER_OTLP_ENDPOINT in .claude/settings.json — the preflight checks that they agree.
     ports:
-      - "4317:4317" # OTLP gRPC (the agent exports here)
-      - "4318:4318" # OTLP HTTP
+      - "4327:4317" # OTLP gRPC (the agent exports here)
+      - "4328:4318" # OTLP HTTP
     networks:
       - ai-orchestrator-otel
 
