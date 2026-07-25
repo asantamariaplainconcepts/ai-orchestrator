@@ -38,7 +38,8 @@ Charter gate:
 - [x] **project-scaffolding proposal written — zero code** — and opened as a draft PR (#1, `openspec validate` green)
 - [x] **Human reviewed the spec (HITL #1)** → `Spec approved. Implement it.`
 - [x] Implemented from `docs/framework/references/` (analyzers, ArchTests, build props, `.editorconfig`, hooks, CI shapes) with the `DsConnect.*` → `AiOrchestrator.*` rename checklist applied
-- [x] Verify: build fails on a deliberate cross-module reference (MOD002, signature-level) — and the body-only case it cannot see is caught by the ArchTest assembly check; public entity/handler probes fail with MOD003/MOD005/CQS001; a test with a bad name fails ArchTests; `git commit -m "fixed stuff"` is rejected and does not land; hardcoded JSX copy fails `pnpm lint`; Release build 12 projects / 0 warnings; 17 tests pass. **CI: see PR #1.** Not verified locally: `aspire run` and the E2E lane (registry egress blocked — recorded in the change's tasks.md close-out note)
+- [x] Verify: build fails on a deliberate cross-module reference (MOD002, signature-level) — and the body-only case it cannot see is caught by the ArchTest assembly check; public entity/handler probes fail with MOD003/MOD005/CQS001; a test with a bad name fails ArchTests; `git commit -m "fixed stuff"` is rejected and does not land; hardcoded JSX copy fails `pnpm lint`; Release build 12 projects / 0 warnings; 18 tests pass locally
+- [x] **CI green on every lane, including E2E** (PR #1, branch HEAD). The E2E lane's first run found two real defects — the host had no `http` endpoint (which also broke `aspire run`) and nothing applied migrations — both fixed. Still unproven by any run: `aspire run` itself (registry egress blocked locally). See the close-out note in `openspec/changes/project-scaffolding/tasks.md`
 - [ ] **Human approved** → `Proceed with Phase 2.`
 
 ## Phase 2 — AI delivery layer *(doc 03)*

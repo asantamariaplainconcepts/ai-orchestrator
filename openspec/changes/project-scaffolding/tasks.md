@@ -27,7 +27,8 @@ Ordered per doc-02 day-0 sequence; each task is small, verifiable, one-session.
 - [x] 2.4 `AiOrchestrator.Server` (module discovery, minimal API edge, health endpoints,
       SPA same-origin) + `AiOrchestrator.AppHost` (Postgres, Azurite, Server, Vite).
 - [x] 2.5 Verify: `POST`/`GET /api/projects` round-trip in functional tests against real
-      containers. **`aspire run` not executed in this environment** — see close-out note.
+      containers, and the whole composition boots under the E2E lane in CI. **`aspire run`
+      itself still not executed by anyone** — see close-out note.
 
 ## 3. Guardrails (before any second module)
 
@@ -51,10 +52,10 @@ Ordered per doc-02 day-0 sequence; each task is small, verifiable, one-session.
 - [x] 4.2 Projects `UnitTests` (validator + aggregate, 5 tests) and `FunctionalTests`
       (create/list/duplicate/validation + SPA fallback and reserved prefixes, 7 tests).
 - [x] 4.3 `AiOrchestrator.EndToEndTests`: DistributedApplicationTestingBuilder + Playwright,
-      Session container lifetimes, smoke journey. The host is forced to
+      Session container lifetimes, host-log capture, smoke journey. The host is forced to
       `ASPNETCORE_ENVIRONMENT=E2E`, which also puts the journey on the production serving path
       (static `wwwroot` + fallback) rather than the dev proxy — so E2E proves what ships.
-      **Written and compiling; first real execution is the CI e2e lane** — see close-out note.
+      **Green on CI**, after finding two real defects on its first run (below).
 
 ## 5. Frontend skeleton
 
@@ -87,7 +88,9 @@ Ordered per doc-02 day-0 sequence; each task is small, verifiable, one-session.
 - [x] 7.2 README quick-start replaces the placeholder.
 - [x] 7.3 Verify sweep: Release build of 12 projects — 0 errors, 0 warnings;
       `dotnet csharpier check src` clean; frontend `format:check`/`lint`/`typecheck`/`build`
-      clean; 17 tests pass (5 unit, 5 arch, 7 functional).
+      clean; 18 tests pass locally (6 unit, 5 arch, 7 functional).
+- [x] 7.4 **CI green on every lane** — changes, lint (commitlint / backend-format /
+      frontend-lint), build-test, openspec-validate, and e2e — on the branch HEAD.
 
 ### What CI caught that local verification did not
 
@@ -112,19 +115,37 @@ The first PR run failed three ways, all genuine:
 CI also confirmed the container setup works against real registries: the functional tier runs
 green on the runner with no mirror configuration.
 
-### Close-out note — what was NOT verified locally, and why
+### What the E2E lane found on its first real run
+
+Doc 01 says a smoke E2E "proved login had never worked end-to-end and surfaced three latent
+defects." The same thing happened here. Two real defects, neither visible to any other tier:
+
+1. **The host had no `http` endpoint.** Aspire derives a project resource's endpoints from its
+   `launchSettings.json` profile, and `AiOrchestrator.Server` had no such file. Nothing could
+   resolve the server by endpoint name — which broke `aspire run` too, so the dev loop had been
+   broken all along and nothing else would have told us.
+2. **Nothing applied database migrations.** `GET /api/projects` returned 500 against a database
+   with no schema. The functional tier hid this by migrating inside its own fixture — a path the
+   application itself did not have. Modules now expose a `Migrate` hook on `IModule`; the host
+   runs it at startup in every environment except Production, where schema changes belong to a
+   deliberate deploy step. The fixture dropped its parallel migration and starts the host
+   instead, so tests and app now exercise the same path.
+
+The fixture also gained host-log capture: the first red run reported a bare 500, because the
+ProblemDetails body says nothing by design. A red E2E run now explains itself.
+
+### Close-out note — the environment constraint, and what remains unproven
 
 Container-registry egress is blocked in the implementation environment: `docker pull` hangs for
-Docker Hub *and* for the mirror. Consequences, stated plainly rather than assumed away:
+Docker Hub *and* for the mirror. Stated plainly rather than assumed away:
 
-- **Functional tests pass** only because their images were already cached; they were run with
-  `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX=public.ecr.aws/docker/library/` and
-  `TESTCONTAINERS_RYUK_DISABLED=true`. Image names in the fixture are canonical; CI needs no
-  such variables.
-- **`aspire run` was not executed.** Aspire's Postgres resource pulls an image that is not
-  cached. The composition compiles and its pieces are covered by functional tests, but the
-  one-command dev loop is unproven until someone runs it on a machine with registry access.
-- **The E2E lane was not executed.** It needs both an uncached container image and a Playwright
-  browser download. It compiles; the CI e2e lane is its first real run.
-
-These three are the honest gaps in this change. The CI run on the PR is what closes the last two.
+- **Local functional tests pass** only because their images were already cached; they were run
+  with `TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX=public.ecr.aws/docker/library/` and
+  `TESTCONTAINERS_RYUK_DISABLED=true`. The image names in the fixture are canonical, and CI needs
+  neither variable — confirmed by the green runner.
+- **The E2E lane could not run locally** and its first execution was on CI, where it is now green
+  — including the browser journey that loads the SPA and reads a string from the i18n catalog.
+- **`aspire run` still has not been executed by anyone.** The endpoint defect above was one
+  reason it would have failed; that is fixed and the same composition now boots under
+  `DistributedApplicationTestingBuilder` in CI, which is strong evidence but not the same act.
+  It remains the one item in this change that no run has directly proven.
