@@ -9,6 +9,9 @@ var queues = builder.AddAzureStorage("storage").RunAsEmulator().AddQueues("queue
 
 var frontend = builder.AddViteApp("frontend", "../../frontend").WithPnpm();
 
+// The server's endpoints come from its launchSettings "http" profile — without that profile the
+// resource has no named endpoint and nothing can resolve it. ASPNETCORE_ENVIRONMENT is left out
+// of that profile on purpose, so the AppHost and the E2E fixture stay in charge of it.
 builder
     .AddProject<Projects.AiOrchestrator_Server>("server")
     .WithReference(database)
