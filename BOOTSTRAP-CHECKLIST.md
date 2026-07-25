@@ -34,11 +34,11 @@ Charter gate:
 
 ## Phase 1 — Technical scaffolding *(docs 02 + 06 phases 1–2)*
 
-- [ ] OpenSpec installed (`@fission-ai/openspec`), `openspec/config.yaml` context populated from the corpus
-- [ ] **project-scaffolding proposal written — zero code** — and opened as a draft PR
-- [ ] **Human reviewed the spec (HITL #1)** → `Spec approved. Implement it.`
-- [ ] Implemented from `docs/framework/references/` (analyzers, ArchTests, test bases, build props, workflows, hooks) with the rename checklist applied
-- [ ] Verify: build fails on a deliberate cross-module reference; a test with a bad name fails ArchTests; commit with a bad message is rejected; CI green
+- [x] OpenSpec installed (`@fission-ai/openspec` 1.6.0; pinned by name+version in the CI lane), `openspec/config.yaml` context populated from the corpus
+- [x] **project-scaffolding proposal written — zero code** — and opened as a draft PR (#1, `openspec validate` green)
+- [x] **Human reviewed the spec (HITL #1)** → `Spec approved. Implement it.`
+- [x] Implemented from `docs/framework/references/` (analyzers, ArchTests, build props, `.editorconfig`, hooks, CI shapes) with the `DsConnect.*` → `AiOrchestrator.*` rename checklist applied
+- [x] Verify: build fails on a deliberate cross-module reference (MOD002, signature-level) — and the body-only case it cannot see is caught by the ArchTest assembly check; public entity/handler probes fail with MOD003/MOD005/CQS001; a test with a bad name fails ArchTests; `git commit -m "fixed stuff"` is rejected and does not land; hardcoded JSX copy fails `pnpm lint`; Release build 12 projects / 0 warnings; 17 tests pass. **CI: see PR #1.** Not verified locally: `aspire run` and the E2E lane (registry egress blocked — recorded in the change's tasks.md close-out note)
 - [ ] **Human approved** → `Proceed with Phase 2.`
 
 ## Phase 2 — AI delivery layer *(doc 03)*
