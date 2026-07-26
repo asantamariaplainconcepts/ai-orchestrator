@@ -313,3 +313,29 @@ times in the project this framework came from.
   shape: ADR-0001 says exercise the claim, ADR-0004 says assert the artifact, ADR-0005 says do
   not state a hypothesis as fact — none of them says *where to look when the artifact is wrong*.
   Graduate it if it recurs.
+
+## 2026-07-26 — telemetry-verification (spec-less lane)
+
+- **Worked:** Diagnosis came from exercising, not reading. Feeding the mapping hook a synthetic
+  payload proved in one command that the script is correct and simply never invoked — which
+  redirected the search from "the code is wrong" to "the wiring never runs". The environment
+  check then found the state nobody had considered: telemetry **enabled with no endpoint**,
+  exporting to the OTLP default port, which on this machine belongs to another project's
+  collector. Worse than off, because everything looks configured.
+- **Didn't:** My own verifier's first draft **passed two checks it should have failed** —
+  enabled-without-endpoint read as fine, and a probe row I had just written by hand counted as a
+  real mapped session. Both were caught only because the output looked implausibly green. Writing
+  a checker is no protection against the failure the checker exists to catch.
+  And the deeper defect was procedural: `collect-usage` said *"if telemetry is missing, the entry
+  says so (manual)"*, and that documented shrug absorbed four consecutive losses without anyone
+  noticing.
+- **Next time:** a capability whose failure mode is **silence** ships with its verifier in the
+  same change — not after the fourth loss. The design system did this correctly with its drift
+  gate; telemetry did not, and the difference is four irrecoverable measurements.
+- **Time invested:** not measured (source: **manual** — and this is the change that explains why;
+  the fix applies at next process start, so it could not measure itself).
+- **ADR:** none new — and that is the finding. This is the **same subsystem failing the same way
+  twice**: `fix-telemetry-collector-port` produced
+  [ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md), and ADR-0004
+  applied to the *pipeline as a standing capability* rather than only to the change that touched
+  it would have caught this on day one. The rule was right; its scope was read too narrowly.

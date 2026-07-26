@@ -100,3 +100,14 @@ archive at sync.
 - **Skills are one-responsibility and never call each other**; commands orchestrate. Author new
   skills against `.claude/skills/writing-great-skills/`.
 - **Append-only history**: never rewrite retro entries or accepted ADRs; supersede.
+
+## Telemetry
+
+Retro time comes from OpenTelemetry data captured locally. **Check it works before starting a
+change**, not at the retro — nothing recovers telemetry that was never written:
+
+```bash
+node .config/otel/verify-telemetry.mjs
+```
+
+Setup and the known desktop-client limitation: [docs/process/telemetry-setup.md](docs/process/telemetry-setup.md).
