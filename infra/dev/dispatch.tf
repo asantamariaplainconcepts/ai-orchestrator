@@ -65,6 +65,16 @@ resource "azurerm_role_assignment" "dispatch_queue_scaler" {
   principal_id         = azurerm_user_assigned_identity.dispatch.principal_id
 }
 
+# The human running Terraform also needs data-plane access, for the same reason they need
+# Secrets Officer on the vault: exercising the substrate by hand is how it gets verified at all.
+# Owning the subscription grants neither — data-plane RBAC is separate from management-plane, and
+# the first attempt to enqueue a test message failed on precisely this.
+resource "azurerm_role_assignment" "operator_queue_data" {
+  scope                = azurerm_storage_account.dispatch.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = data.azurerm_client_config.current.object_id
+}
+
 # ---- The job ----------------------------------------------------------------------------------
 
 resource "azurerm_container_app_job" "dispatch" {

@@ -54,6 +54,16 @@ is **not** enforced here: the queue has no notion of a project, and a scaler tha
 a second, hidden place where the cap lives. Runs beyond the cap are never enqueued in the first
 place — that is #17's responsibility, where the Run is created and the cap is known.
 
+## D6 — The operator needs data-plane access too
+
+Owning a subscription grants nothing on the data plane. Terraform gives the human running it
+`Key Vault Secrets Officer` so it can write secrets; the queue needed the same treatment, and did
+not have it — the first attempt to enqueue a test message failed on permissions.
+
+It is worth stating why that matters beyond convenience: a substrate nobody can put a message
+into by hand is a substrate nobody can verify. The grant exists so the acceptance criteria are
+executable, not so operators can poke at production.
+
 ## Local parity
 
 Azurite already runs in the AppHost. The same `QueueClient` code runs against it, so the enqueue
