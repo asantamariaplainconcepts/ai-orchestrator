@@ -23,6 +23,9 @@ sessions.jsonl
 .env.*
 *.local
 
+# Loop/scheduler runtime state — local, not source
+.claude/scheduled_tasks.lock
+
 # OS/editor
 .DS_Store
 .idea/
