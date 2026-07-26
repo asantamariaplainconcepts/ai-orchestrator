@@ -2,10 +2,16 @@ import { useState } from "react";
 import { useParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { RunsSection } from "@/features/runs/RunsSection";
+import { useAutomations } from "@/features/automations/useAutomations";
 import { useProjects } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
-import { useBacklog, useConfigureConnector, useRefreshBacklog } from "./useBacklog";
+import {
+  useBacklog,
+  useConfigureConnector,
+  useRefreshBacklog,
+  useWriteStoryLabel,
+} from "./useBacklog";
 import type { ConnectorView } from "./types";
 
 /**
@@ -18,6 +24,18 @@ export function ProjectScreen() {
   const backlog = useBacklog(projectId);
   const refresh = useRefreshBacklog(projectId);
   const projects = useProjects();
+  const automations = useAutomations(projectId);
+  const writeLabel = useWriteStoryLabel(projectId);
+
+  // UC-008's UI scope (design D4): only enabled Automations' trigger labels are actionable;
+  // everything else the vendor's own UI already manages better.
+  const triggerLabels = [
+    ...new Set(
+      (automations.data ?? [])
+        .filter((automation) => automation.enabled)
+        .map((automation) => automation.triggerLabel),
+    ),
+  ];
 
   const connector = backlog.data?.connector ?? null;
   const stories = backlog.data?.stories ?? [];
@@ -125,6 +143,14 @@ export function ProjectScreen() {
             </p>
           ) : null}
 
+          {/* A refused write-back must be visible: the mirror did not change, and silence
+              here would read as a broken button. */}
+          {writeLabel.isError && (
+            <p className="state state-error" role="alert">
+              {t("backlog.labels.failed")}
+            </p>
+          )}
+
           {backlog.data && !connector && <p className="state">{t("backlog.noConnector")}</p>}
 
           {backlog.data && connector && !connector.lastFailure && stories.length === 0 && (
@@ -148,17 +174,55 @@ export function ProjectScreen() {
                     <td className="table-num mono">{story.vendorId}</td>
                     <td className="list-title">{story.title}</td>
                     <td>
-                      {story.labels.length === 0 ? (
-                        <span className="empty-value">—</span>
-                      ) : (
-                        <span className="row">
-                          {story.labels.map((label) => (
+                      <span className="row">
+                        {story.labels.map((label) =>
+                          triggerLabels.includes(label) ? (
+                            <button
+                              className="pill pill-ok"
+                              type="button"
+                              key={label}
+                              disabled={writeLabel.isPending}
+                              title={t("backlog.labels.remove")}
+                              onClick={() =>
+                                writeLabel.mutate({
+                                  vendorStoryId: story.vendorId,
+                                  label,
+                                  apply: false,
+                                })
+                              }
+                            >
+                              {label} {t("backlog.labels.removeGlyph")}
+                            </button>
+                          ) : (
                             <span className="pill pill-neutral" key={label}>
                               {label}
                             </span>
+                          ),
+                        )}
+                        {triggerLabels
+                          .filter((label) => !story.labels.includes(label))
+                          .map((label) => (
+                            <button
+                              className="pill pill-neutral"
+                              type="button"
+                              key={label}
+                              disabled={writeLabel.isPending}
+                              title={t("backlog.labels.apply")}
+                              onClick={() =>
+                                writeLabel.mutate({
+                                  vendorStoryId: story.vendorId,
+                                  label,
+                                  apply: true,
+                                })
+                              }
+                            >
+                              {t("backlog.labels.applyGlyph")} {label}
+                            </button>
                           ))}
-                        </span>
-                      )}
+                        {story.labels.length === 0 && triggerLabels.length === 0 && (
+                          <span className="empty-value">—</span>
+                        )}
+                      </span>
                     </td>
                     <td>
                       <span

@@ -28,6 +28,12 @@ static class BacklogErrors
     public static Error VendorUnavailable(string detail) =>
         Error.Failure("Connector.VendorUnavailable", $"The vendor could not be reached: {detail}");
 
+    public static Error StoryNotFound(string vendorStoryId) =>
+        Error.NotFound(
+            "Backlog.StoryNotFound",
+            $"The vendor has no story '{vendorStoryId}' in this repository."
+        );
+
     public static Error ConnectorNotFound(Guid projectId) =>
         Error.NotFound("Connector.NotFound", $"Project '{projectId}' has no connector.");
 }

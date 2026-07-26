@@ -434,3 +434,24 @@ times in the project this framework came from.
   the click path went unexercised.
 - **Time invested:** not measured (source: **manual** — eighth consecutive; same standing cause).
 - **ADR:** none new.
+
+## 2026-07-27 — label-write-back
+
+- **Worked:** DEC-027's "equivalent" became structural for free: because the endpoint finishes
+  by calling the same `BacklogSynchroniser` the poller uses, the mirror update and the
+  `StoryChanged` event needed zero new machinery — the portal-probe test (label via PUT → Run +
+  queue message, through the real relay) passed on its first run. The #20 retro's "next time"
+  was applied within one change: the local verify seeded the connector row and mirror stories
+  directly, which made the browser check of the affordances *and* the visible write-failure
+  state a five-minute job.
+- **Didn't:** The first UI cut had no error state for a refused write — the mutation failed
+  silently, which reads as a broken button. Caught during self-review before the browser check,
+  but "every mutation needs a visible failure state" was already the connector card's pattern;
+  it should not have needed rediscovering two features later. GitHub's 404-on-remove being
+  ambiguous (label absent vs issue gone) forced a semantics choice — resolved toward the
+  idempotent no-op because the desired end state holds either way, recorded in design D3.
+- **Next time:** when adding a mutation hook, add its visible failure state in the same edit —
+  the pattern is established; the omission is the recurring risk.
+- **Time invested:** not measured (source: **manual** — ninth consecutive; same standing cause).
+- **ADR:** none new. "Mutation hooks ship with their failure state" is a first explicit
+  statement of an existing pattern; graduate it if a third silent mutation appears.

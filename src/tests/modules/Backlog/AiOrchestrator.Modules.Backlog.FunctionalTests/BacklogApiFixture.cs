@@ -78,6 +78,7 @@ sealed class StubBacklogConnector : IBacklogConnector
         Stories.Clear();
         VerifyError = null;
         FetchError = null;
+        WriteError = null;
         Interlocked.Exchange(ref _fetches, 0);
     }
 
@@ -103,6 +104,54 @@ sealed class StubBacklogConnector : IBacklogConnector
                 ? ErrorOrFactory.From<BacklogSnapshot>([error])
                 : new BacklogSnapshot([.. Stories])
         );
+    }
+
+    public Error? WriteError { get; set; }
+
+    public Task<ErrorOr<Success>> ApplyLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Write(
+            vendorStoryId,
+            story =>
+                story.Labels.Contains(label)
+                    ? story
+                    : story with
+                    {
+                        Labels = [.. story.Labels, label],
+                    }
+        );
+
+    public Task<ErrorOr<Success>> RemoveLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Write(
+            vendorStoryId,
+            story => story with { Labels = [.. story.Labels.Where(existing => existing != label)] }
+        );
+
+    Task<ErrorOr<Success>> Write(string vendorStoryId, Func<VendorStory, VendorStory> mutate)
+    {
+        if (WriteError is { } error)
+        {
+            return Task.FromResult<ErrorOr<Success>>(error);
+        }
+
+        var index = Stories.FindIndex(story => story.VendorId == vendorStoryId);
+        if (index >= 0)
+        {
+            Stories[index] = mutate(Stories[index]);
+        }
+
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
     }
 
     int _fetches;

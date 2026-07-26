@@ -259,6 +259,31 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
         (await QueuedRunIds()).Count.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task ApplyingATriggerLabelFromThePortal_Should_CreateARun()
+    {
+        // The whole point of #20 + #24 together: no vendor UI, no terminal — label in the
+        // portal, watch the Run exist. UC-008's equivalence (DEC-027) exercised end to end.
+        await AddAutomation("ai:implement");
+        fixture.Vendor.Stories.Add(new VendorStory("7", "Portal-driven", "open", []));
+        await Refresh();
+        await fixture.Probe.WaitForAtLeast(_projectId, 1);
+        (await Runs()).ShouldBeEmpty();
+
+        (
+            await _client.PutAsync(
+                $"/api/projects/{_projectId}/backlog/stories/7/labels/ai:implement",
+                content: null
+            )
+        ).EnsureSuccessStatusCode();
+
+        await fixture.Probe.WaitForAtLeast(_projectId, 2);
+
+        var run = (await Runs()).Single();
+        run.VendorStoryId.ShouldBe("7");
+        (await QueuedRunIds()).ShouldBe([run.Id]);
+    }
+
     sealed record ProjectResponse(Guid Id, string Name);
 
     sealed record RunRow(

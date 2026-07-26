@@ -29,6 +29,27 @@ interface IBacklogConnector
         string token,
         CancellationToken cancellationToken
     );
+
+    /// <summary>
+    /// The seam's only writes (design D2 of label-write-back): labels are the one thing UC-008
+    /// licenses the product to change at the vendor. Both are idempotent — applying a label the
+    /// Story carries, or removing one it does not, is a no-op, not an error (design D3).
+    /// </summary>
+    Task<ErrorOr<Success>> ApplyLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    Task<ErrorOr<Success>> RemoveLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    );
 }
 
 /// <summary>Where a backlog lives, in vendor-neutral terms.</summary>
