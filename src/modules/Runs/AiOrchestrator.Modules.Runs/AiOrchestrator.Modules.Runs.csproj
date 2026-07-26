@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>AiOrchestrator.Modules.Runs</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- BuildingBlocks plus the two Contracts surfaces this module reads through. There is
+         deliberately NO reference to any implementation assembly and no infrastructure SDK —
+         the boundary the guardrail suite pins. -->
+    <ProjectReference Include="..\..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\Backlog\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
+    <ProjectReference Include="..\..\Projects\AiOrchestrator.Modules.Projects.Contracts\AiOrchestrator.Modules.Projects.Contracts.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiOrchestrator.Modules.Runs.FunctionalTests" />
+  </ItemGroup>
+</Project>
