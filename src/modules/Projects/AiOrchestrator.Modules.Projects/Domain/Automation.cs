@@ -1,0 +1,125 @@
+using AiOrchestrator.BuildingBlocks.Domain;
+
+namespace AiOrchestrator.Modules.Projects.Domain;
+
+/// <summary>
+/// "A Story labelled X makes an Agent do Y." The product's central noun, owned by BC-001
+/// Project Configuration along with its validation.
+/// </summary>
+sealed class Automation : Aggregate
+{
+    Automation() { }
+
+    Automation(
+        Guid projectId,
+        string triggerLabel,
+        string? triggerState,
+        AutomationAction action,
+        AgentRuntime runtime,
+        bool requiresApproval,
+        TimeSpan timeout
+    )
+    {
+        ProjectId = projectId;
+        TriggerLabel = triggerLabel;
+        TriggerState = triggerState;
+        Action = action;
+        Runtime = runtime;
+        RequiresApproval = requiresApproval;
+        Timeout = timeout;
+        Enabled = true;
+    }
+
+    public Guid ProjectId { get; private set; }
+
+    public string TriggerLabel { get; private set; } = string.Empty;
+
+    /// <summary>
+    /// The vendor's own state string, or null for "any state". Not normalised — the Mirror keeps
+    /// vendor vocabulary until OPN-003 closes, and inventing one here would have to be undone.
+    /// </summary>
+    public string? TriggerState { get; private set; }
+
+    public AutomationAction Action { get; private set; }
+
+    public AgentRuntime Runtime { get; private set; }
+
+    /// <summary>Per-Automation, not global (DEC-039): true routes the Run through a Plan (BR-007).</summary>
+    public bool RequiresApproval { get; private set; }
+
+    /// <summary>Per Agent phase (BR-005). Default 30 minutes, set by the caller.</summary>
+    public TimeSpan Timeout { get; private set; }
+
+    /// <summary>
+    /// Present from the start even though #15 owns toggling it: BR-003 only considers *enabled*
+    /// Automations, so the overlap rule cannot be written without it.
+    /// </summary>
+    public bool Enabled { get; private set; }
+
+    public static Automation Create(
+        Guid projectId,
+        string triggerLabel,
+        string? triggerState,
+        AutomationAction action,
+        AgentRuntime runtime,
+        bool requiresApproval,
+        TimeSpan timeout
+    ) => new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout);
+
+    /// <summary>
+    /// BR-003's <i>intersects</i>, made precise (design D1): two Automations overlap when some
+    /// Story could match both.
+    /// <para>
+    /// The case that matters is subsumption — a trigger with no state constraint matches every
+    /// Story carrying the label, including the ones a state-specific trigger matches. Treating
+    /// that pair as compatible would let one event match two Automations, which is exactly the
+    /// non-determinism BR-003 exists to prevent.
+    /// </para>
+    /// <para>
+    /// Deliberately symmetric: whichever is saved second is refused. That asymmetry in *outcome*
+    /// is the price of validating at write time (DEC-033) rather than resolving priority at read
+    /// time, and it is the behaviour an Admin will actually notice.
+    /// </para>
+    /// </summary>
+    public bool Overlaps(Automation other)
+    {
+        // Disabled Automations are invisible to the rule — BR-003 says "existing enabled".
+        if (!Enabled || !other.Enabled)
+        {
+            return false;
+        }
+
+        // Labels are the vendor's; compare them the way the vendor does.
+        if (!string.Equals(TriggerLabel, other.TriggerLabel, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        // Either side unconstrained by state subsumes the other.
+        if (TriggerState is null || other.TriggerState is null)
+        {
+            return true;
+        }
+
+        return string.Equals(TriggerState, other.TriggerState, StringComparison.Ordinal);
+    }
+}
+
+/// <summary>The MVP action catalogue (DEC-026). All four configurable; only Implement→PR executes yet.</summary>
+enum AutomationAction
+{
+    ImplementToPullRequest = 1,
+    RefineOrComment = 2,
+    TransitionState = 3,
+    Estimate = 4,
+}
+
+/// <summary>
+/// Runtimes an Automation can name (DEC-012). One value: opencode depends on the still-open
+/// OPN-004, and RULE-006 forbids shipping scope behind an open decision. The enum exists so #30
+/// adds a value rather than a column.
+/// </summary>
+enum AgentRuntime
+{
+    ClaudeCodeHeadless = 1,
+}

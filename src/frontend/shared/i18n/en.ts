@@ -53,6 +53,38 @@ export const en = {
 
   "project.back": "All projects",
 
+  // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
+  "automations.heading": "Automations",
+  "automations.count.one": "Automation",
+  "automations.count.other": "Automations",
+  "automations.loading": "Loading Automations\u2026",
+  "automations.error": "Could not load Automations.",
+  "automations.empty": "No Automations yet. Add one to make a labelled Story trigger an Agent.",
+  "automations.add": "Add Automation",
+  "automations.adding": "Saving\u2026",
+  "automations.saveFailed": "Could not save the Automation.",
+  "automations.trigger": "Trigger label",
+  "automations.triggerPlaceholder": "ai:implement",
+  "automations.state": "Story state",
+  "automations.statePlaceholder": "any state",
+  "automations.action": "Action",
+  "automations.runtime": "Runtime",
+  "automations.approval": "Needs approval",
+  "automations.timeout": "Timeout (minutes)",
+  "automations.anyState": "any state",
+  // Honest about the catalogue: three actions are configurable and cannot execute yet, and
+  // saying so is the whole reason for shipping the catalogue whole (design D3).
+  "automations.actionNotExecutable": "Not executable yet",
+  "automations.catalogueHint":
+    "All four actions are configurable. Only Implement \u2192 PR can run today; the rest are recorded and will execute when their Agent lands.",
+  "automations.table.trigger": "Trigger",
+  "automations.table.action": "Action",
+  "automations.table.approval": "Approval",
+  "automations.table.timeout": "Timeout",
+  "automations.approvalRequired": "Required",
+  "automations.approvalNone": "Automatic",
+  "automations.minutes": "min",
+
   // Shell — sidebar, top bar. The brand area is catalogue text only (DEC-021).
   "shell.nav.section": "Workspace",
   "shell.nav.projects": "Projects",
