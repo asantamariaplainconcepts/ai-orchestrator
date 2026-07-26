@@ -15,40 +15,43 @@ Then the seam, the first event, and the guardrails that keep the boundary honest
 
 ## 1. The seam (BuildingBlocks)
 
-- [ ] 1.1 `IIntegrationEvent` (Version), `IIntegrationEventPublisher`,
+- [x] 1.1 `IIntegrationEvent` (Version), `IIntegrationEventPublisher`,
       `IIntegrationEventHandler<T>` — product vocabulary, no CAP type anywhere in the signatures.
-- [ ] 1.2 Verify: BuildingBlocks gains no package reference; modules still reference no
+- [x] 1.2 Verify: BuildingBlocks gains no package reference; modules still reference no
       infrastructure SDK, transitively checked as in #16.
 
 ## 2. The CAP implementation (ServiceDefaults)
 
-- [ ] 2.1 CAP packages pinned in CPM; publisher implementation; the generic subscriber that
+- [x] 2.1 CAP packages pinned in CPM; publisher implementation; the generic subscriber that
       receives topics and fans out to registered `IIntegrationEventHandler<T>`s.
-- [ ] 2.2 Composition: `AddIntegrationEvents()` for hosts — Postgres storage, in-memory
+- [x] 2.2 Composition: `AddIntegrationEvents()` for hosts — Postgres storage, in-memory
       transport, **deliberate small retry ceiling** (D4, not the ~50 default), storage init off.
-- [ ] 2.3 MigrationService initialises CAP storage in schema `cap` (D5).
-- [ ] 2.4 Verify by artifact: after the MigrationService runs, the `cap` schema exists; after
+- [x] 2.3 MigrationService initialises CAP storage in schema `cap` (D5).
+- [x] 2.4 Verify by artifact: after the MigrationService runs, the `cap` schema exists; after
       the Server starts, no new tables appeared (the Server still migrates nothing).
 
 ## 3. The first event
 
-- [ ] 3.1 `AiOrchestrator.Modules.Backlog.Contracts`: `StoryChanged` (version, project id,
+- [x] 3.1 `AiOrchestrator.Modules.Backlog.Contracts`: `StoryChanged` (version, project id,
       vendor story id, change kind: Added/Updated/Removed). No implementation types.
-- [ ] 3.2 The reconciler publishes inside its transaction: one event per changed Story, nothing
+- [x] 3.2 The reconciler publishes inside its transaction: one event per changed Story, nothing
       on a no-op poll. The concurrency path (#7's duplicate-key catch) publishes nothing extra —
       the winner's transaction already announced.
-- [ ] 3.3 Functional tests against real containers: a label change delivers exactly the fact
+- [x] 3.3 Functional tests against real containers: a label change delivers exactly the fact
       that changed; a no-op poll delivers nothing; **the rollback case** — force a failure after
       publish, assert no delivery (the transactional-publish scenario, which is the entire point).
-- [ ] 3.4 A crash-redelivery functional test if the harness can express it honestly; otherwise
+- [x] 3.4 A crash-redelivery functional test if the harness can express it honestly; otherwise
       the spike's evidence is linked from D3 and the gap is stated, not papered over.
+      **Outcome: the gap is stated.** `WebApplicationFactory` runs the host in-process — "kill
+      the process mid-handler" cannot be expressed without killing the test runner. Redelivery
+      is covered by the spike's observed results recorded in design D3, not by this suite.
 
 ## 4. Guardrails
 
-- [ ] 4.1 ArchTest: a module referencing another module's implementation assembly fails; the
+- [x] 4.1 ArchTest: a module referencing another module's implementation assembly fails; the
       same module referencing its Contracts assembly passes. Both directions asserted with the
       real Backlog.Contracts in place.
-- [ ] 4.2 Full suite green; the analyzers untouched (Contracts support already exists — verify,
+- [x] 4.2 Full suite green; the analyzers untouched (Contracts support already exists — verify,
       do not re-implement).
 
 ## 5. Close-out

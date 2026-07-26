@@ -124,6 +124,38 @@ with project PATs, and one compromise should not reach both.
 delete contract on every machine and in the functional tier. KEDA has no local equivalent, so
 the scale rule is only ever verified in Azure — a green local run says nothing about it.
 
+## Integration events
+
+Modules never call each other. A module announces a fact — `StoryChanged` — through
+`IIntegrationEventPublisher`, and other modules react through `IIntegrationEventHandler<T>`.
+Both interfaces live in BuildingBlocks and speak product vocabulary only; the implementation
+(DotNetCore.CAP: Postgres outbox + in-memory transport) sits in ServiceDefaults, exactly like
+the Key Vault resolver and the dispatch queue. No module references CAP, directly or
+transitively — the ArchTests pin it.
+
+**Publish is transactional, and that is the entire point.** The publisher's `BeginTransaction`
+spans the module's own writes and its staged events: a Story change and its `StoryChanged`
+event commit or roll back together, so a consumer never reacts to a write that didn't happen
+and a write never goes unannounced. The functional suite asserts the rollback case against the
+outbox itself.
+
+**Delivery is at-least-once; every handler must be idempotent.** A process that dies mid-handle
+redelivers after restart (observed in the change's spike, not assumed). Retries are a
+deliberate small ceiling (3), and an exhausted message is dead — loudly logged, never silently
+dropped. Automatic *re-running of Runs* is still forbidden (BR-004); retrying an event handler
+is not a Run retry.
+
+**Events carry identity, never state.** `StoryChanged` says *which* Story changed and *how*
+(added/updated/removed) — a consumer reads current truth through the owning module's
+`.Contracts` assembly rather than trusting a payload that may be stale by the time it arrives.
+The wire name is versioned (`backlog.story-changed.v1`); an unrecognised name is dropped
+explicitly rather than misread.
+
+**`.Contracts` assemblies are the only cross-module surface.** They hold events, enums, and
+read interfaces — no implementation types (the ArchTests verify both directions). Module
+discovery skips them; the owning module registers any implementations itself. The `cap` schema
+is created by the MigrationService like every other schema — the Server migrates nothing.
+
 ## Frontend
 
 One React SPA (Vite, React Router, TanStack Query) served **same-origin** by the host: proxied to
