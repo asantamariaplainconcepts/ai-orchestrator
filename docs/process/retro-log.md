@@ -414,3 +414,23 @@ times in the project this framework came from.
   as the previous entries, the fix has still not seen a fresh process start).
 - **ADR:** none new. "A host's startup requirements and the infra that satisfies them belong to
   the same change" is a first occurrence; graduate it if a second config-drift window appears.
+
+## 2026-07-26 — run-visibility
+
+- **Worked:** The strict read slice stayed strict — one GET, no schema change, no Contracts
+  widening — because design D1 pushed the automation join to the client, where an endpoint
+  already existed. The exact-response-shape test (assert the JSON's field *names*, not the
+  deserialised record) is the cheap insurance the empty-value decision needed: an invented
+  cost-of-zero would deserialise away invisibly and ship. Visual verification against a locally
+  booted stack caught nothing broken, which is itself evidence the kit's composition patterns
+  hold — the section is the fourth consumer of the same table/pill/empty-value idioms.
+- **Didn't:** The browser pane's screenshot capture would not track scrolling (pane hidden), so
+  the themed run-table screenshots are top-of-page only; content verification fell back to the
+  page text, which is honest but not visual. And the per-Story filter's click path needs a
+  connected backlog the local stack didn't have — stated in tasks 2.3 rather than faked.
+- **Next time:** when a page section is only reachable through data another module produces,
+  seed that data through the API in the local verify script from the start — the backlog
+  connector stub exists in the functional tier but has no local-boot equivalent, which is why
+  the click path went unexercised.
+- **Time invested:** not measured (source: **manual** — eighth consecutive; same standing cause).
+- **ADR:** none new.

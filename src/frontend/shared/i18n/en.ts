@@ -102,11 +102,31 @@ export const en = {
   "backlog.stats.labelled": "Labelled",
   "backlog.stats.connector": "Connector",
 
+  // Runs — UC-021: the loop's output, observable. Locked vocabulary (Run, Story, Automation).
+  "runs.heading": "Runs",
+  "runs.count.one": "Run",
+  "runs.count.other": "Runs",
+  "runs.loading": "Loading Runs\u2026",
+  "runs.error": "Could not load Runs.",
+  "runs.empty": "No Runs yet. They appear when a labelled Story matches an Automation.",
+  "runs.emptyForStory": "No Runs for this Story yet.",
+  "runs.filteredByStory": "Story",
+  "runs.clearFilter": "Show all Runs",
+  "runs.table.story": "Story",
+  "runs.table.automation": "Automation",
+  "runs.table.state": "State",
+  "runs.table.created": "Created",
+  "runs.table.dispatched": "Dispatched",
+  "runs.table.output": "Output",
+  "runs.table.cost": "Cost",
+
   // Table headers.
   "backlog.table.id": "#",
   "backlog.table.title": "Title",
   "backlog.table.labels": "Labels",
   "backlog.table.state": "State",
+  "backlog.table.runs": "Runs",
+  "backlog.table.viewRuns": "View Runs",
 } as const;
 
 export type TranslationKey = keyof typeof en;
