@@ -156,6 +156,28 @@ read interfaces — no implementation types (the ArchTests verify both direction
 discovery skips them; the owning module registers any implementations itself. The `cap` schema
 is created by the MigrationService like every other schema — the Server migrates nothing.
 
+## Runs and matching
+
+The Runs module (BC-003) is the first consumer of the event stream: `StoryChanged` arrives, the
+handler reads the Story's **current** labels and state through `IStoryReader`
+(Backlog.Contracts) and the Project's enabled Automations through `IAutomationCatalog`
+(Projects.Contracts), and a match becomes a Run plus a dispatch message. The event is only a
+pointer — matching never trusts a payload (BR-015), so a superseded change matches the newer
+truth, which is what BR-008 wants.
+
+**BR-001 is a partial unique index, not a handler convention.** One Run per Story reference
+across the active states; a second match while a Run is active is *ignored, not queued*, and a
+concurrent duplicate delivery loses the insert and reports success — idempotency comes from the
+constraint, not a message ledger. BR-002 holds at creation: at the cap the Run waits `Queued`
+and nothing is enqueued.
+
+**Stated limitations, on purpose.** `requiresApproval = true` matches create nothing yet (the
+two-phase lane is its own issue — the refusal is logged naming the Automation). Nothing promotes
+a `Queued` Run when capacity frees, because nothing can complete yet. And the Run insert and the
+queue enqueue cannot share a transaction: the Run commits first, so a crash between the two
+leaves a visible `Queued` Run with no message — logged loudly, recovered by *Run now* (BR-013)
+when it lands.
+
 ## Frontend
 
 One React SPA (Vite, React Router, TanStack Query) served **same-origin** by the host: proxied to
