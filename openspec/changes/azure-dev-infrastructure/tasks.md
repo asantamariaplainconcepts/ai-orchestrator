@@ -6,9 +6,17 @@ exercised for real before the next (ADR-0001), asserting artifacts, not green pi
 
 ## 0. Verified precondition
 
-- [ ] 0.1 The owner's az login reaches the target subscription: `az account show` names it.
+- [x] 0.1 The owner's az login reaches the target subscription: `az account show` names it.
       **Owner action** — at grill time the subscription was invisible to the cached CLI login
-      (guest tenants behind MFA). Nothing below starts until this is real.
+      (guest tenants behind MFA). **Done 2026-07-26:** the CLI now names the subscription and
+      ARM calls succeed (`az group list` returns existing groups).
+- [ ] 0.2 Register the resource providers the environment needs. Checking rather than assuming
+      found four of five **NotRegistered** on this subscription — `Microsoft.App`,
+      `Microsoft.DBforPostgreSQL`, `Microsoft.ContainerRegistry`,
+      `Microsoft.OperationalInsights` (only `Microsoft.KeyVault` was registered). Terraform
+      fails partway through the first apply without them, which is the worst moment to discover
+      it. Registration is idempotent and takes minutes; verify by reading `registrationState`
+      back as `Registered`, not by the command exiting 0 (ADR-0004).
 
 ## 1. State backend
 
