@@ -6,12 +6,20 @@ they can actually be wrong.
 
 ## 1. The secret seam (BuildingBlocks)
 
-- [ ] 1.1 `ISecretResolver` in `AiOrchestrator.BuildingBlocks`: resolve a secret by name, fail
-      loudly when it is missing — never return empty or a default.
+- [ ] 1.1 `ISecretResolver` in `AiOrchestrator.BuildingBlocks`: resolve a secret **by name, per
+      read**, failing loudly when it is missing — never empty, never a default, never cached in a
+      way that survives a rotation.
 - [ ] 1.2 A configuration-backed implementation for development (user-secrets / environment),
-      registered by default. The Key Vault implementation belongs to #8 and is not written here.
-- [ ] 1.3 Verify: resolving a missing name throws with the name in the message; nothing in the
-      application reads a secret from configuration directly.
+      registered **in the host's composition root** — not in a module. `IModule.Add` only receives
+      `IServiceCollection`/`IConfiguration`, so it structurally cannot call an Aspire client
+      integration; the host is the only place with `IHostApplicationBuilder` (design D3).
+- [ ] 1.3 The Key Vault implementation is **not written here** — it belongs to #8, which is where a
+      real vault exists. Leave the seam and a note; do not add
+      `Aspire.Hosting.Azure.KeyVault` / `Aspire.Azure.Security.KeyVault` to CPM in this change,
+      since an unused package is a claim we have not exercised.
+- [ ] 1.4 Verify: resolving a missing name throws with the name in the message; a secret added
+      **after** startup resolves without a restart; nothing in the application reads a credential
+      from configuration directly; no module references a cloud SDK.
 
 ## 2. The Backlog module
 

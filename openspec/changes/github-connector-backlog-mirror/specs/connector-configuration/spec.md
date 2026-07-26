@@ -73,3 +73,32 @@ call sites.
 - **WHEN** a Connector names a secret the resolver cannot find
 - **THEN** the operation fails with a message naming the missing secret, and never falls back to
   an empty or default credential
+
+### Requirement: secrets resolve per read, not at startup
+
+Secret values SHALL be fetched when they are needed. The system SHALL NOT depend on the set of
+secrets being known at process start, because Connectors — and therefore secret names — are
+created while the application is running.
+
+#### Scenario: a secret created after startup
+
+- **WHEN** an Admin configures a Connector naming a secret that was created after the application
+  started
+- **THEN** it resolves without restarting the application
+
+#### Scenario: a rotated secret
+
+- **WHEN** a secret's value is rotated in the store
+- **THEN** the next resolution uses the new value, with no restart and no cache to invalidate
+
+### Requirement: the host owns secret-store wiring, not the modules
+
+Registration of any secret-store client SHALL happen in the host composition root. A module SHALL
+depend only on the resolver abstraction, so modules remain host-agnostic and can be composed by
+any host.
+
+#### Scenario: a module stays host-agnostic
+
+- **WHEN** a module needs a credential
+- **THEN** it depends on the resolver abstraction only, and references no cloud SDK or hosting
+  integration

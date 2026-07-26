@@ -25,9 +25,16 @@ Three new capabilities (delta specs under `specs/`):
    title, state, labels, last-seen). The vendor stays the source of truth (**BR-008**); the mirror
    exists so the UI is fast, so trigger-matching can diff, and so a vendor outage degrades to
    stale data rather than an empty screen.
-3. **secret-resolution** — an `ISecretResolver` seam. The database stores a secret **name**, never
-   a value (**BR-010**). Development resolves from user-secrets; the Key Vault implementation
-   arrives with the infrastructure change (#8) behind the same interface.
+3. **secret-resolution** — an `ISecretResolver` seam resolving **per read**. The database stores a
+   secret **name**, never a value (**BR-010**). Development resolves from user-secrets; the Key
+   Vault implementation arrives with the infrastructure change (#8) behind the same interface.
+
+   Aspire's Key Vault integration was checked and it shapes this (design D3): it has **no
+   emulator**, so it does not remove the need for a development resolver; its client integration
+   is an `IHostApplicationBuilder` extension, so wiring must live in the host — a module
+   structurally cannot call it; and its `AddAzureKeyVaultSecrets` option is **rejected**, because
+   loading the vault into `IConfiguration` at startup cannot see a secret an Admin creates
+   afterwards.
 
 ## The conflict this resolves, and how
 

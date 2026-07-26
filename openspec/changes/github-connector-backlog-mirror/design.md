@@ -5,8 +5,14 @@
 - **`api.github.com` is reachable** from this environment: `GET /rate_limit` returns 200.
 - **The core rate limit is 5000 requests/hour** for an authenticated token. At the DEC-028 default
   of one poll per minute per project, a single project costs ~60–120 requests/hour depending on
-  pagination — comfortable, but not free, and the reason D5 below uses conditional requests.
+  pagination — comfortable, but not free, and the reason D6 below uses conditional requests.
 - **Octokit 14.0.0 resolves from NuGet.** Verified by package search, not assumed available.
+- **Aspire's Key Vault integration exists at our version line (13.4.6), and has no emulator.**
+  `Aspire.Hosting.Azure.KeyVault` exposes exactly one method — `AddAzureKeyVault(name)` — which
+  provisions a *real* Azure vault; there is no `RunAsEmulator`, unlike Storage. The client package
+  `Aspire.Azure.Security.KeyVault` offers `AddAzureKeyVaultClient` (registers `SecretClient`) and
+  `AddAzureKeyVaultSecrets` (loads vault secrets into `IConfiguration`). Verified by reading both
+  packages' API surfaces, not from memory.
 - Registry egress for **container images remains blocked locally** (unchanged since Phase 1), so
   the functional tier keeps using the cached Postgres/Azurite images and CI remains the only place
   E2E runs.
@@ -55,7 +61,42 @@ foreign key across schemas. A Connector can outlive its Project. Deleting a Proj
 slice; when it arrives it must clean up its Backlog rows, and that will need a domain event rather
 than a cascade. Recorded here so it is a known debt rather than a surprise.
 
-### D3 — Octokit, not a hand-rolled HTTP client
+### D3 — Secrets resolve per read, through Aspire's `SecretClient`, wired in the host
+
+Aspire's Key Vault integration shapes this, and two of its properties are decisive.
+
+**It has no emulator.** Unlike Storage/Azurite, `AddAzureKeyVault` provisions a real Azure vault
+and needs a subscription. So Aspire does **not** remove the need for a development resolver — the
+`ISecretResolver` seam stands, and the local implementation over user-secrets stands with it. What
+Aspire changes is how the *production* implementation is built: over the `SecretClient` its client
+integration registers, rather than one we construct by hand.
+
+**Wiring lives in the host, because a module cannot do it.** `IModule.Add` receives
+`IServiceCollection` and `IConfiguration` — deliberately, so modules stay host-agnostic. Aspire's
+client integrations are `IHostApplicationBuilder` extensions, which a module therefore *cannot*
+call. `Program.cs` is the only place with the builder, so it calls `AddAzureKeyVaultClient` and
+registers the resolver; the Backlog module depends on `ISecretResolver` and knows nothing about
+Azure. This is a constraint the architecture already implies — worth naming before someone tries
+to call an Aspire client extension from inside a module and finds it does not compile.
+
+**Rejected: `AddAzureKeyVaultSecrets`, which loads the vault into `IConfiguration`.** It is the
+more convenient option and it is wrong here. Our secrets are **per project, created while the
+application is running** — an Admin configures a new Connector and names a new secret. Configuration
+is loaded at startup, so a secret added afterwards would not resolve until a restart, and the
+failure would look like "the credential is missing" rather than "the process is stale". A per-read
+`SecretClient` lookup has no such cliff. It also keeps every secret out of the process's
+configuration graph, which is a smaller blast radius for something that ends up in diagnostics.
+
+**Rejected: the community `AzureKeyVaultEmulator.Aspire.Hosting`.** A third-party container in the
+development loop to emulate a service we can satisfy with user-secrets is cost without benefit —
+the seam already makes the dev path honest.
+
+**Consequence for #8:** the AppHost's `AddAzureKeyVault` resource and the host's
+`AddAzureKeyVaultClient` call belong to the infrastructure change, because both need a real vault
+to point at. This change ships the seam and the development implementation; #8 adds the resource,
+the client registration, and the `KeyVaultSecretResolver` behind the same interface.
+
+### D4 — Octokit, not a hand-rolled HTTP client
 
 Octokit handles pagination, rate-limit headers, conditional requests and error mapping — all of
 which we would otherwise reimplement badly. It is the official client and resolves cleanly.
@@ -66,7 +107,7 @@ would save us writing is exactly the code most likely to be subtly wrong.
 The `IBacklogConnector` seam keeps Octokit inside the GitHub implementation, so Azure DevOps
 (OPN-003, later) plugs in beside it without touching callers.
 
-### D4 — Verify the credential on save, and treat that as part of saving
+### D5 — Verify the credential on save, and treat that as part of saving
 
 UC-004 requires the credential to be verified with a live call before the Connector is stored.
 This is deliberate and slightly unusual: it makes `POST` depend on an external service, and it
@@ -78,7 +119,7 @@ surfaces much later as an empty backlog, and the operator has no way to tell "no
 fix it is already looking. The two failure modes are reported distinctly — bad coordinates versus
 bad credential — because they have different fixes.
 
-### D5 — Polling: a hosted service, conditional requests, and a manual refresh
+### D6 — Polling: a hosted service, conditional requests, and a manual refresh
 
 The poller is an `IHostedService` iterating configured Connectors on the per-project interval
 (DEC-028, default 60s). Two details that matter:
@@ -94,7 +135,7 @@ The poller is an `IHostedService` iterating configured Connectors on the per-pro
 the failure against the Connector, so the UI can distinguish "nothing to show" from "we could not
 look". This is the lesson from the telemetry defect, applied before rather than after.
 
-### D6 — The mirror is a projection, and reconciles by full comparison
+### D7 — The mirror is a projection, and reconciles by full comparison
 
 Each poll fetches the repository's open issues and reconciles: upsert by vendor id, and mark
 absent Stories accordingly (BR-008 — the vendor is the source of truth). No attempt is made to
