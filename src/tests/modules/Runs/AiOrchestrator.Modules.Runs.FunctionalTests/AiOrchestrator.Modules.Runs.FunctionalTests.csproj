@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <RootNamespace>AiOrchestrator.Modules.Runs.FunctionalTests</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\AiOrchestrator.SharedFunctionalTests\AiOrchestrator.SharedFunctionalTests.csproj" />
+    <ProjectReference Include="..\..\..\..\modules\Runs\AiOrchestrator.Modules.Runs\AiOrchestrator.Modules.Runs.csproj" />
+    <ProjectReference Include="..\..\..\..\modules\Backlog\AiOrchestrator.Modules.Backlog\AiOrchestrator.Modules.Backlog.csproj" />
+    <!-- For the dispatch queue constants only — the assertions read the same queue the product writes. -->
+    <ProjectReference Include="..\..\..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>
