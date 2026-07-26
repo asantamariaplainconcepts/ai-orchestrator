@@ -65,13 +65,23 @@ they can actually be wrong.
 
 ## 6. The project page (UC-007)
 
+- [ ] 6.0 **Route this work through the `aio-design` skill**: read `DESIGN.md` first, compose kit
+      components, resolve copy through the catalogue, run the validator before pushing.
 - [ ] 6.1 A project route showing the Connector configuration form and the mirrored Stories, built
-      from the design-system kit, with empty, loading and error states — and the two *different*
-      empty states from 5.4 rendered differently.
-- [ ] 6.2 All copy through the typed i18n catalogue, following the content fundamentals; vendor
-      ids in `.mono`.
-- [ ] 6.3 Verify: `pnpm lint` and the design validator pass; the page is checked in both themes
-      with keyboard focus visible.
+      **only from existing kit classes** (design D8 maps each need to one): shell for layout,
+      `.card`/`.field`/`.input`/`.btn` for the form, `.list`/`.mono` for Stories, `.badge-*` for
+      state and labels, `.state` and `.state-error` for the two *different* empty states from 5.4,
+      `.empty-value` for absent fields.
+- [ ] 6.2 If the page genuinely needs something the kit lacks, **add it to
+      `docs/design-system/ui-kit/` and regenerate** — never inline a style in the screen. A
+      component invented in a feature is how a second source of truth begins.
+- [ ] 6.3 All copy through the typed i18n catalogue, following the content fundamentals: sentence
+      case, verb-first buttons, the documented empty/error patterns, the locked vocabulary
+      (Story, Connector), relative timestamps for recency.
+- [ ] 6.4 Verify: `pnpm lint`, `pnpm typecheck` and
+      `bash .claude/skills/aio-design/scripts/validate-design-system.sh` all pass; the page is
+      checked in **both themes** with keyboard focus visible on every interactive element; the
+      "no Stories" and "last poll failed" states are visually distinct.
 
 ## 7. Tests
 

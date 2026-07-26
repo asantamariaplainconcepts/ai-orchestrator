@@ -145,6 +145,46 @@ merge local edits, because there are none; the mirror is read-only to the applic
 it introduces "what did we miss" states that full reconciliation simply does not have. Revisit if a
 repository is large enough to make full comparison hurt.
 
+### D8 — The page is assembled from the existing kit, and anything missing goes to L1 first
+
+UI work routes through the `aio-design` skill and the design system is a **CI-enforced gate**, not
+a convention: raw hex, raw pixels, an unapproved font, or hardcoded copy each fail the lint lane.
+
+The kit was checked against what this page actually needs, and it already covers all of it:
+
+| The page needs | Existing kit |
+|---|---|
+| Page shell, header | `.app-shell`, `.app-header`, `.app-main` |
+| Connector configuration form | `.card`, `.field`, `.label`, `.input`, `.btn`, `.btn-primary` |
+| Story list with vendor ids | `.list`, `.list-row`, `.list-title`, `.mono` (tabular figures) |
+| Story state and labels | `.badge-*` variants |
+| Empty · loading · **failed** | `.state` and `.state-error` — which is what makes the two distinct empty states of D6 renderable without inventing anything |
+| Absent values | `.empty-value` (em dash) |
+
+**If something is genuinely missing, it is added to `docs/design-system/ui-kit/` and regenerated —
+never inlined in the screen.** A component invented in a feature is how a second source of truth
+starts, which is the failure the whole system exists to prevent.
+
+Copy follows the content fundamentals: sentence case, verb-first buttons ("Configure connector",
+"Refresh backlog"), the documented empty/error patterns, and the locked vocabulary — it is a
+**Story**, read through a **Connector**. Relative timestamps for recency ("synced 2 minutes ago"),
+absolute past a day.
+
+### D9 — Story *fields* are normalised; Story *state values* stay the vendor's, for now
+
+The connector seam normalises the field **set** — id, title, state, labels — so no vendor SDK type
+escapes the implementation. It does **not** yet normalise the state *values*: a GitHub Story
+carries GitHub's state.
+
+This is deliberate restraint. Defining a canonical state vocabulary from a single vendor is
+guessing at the mapping the second vendor will need, and Azure DevOps' work-item states are
+exactly what **OPN-003** is open about. Inventing `Open`/`Closed` now would either constrain that
+decision or be rewritten by it.
+
+So: the UI renders the vendor's state string, and the cross-vendor mapping becomes part of closing
+OPN-003 — where it can be decided against two real vendors instead of one imagined one. Recorded
+so a reviewer sees a deferred decision rather than an oversight.
+
 ## Risks
 
 - **A second module could reveal the boundary rules are wrong.** That is the point of D1's

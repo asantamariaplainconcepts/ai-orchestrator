@@ -30,6 +30,13 @@ vendor's implementation.
 - **THEN** the mapping happens inside that vendor's implementation, and the rest of the system
   sees the product's vocabulary (DEC-005)
 
+#### Scenario: state values are not yet normalised
+
+- **WHEN** a Story's state is read from a vendor
+- **THEN** the vendor's own state value is carried through, because a canonical state vocabulary
+  cannot be chosen from one vendor — that mapping belongs to closing OPN-003, against two real
+  vendors rather than one imagined one
+
 ### Requirement: the Backlog module owns its data and references projects by identity
 
 The Backlog module SHALL own the Connector and Story data and SHALL reference a Project by its
