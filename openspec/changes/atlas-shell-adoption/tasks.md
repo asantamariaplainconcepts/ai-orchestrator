@@ -16,6 +16,11 @@ each step verified in both themes before the next builds on it.
       `.stat-card` (+ semantic left-border variants).
 - [x] 1.3 Regenerate `DESIGN.md` and the runtime adapter; verify the drift gate passes and **no
       new token** was needed (the README records the palette as sufficient — prove it).
+      **Outcome: the proof failed, usefully.** Two tokens were needed, both from measurement:
+      `--ls-caps` (no uppercase label existed before the sidebar) and `--brand-text` (dark
+      active-nav text measured 3.55:1 — the dark `--brand` is tuned for white text *on* it).
+      Recorded in the README's divergences; the *colour palette* claim held, the type/tracking
+      claim did not.
 
 ## 2. The shell in the app
 
@@ -34,8 +39,10 @@ each step verified in both themes before the next builds on it.
 - [x] 3.1 Stories as `.table`: vendor id numeric-right, title, labels as pills, state as a
       status pill with leading dot; `—` via `.empty-value` for absent fields.
 - [x] 3.2 Stat-card row above the table, every value computed from the live response only:
-      story count, open count, trigger-labelled count, connector health. A fact the response
-      cannot yield is not shown.
+      story count, open count, labelled count, connector health. A fact the response cannot
+      yield is not shown. **Amended during implementation:** "trigger-labelled" was itself an
+      invented metric — no Automation exists to define a trigger until #14 — so the card shows
+      "Labelled" (≥1 label), and the spec delta says so.
 - [x] 3.3 The three absences (no Connector / no Stories / poll failed) keep distinct copy and
       treatment inside the new layout.
 
