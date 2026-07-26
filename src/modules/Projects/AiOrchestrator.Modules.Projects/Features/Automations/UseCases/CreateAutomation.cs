@@ -1,0 +1,193 @@
+using AiOrchestrator.BuildingBlocks.Api;
+using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Modules;
+using AiOrchestrator.Modules.Projects.Domain;
+using AiOrchestrator.Modules.Projects.Persistence;
+using ErrorOr;
+using FluentValidation;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.EntityFrameworkCore;
+
+namespace AiOrchestrator.Modules.Projects.Features.Automations.UseCases;
+
+/// <summary>
+/// UC-005 — an Admin says what a trigger label makes an Agent do.
+/// <para>
+/// The interesting part is the refusal: BR-003 forbids two enabled Automations whose triggers
+/// could match one Story, and DEC-033 puts that gate at save time so the runtime never has to
+/// choose between two matches.
+/// </para>
+/// </summary>
+sealed class CreateAutomation : IUseCase
+{
+    /// <summary>BR-005's default; an Admin may override per Automation.</summary>
+    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(30);
+
+    public static void AddRoutes(IEndpointRouteBuilder endpoints) =>
+        endpoints
+            .MapPost(
+                "/api/projects/{projectId:guid}/automations",
+                async (
+                    Guid projectId,
+                    Request request,
+                    ISender sender,
+                    CancellationToken cancellationToken
+                ) =>
+                {
+                    var command = new Command(
+                        projectId,
+                        request.TriggerLabel,
+                        request.TriggerState,
+                        request.Action,
+                        request.Runtime,
+                        request.RequiresApproval,
+                        request.TimeoutMinutes
+                    );
+
+                    var result = await sender.Send(command, cancellationToken);
+
+                    return result.Match(
+                        response =>
+                            Results.Created(
+                                $"/api/projects/{projectId}/automations/{response.Id}",
+                                response
+                            ),
+                        ApiResults.Problem
+                    );
+                }
+            )
+            .WithName(nameof(CreateAutomation))
+            .WithTags("Automations");
+
+    internal sealed record Request(
+        string TriggerLabel,
+        string? TriggerState,
+        string Action,
+        string Runtime,
+        bool RequiresApproval,
+        int? TimeoutMinutes
+    );
+
+    internal sealed record Response(
+        Guid Id,
+        string TriggerLabel,
+        string? TriggerState,
+        string Action,
+        string Runtime,
+        bool RequiresApproval,
+        int TimeoutMinutes,
+        bool Enabled
+    );
+
+    internal sealed record Command(
+        Guid ProjectId,
+        string TriggerLabel,
+        string? TriggerState,
+        string Action,
+        string Runtime,
+        bool RequiresApproval,
+        int? TimeoutMinutes
+    ) : ICommand<ErrorOr<Response>>;
+
+    internal sealed class Validator : AbstractValidator<Command>
+    {
+        public Validator()
+        {
+            RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
+            RuleFor(command => command.TriggerState).MaximumLength(100);
+
+            // Parseable-to-the-enum is input validation, not a domain rule: an unknown action is
+            // a malformed request, never a business conflict.
+            RuleFor(command => command.Action)
+                .Must(value => Enum.TryParse<AutomationAction>(value, out _))
+                .WithMessage(
+                    $"Action must be one of: {string.Join(", ", Enum.GetNames<AutomationAction>())}."
+                );
+
+            RuleFor(command => command.Runtime)
+                .Must(value => Enum.TryParse<AgentRuntime>(value, out _))
+                .WithMessage(
+                    $"Runtime must be one of: {string.Join(", ", Enum.GetNames<AgentRuntime>())}."
+                );
+
+            RuleFor(command => command.TimeoutMinutes)
+                .InclusiveBetween(1, 720)
+                .When(command => command.TimeoutMinutes.HasValue);
+        }
+    }
+
+    internal sealed class Handler(ProjectsDbContext database)
+        : IAppCommandHandler<Command, ErrorOr<Response>>
+    {
+        public async Task<ErrorOr<Response>> Handle(
+            Command command,
+            CancellationToken cancellationToken
+        )
+        {
+            var projectExists = await database.Projects.AnyAsync(
+                project => project.Id == command.ProjectId,
+                cancellationToken
+            );
+
+            if (!projectExists)
+            {
+                return ProjectErrors.NotFound(command.ProjectId);
+            }
+
+            var candidate = Automation.Create(
+                command.ProjectId,
+                command.TriggerLabel,
+                string.IsNullOrWhiteSpace(command.TriggerState) ? null : command.TriggerState,
+                Enum.Parse<AutomationAction>(command.Action),
+                Enum.Parse<AgentRuntime>(command.Runtime),
+                command.RequiresApproval,
+                command.TimeoutMinutes is { } minutes
+                    ? TimeSpan.FromMinutes(minutes)
+                    : DefaultTimeout
+            );
+
+            // Only this Project's Automations can conflict, and only on the same label — so the
+            // comparison set is small enough to evaluate in memory, where the domain rule lives.
+            // Pushing Overlaps() into SQL would split the rule across two languages.
+            var candidates = await database
+                .Automations.Where(existing =>
+                    existing.ProjectId == command.ProjectId
+                    && existing.TriggerLabel == command.TriggerLabel
+                )
+                .ToListAsync(cancellationToken);
+
+            if (candidates.Find(candidate.Overlaps) is { } conflict)
+            {
+                return ProjectErrors.TriggerOverlaps(
+                    command.TriggerLabel,
+                    candidate.TriggerState,
+                    Describe(conflict)
+                );
+            }
+
+            database.Automations.Add(candidate);
+            await database.SaveChangesAsync(cancellationToken);
+
+            return ToResponse(candidate);
+        }
+
+        static string Describe(Automation automation) =>
+            automation.TriggerState is null
+                ? $"'{automation.TriggerLabel}' (any state)"
+                : $"'{automation.TriggerLabel}' in state '{automation.TriggerState}'";
+    }
+
+    internal static Response ToResponse(Automation automation) =>
+        new(
+            automation.Id,
+            automation.TriggerLabel,
+            automation.TriggerState,
+            automation.Action.ToString(),
+            automation.Runtime.ToString(),
+            automation.RequiresApproval,
+            (int)automation.Timeout.TotalMinutes,
+            automation.Enabled
+        );
+}
