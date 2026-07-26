@@ -26,4 +26,29 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
                 automation.RequiresApproval
             ))
             .ToListAsync(cancellationToken);
+
+    public async Task<AutomationDetail?> Detail(
+        Guid projectId,
+        Guid automationId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        // Materialise then project: the detail carries enum names, and ToString() inside an EF
+        // projection translates to SQL rather than evaluating in .NET (the #7 lesson).
+        var automation = await database.Automations.FirstOrDefaultAsync(
+            entity => entity.Id == automationId && entity.ProjectId == projectId && entity.Enabled,
+            cancellationToken
+        );
+
+        return automation is null
+            ? null
+            : new AutomationDetail(
+                automation.Id,
+                automation.TriggerLabel,
+                automation.Action.ToString(),
+                automation.Runtime.ToString(),
+                automation.RequiresApproval,
+                automation.Timeout
+            );
+    }
 }

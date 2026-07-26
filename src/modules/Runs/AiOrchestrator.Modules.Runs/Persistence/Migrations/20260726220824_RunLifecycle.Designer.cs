@@ -3,6 +3,7 @@ using System;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace AiOrchestrator.Modules.Runs.Persistence.Migrations
 {
     [DbContext(typeof(RunsDbContext))]
-    partial class RunsDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260726220824_RunLifecycle")]
+    partial class RunLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
