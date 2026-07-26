@@ -31,4 +31,6 @@ export const api = {
   get: <TResponse>(path: string) => request<TResponse>(path),
   post: <TResponse>(path: string, body: unknown) =>
     request<TResponse>(path, { method: "POST", body: JSON.stringify(body) }),
+  put: <TResponse>(path: string, body: unknown) =>
+    request<TResponse>(path, { method: "PUT", body: JSON.stringify(body) }),
 };
