@@ -27,3 +27,13 @@ sessions.jsonl
 .DS_Store
 .idea/
 .vscode/
+
+# Terraform — state carries generated credentials in cleartext, and tfvars carries the
+# subscription id. Neither may reach this public repository (BR-010, DEC-022 posture).
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+*.tfvars.json
+backend.hcl
+crash.log

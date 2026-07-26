@@ -26,6 +26,7 @@ jobs:
       frontend: ${{ steps.scope.outputs.frontend }}
       openspec: ${{ steps.scope.outputs.openspec }}
       e2e: ${{ steps.scope.outputs.e2e }}
+      infra: ${{ steps.scope.outputs.infra }}
       workflows: ${{ steps.scope.outputs.workflows }}
     steps:
       # Only push events need a checkout to diff; PR events use the API.
@@ -42,6 +43,7 @@ jobs:
               - '**'
               - '!openspec/**'
               - '!docs/**'
+              - '!infra/**'
               - '!**/*.md'
             backend:
               - 'src/**'
@@ -58,6 +60,8 @@ jobs:
             e2e:
               - 'src/**'
               - '.config/**'
+            infra:
+              - 'infra/**'
             workflows:
               - '.github/**'
 
@@ -79,6 +83,12 @@ jobs:
     needs: [changes, build-test]
     if: needs.changes.outputs.e2e == 'true' || needs.changes.outputs.workflows == 'true'
     uses: ./.github/workflows/e2e.yml
+
+  # Infrastructure is validated, never applied, by CI (design D7).
+  terraform:
+    needs: changes
+    if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
+    uses: ./.github/workflows/terraform.yml
 
   # Spec-only PRs skip the heavy lanes, so the spec change is validated here instead.
   openspec-validate:

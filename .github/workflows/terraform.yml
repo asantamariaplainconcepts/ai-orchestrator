@@ -1,0 +1,49 @@
+name: Terraform
+
+# Validation only. Apply is a human action with their own Azure identity (design D7): this
+# workflow has no credentials and requests none, so the worst it can do to the subscription is
+# nothing.
+on:
+  workflow_call:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          # Pinned rather than latest: a Terraform upgrade should be a visible commit, not a
+          # silent change in what CI accepts.
+          terraform_version: 1.15.6
+          terraform_wrapper: false
+
+      - name: Check formatting
+        run: terraform fmt -check -recursive infra
+
+      # -backend=false is what makes this runnable without credentials: it initialises the
+      # providers for validation without touching the remote state.
+      - name: Initialise providers
+        working-directory: infra/dev
+        run: terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        working-directory: infra/dev
+        run: terraform validate
+
+      # The shell scripts are part of the infrastructure and break the same way code does.
+      - name: Install shellcheck
+        run: sudo apt-get update && sudo apt-get install -y shellcheck
+
+      - name: Check the infra scripts
+        run: shellcheck infra/*.sh
+
+      # A green that proves nothing is worse than a red (ADR-0004). If the steps above were
+      # skipped by a filter mistake, this fails rather than reporting success.
+      - name: Confirm the configuration was actually checked
+        working-directory: infra/dev
+        run: |
+          set -euo pipefail
+          test -d .terraform || { echo "terraform init did not run — this lane proved nothing"; exit 1; }
+          echo "Terraform configuration validated."
