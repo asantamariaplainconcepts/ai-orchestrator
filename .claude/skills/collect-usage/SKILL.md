@@ -20,6 +20,20 @@ Produce one per-change usage summary from persisted telemetry — one responsibi
 3. **Aggregate.** Sum `active_time.total{type=user}` (human) and `{type=cli}` (agent) into hours; sum cost and tokens. Values are raw deltas — sum them directly.
    - Done when: human hours, agent hours, cost, and tokens are computed for the change.
 4. **Emit.** Return a compact summary: human time, agent time, cost (USD), tokens — ready for the retro-log entry. If sessions are mapped but their records predate the export's history (data lost to truncation before `append: true` landed), report that explicitly.
+
+## When there is no telemetry
+
+**Run `node .config/otel/verify-telemetry.mjs` and report which checks failed.** Missing telemetry
+is a **defect to surface**, not a footnote to absorb.
+
+This step exists because the old wording — "if telemetry is missing, the entry says so (manual)"
+— was a documented shrug, and four consecutive changes used it. Each retro looked complete; the
+programme quietly lost every measurement it was built to collect. Nothing recovers telemetry that
+was never written, so the cost of one more silent "manual" is permanent.
+
+A retro whose time source is `manual` **because capture is broken** must say so and name the
+failing check. `manual` is legitimate only when telemetry was working and the change genuinely
+predates it.
    - Done when: the summary is handed back to the caller (e.g. `/aio:refine`).
 
 ## Do not
