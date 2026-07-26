@@ -12,7 +12,8 @@ rest; DEC-030's one-PAT shape and DEC-014's vault placement are unchanged.
 
 Per the CLI's documented result schema, `--output-format json` emits a terminal object with
 `is_error`, `result`, `total_cost_usd` and a `usage` block. **This is not yet observed** — the
-CLI is not runnable in the authoring session. Spike task 0 runs the pinned CLI inside the job
+CLI is not runnable in the authoring session. (What IS observed: the pinned CLI 2.0.44
+installs and answers `--version` inside the built job image.) Spike task 0 runs the pinned CLI inside the job
 container image and records the observed shape here before the parser is trusted; the spike
 needs an operator-supplied AI credential in the spike shell. Until observed, the parser is
 written defensively: any miss on usage/cost yields null, and BR-011 makes null safe
