@@ -1,5 +1,7 @@
 using AiOrchestrator.BuildingBlocks.Modules;
+using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.ServiceDefaults;
+using AiOrchestrator.ServiceDefaults.Secrets;
 using Microsoft.Extensions.Hosting;
 
 // The migration step as its own process, not a side effect of the Server starting. The AppHost
@@ -15,6 +17,10 @@ using Microsoft.Extensions.Hosting;
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
+
+// Same secret composition as the Server: the connection string is a vault secret in Azure and
+// plain configuration locally, and the migrator must reach it the same way the app does.
+builder.AddSecretResolution();
 
 var modules = ModuleRegistration.Discover();
 builder.Services.AddModules(modules, builder.Configuration);

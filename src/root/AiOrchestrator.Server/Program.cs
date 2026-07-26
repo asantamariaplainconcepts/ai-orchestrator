@@ -3,6 +3,7 @@ using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.ServiceDefaults;
+using AiOrchestrator.ServiceDefaults.Secrets;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -25,9 +26,9 @@ builder.Services.AddVsaCqsArchitecture(modules.Assemblies());
 
 // Secret-store wiring lives here because IModule.Add receives only IServiceCollection and
 // IConfiguration — a module structurally cannot call an IHostApplicationBuilder extension, which
-// is what Aspire's client integrations are. #8 swaps this for the Key Vault resolver behind the
-// same interface, changing no call site (design D3).
-builder.Services.AddSingleton<ISecretResolver, ConfigurationSecretResolver>();
+// is what Aspire's client integrations are (design D3). Key Vault when a vault URI is
+// configured, configuration otherwise; the swap #7 promised, costing one line and no call site.
+builder.AddSecretResolution();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
