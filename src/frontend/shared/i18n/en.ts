@@ -119,6 +119,7 @@ export const en = {
   "runs.table.dispatched": "Dispatched",
   "runs.table.output": "Output",
   "runs.table.cost": "Cost",
+  "runs.table.openOutput": "View PR",
 
   // Table headers.
   "backlog.table.id": "#",

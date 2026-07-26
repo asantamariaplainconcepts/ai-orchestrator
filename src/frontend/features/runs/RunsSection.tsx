@@ -98,10 +98,16 @@ export function RunsSection({
                       <span className="empty-value">—</span>
                     )}
                   </td>
-                  {/* No producer yet (#19 output, #25 cost) — absent data shown as absent. */}
                   <td>
-                    <span className="empty-value">—</span>
+                    {run.outputLink ? (
+                      <a href={run.outputLink} target="_blank" rel="noreferrer">
+                        {t("runs.table.openOutput")}
+                      </a>
+                    ) : (
+                      <span className="empty-value">—</span>
+                    )}
                   </td>
+                  {/* No producer yet (#25 cost) — absent data shown as absent. */}
                   <td>
                     <span className="empty-value">—</span>
                   </td>
@@ -117,11 +123,13 @@ export function RunsSection({
 
 function StatePill({ state }: { state: RunView["state"] }) {
   const className =
-    state === "Executing" || state === "Planning"
+    state === "Executing" || state === "Planning" || state === "Succeeded"
       ? "pill pill-ok"
       : state === "AwaitingApproval"
         ? "pill pill-warn"
-        : "pill pill-neutral";
+        : state === "Failed"
+          ? "pill pill-danger"
+          : "pill pill-neutral";
   return <span className={className}>{state}</span>;
 }
 
