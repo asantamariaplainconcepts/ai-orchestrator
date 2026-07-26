@@ -51,6 +51,15 @@ resource "azurerm_role_assignment" "dispatch_vault_read" {
 # Data-plane access to the queue. "Storage Account Contributor" would also work and is what many
 # samples reach for; it is management-plane and far too much — this identity needs to read and
 # delete messages, not administer the account.
+# The portal enqueues (matching, #17). Message Sender alone will not do: IRunDispatcher's
+# contract includes ensuring the queue exists (CreateIfNotExists), and that PUT needs
+# queues/write — a sender-only identity gets 403 on the probe even when the queue is there.
+resource "azurerm_role_assignment" "portal_queue_data" {
+  scope                = azurerm_storage_account.dispatch.id
+  role_definition_name = "Storage Queue Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.workload.principal_id
+}
+
 resource "azurerm_role_assignment" "dispatch_queue_data" {
   scope                = azurerm_storage_account.dispatch.id
   role_definition_name = "Storage Queue Data Contributor"

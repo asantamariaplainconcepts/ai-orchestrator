@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Connectors;
+using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Backlog.Features.Backlog;
 using AiOrchestrator.Modules.Backlog.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -50,6 +51,9 @@ public sealed class BacklogModule : ModuleBase
         services.AddScoped<IBacklogConnector, GitHubBacklogConnector>();
 
         services.AddScoped<BacklogSynchroniser>();
+
+        // The Contracts read surface — the owner registers its own implementation.
+        services.AddScoped<IStoryReader, StoryReader>();
 
         var gitHubBaseAddress = configuration.GetValue<string?>("Backlog:GitHub:BaseAddress");
         var options = new BacklogOptions

@@ -3,6 +3,7 @@ using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.ServiceDefaults;
+using AiOrchestrator.ServiceDefaults.Dispatch;
 using AiOrchestrator.ServiceDefaults.IntegrationEvents;
 using AiOrchestrator.ServiceDefaults.Secrets;
 using Scalar.AspNetCore;
@@ -34,6 +35,9 @@ builder.AddSecretResolution();
 // Integration events: modules publish and subscribe through the BuildingBlocks seam; CAP and
 // its outbox live behind it. Composed here because a module structurally cannot (design D1).
 builder.AddIntegrationEvents();
+
+// The producer side of dispatch: matching (Runs module) enqueues through IRunDispatcher.
+builder.AddRunDispatch();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

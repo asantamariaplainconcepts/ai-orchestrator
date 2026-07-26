@@ -11,6 +11,7 @@
     <!-- Modules are discovered at runtime, but must be built and copied beside the host. -->
     <ProjectReference Include="..\..\modules\Projects\AiOrchestrator.Modules.Projects\AiOrchestrator.Modules.Projects.csproj" />
     <ProjectReference Include="..\..\modules\Backlog\AiOrchestrator.Modules.Backlog\AiOrchestrator.Modules.Backlog.csproj" />
+    <ProjectReference Include="..\..\modules\Runs\AiOrchestrator.Modules.Runs\AiOrchestrator.Modules.Runs.csproj" />
   </ItemGroup>
 
   <ItemGroup>

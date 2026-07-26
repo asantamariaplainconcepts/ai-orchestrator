@@ -1,0 +1,24 @@
+namespace AiOrchestrator.Modules.Backlog.Contracts;
+
+/// <summary>
+/// The read surface for mirrored Stories. <see cref="StoryChanged"/> deliberately carries
+/// identity only; a consumer that needs labels or state reads current truth here (BR-008 — the
+/// vendor is the source of truth, and the mirror is its local copy).
+/// </summary>
+public interface IStoryReader
+{
+    /// <summary>The Story's current snapshot, or null when the mirror no longer holds it.</summary>
+    Task<StorySnapshot?> Find(
+        Guid projectId,
+        string vendorStoryId,
+        CancellationToken cancellationToken = default
+    );
+}
+
+/// <summary>Current truth at read time — labels and state in the vendor's own vocabulary.</summary>
+public sealed record StorySnapshot(
+    Guid ProjectId,
+    string VendorStoryId,
+    string State,
+    IReadOnlyList<string> Labels
+);

@@ -389,3 +389,28 @@ times in the project this framework came from.
   and has continued through compaction, so it still cannot measure itself).
 - **ADR:** none new. The stray-tree finding is tooling hygiene, not workflow; the fence pattern
   is a first occurrence — graduate it if a second negative-assertion flake appears.
+
+## 2026-07-26 — story-automation-matching
+
+- **Worked:** The loop closed on the first full test run — and it did so because every piece it
+  stands on had been proven in its own change first: the event substrate's rollback and delivery
+  semantics (#41), the queue's wire pinning (#16), the overlap gate (#14). The only integration
+  defect the tier found was a composition gap, not a behaviour gap: nothing had ever made the
+  Server the dispatch *producer*, so `IRunDispatcher` was simply absent from its container. DI
+  validation caught it at host boot — a failure mode measured in minutes. The fence pattern from
+  the #41 retro was reused verbatim for every negative assertion, first reuse of a retro finding
+  within twenty-four hours of writing it down.
+- **Didn't:** The Server gaining a startup requirement (`ConnectionStrings__queues`) silently
+  obsoleted the deployed portal's environment — the code change was green everywhere while the
+  infrastructure it implied was missing. It was caught by asking "who else composes this?"
+  rather than by any gate; nothing in CI relates a host's configuration demands to what the
+  Terraform actually provides. The apply itself was left to the operator (human-applies policy),
+  so the portal has a window where deploying a new image would crash at startup until
+  `terraform apply` runs.
+- **Next time:** when a change adds a *fail-at-startup* configuration requirement to a host,
+  grep the infra for that host's env block in the same sitting — the requirement and the
+  provision must land in the same PR, and the operator note must say "apply before next deploy".
+- **Time invested:** not measured (source: **manual** — seventh consecutive; same standing cause
+  as the previous entries, the fix has still not seen a fresh process start).
+- **ADR:** none new. "A host's startup requirements and the infra that satisfies them belong to
+  the same change" is a first occurrence; graduate it if a second config-drift window appears.

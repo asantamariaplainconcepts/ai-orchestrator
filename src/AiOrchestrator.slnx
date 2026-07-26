@@ -2,6 +2,8 @@
   <Folder Name="/modules/" />
   <Folder Name="/modules/Backlog/">
     <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog.Contracts/AiOrchestrator.Modules.Backlog.Contracts.csproj" />
+    <Project Path="modules/Projects/AiOrchestrator.Modules.Projects.Contracts/AiOrchestrator.Modules.Projects.Contracts.csproj" />
+    <Project Path="modules/Runs/AiOrchestrator.Modules.Runs/AiOrchestrator.Modules.Runs.csproj" />
     <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog/AiOrchestrator.Modules.Backlog.csproj" />
   </Folder>
   <Folder Name="/modules/Projects/">
@@ -31,6 +33,7 @@
   </Folder>
   <Folder Name="/tests/modules/Projects/">
     <Project Path="tests/modules/Projects/AiOrchestrator.Modules.Projects.FunctionalTests/AiOrchestrator.Modules.Projects.FunctionalTests.csproj" />
+    <Project Path="tests/modules/Runs/AiOrchestrator.Modules.Runs.FunctionalTests/AiOrchestrator.Modules.Runs.FunctionalTests.csproj" />
     <Project Path="tests/modules/Projects/AiOrchestrator.Modules.Projects.UnitTests/AiOrchestrator.Modules.Projects.UnitTests.csproj" />
   </Folder>
 </Solution>

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <RootNamespace>AiOrchestrator.Modules.Projects</RootNamespace>
+    <RootNamespace>AiOrchestrator.Modules.Runs</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -8,12 +8,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- BuildingBlocks plus the two Contracts surfaces this module reads through. There is
+         deliberately NO reference to any implementation assembly and no infrastructure SDK —
+         the boundary the guardrail suite pins. -->
     <ProjectReference Include="..\..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\Backlog\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
+    <ProjectReference Include="..\..\Projects\AiOrchestrator.Modules.Projects.Contracts\AiOrchestrator.Modules.Projects.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="ErrorOr" />
-    <PackageReference Include="FluentValidation" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
     <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks.EntityFrameworkCore" />
@@ -21,12 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Tests drive the module's internals (DbContext, handlers) directly; the module's public
-         surface stays empty by design (MOD003/MOD001). -->
-    <InternalsVisibleTo Include="AiOrchestrator.Modules.Projects.UnitTests" />
-    <InternalsVisibleTo Include="AiOrchestrator.Modules.Projects.FunctionalTests" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\AiOrchestrator.Modules.Projects.Contracts\AiOrchestrator.Modules.Projects.Contracts.csproj" />
+    <InternalsVisibleTo Include="AiOrchestrator.Modules.Runs.FunctionalTests" />
   </ItemGroup>
 </Project>

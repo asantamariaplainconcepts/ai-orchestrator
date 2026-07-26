@@ -27,6 +27,8 @@
   <ItemGroup>
     <InternalsVisibleTo Include="AiOrchestrator.Modules.Backlog.UnitTests" />
     <InternalsVisibleTo Include="AiOrchestrator.Modules.Backlog.FunctionalTests" />
+    <!-- The Runs functional tier drives matching end-to-end and stubs the vendor at the same seam. -->
+    <InternalsVisibleTo Include="AiOrchestrator.Modules.Runs.FunctionalTests" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
