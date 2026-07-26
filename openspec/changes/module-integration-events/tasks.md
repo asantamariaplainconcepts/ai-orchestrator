@@ -5,12 +5,12 @@ Then the seam, the first event, and the guardrails that keep the boundary honest
 
 ## 0. The spike: prove redelivery
 
-- [ ] 0.1 A throwaway console pair against Postgres: publish via CAP (in-memory transport +
+- [x] 0.1 A throwaway console pair against Postgres: publish via CAP (in-memory transport +
       Postgres storage), kill the process before the consumer completes, restart, observe.
       **Pass:** the event is delivered after restart. **Fail:** switch the design to CAP's
       storage-polling transport and record the latency cost in design D3. Either way, write the
       observed behaviour into D3 — observed, not assumed.
-- [ ] 0.2 In the same spike: confirm CAP's storage init can be disabled app-side and run
+- [x] 0.2 In the same spike: confirm CAP's storage init can be disabled app-side and run
       standalone (for the MigrationService). If it cannot, record D5's fallback as active.
 
 ## 1. The seam (BuildingBlocks)

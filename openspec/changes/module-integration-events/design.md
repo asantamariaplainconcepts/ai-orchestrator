@@ -33,9 +33,25 @@ module's `SaveChanges`. That is the property that makes events trustworthy: a St
 its announcement commit or roll back together. Delivery then happens in-process (in-memory
 transport) with the stored message as the source of truth for redelivery.
 
-**Hypothesis to prove, not assume (task 0):** a message published-and-persisted but not yet
-consumed at process death is redelivered after restart. If the spike disproves it, transport
-moves to CAP's storage-polling mode and this section records the change and its latency cost.
+**Spike results (task 0, run 2026-07-26 against CAP 10.0.1 + Postgres 18 — observed, not
+assumed):**
+
+- **The dominant crash window survives.** Killed with `Environment.FailFast` while a handler was
+  blocked mid-execution: `cap.received` already held the message as `Scheduled`, and after
+  restart the retry processor re-executed it. Redelivery proven.
+- **A residual loss window exists and is accepted.** Between the broker-send succeeding and the
+  consumer persisting its `received` row, the in-memory channel is volatile; a death exactly
+  there loses the delivery (architecturally — the spike demonstrated the adjacent case, where a
+  send with no subscriber went `Failed`). The consequence: a lost `StoryChanged` is not
+  re-emitted next poll, because nothing changed again. MVP accepts this; the remedies are the
+  BR-013 *Run now* path and, if it ever bites in practice, a reconciliation sweep in the matcher
+  — recorded here so it is a decision, not a surprise.
+- **Retry exhaustion is terminal and silent by default.** A message that fails its
+  `FailedRetryCount` sends stays `Failed` forever with nothing automatic touching it — the
+  telemetry-shrug shape again. The composition therefore wires CAP's failure threshold callback
+  to a loud log from day one; #17 owns surfacing it operationally.
+- `FallbackWindowLookbackSeconds` (default 240) gates how quickly restarts redeliver; the
+  composition sets it deliberately rather than inheriting a number nobody chose.
 
 ## D4 — At-least-once, said out loud
 
@@ -54,10 +70,12 @@ default is a policy nobody chose. Exhausted retries land in CAP's failed table a
 ## D5 — CAP's schema belongs to the MigrationService
 
 CAP creates its storage tables at first use by default. That is an app migrating at startup —
-the exact behaviour two changes were spent removing. The MigrationService initialises CAP's
-storage (own schema, `cap`); the Server and workers get initialisation disabled. If CAP turns
-out not to support disabling it (task 0 verifies), the fallback is pinning table creation to the
-MigrationService by ordering — recorded here so the compromise is visible.
+the exact behaviour two changes were spent removing. **Spike verdict: the fallback is active.**
+CAP 10 exposes no switch to disable its initializer; it runs idempotent `CREATE IF NOT EXISTS`
+at every startup. Resolution: the MigrationService creates the `cap` schema and tables first
+(running CAP's own initializer), so the app-side init is a structural no-op. The invariant
+narrows honestly from "the Server executes no DDL" to "the Server's DDL is a no-op by
+construction" — written down rather than discovered.
 
 ## D6 — Reads cross the boundary through Contracts, not events
 
