@@ -257,3 +257,31 @@ times in the project this framework came from.
   session telemetry; the SessionStart mapping hook is raised as its own spec-less issue).
 - **ADR:** none — *a proposal stated a hypothesis as a fact* is a **first** occurrence;
   graduate it if it recurs.
+
+## 2026-07-26 — azure-dev-infrastructure
+
+- **Worked:** The migration gate proved itself under real failure, **twice** — two broken deploys
+  stopped before the portal revision moved, and the site was never down. The `ISecretResolver`
+  seam paid off exactly as #7 promised: one line changed per host, zero module edits, and zero
+  KeyVault packages reachable from a module even transitively. And
+  [ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md) is what made
+  "done" mean something — the acceptance check was a `POST` returning 201 with the created
+  entity and a `GET` reading it back, not a health endpoint any fallback page could satisfy.
+- **Didn't:** **Four defects, none visible from the configuration.** Key Vault and ACR names are
+  globally unique and `kv-aio-dev` was already a stranger's. A system-assigned identity
+  deadlocks against its own `AcrPull` grant — the app sat `InProgress` for seventeen minutes
+  waiting on a permission Terraform was waiting on the app to enable. The migration image needed
+  the `aspnet` base despite serving nothing. And nothing bridged a secret *name* to EF Core's
+  connection string, because BR-010 resolves per use while EF reads once. Each apply that failed
+  left partial state behind, which made every retry slower than the last.
+- **Next time:** front-load the cheap reality checks in an infra change — name availability,
+  provider registration, identity ordering — instead of meeting each one mid-apply with
+  half-created resources on the ground.
+- **Time invested:** not measured (source: **manual** — third consecutive change with no session
+  telemetry; [#34](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/34) tracks
+  the gap).
+- **ADR:** [ADR-0005](../adr/0005-a-claim-that-depends-on-verification-is-written-as-a-hypothesis.md)
+  — *a claim that depends on verification is written as a hypothesis until verified*. Second
+  occurrence of the shape [atlas-shell-adoption] recorded first ("no new token is expected"),
+  here as a Dockerfile comment asserting "this process serves nothing" that only running it
+  disproved. A different artifact from the first instance, which is what makes it general.

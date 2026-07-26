@@ -27,3 +27,4 @@ A decision that names no check stays advice; the loop exists to turn advice into
 | [0002](0002-test-tiers-must-not-provision-their-own-preconditions.md) | A test tier must not hide a precondition the application lacks | Accepted |
 | [0003](0003-a-derived-artifact-has-exactly-one-owner.md) | A derived artifact has exactly one owner | Accepted |
 | [0004](0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md) | A verification asserts the observable artifact, not a proxy signal | Accepted |
+| [0005](0005-a-claim-that-depends-on-verification-is-written-as-a-hypothesis.md) | A claim that depends on verification is written as a hypothesis until verified | Accepted |
