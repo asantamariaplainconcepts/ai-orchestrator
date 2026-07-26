@@ -499,3 +499,24 @@ times in the project this framework came from.
 - **ADR:** none new, but the guardrail-scope finding is a candidate on its second appearance;
   ADR-0004's family already covers the principle (a verifier must look where the failure
   lives).
+
+## 2026-07-27 — agent-implements-pr
+
+- **Worked:** run-visibility's em-dash decision paid out exactly as designed: OutputLink was a
+  data change — one migration, one API field, one cell — not a UI reshape, and the
+  exact-response-shape test flagged the field's arrival as a deliberate edit rather than
+  letting it slip in unreviewed. Separating the ceremony from the Agent (design D1) made the
+  entire flow testable without a credential: the fake workspace scripts each stage, and BR-005
+  runs through the runtime's *real* kill path via a sleeping script behind a documented
+  command seam.
+- **Didn't:** The first draft of the timeout test tripped CA1416 (SetUnixFileMode on Windows)
+  — the platform guard now states the honest scope: the job image is Linux, and there is no
+  Windows equivalent worth faking. The deployed proof is still ahead: no credentialed
+  end-to-end run has produced a real PR yet; the functional tier proves everything up to the
+  seams, and the first deployed run owns the rest (stated, per ADR-0005's discipline).
+- **Next time:** when a change's last mile needs a credential the session must not hold, write
+  the deployed-verification step into the issue that owns deployment rather than leaving it as
+  a retro footnote.
+- **Time invested:** not measured (source: **manual** — twelfth consecutive; same standing
+  cause).
+- **ADR:** none new.
