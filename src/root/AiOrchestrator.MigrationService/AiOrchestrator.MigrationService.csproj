@@ -1,5 +1,4 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <RootNamespace>AiOrchestrator.MigrationService</RootNamespace>
@@ -17,5 +16,4 @@
     <ProjectReference Include="..\..\modules\Projects\AiOrchestrator.Modules.Projects\AiOrchestrator.Modules.Projects.csproj" />
     <ProjectReference Include="..\..\modules\Backlog\AiOrchestrator.Modules.Backlog\AiOrchestrator.Modules.Backlog.csproj" />
   </ItemGroup>
-
 </Project>
