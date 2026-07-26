@@ -3,6 +3,7 @@ import { useParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
+import { useRunNow } from "@/features/runs/useRunNow";
 import { useProjects } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -12,6 +13,7 @@ import {
   useRefreshBacklog,
   useWriteStoryLabel,
 } from "./useBacklog";
+import { ApiError } from "@/shared/http/client";
 import type { ConnectorView } from "./types";
 
 /**
@@ -26,6 +28,11 @@ export function ProjectScreen() {
   const projects = useProjects();
   const automations = useAutomations(projectId);
   const writeLabel = useWriteStoryLabel(projectId);
+  const runNow = useRunNow(projectId);
+
+  // UC-012: chosen Story + Automation. One enabled Automation means one click; more mean the
+  // row carries a picker — the choice cannot be guessed on the Member's behalf.
+  const enabledAutomations = (automations.data ?? []).filter((automation) => automation.enabled);
 
   // UC-008's UI scope (design D4): only enabled Automations' trigger labels are actionable;
   // everything else the vendor's own UI already manages better.
@@ -151,6 +158,16 @@ export function ProjectScreen() {
             </p>
           )}
 
+          {/* BR-001's refusal is an answer, not a defect — say the rule; anything else is the
+              generic failure. */}
+          {runNow.isError && (
+            <p className="state state-error" role="alert">
+              {runNow.error instanceof ApiError && runNow.error.status === 409
+                ? t("runs.runNow.conflict")
+                : t("runs.runNow.failed")}
+            </p>
+          )}
+
           {backlog.data && !connector && <p className="state">{t("backlog.noConnector")}</p>}
 
           {backlog.data && connector && !connector.lastFailure && stories.length === 0 && (
@@ -166,6 +183,7 @@ export function ProjectScreen() {
                   <th>{t("backlog.table.labels")}</th>
                   <th>{t("backlog.table.state")}</th>
                   <th>{t("backlog.table.runs")}</th>
+                  <th>{t("backlog.table.runNow")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -242,6 +260,15 @@ export function ProjectScreen() {
                         {t("backlog.table.viewRuns")}
                       </a>
                     </td>
+                    <td>
+                      <RunNowControl
+                        automations={enabledAutomations}
+                        pending={runNow.isPending}
+                        onRun={(automationId) =>
+                          runNow.mutate({ vendorStoryId: story.vendorId, automationId })
+                        }
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -250,6 +277,50 @@ export function ProjectScreen() {
         </section>
       </div>
     </AppShell>
+  );
+}
+
+function RunNowControl({
+  automations,
+  pending,
+  onRun,
+}: {
+  automations: { id: string; triggerLabel: string }[];
+  pending: boolean;
+  onRun: (automationId: string) => void;
+}) {
+  const [selected, setSelected] = useState(automations[0]?.id ?? "");
+  const chosen = automations.find((automation) => automation.id === selected) ?? automations[0];
+
+  if (automations.length === 0) {
+    return <span className="empty-value">—</span>;
+  }
+
+  return (
+    <span className="row">
+      {automations.length > 1 && (
+        <select
+          className="input"
+          value={chosen?.id ?? ""}
+          onChange={(event) => setSelected(event.target.value)}
+          aria-label={t("runs.runNow.pickAutomation")}
+        >
+          {automations.map((automation) => (
+            <option key={automation.id} value={automation.id}>
+              {automation.triggerLabel}
+            </option>
+          ))}
+        </select>
+      )}
+      <button
+        className="btn btn-primary"
+        type="button"
+        disabled={pending || !chosen}
+        onClick={() => chosen && onRun(chosen.id)}
+      >
+        {pending ? t("runs.runNow.pending") : t("runs.runNow.button")}
+      </button>
+    </span>
   );
 }
 

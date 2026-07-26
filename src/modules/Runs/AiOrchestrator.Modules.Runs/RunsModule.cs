@@ -56,6 +56,9 @@ public sealed class RunsModule : ModuleBase
             }
         );
 
+        // The one creation path both matching and Run now share (BR-013).
+        services.AddScoped<RunCreator>();
+
         // The first consumer of the event stream: matching reacts to story changes.
         services.AddIntegrationEventHandler<StoryChanged, StoryChangedHandler>();
     }

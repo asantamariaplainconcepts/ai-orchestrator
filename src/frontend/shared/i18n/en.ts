@@ -134,6 +134,13 @@ export const en = {
   "backlog.labels.removeGlyph": "\u00d7",
   "backlog.table.runs": "Runs",
   "backlog.table.viewRuns": "View Runs",
+  "backlog.table.runNow": "Run now",
+  // Run now (UC-012): detection bypassed, rules kept — the copy says which rule refused.
+  "runs.runNow.button": "Run now",
+  "runs.runNow.pending": "Dispatching\u2026",
+  "runs.runNow.pickAutomation": "Choose the Automation to run",
+  "runs.runNow.conflict": "This Story already has an active Run \u2014 one active Run per Story.",
+  "runs.runNow.failed": "Could not dispatch the Run.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
