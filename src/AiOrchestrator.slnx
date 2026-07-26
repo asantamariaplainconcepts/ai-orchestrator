@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/root/">
     <Project Path="root/AiOrchestrator.AppHost/AiOrchestrator.AppHost.csproj" />
+    <Project Path="root/AiOrchestrator.DispatchWorker/AiOrchestrator.DispatchWorker.csproj" />
     <Project Path="root/AiOrchestrator.MigrationService/AiOrchestrator.MigrationService.csproj" />
     <Project Path="root/AiOrchestrator.Server/AiOrchestrator.Server.csproj" />
   </Folder>
@@ -18,6 +19,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AiOrchestrator.ArchTests/AiOrchestrator.ArchTests.csproj" />
+    <Project Path="tests/AiOrchestrator.DispatchTests/AiOrchestrator.DispatchTests.csproj" />
     <Project Path="tests/AiOrchestrator.EndToEndTests/AiOrchestrator.EndToEndTests.csproj" />
     <Project Path="tests/AiOrchestrator.SharedFunctionalTests/AiOrchestrator.SharedFunctionalTests.csproj" />
   </Folder>

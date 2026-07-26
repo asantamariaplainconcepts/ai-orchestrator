@@ -65,6 +65,36 @@ az containerapp job logs show -n caj-aio-dev-migrations -g rg-aio-dev \
   --container migrations --execution <name-printed-by-deploy>
 ```
 
+## Dispatch
+
+The dispatch queue, its worker job and their identity live in `dispatch.tf`. The job is
+KEDA-scaled on queue length and scales to zero.
+
+Enqueue a message by hand to exercise it:
+
+```bash
+az storage message put \
+  --queue-name "$(terraform -chdir=infra/dev output -raw dispatch_queue_name)" \
+  --account-name "$(terraform -chdir=infra/dev output -raw dispatch_queue_account)" \
+  --auth-mode login \
+  --content "$(printf '{"v":1,"runId":"%s"}' "$(uuidgen | tr 'A-Z' 'a-z')")"
+```
+
+**Send the JSON as-is — do not base64 it.** The .NET client's message encoding is `None`, so it
+reads the stored text verbatim. A pre-encoded message is claimed, found unparseable, and dropped
+(by design), which looks from the outside like the scaler working and the worker doing nothing.
+Read the message back with `az storage message peek` if in doubt: what you see is what the worker
+sees.
+
+Then read back the execution — a job that ran is the artifact, not the enqueue's exit code:
+
+```bash
+az containerapp job execution list -n "$(terraform -chdir=infra/dev output -raw dispatch_job_name)" -g rg-aio-dev -o table
+```
+
+**KEDA is only verifiable here.** Azurite exercises the queue contract locally, but nothing local
+runs the scaler — a green functional suite says nothing about whether the scale rule fires.
+
 ## What CI does and does not do
 
 CI runs `terraform fmt -check`, `terraform validate` and `shellcheck`. It has **no Azure
