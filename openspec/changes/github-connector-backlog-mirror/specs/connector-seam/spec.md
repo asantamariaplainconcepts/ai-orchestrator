@@ -53,12 +53,21 @@ identifier only. It SHALL NOT reference another module's implementation assembly
 - **WHEN** the Backlog module's migrations run
 - **THEN** its tables land in its own schema and no other module's schema is altered
 
-### Requirement: vendor calls are conditional where the vendor supports it
+### Requirement: polling stays within the vendor's rate limit
 
-Where a vendor supports conditional requests, the connector SHALL use them so that unchanged data
-does not consume rate limit.
+The connector SHALL poll at a rate that leaves substantial headroom against the vendor's limit,
+and SHALL surface rate-limit exhaustion as a distinct, recorded failure rather than as a generic
+error.
 
-#### Scenario: nothing changed since the last poll
+Conditional requests are **not** used, for a reason discovered during implementation and recorded
+rather than worked around: Octokit 14's high-level API can read a response's ETag but provides no
+way to send `If-None-Match`, so it cannot make a conditional request at all. At the default
+interval one project consumes roughly 60–120 of 5000 requests per hour, so the optimisation buys
+nothing today. It becomes worth revisiting — via a custom HTTP layer, or a different client — when
+the number of projects makes the arithmetic tight.
 
-- **WHEN** a poll runs against a repository whose Stories have not changed
-- **THEN** the request is conditional, and an unchanged response leaves the mirror untouched
+#### Scenario: the rate limit is exhausted
+
+- **WHEN** a poll fails because the vendor's rate limit is exhausted
+- **THEN** that is recorded against the Connector as its own failure reason, distinguishable from
+  an unreachable vendor or a rejected credential

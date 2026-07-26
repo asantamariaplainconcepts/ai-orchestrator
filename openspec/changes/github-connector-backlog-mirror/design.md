@@ -124,9 +124,14 @@ bad credential — because they have different fixes.
 The poller is an `IHostedService` iterating configured Connectors on the per-project interval
 (DEC-028, default 60s). Two details that matter:
 
-- **Conditional requests (ETag).** GitHub returns `304 Not Modified` for unchanged lists and
-  **304s do not count against the rate limit**. At one poll a minute this is the difference
-  between comfortable and wasteful.
+- **Conditional requests: dropped during implementation, and why.** This design originally
+  specified ETag conditional requests. Building it revealed that **Octokit 14's high-level API
+  cannot send `If-None-Match`** — it exposes `ApiInfo.Etag` for *reading* a response's ETag and
+  nothing for issuing a conditional request; there is no `NotModifiedException` either. The claim
+  was wrong, and the honest options were a custom HTTP layer under Octokit or dropping the
+  optimisation. Dropped: at the default interval one project costs ~60–120 of 5000 requests per
+  hour, so it buys nothing today. Revisit when the project count makes the arithmetic tight. The
+  spec was amended to match reality rather than the code bent to match the spec.
 - **A manual refresh exists** and is what the tests drive. A background timer is the flakiest
   thing we could put in an assertion; the deterministic path is invoking the same poll directly.
   The timer's own behaviour is covered by asserting it *schedules*, not by waiting for it.

@@ -15,7 +15,8 @@ src/
 │   ├── AiOrchestrator.ServiceDefaults/       # OpenTelemetry, health, service discovery, resilience
 │   └── AiOrchestrator.ArchitectureAnalyzers/ # MOD001–005 + CQS001, auto-attached to every module
 ├── modules/
-│   └── Projects/AiOrchestrator.Modules.Projects/   # the reference module (BC-001)
+│   ├── Projects/AiOrchestrator.Modules.Projects/   # the reference module (BC-001)
+│   └── Backlog/AiOrchestrator.Modules.Backlog/     # Connector + mirrored Stories (BC-002)
 ├── root/
 │   ├── AiOrchestrator.Server/                # BFF host: module composition + SPA same-origin
 │   └── AiOrchestrator.AppHost/               # Aspire: Postgres + Azurite + host + Vite
@@ -24,7 +25,7 @@ src/
     ├── AiOrchestrator.ArchTests/             # runtime complement to the analyzers
     ├── AiOrchestrator.SharedFunctionalTests/ # Testcontainers + Respawn fixture base
     ├── AiOrchestrator.EndToEndTests/         # real AppHost + Playwright
-    └── modules/Projects/{...UnitTests, ...FunctionalTests}
+    └── modules/{Projects,Backlog}/{...UnitTests, ...FunctionalTests}
 ```
 
 `src/` is the solution root; the repo root holds only cross-cutting tooling and docs.
@@ -34,7 +35,15 @@ src/
 A modular monolith with enforced seams. The host discovers `AiOrchestrator.Modules.*.dll` at
 startup ([ModuleRegistration](src/shared/AiOrchestrator.BuildingBlocks/Modules/ModuleRegistration.cs)),
 so adding a module needs no host edit. Each module owns a PostgreSQL schema, its migrations, and
-its feature slices.
+its feature slices. Backlog was the first module to test that claim rather than assert it: adding
+it changed the solution file and nothing in `Program.cs`.
+
+There are two modules, and the boundary between them cost something worth knowing about. The
+Connector is configuration of a Project but lives in **Backlog**, because everything that reads
+or writes one — verification, polling, failure recording — is a Backlog concern. The price is
+that `Connector.ProjectId` carries no foreign key, since a cross-schema constraint is the
+coupling the boundary exists to prevent. [The Backlog context](src/modules/Backlog/context.md)
+records the reasoning and the deletion debt that follows from it.
 
 A use case is **one file**: route + request/response + command + validator + handler, nested and
 `internal` — see the exemplar,
