@@ -177,6 +177,12 @@ concurrent duplicate delivery loses the insert and reports success — idempoten
 constraint, not a message ledger. BR-002 holds at creation: at the cap the Run waits `Queued`
 and nothing is enqueued.
 
+**Run now shares the exact creation path.** UC-012 bypasses detection only (BR-013): the
+endpoint validates through the same Contracts reads and creates through the same `RunCreator`
+as matching — the difference is voice, not rules. Where the event handler is correctly silent
+(a duplicate delivery, an active Run), the endpoint answers the human: a 409 naming BR-001, a
+stated two-phase limitation, a "waiting at the cap" note.
+
 **Stated limitations, on purpose.** `requiresApproval = true` matches create nothing yet (the
 two-phase lane is its own issue — the refusal is logged naming the Automation). Nothing promotes
 a `Queued` Run when capacity frees, because nothing can complete yet. And the Run insert and the
