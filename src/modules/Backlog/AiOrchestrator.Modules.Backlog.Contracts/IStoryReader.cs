@@ -19,6 +19,7 @@ public interface IStoryReader
 public sealed record StorySnapshot(
     Guid ProjectId,
     string VendorStoryId,
+    string Title,
     string State,
     IReadOnlyList<string> Labels
 );

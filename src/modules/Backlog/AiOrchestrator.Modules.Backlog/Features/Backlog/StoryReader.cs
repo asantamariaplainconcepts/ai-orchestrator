@@ -21,6 +21,7 @@ sealed class StoryReader(BacklogDbContext database) : IStoryReader
             .Select(story => new StorySnapshot(
                 story.ProjectId,
                 story.VendorId,
+                story.Title,
                 story.State,
                 story.Labels
             ))

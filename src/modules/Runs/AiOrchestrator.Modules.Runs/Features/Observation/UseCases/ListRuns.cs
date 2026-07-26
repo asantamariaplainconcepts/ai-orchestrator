@@ -41,7 +41,8 @@ sealed class ListRuns : IUseCase
         Guid AutomationId,
         string State,
         DateTimeOffset CreatedAt,
-        DateTimeOffset? DispatchedAt
+        DateTimeOffset? DispatchedAt,
+        string? OutputLink
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -75,7 +76,8 @@ sealed class ListRuns : IUseCase
                     run.AutomationId,
                     run.State.ToString(),
                     run.CreatedAt,
-                    run.DispatchedAt
+                    run.DispatchedAt,
+                    run.OutputLink
                 )),
             ];
         }

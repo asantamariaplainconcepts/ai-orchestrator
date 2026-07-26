@@ -57,6 +57,9 @@ sealed class Run : Aggregate
     /// <summary>Why a Run failed, in one honest sentence. Null on success.</summary>
     public string? FailureReason { get; private set; }
 
+    /// <summary>Where the work landed — the PR URL for ImplementToPullRequest (BR-014).</summary>
+    public string? OutputLink { get; private set; }
+
     /// <summary>BR-011/DEC-038: all three null together means "unknown" — never invented.</summary>
     public long? UsageInputTokens { get; private set; }
 
@@ -70,10 +73,17 @@ sealed class Run : Aggregate
         StartedAt = at;
     }
 
-    public void Succeed(DateTimeOffset at, long? inputTokens, long? outputTokens, decimal? costUsd)
+    public void Succeed(
+        DateTimeOffset at,
+        string? outputLink,
+        long? inputTokens,
+        long? outputTokens,
+        decimal? costUsd
+    )
     {
         State = RunState.Succeeded;
         EndedAt = at;
+        OutputLink = outputLink;
         UsageInputTokens = inputTokens;
         UsageOutputTokens = outputTokens;
         CostUsd = costUsd;
