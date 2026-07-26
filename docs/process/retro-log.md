@@ -363,3 +363,29 @@ times in the project this framework came from.
 - **ADR:** none. "A constraint that nearly expresses a rule is a gap, not an implementation" is a
   **first** occurrence — related to ADR-0004 but distinct: that one is about verifying outcomes,
   this is about choosing the enforcement mechanism. Graduate it if it recurs.
+
+## 2026-07-26 — module-integration-events
+
+- **Worked:** The spike-first task order (ADR-0005) paid for itself twice in one afternoon. The
+  headline claim — CAP redelivers after a mid-handler crash — was proven rather than assumed,
+  but the throwaway pair also surfaced two behaviours no documentation states plainly: the
+  fallback processor's 240-second default lookback makes redelivery *look* broken in any short
+  test, and a message that exhausts its retries dies **silently** unless a threshold callback is
+  registered. Both findings shaped the production composition directly. The rollback functional
+  test asserts the artifact itself (no `cap.published` row after an uncommitted transaction),
+  which is ADR-0004 applied where it matters most — the entire point of an outbox is a negative.
+- **Didn't:** Working-directory drift between shell calls (`cd src` persisting) created a stray
+  `src/src/` tree twice this change — and cleaning it up revealed #16 had already **committed**
+  one by the same mechanism, unnoticed by every gate since. A misplaced-but-buildable file is
+  invisible to CI. Separately, patching a file from memory failed because CSharpier had reflowed
+  the committed text; the patch had to be rewritten against what was actually on disk.
+- **Next time:** proving a negative ("the no-op poll delivers nothing") needs a **fence** — a
+  real committed event published after the silence being asserted, so its arrival bounds the
+  wait. Sleeping a fixed interval is the flake; the fence made all three negative assertions
+  deterministic. Reuse the pattern wherever at-least-once delivery meets a "nothing happens"
+  scenario.
+- **Time invested:** not measured (source: **manual** — sixth consecutive. The
+  telemetry-verification fix applies at next process start; this session began before it landed
+  and has continued through compaction, so it still cannot measure itself).
+- **ADR:** none new. The stray-tree finding is tooling hygiene, not workflow; the fence pattern
+  is a first occurrence — graduate it if a second negative-assertion flake appears.
