@@ -63,6 +63,12 @@
     <PackageVersion Include="Aspire.Azure.Security.KeyVault" Version="13.4.6" />
     <PackageVersion Include="Aspire.Azure.Storage.Queues" Version="13.4.6" />
 
+    <!-- Integration events (#41): CAP supplies the outbox — transactional publish, redelivery,
+         poison handling. Confined to ServiceDefaults; modules see only the BuildingBlocks seam. -->
+    <PackageVersion Include="DotNetCore.CAP" Version="10.0.1" />
+    <PackageVersion Include="DotNetCore.CAP.PostgreSql" Version="10.0.1" />
+    <PackageVersion Include="Savorboard.CAP.InMemoryMessageQueue" Version="10.0.0" />
+
     <!-- Test packages -->
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
