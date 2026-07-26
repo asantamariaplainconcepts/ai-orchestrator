@@ -3,6 +3,7 @@ using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.ServiceDefaults;
+using AiOrchestrator.ServiceDefaults.IntegrationEvents;
 using AiOrchestrator.ServiceDefaults.Secrets;
 using Scalar.AspNetCore;
 
@@ -29,6 +30,10 @@ builder.Services.AddVsaCqsArchitecture(modules.Assemblies());
 // is what Aspire's client integrations are (design D3). Key Vault when a vault URI is
 // configured, configuration otherwise; the swap #7 promised, costing one line and no call site.
 builder.AddSecretResolution();
+
+// Integration events: modules publish and subscribe through the BuildingBlocks seam; CAP and
+// its outbox live behind it. Composed here because a module structurally cannot (design D1).
+builder.AddIntegrationEvents();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

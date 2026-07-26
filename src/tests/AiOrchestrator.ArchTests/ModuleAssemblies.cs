@@ -18,4 +18,12 @@ static class ModuleAssemblies
             .Where(path => !path.EndsWith(ContractsAssemblySuffix, StringComparison.Ordinal))
             .Select(Assembly.LoadFrom),
     ];
+
+    /// <summary>The `.Contracts` assemblies — the only module assemblies others may reference.</summary>
+    public static IReadOnlyList<Assembly> Contracts { get; } =
+    [
+        .. Directory
+            .GetFiles(AppContext.BaseDirectory, $"{ModuleAssemblyPrefix}*{ContractsAssemblySuffix}")
+            .Select(Assembly.LoadFrom),
+    ];
 }

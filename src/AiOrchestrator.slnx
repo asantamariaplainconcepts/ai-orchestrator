@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/modules/" />
   <Folder Name="/modules/Backlog/">
+    <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog.Contracts/AiOrchestrator.Modules.Backlog.Contracts.csproj" />
     <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog/AiOrchestrator.Modules.Backlog.csproj" />
   </Folder>
   <Folder Name="/modules/Projects/">

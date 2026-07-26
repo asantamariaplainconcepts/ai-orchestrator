@@ -28,4 +28,7 @@
     <InternalsVisibleTo Include="AiOrchestrator.Modules.Backlog.UnitTests" />
     <InternalsVisibleTo Include="AiOrchestrator.Modules.Backlog.FunctionalTests" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
+  </ItemGroup>
 </Project>
