@@ -1,5 +1,8 @@
+using System.Collections.Concurrent;
+using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Connectors;
+using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Backlog.Domain;
 using AiOrchestrator.Modules.Backlog.Persistence;
 using AiOrchestrator.SharedFunctionalTests;
@@ -29,6 +32,9 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
 {
     internal StubBacklogConnector Vendor { get; } = new();
 
+    /// <summary>Every StoryChanged the relay delivered — the observable artifact for event tests.</summary>
+    internal RecordingStoryChangedHandler DeliveredEvents { get; } = new();
+
     protected override string[] SchemasToReset => [BacklogDbContext.Schema];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -36,6 +42,14 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
         base.ConfigureWebHost(builder);
 
         builder.UseSetting("Backlog:PollingEnabled", "false");
+
+        builder.ConfigureTestServices(services =>
+        {
+            // A real consumer registered through the same extension a module would use, so the
+            // tests exercise the full path: transactional publish → outbox → relay → handler.
+            services.AddSingleton(DeliveredEvents);
+            services.AddIntegrationEventHandler<StoryChanged, RecordingStoryChangedHandler.Proxy>();
+        });
 
         builder.ConfigureTestServices(services =>
         {
@@ -106,4 +120,58 @@ sealed class StubSecretResolver : ISecretResolver
 public sealed class BacklogCollection : ICollectionFixture<BacklogApiFixture>
 {
     public const string Name = "Backlog";
+}
+
+/// <summary>
+/// Collects delivered StoryChanged events. The handler itself is scoped (the relay creates a
+/// scope per delivery), so it proxies into this singleton collector.
+/// </summary>
+sealed class RecordingStoryChangedHandler
+{
+    readonly ConcurrentQueue<StoryChanged> _events = new();
+
+    /// <summary>
+    /// Deliveries for one Project. Tests filter by their own Project id because the collection
+    /// shares one host: another test's refresh may still be delivering when this one asserts.
+    /// </summary>
+    public IReadOnlyList<StoryChanged> For(Guid projectId) =>
+        [.. _events.Where(@event => @event.ProjectId == projectId)];
+
+    void Record(StoryChanged @event) => _events.Enqueue(@event);
+
+    /// <summary>
+    /// Waits for delivery: publish is transactional but delivery is asynchronous, so asserting
+    /// immediately after the HTTP call races the dispatcher. Polling the artifact is honest;
+    /// sleeping a fixed time is a flake.
+    /// </summary>
+    public async Task<IReadOnlyList<StoryChanged>> WaitForAtLeast(
+        Guid projectId,
+        int count,
+        TimeSpan? timeout = null
+    )
+    {
+        var deadline = DateTime.UtcNow + (timeout ?? TimeSpan.FromSeconds(15));
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (For(projectId).Count >= count)
+            {
+                break;
+            }
+
+            await Task.Delay(100);
+        }
+
+        return For(projectId);
+    }
+
+    internal sealed class Proxy(RecordingStoryChangedHandler collector)
+        : IIntegrationEventHandler<StoryChanged>
+    {
+        public Task Handle(StoryChanged @event, CancellationToken cancellationToken)
+        {
+            collector.Record(@event);
+            return Task.CompletedTask;
+        }
+    }
 }
