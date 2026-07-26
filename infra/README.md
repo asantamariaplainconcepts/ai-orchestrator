@@ -54,6 +54,17 @@ curl -s -X POST "$(terraform -chdir=infra/dev output -raw portal_url)/api/projec
 A `201` with the created entity proves the app, the database and the vault are all wired; a bare
 `200` from any URL proves nothing.
 
+## When a deploy fails
+
+`deploy.sh` stops before touching the portal if migrations fail — the previous revision keeps
+serving. That is the designed behaviour, and it has been exercised: the first real deploy failed
+on a bad base image and the site was never updated.
+
+```bash
+az containerapp job logs show -n caj-aio-dev-migrations -g rg-aio-dev \
+  --container migrations --execution <name-printed-by-deploy>
+```
+
 ## What CI does and does not do
 
 CI runs `terraform fmt -check`, `terraform validate` and `shellcheck`. It has **no Azure

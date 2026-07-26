@@ -77,6 +77,19 @@ be two things to keep in step. `AZURE_CLIENT_ID` is passed explicitly because
 `DefaultAzureCredential` will not guess between multiple assigned identities — omitting it moves
 the failure from deploy time to the first vault read.
 
+## D10 — The composition root bridges secret names to connection strings
+
+BR-010 resolves secrets *per use*; EF Core reads its connection string *once*, when the DbContext
+is registered. Those two timings genuinely disagree, and the first deployed migration run found
+the gap: the module asked configuration for `ConnectionStrings:aiorchestratordb`, which existed
+only as a secret name.
+
+`AddSecretResolution` now reads `ConnectionStrings:<name>SecretName` from the vault at startup and
+publishes `ConnectionStrings:<name>`. Modules stay unchanged and unaware — the point of D3.
+Startup-time resolution is honest rather than a compromise: a rotated database password needs a
+restart anyway, because pooled connections outlive any per-call lookup. The call blocks
+deliberately; an application that cannot reach its database should fail at startup, loudly.
+
 ## SKU record (raise deliberately, not accidentally)
 
 | Resource | SKU | Why |

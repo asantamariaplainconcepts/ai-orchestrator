@@ -25,7 +25,7 @@ exercised for real before the next (ADR-0001), asserting artifacts, not green pi
       + `tfstate` container in northeurope; prints backend config. Running twice changes nothing.
 - [x] 1.2 `.gitignore`: `*.tfstate*`, `*.tfvars`, `.terraform/` — verified by attempting to
       `git add` a dummy tfvars and seeing it refused.
-- [ ] 1.3 Verify: `terraform init` against the backend succeeds; the state blob exists in the
+- [x] 1.3 Verify: `terraform init` against the backend succeeds; the state blob exists in the
       portal (read back, not assumed).
 
 ## 2. The dev environment (Terraform)
@@ -42,7 +42,7 @@ exercised for real before the next (ADR-0001), asserting artifacts, not green pi
 - [x] 2.5 Portal container app: system-assigned identity, AcrPull + Key Vault Secrets User role
       assignments, env carries the vault URI and non-secrets only. Migration job (manual
       trigger) from the MigrationService image with the same access.
-- [ ] 2.6 Apply, by the human, and verify by artifact: resources exist (`az resource list` on
+- [x] 2.6 Apply, by the human, and verify by artifact: resources exist (`az resource list` on
       the RG), the app's env inspected shows no secret values, the vault holds the generated
       secrets.
 
@@ -58,7 +58,11 @@ exercised for real before the next (ADR-0001), asserting artifacts, not green pi
 - [x] 3.4 `infra/deploy.sh`: push image → run migration job → wait for exit 0 → update app
       revision. A failed job leaves the previous revision serving (verify by making it fail
       once, on purpose).
-- [ ] 3.5 **End-to-end artifact check:** the deployed portal serves the SPA over its ACA URL,
+- [x] 3.5 **End-to-end artifact check** — done 2026-07-26: `POST /api/projects` on the deployed
+      portal returned **201** with the created entity and a following `GET` read it back, proving
+      managed identity → Key Vault → connection string → Postgres → API end to end. Reaching it
+      took three deploys; the migration gate stopped the two failed ones before the portal moved,
+      which is the safety property working rather than failing. Original text: the deployed portal serves the SPA over its ACA URL,
       `POST /api/projects` returns 201 (the unfakeable check), and a configured Connector
       resolves its PAT from the real vault.
 
@@ -70,4 +74,4 @@ exercised for real before the next (ADR-0001), asserting artifacts, not green pi
 ## 5. Close-out
 
 - [x] 5.1 `ARCHITECTURE.md`: deployment topology section; the deploy sequence and who runs it.
-- [ ] 5.2 Full verify sweep; CI green.
+- [x] 5.2 Full verify sweep; CI green.

@@ -13,8 +13,11 @@ RUN dotnet restore src/root/AiOrchestrator.MigrationService/AiOrchestrator.Migra
 RUN dotnet publish src/root/AiOrchestrator.MigrationService/AiOrchestrator.MigrationService.csproj \
     -c Release -o /app --no-restore
 
-# The runtime image, not aspnet: this process serves nothing.
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
+# aspnet, not runtime. This process serves nothing, so the smaller runtime image looks right —
+# and fails at startup: BuildingBlocks framework-references Microsoft.AspNetCore.App for the
+# endpoint and ProblemDetails helpers, so the shared framework is required transitively however
+# little of it the migrator uses. Found by running it, not by reading the csproj.
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 
