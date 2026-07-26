@@ -24,6 +24,7 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
     {
         fixture.Vendor.Reset();
         fixture.Agent.Reset();
+        fixture.Workspace.Reset();
         await fixture.ResetDatabase();
         await fixture.ResetQueue();
 
@@ -94,6 +95,7 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
                 run.StartedAt,
                 run.EndedAt,
                 run.FailureReason,
+                run.OutputLink,
                 run.UsageInputTokens,
                 run.UsageOutputTokens,
                 run.CostUsd
@@ -110,17 +112,19 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
 
         var run = await Load(runId);
         run.State.ShouldBe("Succeeded");
+        run.OutputLink.ShouldBe("https://github.com/acme/portal/pull/1");
         run.StartedAt.ShouldNotBeNull();
         run.EndedAt.ShouldNotBeNull();
         run.UsageInputTokens.ShouldBe(10);
         run.UsageOutputTokens.ShouldBe(20);
         run.CostUsd.ShouldBe(0.05m);
 
-        // What crossed the seam: values resolved in-process, and the prompt names the story.
+        // What crossed the seam: values resolved in-process, and the prompt carries the
+        // story while forbidding the ceremony (design D1).
         var instruction = fixture.Agent.Instructions.Single();
         instruction.Credentials.VendorAccessToken.ShouldBe("stub-token");
         instruction.Prompt.ShouldContain("#9");
-        instruction.Prompt.ShouldContain("acme/portal");
+        instruction.Prompt.ShouldContain("Do not commit");
     }
 
     [Fact]
@@ -193,6 +197,58 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         await Execute(Guid.CreateVersion7());
     }
 
+    [Fact]
+    public async Task EachStage_Should_RefuseDistinctly()
+    {
+        // Clone failure names the clone.
+        fixture.Workspace.PrepareError = WorkspaceErrors.CloneFailed("auth failed");
+        var cloneRun = await Dispatch();
+        await Execute(cloneRun);
+        (await Load(cloneRun)).FailureReason!.ShouldContain("Cloning");
+
+        // Publication failure names the publication; the no-changes gate names itself.
+        fixture.Workspace.Reset();
+        fixture.Workspace.PublishError = WorkspaceErrors.NoChanges();
+        var emptyRun = await Dispatch();
+        await Execute(emptyRun);
+        var empty = await Load(emptyRun);
+        empty.State.ShouldBe("Failed");
+        empty.FailureReason!.ShouldContain("no file changes");
+        empty.OutputLink.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ANonExecutableAction_Should_FailStatingSo()
+    {
+        var automation = await _client.PostAsJsonAsync(
+            $"/api/projects/{_projectId}/automations",
+            new
+            {
+                triggerLabel = "ai:estimate",
+                triggerState = (string?)null,
+                action = "Estimate",
+                runtime = "ClaudeCodeHeadless",
+                requiresApproval = false,
+            }
+        );
+        automation.EnsureSuccessStatusCode();
+        var estimateId = (await automation.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
+
+        var response = await _client.PostAsJsonAsync(
+            $"/api/projects/{_projectId}/runs",
+            new { vendorStoryId = "9", automationId = estimateId }
+        );
+        response.EnsureSuccessStatusCode();
+        var runId = (await response.Content.ReadFromJsonAsync<RunNowResponse>())!.Id;
+
+        await Execute(runId);
+
+        var run = await Load(runId);
+        run.State.ShouldBe("Failed");
+        run.FailureReason!.ShouldContain("not executable yet");
+        fixture.Agent.Instructions.ShouldBeEmpty();
+    }
+
     sealed record ProjectResponse(Guid Id, string Name);
 
     sealed record AutomationResponse(Guid Id);
@@ -204,6 +260,7 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         DateTimeOffset? StartedAt,
         DateTimeOffset? EndedAt,
         string? FailureReason,
+        string? OutputLink,
         long? UsageInputTokens,
         long? UsageOutputTokens,
         decimal? CostUsd

@@ -36,6 +36,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// <summary>The runtime faked at the seam — the same discipline as the vendor stub.</summary>
     internal FakeAgentRuntime Agent { get; } = new();
 
+    /// <summary>The ceremony faked at its seam: scripted preparation and publication.</summary>
+    internal FakeCodeWorkspace Workspace { get; } = new();
+
     // "projects" is spelled out: ProjectsDbContext is internal to its module, and a schema
     // constant is not worth an InternalsVisibleTo.
     protected override string[] SchemasToReset =>
@@ -68,6 +71,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
             services.RemoveAll<IAgentRuntime>();
             services.AddSingleton<IAgentRuntime>(Agent);
+
+            services.RemoveAll<ICodeWorkspace>();
+            services.AddSingleton<ICodeWorkspace>(Workspace);
         });
     }
 }
@@ -212,6 +218,54 @@ sealed class FakeAgentRuntime : IAgentRuntime
             ? Task.FromException<AgentResult>(exception)
             : Task.FromResult(Result);
     }
+}
+
+/// <summary>
+/// A workspace whose stages the test scripts: refuse preparation, refuse publication, or
+/// publish to a scripted PR URL. Real directories are created so the executor's cleanup and
+/// the runtime's working directory stay honest.
+/// </summary>
+sealed class FakeCodeWorkspace : ICodeWorkspace
+{
+    public Error? PrepareError { get; set; }
+
+    public Error? PublishError { get; set; }
+
+    public string PullRequestUrl { get; set; } = "https://github.com/acme/portal/pull/1";
+
+    public void Reset()
+    {
+        PrepareError = null;
+        PublishError = null;
+        PullRequestUrl = "https://github.com/acme/portal/pull/1";
+    }
+
+    public Task<ErrorOr<PreparedWorkspace>> Prepare(
+        CodeCoordinates coordinates,
+        Guid runId,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<PreparedWorkspace>>(
+            PrepareError is { } error
+                ? error
+                : new PreparedWorkspace(
+                    coordinates,
+                    Directory.CreateTempSubdirectory("fake-ws-").FullName,
+                    $"run/{runId}"
+                )
+        );
+
+    public Task<ErrorOr<PublishedChange>> Publish(
+        PreparedWorkspace workspace,
+        string title,
+        string body,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<PublishedChange>>(
+            PublishError is { } error ? error : new PublishedChange(PullRequestUrl)
+        );
 }
 
 [CollectionDefinition(Name)]
