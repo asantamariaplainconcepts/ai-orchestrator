@@ -339,3 +339,27 @@ times in the project this framework came from.
   [ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md), and ADR-0004
   applied to the *pipeline as a standing capability* rather than only to the change that touched
   it would have caught this on day one. The rule was right; its scope was read too narrowly.
+
+## 2026-07-26 — automation-configuration
+
+- **Worked:** Reading the corpus before designing saved the change from a wrong turn. BC-001
+  already said *"Automations and their validation"* belong to Project Configuration, so the
+  instinct to create an Automations module died in thirty seconds rather than in review. The
+  grill's real output was narrower and more useful: BR-003 says triggers must not *intersect* and
+  never defines intersection, and that one undefined word would otherwise have been settled by
+  whatever the first implementation happened to do.
+- **Didn't:** The subsumption case — a state-less trigger matching everything a specific one does
+  — is the whole rule, and it is exactly the case a unique index on `(label, state)` **silently
+  permits**. That index was the obvious first instinct and would have shipped a gate that looked
+  enforced and was not. It is now written into `context.md` as a warning, because the next reader
+  will have the same instinct. Separately, the screen needed a checkbox the kit did not have; the
+  tempting move was a bare native control, which reads as unfinished beside tokenised inputs.
+- **Next time:** when a rule is stated in prose and a database constraint *nearly* expresses it,
+  write down which cases the constraint would miss **before** choosing. "Nearly" is where the
+  silent gap lives.
+- **Time invested:** not measured (source: **manual** — fifth consecutive. The fix from
+  telemetry-verification landed on `main` in this same session but applies at next process
+  start, so this change still could not measure itself).
+- **ADR:** none. "A constraint that nearly expresses a rule is a gap, not an implementation" is a
+  **first** occurrence — related to ADR-0004 but distinct: that one is about verifying outcomes,
+  this is about choosing the enforcement mechanism. Graduate it if it recurs.
