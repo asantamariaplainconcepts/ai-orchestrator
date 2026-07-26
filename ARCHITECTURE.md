@@ -29,6 +29,9 @@ src/
     └── modules/{Projects,Backlog}/{...UnitTests, ...FunctionalTests}
 ```
 
+Outside `src/`: `infra/` holds the Terraform for the Azure dev environment and the
+bootstrap/deploy scripts.
+
 `src/` is the solution root; the repo root holds only cross-cutting tooling and docs.
 
 ## Backend
@@ -71,6 +74,30 @@ Two error channels, deliberately distinct:
   [`GlobalExceptionHandler`](src/shared/AiOrchestrator.BuildingBlocks/Api/GlobalExceptionHandler.cs).
 
 Both emit RFC 7807 `application/problem+json`. Nothing else writes an error body.
+
+## Deployment
+
+The dev environment is Terraform in `infra/dev/` (northeurope, `aio-dev-*`): resource group, Log
+Analytics, a Container Apps environment, ACR, PostgreSQL Flexible Server, Key Vault, the portal
+container app, and the migration job. `infra/bootstrap.sh` creates the remote-state backend once;
+`infra/deploy.sh` performs a release.
+
+**Who applies what.** Humans apply Terraform and run deploys with their own Azure identity. CI
+validates (`fmt`, `validate`, `shellcheck`) and holds no credentials — a federated CI identity is
+a later, deliberate decision, not a default. The configuration refuses the wrong target: a guard
+compares the resolved subscription against a committed SHA-256 and fails at plan time, which is
+how the subscription id stays out of a public repository while still being checked.
+
+**Credentials flow one way.** Terraform generates the database password *into* Key Vault. Both
+the app and the migration job carry a system-assigned identity with read-only vault access and
+pull-only registry access; their configuration holds a vault URI and nothing secret. The
+application resolves names through `ISecretResolver` at the moment of use — the same seam that
+reads user-secrets locally (BR-010).
+
+**Release ordering.** `deploy.sh` pushes images, runs the migration job, waits for exit 0, and
+only then moves the app revision. A failed migration leaves the previous revision serving. The
+Server never migrates, in any environment — locally the AppHost's `migrations` resource does it,
+in Azure the job does.
 
 ## Frontend
 
