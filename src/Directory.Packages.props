@@ -61,6 +61,7 @@
          #7 deliberately left it out because an unused package is a claim we had not exercised. -->
     <PackageVersion Include="Azure.Security.KeyVault.Secrets" Version="4.11.0" />
     <PackageVersion Include="Aspire.Azure.Security.KeyVault" Version="13.4.6" />
+    <PackageVersion Include="Aspire.Azure.Storage.Queues" Version="13.4.6" />
 
     <!-- Test packages -->
     <PackageVersion Include="xunit" Version="2.9.3" />
