@@ -27,6 +27,24 @@ The cost is that the job needs database access — an extra grant, and a depende
 from a second process. Accepted: the alternative is a payload that can already be wrong by the
 time it runs, in a system where "the Story changed while queued" is an ordinary event.
 
+## D3a — The scaler needs a connection string; the workload does not
+
+**Amended during implementation.** D3 assumed the scaler could authenticate with the job's
+managed identity. It cannot: the `azure-queue` scaler on Container Apps *jobs* has no
+identity-based auth, and KEDA reports `error parsing azure queue metadata: no connection setting
+given`. Microsoft's own event-driven jobs tutorial uses
+`--scale-rule-auth "connection=<secret>"` for this reason.
+
+Two wrong shapes were deployed before the right one, and **both were accepted by ARM, rendered
+correctly by `az containerapp job show`, and silently never fired.** A message sat on the queue
+for the better part of an hour with zero executions. Nothing static could have caught it — only
+putting a message in and watching nothing come out.
+
+The key is confined as tightly as the platform allows: stored in Key Vault, referenced by the job
+as a secret rather than a literal, used only by the scaler. The workload still reaches the queue
+with its managed identity, so no credential appears in the container's configuration and nothing
+in the application handles one.
+
 ## D3 — Agent jobs get their own identity
 
 The portal's workload identity reads two secrets and pulls images. An Agent job will clone

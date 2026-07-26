@@ -111,9 +111,20 @@ resource "azurerm_container_app_job" "dispatch" {
           accountName = azurerm_storage_account.dispatch.name
         }
 
+        # A connection string, not the identity — and not by choice.
+        #
+        # The azure-queue scaler on Container Apps *jobs* does not support managed identity: KEDA
+        # answers "error parsing azure queue metadata: no connection setting given" and the rule
+        # silently never fires. Microsoft's own event-driven jobs tutorial uses
+        # `--scale-rule-auth "connection=<secret>"` for exactly this reason. Two earlier shapes
+        # were tried and both were accepted by ARM, reported healthy, and did nothing.
+        #
+        # The key is confined to the scaler. It is stored in Key Vault, referenced by the job as a
+        # secret (never a literal), and the *workload* still reaches the queue with its managed
+        # identity — so no credential is in configuration and only the scaler holds one at all.
         authentication {
-          trigger_parameter = "workloadIdentity"
-          secret_name       = "dispatch-identity"
+          trigger_parameter = "connection"
+          secret_name       = "queue-connection"
         }
       }
     }
@@ -130,9 +141,9 @@ resource "azurerm_container_app_job" "dispatch" {
   }
 
   secret {
-    name                = "dispatch-identity"
+    name                = "queue-connection"
     identity            = azurerm_user_assigned_identity.dispatch.id
-    key_vault_secret_id = azurerm_key_vault_secret.dispatch_identity_client_id.id
+    key_vault_secret_id = azurerm_key_vault_secret.dispatch_queue_connection.id
   }
 
   template {
@@ -169,11 +180,12 @@ resource "azurerm_container_app_job" "dispatch" {
   }
 }
 
-# The scaler references its identity through a secret rather than inline; storing the client id
-# in the vault keeps every job reference uniform, and a client id is not sensitive.
-resource "azurerm_key_vault_secret" "dispatch_identity_client_id" {
-  name         = "dispatch-identity-client-id"
-  value        = azurerm_user_assigned_identity.dispatch.client_id
+# The scaler's credential, in the vault rather than in the job definition. The workload does not
+# use it — it authenticates with the identity — so this exists solely because KEDA's azure-queue
+# scaler cannot.
+resource "azurerm_key_vault_secret" "dispatch_queue_connection" {
+  name         = "dispatch-queue-connection"
+  value        = azurerm_storage_account.dispatch.primary_connection_string
   key_vault_id = azurerm_key_vault.main.id
 
   depends_on = [azurerm_role_assignment.terraform_operator_secrets]
