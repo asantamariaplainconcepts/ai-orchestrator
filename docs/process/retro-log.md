@@ -455,3 +455,22 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — ninth consecutive; same standing cause).
 - **ADR:** none new. "Mutation hooks ship with their failure state" is a first explicit
   statement of an existing pattern; graduate it if a third silent mutation appears.
+
+## 2026-07-27 — run-now
+
+- **Worked:** BR-013 ("bypasses detection only") turned out to be a *design instruction*, not
+  just a constraint: it forced the RunCreator extraction, and the extraction was proven
+  behaviour-preserving the cheapest possible way — the existing matching suite ran untouched
+  and stayed green. The outcome-as-data shape (Dispatched / QueuedAtCap / AlreadyActive /
+  TwoPhaseRefused) let two callers keep opposite voices without duplicating a single rule:
+  the handler stays silent where at-least-once makes silence correct, the endpoint answers
+  the human with the rule's name. The browser check caught the whole arc: click → dispatched
+  (DispatchedAt only set after a real Azurite enqueue), click again → the BR-001 copy.
+- **Didn't:** cwd drift struck twice more this cycle (a compound command ran from the wrong
+  directory and half-executed) — third change in a row. It costs a retry each time, never
+  correctness, but the pattern is now established beyond doubt.
+- **Next time:** every multi-command Bash block starts with an absolute `cd` — no exceptions,
+  including "quick" one-liners chained onto docker or python heredocs.
+- **Time invested:** not measured (source: **manual** — tenth consecutive; same standing cause).
+- **ADR:** none new. The cwd-drift discipline is session tooling, not workflow; recorded here
+  because the retro is where the pattern's cost is visible.
