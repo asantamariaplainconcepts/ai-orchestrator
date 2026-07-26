@@ -285,3 +285,31 @@ times in the project this framework came from.
   occurrence of the shape [atlas-shell-adoption] recorded first ("no new token is expected"),
   here as a Dockerfile comment asserting "this process serves nothing" that only running it
   disproved. A different artifact from the first instance, which is what makes it general.
+
+## 2026-07-26 — dispatch-substrate
+
+- **Worked:** The grill caught, before a line of code, that Storage Queue redelivery **is** an
+  automatic retry and BR-004 forbids it. That conflict would otherwise have shipped as an
+  occasional mystery second job — no error, no failing test, just a Run that ran twice. The test
+  guarding the resolution simulates a crash rather than a happy path, so it would fail on an
+  at-least-once queue; every other test in that file would pass, which is the point. And the
+  storage API version was **probed** rather than guessed: Azurite answers 400 for a version it
+  cannot serve and 403 for one it can.
+- **Didn't:** Four defects, none visible to `terraform validate`, `az ... show`, or any test.
+  Two were mine twice over. I read warning text from a **failed** `az storage message put` as
+  success — the precise failure
+  [ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md) was written
+  about, committed two changes after writing it — and then blamed KEDA for correctly doing
+  nothing with an empty queue. Then I deployed **two** scale-rule shapes that ARM accepted,
+  rendered cleanly, and silently never fired, guessing both times, while
+  `error parsing azure queue metadata: no connection setting given` sat in Log Analytics
+  throughout. The docs settled it in one fetch once I stopped guessing.
+- **Next time:** when a deployed component does not behave, **read its system logs before forming
+  a second hypothesis.** The first guess is cheap; the second, made without evidence that is
+  already sitting in a log table, is how an hour and a wrong design claim happen.
+- **Time invested:** not measured (source: **manual** — fourth consecutive change with no session
+  telemetry; [#34](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/34)).
+- **ADR:** none. "Read the logs before guessing again" is a **first** occurrence of a distinct
+  shape: ADR-0001 says exercise the claim, ADR-0004 says assert the artifact, ADR-0005 says do
+  not state a hypothesis as fact — none of them says *where to look when the artifact is wrong*.
+  Graduate it if it recurs.
