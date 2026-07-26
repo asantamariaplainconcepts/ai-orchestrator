@@ -21,17 +21,42 @@ public sealed class AppHostFixture : IAsyncLifetime
 
     public string ServerBaseUrl { get; private set; } = string.Empty;
 
+    /// <summary>
+    /// The vendor, stubbed at the HTTP boundary. Tests arrange it before driving the page; the
+    /// host runs its real GitHub connector against it, so no live token is ever needed.
+    /// </summary>
+    public GitHubStub GitHub { get; } = new();
+
+    /// <summary>The secret name the host can resolve — its value is the stub's throwaway token.</summary>
+    public const string SecretName = "e2e-github";
+
     public IBrowser Browser =>
         _browser ?? throw new InvalidOperationException("Fixture not initialized.");
 
     public async Task InitializeAsync()
     {
+        GitHub.Start();
+
         var builder =
             await DistributedApplicationTestingBuilder.CreateAsync<Projects.AiOrchestrator_AppHost>();
 
         // Containers must not outlive the run: a persistent lifetime leaks state between runs,
         // which is a recurring source of "passes locally, fails in CI" defects.
         builder.Configuration["DcpPublisher:ContainerLifetime"] = "Session";
+
+        // Nor may the run inherit the developer's Postgres *data volume*, which the AppHost mounts
+        // for `aspire run`. Two reasons, and the first is a hang rather than a failure: a volume
+        // keeps the cluster it was initialised with, including the password, while this host has
+        // no user secrets and so generates a fresh one every run — from the second run onwards the
+        // server cannot authenticate and simply never reports healthy. The second reason stands on
+        // its own: a tier that starts on yesterday's rows is not hermetic.
+        var postgres = builder
+            .Resources.OfType<ContainerResource>()
+            .Single(resource => resource.Name == "postgres");
+        foreach (var mount in postgres.Annotations.OfType<ContainerMountAnnotation>().ToList())
+        {
+            postgres.Annotations.Remove(mount);
+        }
 
         // Run the host in its own E2E environment, not Development. This is deliberate on two
         // counts: dev-convenience configuration must never leak into E2E, and it puts the journey
@@ -40,7 +65,16 @@ public sealed class AppHostFixture : IAsyncLifetime
         var server = builder
             .Resources.OfType<ProjectResource>()
             .Single(resource => resource.Name == "server");
-        builder.CreateResourceBuilder(server).WithEnvironment("ASPNETCORE_ENVIRONMENT", "E2E");
+        builder
+            .CreateResourceBuilder(server)
+            .WithEnvironment("ASPNETCORE_ENVIRONMENT", "E2E")
+            // Point the real connector at the stub, and give the resolver one secret to find.
+            // Both are ordinary configuration — no test-only branch exists in the application.
+            .WithEnvironment("Backlog__GitHub__BaseAddress", GitHub.BaseAddress.ToString())
+            .WithEnvironment($"Secrets__{SecretName}", "stub-token")
+            // The background poller would race the tests' explicit refresh for the same rows;
+            // the deterministic path is the one worth asserting on.
+            .WithEnvironment("Backlog__PollingEnabled", "false");
 
         _app = await builder.BuildAsync();
 
@@ -100,9 +134,20 @@ public sealed class AppHostFixture : IAsyncLifetime
 
         await _app.StartAsync();
 
-        await _app
-            .ResourceNotifications.WaitForResourceHealthyAsync("server")
-            .WaitAsync(TimeSpan.FromMinutes(5));
+        try
+        {
+            await _app
+                .ResourceNotifications.WaitForResourceHealthyAsync("server")
+                .WaitAsync(TimeSpan.FromMinutes(3));
+        }
+        catch (TimeoutException)
+        {
+            // Without this the whole suite reads as "hung" and says nothing about why. The host's
+            // own log is where the cause is — a failed migration, an unreachable dependency.
+            throw new InvalidOperationException(
+                "The server never became healthy.\n\n" + ServerLogTail(lines: 120)
+            );
+        }
 
         ServerBaseUrl = _app.GetEndpoint("server", "http").ToString();
 
@@ -140,6 +185,8 @@ public sealed class AppHostFixture : IAsyncLifetime
         {
             await _app.DisposeAsync();
         }
+
+        await GitHub.DisposeAsync();
     }
 }
 
