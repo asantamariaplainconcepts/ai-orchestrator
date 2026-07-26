@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
     <!-- Modules are discovered at runtime, but must be built and copied beside the host. -->
     <ProjectReference Include="..\..\modules\Projects\AiOrchestrator.Modules.Projects\AiOrchestrator.Modules.Projects.csproj" />
+    <ProjectReference Include="..\..\modules\Backlog\AiOrchestrator.Modules.Backlog\AiOrchestrator.Modules.Backlog.csproj" />
   </ItemGroup>
 
   <ItemGroup>
