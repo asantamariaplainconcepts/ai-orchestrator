@@ -99,6 +99,31 @@ only then moves the app revision. A failed migration leaves the previous revisio
 Server never migrates, in any environment — locally the AppHost's `migrations` resource does it,
 in Azure the job does.
 
+## Dispatch
+
+A Run reaches an Agent through an Azure Storage Queue (DEC-013) that KEDA watches: a message
+arrives, a Container Apps Job starts, it drains the queue and exits. `IRunDispatcher` is the
+seam; the queue implementation sits in ServiceDefaults beside the Key Vault resolver, so no
+module reaches a cloud SDK.
+
+**The message is a Run id and nothing else.** The worker reads the Run, its Story and its
+Automation from Postgres — one source of truth, and nothing to go stale between enqueue and
+execution.
+
+**A claimed message is deleted before any work happens, and that is load-bearing.** Storage
+Queues are at-least-once: a consumer that dies leaves its message to reappear, and KEDA starts
+another job — an automatic retry, which [BR-004](docs/product/mvp/05-business-rules.md) forbids.
+The rule wins. The cost is stated rather than hidden: a job killed by infrastructure is
+indistinguishable from an Agent that failed, and both need a human to re-trigger via *Run now*
+(BR-013). **Do not "fix" this back to at-least-once** — the deletion is the rule.
+
+Agent jobs run under a **different identity from the portal's**: they will clone repositories
+with project PATs, and one compromise should not reach both.
+
+**What the local path does and does not prove.** Azurite exercises the full enqueue → claim →
+delete contract on every machine and in the functional tier. KEDA has no local equivalent, so
+the scale rule is only ever verified in Azure — a green local run says nothing about it.
+
 ## Frontend
 
 One React SPA (Vite, React Router, TanStack Query) served **same-origin** by the host: proxied to
