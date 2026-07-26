@@ -208,6 +208,13 @@ and the values live exactly as long as the child process does.
 succeeded. The result-JSON shape is verified by exercising, and the parser is defensive so a
 shape surprise degrades to honesty, not to failed Runs.
 
+**ImplementToPullRequest is real, and the ceremony is code.** `ICodeWorkspace` clones on a
+run-scoped branch, and after the Agent implements (and only implements — the prompt forbids it
+the ceremony), commits, pushes and opens the PR whose URL lands on the Run and in the Runs
+table's Output column. An empty change set fails the Run honestly instead of opening an empty
+PR; clone, agent, push and PR failures each carry their own reason. Other catalogue actions
+fail stating they are not executable yet.
+
 **Terminal states exist now.** Queued → Executing at claim; Succeeded/Failed with timestamps
 at the end — and a crash mid-execution still ends the Run, because nothing redelivers
 (BR-004). BR-001's index filters on active states only, so a finished Story runs again; a
