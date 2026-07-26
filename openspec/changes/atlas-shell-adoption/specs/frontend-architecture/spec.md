@@ -33,7 +33,9 @@ failed — SHALL remain visually and textually distinct in the new layout.
 
 - **WHEN** the backlog renders with a configured Connector
 - **THEN** each stat card shows a fact computable from the response (story count, open count,
-  trigger-labelled count, connector health) and nothing else
+  labelled count, connector health) and nothing else. "Labelled" means carrying at least one
+  label — it graduates to "trigger-labelled" only when Automations exist to define a trigger
+  (#14); showing a trigger count before then would be an invented metric
 
 #### Scenario: the three absences survive the redesign
 

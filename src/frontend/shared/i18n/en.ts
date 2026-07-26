@@ -52,6 +52,29 @@ export const en = {
   "connector.saveFailed": "Could not save the Connector.",
 
   "project.back": "All projects",
+
+  // Shell — sidebar, top bar. The brand area is catalogue text only (DEC-021).
+  "shell.nav.section": "Workspace",
+  "shell.nav.projects": "Projects",
+  // Honest placeholder: authentication does not exist yet (#12); no identity is invented.
+  "shell.user.name": "Not signed in",
+  "shell.user.hint": "Sign-in arrives with Entra ID",
+  "shell.crumb.projects": "Projects",
+  "shell.breadcrumbs": "Breadcrumbs",
+  "project.title.fallback": "Project",
+
+  // Backlog stat cards — every value is computed from the live response, nothing else.
+  "backlog.stats.total": "Stories",
+  "backlog.stats.open": "Open",
+  // "Labelled", not "trigger-labelled": no Automation exists yet to define a trigger (#14).
+  "backlog.stats.labelled": "Labelled",
+  "backlog.stats.connector": "Connector",
+
+  // Table headers.
+  "backlog.table.id": "#",
+  "backlog.table.title": "Title",
+  "backlog.table.labels": "Labels",
+  "backlog.table.state": "State",
 } as const;
 
 export type TranslationKey = keyof typeof en;

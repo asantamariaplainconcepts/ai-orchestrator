@@ -1,4 +1,4 @@
-import { Route, Routes } from "react-router";
+import { Navigate, Route, Routes } from "react-router";
 import { ProjectScreen } from "@/features/backlog/ProjectScreen";
 import { ProjectsScreen } from "@/features/projects/ProjectsScreen";
 
@@ -6,7 +6,9 @@ import { ProjectsScreen } from "@/features/projects/ProjectsScreen";
 export function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<ProjectsScreen />} />
+      {/* /projects is canonical; serving the same screen at two paths would leave the sidebar's
+          active state wrong on one of them. */}
+      <Route path="/" element={<Navigate to="/projects" replace />} />
       <Route path="/projects" element={<ProjectsScreen />} />
       <Route path="/projects/:projectId" element={<ProjectScreen />} />
     </Routes>
