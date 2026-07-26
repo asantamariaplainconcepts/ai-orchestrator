@@ -99,6 +99,12 @@ only then moves the app revision. A failed migration leaves the previous revisio
 Server never migrates, in any environment — locally the AppHost's `migrations` resource does it,
 in Azure the job does.
 
+**The Connector seam writes exactly one thing: labels.** UC-008 licenses the portal to apply
+or remove a trigger label; the write goes to the vendor first and the mirror follows through
+the ordinary reconciliation, so a `StoryChanged` produced by a portal click is
+indistinguishable from one produced at the vendor (DEC-027). Everything else about the mirror
+stays read-only (BR-008).
+
 ## Dispatch
 
 A Run reaches an Agent through an Azure Storage Queue (DEC-013) that KEDA watches: a message
