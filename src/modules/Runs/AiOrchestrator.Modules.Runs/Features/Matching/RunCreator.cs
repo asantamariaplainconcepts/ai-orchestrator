@@ -39,9 +39,15 @@ sealed class RunCreator(
             return new RunCreation.TwoPhaseRefused(automation.AutomationId);
         }
 
-        // BR-001 pre-check keeps the common case quiet; the index owns the race below.
+        // BR-001 pre-check keeps the common case quiet; the index owns the race below. The
+        // state list mirrors the index filter exactly: terminal Runs free the Story, so they
+        // must be as invisible here as they are to the constraint.
         var hasActiveRun = await database.Runs.AnyAsync(
-            run => run.ProjectId == projectId && run.VendorStoryId == vendorStoryId,
+            run =>
+                run.ProjectId == projectId
+                && run.VendorStoryId == vendorStoryId
+                && run.State != RunState.Succeeded
+                && run.State != RunState.Failed,
             cancellationToken
         );
         if (hasActiveRun)

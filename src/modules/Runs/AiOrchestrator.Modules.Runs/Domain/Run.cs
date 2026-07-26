@@ -48,11 +48,50 @@ sealed class Run : Aggregate
     ) => new(projectId, vendorStoryId, automationId, createdAt);
 
     public void MarkDispatched(DateTimeOffset at) => DispatchedAt = at;
+
+    /// <summary>When execution actually began — the claim, not the enqueue (BR-014).</summary>
+    public DateTimeOffset? StartedAt { get; private set; }
+
+    public DateTimeOffset? EndedAt { get; private set; }
+
+    /// <summary>Why a Run failed, in one honest sentence. Null on success.</summary>
+    public string? FailureReason { get; private set; }
+
+    /// <summary>BR-011/DEC-038: all three null together means "unknown" — never invented.</summary>
+    public long? UsageInputTokens { get; private set; }
+
+    public long? UsageOutputTokens { get; private set; }
+
+    public decimal? CostUsd { get; private set; }
+
+    public void MarkExecuting(DateTimeOffset at)
+    {
+        State = RunState.Executing;
+        StartedAt = at;
+    }
+
+    public void Succeed(DateTimeOffset at, long? inputTokens, long? outputTokens, decimal? costUsd)
+    {
+        State = RunState.Succeeded;
+        EndedAt = at;
+        UsageInputTokens = inputTokens;
+        UsageOutputTokens = outputTokens;
+        CostUsd = costUsd;
+    }
+
+    public void Fail(DateTimeOffset at, string reason)
+    {
+        State = RunState.Failed;
+        EndedAt = at;
+        FailureReason = reason;
+    }
 }
 
 /// <summary>
-/// Every state here is <i>active</i> in BR-001's sense. Terminal states arrive with the issue
-/// that lets a Run complete; the BR-001 index filter must be revisited when they do.
+/// The first four states are <i>active</i> in BR-001's sense and are the exact list the
+/// partial unique index filters on. <see cref="Succeeded"/> and <see cref="Failed"/> are
+/// terminal and deliberately outside that filter: a finished Story can run again, and a
+/// Failed Run is re-run only by a human (BR-004).
 /// </summary>
 enum RunState
 {
@@ -60,4 +99,6 @@ enum RunState
     Planning = 2,
     AwaitingApproval = 3,
     Executing = 4,
+    Succeeded = 5,
+    Failed = 6,
 }

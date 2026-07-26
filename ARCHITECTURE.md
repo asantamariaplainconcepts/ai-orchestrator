@@ -190,6 +190,29 @@ queue enqueue cannot share a transaction: the Run commits first, so a crash betw
 leaves a visible `Queued` Run with no message — logged loudly, recovered by *Run now* (BR-013)
 when it lands.
 
+## Agent execution
+
+`IAgentRuntime` (BuildingBlocks) is the job contract: instruction in — prompt, action,
+timeout, workspace, in-memory credentials — result out: log, optional output link, optional
+usage. Claude Code headless implements it first (DEC-012), version-pinned in the worker image;
+the CLI is confined to its implementation file the way Octokit is confined to the GitHub
+connector.
+
+**Nothing secret travels.** The queue message is still only a Run id. The worker — a full host
+composing the modules — loads the Run, Story and Automation through Contracts, resolves the
+project PAT and the AI credential **by name** at execution time (BR-010, DEC-014, DEC-030),
+and the values live exactly as long as the child process does.
+
+**Usage is honest.** The runtime reports tokens and cost when its output carries them
+(BR-011/DEC-038); anything missing or unparseable reads as "unknown" on a Run that otherwise
+succeeded. The result-JSON shape is verified by exercising, and the parser is defensive so a
+shape surprise degrades to honesty, not to failed Runs.
+
+**Terminal states exist now.** Queued → Executing at claim; Succeeded/Failed with timestamps
+at the end — and a crash mid-execution still ends the Run, because nothing redelivers
+(BR-004). BR-001's index filters on active states only, so a finished Story runs again; a
+Failed Run is re-run by a human, never automatically.
+
 ## Frontend
 
 One React SPA (Vite, React Router, TanStack Query) served **same-origin** by the host: proxied to

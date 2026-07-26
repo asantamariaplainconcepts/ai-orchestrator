@@ -474,3 +474,28 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — tenth consecutive; same standing cause).
 - **ADR:** none new. The cwd-drift discipline is session tooling, not workflow; recorded here
   because the retro is where the pattern's cost is visible.
+
+## 2026-07-27 — agent-runtime-seam
+
+- **Worked:** Writing the spec scenario before the code caught a real defect the suite would
+  otherwise have blessed: "a terminal Run frees its Story" failed on first run because the
+  BR-001 pre-check predated terminal states and counted every Run as blocking — the index was
+  right and the pre-check lied. One state filter later, the pre-check mirrors the index it
+  fronts, with a comment binding the two lists together. The hypothesis discipline (ADR-0005)
+  also earned its keep in reverse: the CLI could not be run in the authoring session, so
+  design D2 says HYPOTHESIS in capitals, the parser is written to degrade to "usage unknown"
+  (which BR-011 makes safe), and the in-container half — pinned 2.0.44 answers --version in
+  the built image — is recorded as exactly the half that was proven.
+- **Didn't:** The old worker's log event ids (3001/3002) silently collided with the Runs
+  module's MatchingLog — the uniqueness ArchTest scans module assemblies plus BuildingBlocks
+  and never looks at hosts, so the "unique across the solution" claim in the worker's own
+  comment was false from the day #17 merged. Renumbered here; the gap in the ArchTest's scan
+  remains and is the second silent-scope finding of its kind (telemetry's checker had the
+  same shape: a verifier whose blind spot was where the defect lived).
+- **Next time:** when a guardrail asserts "across the solution", make its assembly list say
+  so — hosts included — or rename the claim to what it actually scans.
+- **Time invested:** not measured (source: **manual** — eleventh consecutive; same standing
+  cause).
+- **ADR:** none new, but the guardrail-scope finding is a candidate on its second appearance;
+  ADR-0004's family already covers the principle (a verifier must look where the failure
+  lives).

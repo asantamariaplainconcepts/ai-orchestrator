@@ -12,7 +12,27 @@ public interface IAutomationCatalog
         Guid projectId,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// What execution needs about one enabled Automation — action, runtime and timeout as the
+    /// worker consumes them. Null when disabled, deleted, or another project's.
+    /// </summary>
+    Task<AutomationDetail?> Detail(
+        Guid projectId,
+        Guid automationId,
+        CancellationToken cancellationToken = default
+    );
 }
+
+/// <summary>Enum <b>names</b>, not ordinals — the self-describing convention everywhere else.</summary>
+public sealed record AutomationDetail(
+    Guid AutomationId,
+    string TriggerLabel,
+    string Action,
+    string Runtime,
+    bool RequiresApproval,
+    TimeSpan Timeout
+);
 
 /// <summary>
 /// What matching needs and nothing more: the trigger, the lane flag, and the id to record on

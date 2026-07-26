@@ -1,6 +1,8 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
+using AiOrchestrator.Modules.Runs.Features.Execution;
 using AiOrchestrator.Modules.Runs.Features.Matching;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -18,6 +20,13 @@ public sealed class RunsModule : ModuleBase
     /// overridable per host, not hardcoded into the handler.
     /// </summary>
     public const string ProjectConcurrencyCapKey = "Runs:ProjectConcurrencyCap";
+
+    /// <summary>
+    /// Where the AI credential lives, by NAME (DEC-014 — the vault holds the value). Host
+    /// configuration until Project configuration gains a per-project field (its own issue);
+    /// the stated simplification is the name's scope, never its storage.
+    /// </summary>
+    public const string AiCredentialSecretNameKey = "Runs:AiCredentialSecretName";
 
     public override string Name => "Runs";
 
@@ -53,8 +62,15 @@ public sealed class RunsModule : ModuleBase
                     ProjectConcurrencyCapKey,
                     defaultValue: 2
                 ),
+                AiCredentialSecretName = configuration.GetValue(
+                    AiCredentialSecretNameKey,
+                    defaultValue: "anthropic-api-key"
+                )!,
             }
         );
+
+        // The worker-facing execution surface (agent-execution spec).
+        services.AddScoped<IRunExecutor, RunExecutor>();
 
         // The one creation path both matching and Run now share (BR-013).
         services.AddScoped<RunCreator>();
@@ -69,4 +85,7 @@ sealed class RunsOptions
 {
     /// <summary>BR-002: max concurrent Runs in Planning/Executing per Project. Default 2.</summary>
     public required int ProjectConcurrencyCap { get; init; }
+
+    /// <summary>See <see cref="RunsModule.AiCredentialSecretNameKey"/> — a name, never a value.</summary>
+    public required string AiCredentialSecretName { get; init; }
 }

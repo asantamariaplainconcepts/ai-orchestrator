@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Connectors;
@@ -32,6 +33,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// </summary>
     internal DeliveryProbe Probe { get; } = new();
 
+    /// <summary>The runtime faked at the seam — the same discipline as the vendor stub.</summary>
+    internal FakeAgentRuntime Agent { get; } = new();
+
     // "projects" is spelled out: ProjectsDbContext is internal to its module, and a schema
     // constant is not worth an InternalsVisibleTo.
     protected override string[] SchemasToReset =>
@@ -61,6 +65,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
             services.AddSingleton(Probe);
             services.AddIntegrationEventHandler<StoryChanged, DeliveryProbe.Handler>();
+
+            services.RemoveAll<IAgentRuntime>();
+            services.AddSingleton<IAgentRuntime>(Agent);
         });
     }
 }
@@ -165,6 +172,45 @@ sealed class DeliveryProbe
             probe._deliveries.Enqueue(@event);
             return Task.CompletedTask;
         }
+    }
+}
+
+/// <summary>
+/// A runtime whose result the test scripts. Instructions are recorded so tests can assert what
+/// crossed the seam — values in memory, never names.
+/// </summary>
+sealed class FakeAgentRuntime : IAgentRuntime
+{
+    readonly ConcurrentQueue<AgentInstruction> _instructions = new();
+
+    public AgentResult Result { get; set; } =
+        new(Succeeded: true, Log: "ok", OutputLink: null, Usage: new AgentUsage(10, 20, 0.05m));
+
+    public Exception? Throws { get; set; }
+
+    public IReadOnlyList<AgentInstruction> Instructions => [.. _instructions];
+
+    public void Reset()
+    {
+        _instructions.Clear();
+        Throws = null;
+        Result = new AgentResult(
+            Succeeded: true,
+            Log: "ok",
+            OutputLink: null,
+            Usage: new AgentUsage(10, 20, 0.05m)
+        );
+    }
+
+    public Task<AgentResult> Execute(
+        AgentInstruction instruction,
+        CancellationToken cancellationToken
+    )
+    {
+        _instructions.Enqueue(instruction);
+        return Throws is { } exception
+            ? Task.FromException<AgentResult>(exception)
+            : Task.FromResult(Result);
     }
 }
 

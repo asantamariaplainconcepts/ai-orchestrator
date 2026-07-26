@@ -3,6 +3,7 @@ using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.ServiceDefaults;
+using AiOrchestrator.ServiceDefaults.Agents;
 using AiOrchestrator.ServiceDefaults.Dispatch;
 using AiOrchestrator.ServiceDefaults.IntegrationEvents;
 using AiOrchestrator.ServiceDefaults.Secrets;
@@ -38,6 +39,10 @@ builder.AddIntegrationEvents();
 
 // The producer side of dispatch: matching (Runs module) enqueues through IRunDispatcher.
 builder.AddRunDispatch();
+
+// The runtime seam's implementation: the Server never invokes it, but the Runs module's
+// executor depends on the seam and DI validation rightly demands the dependency exist.
+builder.AddAgentRuntime();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
