@@ -85,6 +85,43 @@ sealed class StubBacklogConnector : IBacklogConnector
         string token,
         CancellationToken cancellationToken
     ) => Task.FromResult<ErrorOr<BacklogSnapshot>>(new BacklogSnapshot([.. Stories]));
+
+    public Task<ErrorOr<Success>> ApplyLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var index = Stories.FindIndex(story => story.VendorId == vendorStoryId);
+        if (index >= 0 && !Stories[index].Labels.Contains(label))
+        {
+            Stories[index] = Stories[index] with { Labels = [.. Stories[index].Labels, label] };
+        }
+
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
+
+    public Task<ErrorOr<Success>> RemoveLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var index = Stories.FindIndex(story => story.VendorId == vendorStoryId);
+        if (index >= 0)
+        {
+            Stories[index] = Stories[index] with
+            {
+                Labels = [.. Stories[index].Labels.Where(existing => existing != label)],
+            };
+        }
+
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
 }
 
 sealed class StubSecretResolver : ISecretResolver
