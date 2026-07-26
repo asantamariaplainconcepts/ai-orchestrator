@@ -5,8 +5,8 @@
 # configuration, and no human ever copies a password between systems.
 
 resource "azurerm_key_vault" "main" {
-  # Vault names cap at 24 characters — "kv-aio-dev" leaves room for longer environment names.
-  name                = "kv-${local.prefix}"
+  # 24-character cap: "kv-aio-dev-" (11) plus the 8-char suffix leaves room to spare.
+  name                = "kv-${local.prefix}-${local.unique}"
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   tenant_id           = data.azurerm_client_config.current.tenant_id

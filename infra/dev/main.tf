@@ -63,6 +63,13 @@ locals {
   # at 24 characters and storage at 24 lowercase alphanumerics.
   prefix = "aio-${var.environment}"
 
+  # Key Vault and container registry names are globally unique *across all of Azure*, not just
+  # this subscription — "kv-aio-dev" was already taken by a stranger, and the first apply failed
+  # on it. A short subscription-derived suffix makes both names deterministic (same input, same
+  # name, every run) without colliding with anyone else, and leaks nothing: this is a prefix of
+  # the hash already committed in variables.tf.
+  unique = substr(local.actual_subscription_hash, 0, 8)
+
   tags = {
     product     = "ai-orchestrator"
     environment = var.environment

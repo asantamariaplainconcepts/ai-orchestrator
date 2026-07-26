@@ -13,7 +13,7 @@ resource "azurerm_log_analytics_workspace" "main" {
 
 resource "azurerm_container_registry" "main" {
   # Registry names allow no hyphens, so the prefix is flattened rather than renamed.
-  name                = replace("cr${local.prefix}", "-", "")
+  name                = replace("cr${local.prefix}${local.unique}", "-", "")
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   sku                 = "Basic"

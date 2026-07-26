@@ -51,6 +51,32 @@ NOT plan against Azure (no credentials in CI by design — a federated identity 
 deliberate issue). The lane must fail loudly if it cannot run, never skip silently (ADR-0004:
 a green that proves nothing is worse than a red).
 
+## D8 — Globally unique names carry a deterministic suffix
+
+Key Vault and container registry names are unique across **all of Azure**, not just the
+subscription. The first apply proved it the hard way: `kv-aio-dev` was already taken by a
+stranger and the apply failed partway through, after the resource group, database and registry
+existed. Both now append `substr(sha256(subscription_id), 0, 8)` — deterministic (the same
+subscription always yields the same name, so re-applies are stable), collision-free in practice,
+and leaking nothing, since the full hash is already committed as the subscription guard.
+
+The registry did not fail — `craiodev` happened to be free — and was changed anyway. A name that
+works by luck in one subscription and fails in the next is a latent defect, not a working one.
+
+## D9 — A user-assigned identity, because a system-assigned one deadlocks
+
+Container Apps validates the registry credential *while creating the app*. A system-assigned
+principal does not exist until the app is created, so `AcrPull` cannot be granted before the
+thing that needs it — the app waits on a permission Terraform is waiting on the app to enable.
+The first apply hung for seventeen minutes in exactly that state, with the app `InProgress` and
+its identity holding no role assignments.
+
+One user-assigned identity, created and granted before either workload, has no cycle. Both the
+portal and the migration job use it: they need identical permissions, and two identities would
+be two things to keep in step. `AZURE_CLIENT_ID` is passed explicitly because
+`DefaultAzureCredential` will not guess between multiple assigned identities — omitting it moves
+the failure from deploy time to the first vault read.
+
 ## SKU record (raise deliberately, not accidentally)
 
 | Resource | SKU | Why |

@@ -1,9 +1,9 @@
 # The portal container app and the migration job.
 #
-# Both carry a system-assigned identity and receive the vault URI — never a credential. The
-# job exists as its own resource because migrations are a deploy step, never a side effect of
-# the Server starting (design D6); deploy.sh runs it and waits for exit 0 before the app
-# revision moves.
+# Both run as the shared user-assigned identity (see identity.tf for why it cannot be
+# system-assigned) and receive the vault URI — never a credential. The job exists as its own
+# resource because migrations are a deploy step, never a side effect of the Server starting
+# (design D6); deploy.sh runs it and waits for exit 0 before the app revision moves.
 
 resource "azurerm_container_app" "portal" {
   name                         = "ca-${local.prefix}-portal"
@@ -13,12 +13,15 @@ resource "azurerm_container_app" "portal" {
   tags                         = local.tags
 
   identity {
-    type = "SystemAssigned"
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.workload.id]
   }
 
   registry {
-    server   = azurerm_container_registry.main.login_server
-    identity = "System"
+    server = azurerm_container_registry.main.login_server
+    # The identity must already hold AcrPull when the app is created — the explicit dependency
+    # below is what guarantees it, and its absence is what hung the first apply.
+    identity = azurerm_user_assigned_identity.workload.id
   }
 
   ingress {
@@ -61,8 +64,19 @@ resource "azurerm_container_app" "portal" {
         name  = "ConnectionStrings__aiorchestratordbSecretName"
         value = azurerm_key_vault_secret.database_connection_string.name
       }
+      # DefaultAzureCredential must be told which user-assigned identity to use; with more than
+      # one available it will not guess, and the app would fail to reach the vault at runtime.
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.workload.client_id
+      }
     }
   }
+
+  depends_on = [
+    azurerm_role_assignment.workload_acr_pull,
+    azurerm_role_assignment.workload_vault_read,
+  ]
 
   lifecycle {
     # deploy.sh owns the image after the first apply; Terraform reverting it to the bootstrap
@@ -88,12 +102,13 @@ resource "azurerm_container_app_job" "migrations" {
   }
 
   identity {
-    type = "SystemAssigned"
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.workload.id]
   }
 
   registry {
     server   = azurerm_container_registry.main.login_server
-    identity = "System"
+    identity = azurerm_user_assigned_identity.workload.id
   }
 
   template {
@@ -111,38 +126,19 @@ resource "azurerm_container_app_job" "migrations" {
         name  = "ConnectionStrings__aiorchestratordbSecretName"
         value = azurerm_key_vault_secret.database_connection_string.name
       }
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.workload.client_id
+      }
     }
   }
+
+  depends_on = [
+    azurerm_role_assignment.workload_acr_pull,
+    azurerm_role_assignment.workload_vault_read,
+  ]
 
   lifecycle {
     ignore_changes = [template[0].container[0].image]
   }
-}
-
-# ---- Identity grants ------------------------------------------------------------------------
-# Read-only on the vault, pull-only on the registry. Neither app can write a secret or push an
-# image, which is the least privilege each actually needs.
-
-resource "azurerm_role_assignment" "portal_vault_read" {
-  scope                = azurerm_key_vault.main.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_container_app.portal.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "portal_acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_container_app.portal.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "migrations_vault_read" {
-  scope                = azurerm_key_vault.main.id
-  role_definition_name = "Key Vault Secrets User"
-  principal_id         = azurerm_container_app_job.migrations.identity[0].principal_id
-}
-
-resource "azurerm_role_assignment" "migrations_acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_container_app_job.migrations.identity[0].principal_id
 }
