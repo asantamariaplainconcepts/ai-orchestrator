@@ -125,6 +125,13 @@ export const en = {
   "backlog.table.title": "Title",
   "backlog.table.labels": "Labels",
   "backlog.table.state": "State",
+  // Trigger-label affordances (UC-008): the label text is vendor data; only the verbs and
+  // glyphs are copy.
+  "backlog.labels.apply": "Apply this trigger label \u2014 written back to the vendor",
+  "backlog.labels.remove": "Remove this trigger label \u2014 written back to the vendor",
+  "backlog.labels.failed": "Could not write the label to the vendor. The backlog is unchanged.",
+  "backlog.labels.applyGlyph": "+",
+  "backlog.labels.removeGlyph": "\u00d7",
   "backlog.table.runs": "Runs",
   "backlog.table.viewRuns": "View Runs",
 } as const;

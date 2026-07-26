@@ -21,6 +21,33 @@ export function useConfigureConnector(projectId: string) {
   });
 }
 
+export function useWriteStoryLabel(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      vendorStoryId,
+      label,
+      apply,
+    }: {
+      vendorStoryId: string;
+      label: string;
+      apply: boolean;
+    }) => {
+      const url = `/api/projects/${projectId}/backlog/stories/${encodeURIComponent(
+        vendorStoryId,
+      )}/labels/${encodeURIComponent(label)}`;
+      return apply ? api.put<unknown>(url, {}) : api.delete<unknown>(url);
+    },
+    // The write re-synchronises the mirror server-side, and a trigger label may have created a
+    // Run by the time the response arrives — both views re-read.
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: backlogKey(projectId) });
+      void queryClient.invalidateQueries({ queryKey: ["runs", projectId] });
+    },
+  });
+}
+
 export function useRefreshBacklog(projectId: string) {
   const queryClient = useQueryClient();
 
