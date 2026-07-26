@@ -16,6 +16,10 @@
     <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="Scrutor" Version="7.0.0" />
+    <!-- Official GitHub client: owns pagination, rate-limit headers, conditional requests and
+         error mapping — the code most likely to be subtly wrong if hand-rolled (design D4).
+         Confined to the GitHub connector implementation by the IBacklogConnector seam. -->
+    <PackageVersion Include="Octokit" Version="14.0.0" />
 
     <!-- Data -->
     <PackageVersion Include="Npgsql" Version="10.0.3" />
@@ -41,6 +45,7 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.7.0" />
 

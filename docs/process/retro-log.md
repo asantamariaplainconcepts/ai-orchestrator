@@ -207,3 +207,30 @@ times in the project this framework came from.
   [ADR-0003](../adr/0003-a-derived-artifact-has-exactly-one-owner.md) (two owners for one
   artifact) and from the "gate ran too late" family. Graduate it if it recurs; writing an ADR from
   a single instance would be guessing at the general rule.
+
+## 2026-07-26 — github-connector-backlog-mirror
+
+- **Worked:** The concurrency test [ADR-0002] demanded **found a real race on its first run** —
+  eight parallel refreshes colliding on the `(ProjectId, VendorId)` unique index; the fix is a
+  narrow unique-violation catch, not a loosened constraint. Stubbing E2E at the **HTTP boundary**
+  (a local GitHub API stand-in behind `Backlog:GitHub:BaseAddress`) kept real Octokit on the
+  tested path with no token in CI. And the second module finally proved the architecture's
+  standing claims instead of asserting them: the host discovered Backlog with zero edits to
+  `Program.cs`, and the analyzers + ArchTests ran against two genuine modules.
+- **Didn't:** Two bootstrap defects masked each other through every green build: nothing set
+  `ASPNETCORE_ENVIRONMENT` under `aspire run` (launchSettings omitted it on purpose, the AppHost
+  by omission), so the Server ran as Production and skipped migrations; fixing that exposed that
+  terminal `UseSpa` swallowed `/api/*` in real Development, with Vite answering `200 index.html`
+  for everything. Both surfaced only when the human deleted the data volume — and my own first
+  verification was fooled by the same shape, reading "API 200" as success while Vite's fallback
+  was the thing answering. Separately: rendering the page found copy defects no automated tier
+  can see ("1 Stories"; an unconfigured project claiming "no open Stories in this repository"),
+  and this change could not measure itself — no session telemetry landed for it.
+- **Next time:** Acceptance checks must be **unfakeable by a wrong-but-healthy component** —
+  assert the JSON body, or a `POST` → `201` with the created entity, never a bare 200.
+- **Time invested:** not measured (source: **manual** — `.telemetry/usage.jsonl` holds no
+  sessions for this change; `sessions.jsonl` carries only the startup probe).
+- **ADR:** [ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md) —
+  *a verification asserts the observable artifact, not a proxy signal*. Second occurrence of the
+  pattern the telemetry retro recorded first (port-free ≠ bytes captured; here, 200 ≠ endpoint
+  executed), so it graduates per the rule.

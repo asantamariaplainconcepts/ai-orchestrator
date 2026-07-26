@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { t } from "@/shared/i18n";
+import { Link } from "react-router";
+import { t, tCount } from "@/shared/i18n";
+import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { useCreateProject, useProjects } from "./useProjects";
 
 export function ProjectsScreen() {
@@ -27,7 +29,7 @@ export function ProjectsScreen() {
               <h1>{t("projects.heading")}</h1>
               {projects.data ? (
                 <span className="badge badge-neutral">
-                  {projects.data.length} {t("projects.count")}
+                  {tCount(projects.data.length, "projects.count.one", "projects.count.other")}
                 </span>
               ) : null}
             </div>
@@ -72,7 +74,9 @@ export function ProjectsScreen() {
               <ul className="list">
                 {projects.data.map((project) => (
                   <li className="list-row" key={project.id}>
-                    <span className="list-title">{project.name}</span>
+                    <Link className="list-title" to={`/projects/${project.id}`}>
+                      {project.name}
+                    </Link>
                     <span className="mono">{project.id}</span>
                   </li>
                 ))}
@@ -82,27 +86,5 @@ export function ProjectsScreen() {
         </div>
       </main>
     </div>
-  );
-}
-
-/**
- * The theme is one attribute on the document element; absent it, the OS preference applies.
- * No component reads it — they consume variables whose values the theme swaps.
- */
-function ThemeToggle() {
-  const [theme, setTheme] = useState<"light" | "dark" | null>(null);
-
-  function toggle() {
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const current = theme ?? (prefersDark ? "dark" : "light");
-    const next = current === "dark" ? "light" : "dark";
-    document.documentElement.setAttribute("data-theme", next);
-    setTheme(next);
-  }
-
-  return (
-    <button className="btn" type="button" onClick={toggle} aria-label={t("theme.toggle")}>
-      {t("theme.toggle")}
-    </button>
   );
 }

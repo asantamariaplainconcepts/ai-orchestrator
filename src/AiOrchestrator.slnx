@@ -1,10 +1,14 @@
 <Solution>
   <Folder Name="/modules/" />
+  <Folder Name="/modules/Backlog/">
+    <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog/AiOrchestrator.Modules.Backlog.csproj" />
+  </Folder>
   <Folder Name="/modules/Projects/">
     <Project Path="modules/Projects/AiOrchestrator.Modules.Projects/AiOrchestrator.Modules.Projects.csproj" />
   </Folder>
   <Folder Name="/root/">
     <Project Path="root/AiOrchestrator.AppHost/AiOrchestrator.AppHost.csproj" />
+    <Project Path="root/AiOrchestrator.MigrationService/AiOrchestrator.MigrationService.csproj" />
     <Project Path="root/AiOrchestrator.Server/AiOrchestrator.Server.csproj" />
   </Folder>
   <Folder Name="/shared/">
@@ -18,6 +22,10 @@
     <Project Path="tests/AiOrchestrator.SharedFunctionalTests/AiOrchestrator.SharedFunctionalTests.csproj" />
   </Folder>
   <Folder Name="/tests/modules/" />
+  <Folder Name="/tests/modules/Backlog/">
+    <Project Path="tests/modules/Backlog/AiOrchestrator.Modules.Backlog.FunctionalTests/AiOrchestrator.Modules.Backlog.FunctionalTests.csproj" />
+    <Project Path="tests/modules/Backlog/AiOrchestrator.Modules.Backlog.UnitTests/AiOrchestrator.Modules.Backlog.UnitTests.csproj" />
+  </Folder>
   <Folder Name="/tests/modules/Projects/">
     <Project Path="tests/modules/Projects/AiOrchestrator.Modules.Projects.FunctionalTests/AiOrchestrator.Modules.Projects.FunctionalTests.csproj" />
     <Project Path="tests/modules/Projects/AiOrchestrator.Modules.Projects.UnitTests/AiOrchestrator.Modules.Projects.UnitTests.csproj" />

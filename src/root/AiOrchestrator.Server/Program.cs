@@ -1,6 +1,7 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
+using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.ServiceDefaults;
 using Scalar.AspNetCore;
 
@@ -22,19 +23,25 @@ var modules = ModuleRegistration.Discover();
 builder.Services.AddModules(modules, builder.Configuration);
 builder.Services.AddVsaCqsArchitecture(modules.Assemblies());
 
+// Secret-store wiring lives here because IModule.Add receives only IServiceCollection and
+// IConfiguration — a module structurally cannot call an IHostApplicationBuilder extension, which
+// is what Aspire's client integrations are. #8 swaps this for the Key Vault resolver behind the
+// same interface, changing no call site (design D3).
+builder.Services.AddSingleton<ISecretResolver, ConfigurationSecretResolver>();
+builder.Services.AddSingleton(TimeProvider.System);
+
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
 
-// Outside production the database is disposable and the loop should just work — a fresh clone,
-// or a fresh E2E container, boots with an up-to-date schema. Production schema changes are a
-// deliberate deploy step, never a side effect of a process starting.
-if (!app.Environment.IsProduction())
-{
-    await app.Services.MigrateModules(modules);
-}
+// The Server never migrates — in any environment. Migrations are the AppHost's `migrations`
+// resource (AiOrchestrator.MigrationService), which this process waits on via WaitForCompletion.
+// The previous in-process version was gated on `!IsProduction()`, and under `aspire run` the
+// environment silently defaulted to Production: fresh database, no schema, 500s that read as an
+// application bug. A gate that guesses from the environment name is the defect; owning the step
+// elsewhere removes the gate rather than tuning it.
 
 app.UseExceptionHandler();
 
@@ -50,12 +57,22 @@ app.MapModules(modules);
 // The SPA is served same-origin either way, so the frontend never needs CORS or an absolute API
 // base URL. In dev the Vite dev server is proxied (its URL arrives via Aspire service discovery);
 // in every other environment the static build in wwwroot is served with an index.html fallback.
-// Reserved prefixes are mapped above and win, because routing runs before both branches.
 var frontendDevServer = app.Configuration["services:frontend:http:0"];
 
 if (app.Environment.IsDevelopment() && !string.IsNullOrWhiteSpace(frontendDevServer))
 {
-    app.UseSpa(spa => spa.UseProxyToSpaDevelopmentServer(frontendDevServer));
+    // Guarded by "did routing select an endpoint", because UseSpa is TERMINAL middleware: routing
+    // *selects* the endpoint up front, but endpoints *execute* at the end of the pipeline, and an
+    // unguarded UseSpa sits between the two and never calls next — so it swallowed every request,
+    // /api included, and Vite answered 200 index.html for all of them. It hid from day one behind
+    // the environment bug: dev mode was accidentally running as Production, where this branch
+    // never executed. The guard restores what the old comment merely asserted: mapped endpoints
+    // win, and only unclaimed paths reach the dev server.
+    app.UseWhen(
+        context => context.GetEndpoint() is null,
+        spaPipeline =>
+            spaPipeline.UseSpa(spa => spa.UseProxyToSpaDevelopmentServer(frontendDevServer))
+    );
 }
 else
 {
