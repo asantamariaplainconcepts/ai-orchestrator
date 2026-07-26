@@ -70,6 +70,90 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
+    public async Task<ErrorOr<Success>> ApplyLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            // Add-to-set at the vendor: applying a label the issue already carries is a no-op
+            // by GitHub's own semantics (design D3).
+            await client.Issue.Labels.AddToIssue(
+                coordinates.Owner,
+                coordinates.Repository,
+                number,
+                [label]
+            );
+            return Result.Success;
+        }
+        catch (NotFoundException)
+        {
+            // For an *apply*, 404 means the issue (or repository) is gone — a real refusal.
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    public async Task<ErrorOr<Success>> RemoveLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            await client.Issue.Labels.RemoveFromIssue(
+                coordinates.Owner,
+                coordinates.Repository,
+                number,
+                label
+            );
+            return Result.Success;
+        }
+        catch (NotFoundException)
+        {
+            // GitHub answers 404 both for "label not on the issue" and "issue gone". Either
+            // way the desired end state — the story does not carry the label — holds, so a
+            // remove treats 404 as the idempotent no-op (design D3).
+            return Result.Success;
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    static bool TryParseIssueNumber(string vendorStoryId, out int number) =>
+        int.TryParse(
+            vendorStoryId,
+            System.Globalization.NumberStyles.None,
+            System.Globalization.CultureInfo.InvariantCulture,
+            out number
+        );
+
     /// <summary>
     /// Maps vendor failures onto our closed error set, keeping "wrong repository" and "wrong
     /// credential" apart. GitHub answers 404 for a repository the credential cannot see, which is
