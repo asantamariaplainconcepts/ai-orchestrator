@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams } from "react-router";
+import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { useProjects } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -68,6 +69,8 @@ export function ProjectScreen() {
             </div>
           </div>
         )}
+
+        <AutomationsSection projectId={projectId} />
 
         <section className="card">
           <div className="card-header">
