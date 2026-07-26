@@ -19,7 +19,8 @@ src/
 │   └── Backlog/AiOrchestrator.Modules.Backlog/     # Connector + mirrored Stories (BC-002)
 ├── root/
 │   ├── AiOrchestrator.Server/                # BFF host: module composition + SPA same-origin
-│   └── AiOrchestrator.AppHost/               # Aspire: Postgres + Azurite + host + Vite
+│   ├── AiOrchestrator.MigrationService/      # the migration step; Server waits on its completion
+│   └── AiOrchestrator.AppHost/               # Aspire: Postgres + Azurite + migrations + host + Vite
 ├── frontend/                                 # Vite + React SPA, standalone pnpm project
 └── tests/
     ├── AiOrchestrator.ArchTests/             # runtime complement to the analyzers
@@ -35,7 +36,14 @@ src/
 A modular monolith with enforced seams. The host discovers `AiOrchestrator.Modules.*.dll` at
 startup ([ModuleRegistration](src/shared/AiOrchestrator.BuildingBlocks/Modules/ModuleRegistration.cs)),
 so adding a module needs no host edit. Each module owns a PostgreSQL schema, its migrations, and
-its feature slices. Backlog was the first module to test that claim rather than assert it: adding
+its feature slices.
+
+**The Server never migrates — in any environment.** Migrations are a separate resource in the
+AppHost graph (`AiOrchestrator.MigrationService`, which runs every module's `IModule.Migrate`
+and exits); the Server starts only after it completes. The in-process predecessor was gated on
+`!IsProduction()` and under `aspire run` the environment silently defaulted to Production —
+fresh database, no schema. In production the same executable runs as a deliberate deploy step
+(#8); the functional-test fixture calls the same `MigrateModules` itself. Backlog was the first module to test that claim rather than assert it: adding
 it changed the solution file and nothing in `Program.cs`.
 
 There are two modules, and the boundary between them cost something worth knowing about. The

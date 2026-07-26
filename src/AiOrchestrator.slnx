@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/root/">
     <Project Path="root/AiOrchestrator.AppHost/AiOrchestrator.AppHost.csproj" />
+    <Project Path="root/AiOrchestrator.MigrationService/AiOrchestrator.MigrationService.csproj" />
     <Project Path="root/AiOrchestrator.Server/AiOrchestrator.Server.csproj" />
   </Folder>
   <Folder Name="/shared/">

@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Modules;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,11 +46,14 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
     {
         await Task.WhenAll(_database.StartAsync(), _storage.StartAsync());
 
-        // Starting the host applies the modules' migrations through the same startup path the
-        // real application uses, so the tests cover that path instead of a parallel one. It also
-        // has to happen before Respawner is created: Respawner captures the schema graph up
-        // front, and against an empty database it would capture nothing and reset nothing.
+        // Boot the host, then migrate explicitly. The Server deliberately never migrates itself —
+        // in the composed application that step is the AppHost's `migrations` resource — so this
+        // fixture, which owns its own database lifecycle, runs the same MigrateModules call that
+        // resource runs. It must happen before Respawner is created: Respawner captures the
+        // schema graph up front, and against an empty database it would capture nothing and
+        // reset nothing.
         CreateClient().Dispose();
+        await Services.MigrateModules(ModuleRegistration.Discover());
 
         _respawnConnection = new NpgsqlConnection(DatabaseConnectionString);
         await _respawnConnection.OpenAsync();
