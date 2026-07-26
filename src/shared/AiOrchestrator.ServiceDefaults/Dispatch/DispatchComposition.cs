@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using Azure.Identity;
 using Azure.Storage.Queues;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,8 +58,26 @@ public static class DispatchComposition
             );
         }
 
-        builder.Services.AddSingleton(
-            new QueueServiceClient(connectionString, DispatchQueue.ClientOptions())
-        );
+        builder.Services.AddSingleton(Create(connectionString));
     }
+
+    /// <summary>
+    /// One setting, two shapes — chosen by what the value <i>is</i>, not by environment name.
+    /// <para>
+    /// Deployed, the queue endpoint arrives as a URI and the identity supplies the credential:
+    /// there is no key to configure, which is the point (BR-010). Locally, Azurite hands Aspire a
+    /// keyed connection string. Passing a URI to the connection-string constructor throws, and
+    /// only at the first dispatch — so the discrimination happens here, at startup, where it is
+    /// visible.
+    /// </para>
+    /// </summary>
+    static QueueServiceClient Create(string setting) =>
+        Uri.TryCreate(setting, UriKind.Absolute, out var endpoint)
+        && endpoint.Scheme is "http" or "https"
+            ? new QueueServiceClient(
+                endpoint,
+                new DefaultAzureCredential(),
+                DispatchQueue.ClientOptions()
+            )
+            : new QueueServiceClient(setting, DispatchQueue.ClientOptions());
 }

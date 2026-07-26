@@ -41,3 +41,18 @@ output "postgres_fqdn" {
   description = "Database host. The credential lives in the vault, not here."
   value       = azurerm_postgresql_flexible_server.main.fqdn
 }
+
+output "dispatch_job_name" {
+  description = "KEDA-scaled job that drains the dispatch queue."
+  value       = azurerm_container_app_job.dispatch.name
+}
+
+output "dispatch_queue_account" {
+  description = "Storage account holding the dispatch queue."
+  value       = azurerm_storage_account.dispatch.name
+}
+
+output "dispatch_queue_name" {
+  description = "Queue the worker drains and the scaler watches."
+  value       = azurerm_storage_queue.dispatch.name
+}

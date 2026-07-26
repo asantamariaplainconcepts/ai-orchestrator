@@ -65,6 +65,12 @@ variable "portal_image" {
   default     = "mcr.microsoft.com/k8se/quickstart:latest"
 }
 
+variable "dispatch_image" {
+  description = "Fully qualified image for the dispatch worker job. Same bootstrapping rationale as portal_image."
+  type        = string
+  default     = "mcr.microsoft.com/k8se/quickstart:latest"
+}
+
 variable "migration_image" {
   description = "Fully qualified image for the migration job. Same bootstrapping rationale as portal_image."
   type        = string

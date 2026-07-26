@@ -22,6 +22,15 @@ var migrations = builder
 // The server's endpoints come from its launchSettings "http" profile — without that profile the
 // resource has no named endpoint and nothing can resolve it. ASPNETCORE_ENVIRONMENT is left out
 // of that profile on purpose, so the AppHost and the E2E fixture stay in charge of it.
+// The dispatch worker runs locally as an ordinary resource: KEDA has no local equivalent, so
+// what the AppHost proves is the queue contract, not the scaler. Explicit here rather than
+// implied, because a green local run must not be mistaken for a working scale rule.
+builder
+    .AddProject<Projects.AiOrchestrator_DispatchWorker>("dispatch")
+    .WithReference(queues)
+    .WaitFor(queues)
+    .WithExplicitStart();
+
 var server = builder
     .AddProject<Projects.AiOrchestrator_Server>("server")
     .WithReference(database)
