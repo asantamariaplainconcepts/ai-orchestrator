@@ -23,6 +23,7 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
             // after #7's "0" projection.
             run.Property(entity => entity.State).HasConversion<string>().HasMaxLength(50);
             run.Property(entity => entity.FailureReason).HasMaxLength(1000);
+            run.Property(entity => entity.OutputLink).HasMaxLength(500);
 
             // BR-001 as a constraint, not a hope: one Run per Story reference across the
             // active states. Every current state is active (see RunState); the filter is

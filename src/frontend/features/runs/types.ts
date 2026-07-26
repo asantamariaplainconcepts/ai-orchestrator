@@ -7,7 +7,8 @@ export interface RunView {
   id: string;
   vendorStoryId: string;
   automationId: string;
-  state: "Queued" | "Planning" | "AwaitingApproval" | "Executing";
+  state: "Queued" | "Planning" | "AwaitingApproval" | "Executing" | "Succeeded" | "Failed";
   createdAt: string;
   dispatchedAt: string | null;
+  outputLink: string | null;
 }

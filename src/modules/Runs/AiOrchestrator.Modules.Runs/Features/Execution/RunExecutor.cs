@@ -21,6 +21,7 @@ sealed class RunExecutor(
     IConnectorReader connectors,
     ISecretResolver secrets,
     IAgentRuntime runtime,
+    ICodeWorkspace workspace,
     RunsOptions options,
     TimeProvider clock,
     ILogger<RunExecutor> logger
@@ -55,6 +56,7 @@ sealed class RunExecutor(
             {
                 run.Succeed(
                     clock.GetUtcNow(),
+                    result.OutputLink,
                     result.Usage?.InputTokens,
                     result.Usage?.OutputTokens,
                     result.Usage?.CostUsd
@@ -135,32 +137,76 @@ sealed class RunExecutor(
             );
         }
 
-        var workspace = Directory.CreateTempSubdirectory("run-").FullName;
+        // The catalogue ships whole (DEC-026); only this action executes yet, and saying so
+        // beats a Run that silently does something else (agent-implements-pr spec).
+        if (automation.Action != "ImplementToPullRequest")
+        {
+            return Failure(
+                $"Action '{automation.Action}' is not executable yet — it is recorded and will "
+                    + "run when its Agent lands."
+            );
+        }
+
+        var coordinates = new CodeCoordinates(connector.Owner, connector.Repository);
+        var prepared = await workspace.Prepare(coordinates, run.Id, vendorToken, cancellationToken);
+        if (prepared.IsError)
+        {
+            // Stage-named refusal (design D4): the reason says "clone", not "something".
+            return Failure(prepared.FirstError.Description);
+        }
+
         try
         {
-            // Deterministic minimal instruction (design D4): #19 owns the real implement→PR
-            // content; this proves the contract — prompt in, result and usage out.
+            // The Agent implements; the ceremony is ours (design D1). The prompt says so, or
+            // the agent and the workspace seam would both try to own the same push.
             var prompt =
-                $"You are executing automation action '{automation.Action}' for story "
-                + $"#{story.VendorStoryId} of {connector.Owner}/{connector.Repository}. "
-                + $"Story state: {story.State}; labels: {string.Join(", ", story.Labels)}.";
+                $"Implement the following story in the repository at your current working "
+                + $"directory.\n\nStory #{story.VendorStoryId}: {story.Title}\n"
+                + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
+                + "Make the code changes only. Do not commit, push, or open pull requests — "
+                + "the orchestrator publishes your changes when you are done.";
 
-            return await runtime.Execute(
+            var agentResult = await runtime.Execute(
                 new AgentInstruction(
                     prompt,
                     automation.Action,
                     automation.Timeout,
-                    workspace,
+                    prepared.Value.Path,
                     new AgentCredentials(vendorToken, aiKey)
                 ),
                 cancellationToken
             );
+
+            if (!agentResult.Succeeded)
+            {
+                return agentResult;
+            }
+
+            var published = await workspace.Publish(
+                prepared.Value,
+                $"feat: story #{story.VendorStoryId} — {story.Title}",
+                $"Automated implementation of story #{story.VendorStoryId} "
+                    + $"({connector.Owner}/{connector.Repository}) by run {run.Id}.",
+                vendorToken,
+                cancellationToken
+            );
+
+            return published.IsError
+                ? agentResult with
+                {
+                    Succeeded = false,
+                    Log = published.FirstError.Description,
+                }
+                : agentResult with
+                {
+                    OutputLink = published.Value.PullRequestUrl,
+                };
         }
         finally
         {
             try
             {
-                Directory.Delete(workspace, recursive: true);
+                Directory.Delete(prepared.Value.Path, recursive: true);
             }
             catch (IOException)
             {
@@ -168,6 +214,9 @@ sealed class RunExecutor(
             }
         }
     }
+
+    static AgentResult Failure(string log) =>
+        new(Succeeded: false, Log: log, OutputLink: null, Usage: null);
 
     static string Truncate(string text) => text.Length <= 1000 ? text : text[..1000];
 }

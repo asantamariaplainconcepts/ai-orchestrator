@@ -43,6 +43,7 @@ builder.AddRunDispatch();
 // The runtime seam's implementation: the Server never invokes it, but the Runs module's
 // executor depends on the seam and DI validation rightly demands the dependency exist.
 builder.AddAgentRuntime();
+builder.AddCodeWorkspace();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

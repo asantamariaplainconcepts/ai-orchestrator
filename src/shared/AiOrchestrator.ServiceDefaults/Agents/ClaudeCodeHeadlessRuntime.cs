@@ -24,6 +24,13 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
     /// <summary>One name for the binary; the image pins its version (design D5).</summary>
     public const string Command = "claude";
 
+    /// <summary>
+    /// The executable actually started. A test seam only: BR-005's kill-on-timeout can be
+    /// exercised honestly with a process that sleeps, which the pinned CLI cannot be asked to
+    /// do without a credential. Production composition never sets it.
+    /// </summary>
+    public string CommandPath { get; init; } = Command;
+
     public async Task<AgentResult> Execute(
         AgentInstruction instruction,
         CancellationToken cancellationToken
@@ -32,7 +39,7 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
         using var process = new Process();
         process.StartInfo = new ProcessStartInfo
         {
-            FileName = Command,
+            FileName = CommandPath,
             WorkingDirectory = instruction.WorkspacePath,
             RedirectStandardOutput = true,
             RedirectStandardError = true,

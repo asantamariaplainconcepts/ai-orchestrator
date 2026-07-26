@@ -102,11 +102,13 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
+        // outputLink joined in agent-implements-pr — the field now has a producer (D5).
         fields.ShouldBe([
             "automationId",
             "createdAt",
             "dispatchedAt",
             "id",
+            "outputLink",
             "state",
             "vendorStoryId",
         ]);
