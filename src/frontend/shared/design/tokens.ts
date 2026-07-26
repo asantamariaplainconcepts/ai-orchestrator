@@ -8,6 +8,7 @@
 export const colors = {
   brand: 'var(--brand)',
   brandHover: 'var(--brand-hover)',
+  brandText: 'var(--brand-text)',
   brandSoft: 'var(--brand-soft)',
   brandBorder: 'var(--brand-border)',
   brandOn: 'var(--brand-on)',
@@ -98,6 +99,7 @@ export const typography = {
   lhNormal: 'var(--lh-normal)',
   lsHeading: 'var(--ls-heading)',
   lsNormal: 'var(--ls-normal)',
+  lsCaps: 'var(--ls-caps)',
 } as const;
 
 export const tokens = { colors, elevation, layout, motion, radius, spacing, typography } as const;

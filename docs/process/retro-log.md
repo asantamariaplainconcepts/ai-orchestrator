@@ -234,3 +234,26 @@ times in the project this framework came from.
   *a verification asserts the observable artifact, not a proxy signal*. Second occurrence of the
   pattern the telemetry retro recorded first (port-free ≠ bytes captured; here, 200 ≠ endpoint
   executed), so it graduates per the rule.
+
+## 2026-07-26 — atlas-shell-adoption
+
+- **Worked:** The design README's "recorded, not implemented" section did exactly what it was
+  written for: the entire shell was built from measurements taken before any screen needed them —
+  no re-deciding, no fresh screenshots. And
+  [ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md) **paid for
+  itself the day after it was written**: canvas-rasterized contrast measurement caught two AA
+  failures (dark active-nav at 3.55:1, section labels at 2.75:1) on pages an eyeball pass had
+  already approved.
+- **Didn't:** The proposal stated a measurement-dependent claim as a fact — "no new token is
+  expected" — and the proof failed it twice (`--ls-caps`, `--brand-text`). The spec itself
+  invented a metric ("trigger-labelled") that nothing can compute until Automations exist,
+  caught only at implementation and amended in place. And the kit prune deleted `.stack`/`.row`
+  along with the genuinely dead classes — the rebuild caught it, but removal needed the same
+  usage-grep rigour as addition.
+- **Next time:** a proposal claim that depends on future measurement is written as a
+  **hypothesis with a verification step**, never as a fact — "verify the palette suffices and
+  record what is missing", not "the palette needs nothing".
+- **Time invested:** not measured (source: **manual** — the second consecutive change with no
+  session telemetry; the SessionStart mapping hook is raised as its own spec-less issue).
+- **ADR:** none — *a proposal stated a hypothesis as a fact* is a **first** occurrence;
+  graduate it if it recurs.

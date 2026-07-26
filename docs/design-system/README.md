@@ -110,36 +110,37 @@ a style reference, not a brand transfer.
   `oklch(54% …)` rather than `oklch(60% …)`, measuring **5.10:1**. Light mode needed no change
   (7.55:1). Verified by measuring computed values in a browser, not by eye.
 
-## Reference observations, for screens we have not built yet
+## Reference observations
 
 The reference application was inspected in use and its components **measured**, not eyeballed.
-These patterns are **recorded, not implemented** — the kit deliberately contains only what our app
-renders today, and adding components ahead of a screen is speculative surface. When the screen
-arrives, start here rather than re-deciding. Values below are expressed in our tokens:
+Most of what was recorded here is now **implemented in the kit** (the atlas-shell-adoption
+change): the shell (sidebar, nav items, section labels, user card, top bar, breadcrumbs), the
+dense table, status pills, and stat cards. The kit is the source of truth for those; this section
+keeps only what remains unbuilt, plus the divergences worth remembering.
 
-- **Sidebar** — `--sidebar-w-expanded` wide, `--surface` background, product mark at the top and a
-  user card pinned at the bottom.
-- **Nav item** — `--sp-2`/`--sp-3` padding, `--r-2` radius, regular weight. **Active state is
-  `--brand-soft` fill with `--brand` text and medium weight** — a tint, not a heavy highlight.
-  (Measured exactly: the reference's active background and text are the same two values our
-  `--brand-soft` and `--brand` already hold.)
-- **Section label** — `--fs-11`, semibold, uppercase, roughly `0.06em` tracking, `--fg-subtle`.
-- **User card** — `--bg-muted` fill, `1px --border`, `--r-3`, `--sp-2` padding.
-- **Top bar** — `--surface`, `--sp-4` block / `--sp-7` inline padding.
-- **Breadcrumbs** — `--fs-12`, `--fg-muted`, small gap; then the page title row beneath.
-- **Filter/stat cards** — a row of cards each with a **coloured left border** in a semantic colour,
-  label left and large count right. They double as filters: clicking one narrows the table.
-- **Table** — dense rows, muted header, numeric columns right-aligned with tabular figures, status
-  as a soft pill with a leading dot, `—` for absent values, and a toolbar above carrying
-  column-visibility and export controls.
+Still recorded, not implemented — no screen needs them yet:
 
-**The palette needed nothing added.** Every treatment maps to a token already here — `--brand-soft`
-for active nav, `--ok-soft` for status pills, `--violet` for percentage emphasis, the semantic
-families for card borders. That is a signal the palette is sufficient, not merely pretty.
+- **Table toolbar** — column-visibility and export controls above data tables. Their actions have
+  no backend; adding the chrome first would be a lever wired to nothing.
+- **Stat cards as filters** — the reference's cards double as filters (clicking one narrows the
+  table). Ours display only; filtering arrives when a screen needs it.
+- **Collapsed sidebar** — `--sidebar-w-collapsed` exists; the collapse interaction is its own
+  item.
 
-**Where we will diverge:** the reference uses a few off-scale values (a ~13.5px nav label, a small
-global negative tracking). We snap to the scale — `--fs-13` — rather than reproducing them. A
-closed scale is worth more than a pixel of fidelity.
+**Measured divergences from the reference** (accessibility overrides the reference — the same
+precedent as the dark brand in Provenance):
+
+- **Active nav text is `--brand-text`, not `--brand`.** The two coincide in light mode. In dark
+  they cannot: the dark `--brand` was lowered for AA against white button text, which leaves it
+  at 3.55:1 *as* text on the dark `--brand-soft`. `--brand-text` (dark `oklch(78% 0.09 258)`)
+  measures 6.74:1. One hue, two jobs, two tokens.
+- **Section labels are `--fg-muted`, not the reference's `--fg-subtle`** — measured 2.75:1 on the
+  dark sidebar surface, versus 4.79:1 for `--fg-muted`.
+- **`--ls-caps` (0.06em)** joined the type scale for uppercase micro-labels; the scale had no wide
+  tracking step because no uppercase label existed before the sidebar did.
+- The reference's off-scale values (a ~13.5px nav label, a small global negative tracking) were
+  snapped to the scale rather than reproduced. A closed scale is worth more than a pixel of
+  fidelity.
 
 ## Changing something
 

@@ -32,4 +32,9 @@
   /* Headings tighten slightly as they grow; body text never does. */
   --ls-heading: -0.01em;
   --ls-normal: 0;
+
+  /* Uppercase micro-labels (nav section headers) widen instead. Added with the shell adoption:
+     the reference observations specify ~0.06em tracking for these, and the scale had no wide
+     step because no uppercase label existed before the sidebar did. */
+  --ls-caps: 0.06em;
 }

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
+import { useProjects } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
-import { ThemeToggle } from "@/shared/ui/ThemeToggle";
+import { AppShell } from "@/shared/ui/AppShell";
 import { useBacklog, useConfigureConnector, useRefreshBacklog } from "./useBacklog";
 import type { ConnectorView } from "./types";
 
@@ -13,109 +14,155 @@ export function ProjectScreen() {
   const { projectId = "" } = useParams();
   const backlog = useBacklog(projectId);
   const refresh = useRefreshBacklog(projectId);
+  const projects = useProjects();
 
   const connector = backlog.data?.connector ?? null;
   const stories = backlog.data?.stories ?? [];
 
+  // The page title is a real fact from the live projects response — never invented. Until the
+  // list resolves (or if the id is unknown), the honest fallback is the generic noun.
+  const project = projects.data?.find((candidate) => candidate.id === projectId);
+  const title = project?.name ?? t("project.title.fallback");
+
+  const openCount = stories.filter((story) => story.state === "open").length;
+  const labelledCount = stories.filter((story) => story.labels.length > 0).length;
+
   return (
-    <div className="app-shell">
-      <header className="app-header">
-        <span className="app-title">{t("app.title")}</span>
-        <div className="row">
-          <Link className="btn" to="/">
-            {t("project.back")}
-          </Link>
-          <ThemeToggle />
-        </div>
-      </header>
+    <AppShell
+      crumbs={[{ label: t("shell.crumb.projects"), to: "/projects" }, { label: title }]}
+      title={title}
+    >
+      <div className="stack">
+        {/* Keyed on the stored Connector: the card mounts before the query settles, so without
+            a remount its fields would stay empty once the saved values arrive. */}
+        <ConnectorCard
+          key={connector ? `${connector.owner}/${connector.repository}` : "unconfigured"}
+          projectId={projectId}
+          connector={connector}
+        />
 
-      <main className="app-main">
-        <div className="stack">
-          {/* Keyed on the stored Connector: the card mounts before the query settles, so without
-              a remount its fields would stay empty once the saved values arrive. */}
-          <ConnectorCard
-            key={connector ? `${connector.owner}/${connector.repository}` : "unconfigured"}
-            projectId={projectId}
-            connector={connector}
-          />
-
-          <section className="card">
-            <div className="card-header">
-              <div className="row">
-                <h2>{t("backlog.heading")}</h2>
-                {connector ? (
-                  <span className="badge badge-neutral">
-                    {tCount(stories.length, "backlog.count.one", "backlog.count.other")}
-                  </span>
-                ) : null}
-              </div>
-              <div className="row">
-                {connector?.lastSyncedAt ? (
-                  <span className="card-hint">
-                    {t("backlog.syncedAt")} {formatWhen(connector.lastSyncedAt)}
-                  </span>
-                ) : connector ? (
-                  <span className="card-hint empty-value">{t("backlog.neverSynced")}</span>
-                ) : null}
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={() => refresh.mutate()}
-                  disabled={!connector || refresh.isPending}
-                >
-                  {refresh.isPending ? t("backlog.refreshing") : t("backlog.refresh")}
-                </button>
-              </div>
+        {/* Stat cards: every value computable from the current response, nothing else. */}
+        {connector && (
+          <div className="row">
+            <div className="stat-card stat-card-brand">
+              <span className="stat-card-label">{t("backlog.stats.total")}</span>
+              <span className="stat-card-value">{stories.length}</span>
             </div>
+            <div className="stat-card stat-card-info">
+              <span className="stat-card-label">{t("backlog.stats.open")}</span>
+              <span className="stat-card-value">{openCount}</span>
+            </div>
+            <div className="stat-card stat-card-warn">
+              <span className="stat-card-label">{t("backlog.stats.labelled")}</span>
+              <span className="stat-card-value">{labelledCount}</span>
+            </div>
+            <div
+              className={
+                connector.lastFailure ? "stat-card stat-card-danger" : "stat-card stat-card-ok"
+              }
+            >
+              <span className="stat-card-label">{t("backlog.stats.connector")}</span>
+              <span className="stat-card-value-text">
+                {connector.lastFailure ? t("connector.unhealthy") : t("connector.healthy")}
+              </span>
+            </div>
+          </div>
+        )}
 
-            {backlog.isPending && <p className="state">{t("backlog.loading")}</p>}
-            {backlog.isError && (
-              <p className="state state-error" role="alert">
-                {t("backlog.error")}
-              </p>
-            )}
+        <section className="card">
+          <div className="card-header">
+            <div className="row">
+              <h2>{t("backlog.heading")}</h2>
+              {connector ? (
+                <span className="badge badge-neutral">
+                  {tCount(stories.length, "backlog.count.one", "backlog.count.other")}
+                </span>
+              ) : null}
+            </div>
+            <div className="row">
+              {connector?.lastSyncedAt ? (
+                <span className="card-hint">
+                  {t("backlog.syncedAt")} {formatWhen(connector.lastSyncedAt)}
+                </span>
+              ) : connector ? (
+                <span className="card-hint empty-value">{t("backlog.neverSynced")}</span>
+              ) : null}
+              <button
+                className="btn"
+                type="button"
+                onClick={() => refresh.mutate()}
+                disabled={!connector || refresh.isPending}
+              >
+                {refresh.isPending ? t("backlog.refreshing") : t("backlog.refresh")}
+              </button>
+            </div>
+          </div>
 
-            {/* The two empty states are different facts and must not look the same: a failed poll
-                leaves the previous Stories readable and says so, rather than showing "empty". */}
-            {connector?.lastFailure ? (
-              <p className="state state-error" role="alert">
-                {t("backlog.stale")}
-              </p>
-            ) : null}
+          {backlog.isPending && <p className="state">{t("backlog.loading")}</p>}
+          {backlog.isError && (
+            <p className="state state-error" role="alert">
+              {t("backlog.error")}
+            </p>
+          )}
 
-            {/* Three distinguishable absences, not one: nothing connected, nothing there, and
-                we could not look. Collapsing them is how an outage gets read as an empty
-                repository. */}
-            {backlog.data && !connector && <p className="state">{t("backlog.noConnector")}</p>}
+          {/* Three distinguishable absences, not one: nothing connected, nothing there, and
+              we could not look. Collapsing them is how an outage gets read as an empty
+              repository. */}
+          {connector?.lastFailure ? (
+            <p className="state state-error" role="alert">
+              {t("backlog.stale")}
+            </p>
+          ) : null}
 
-            {backlog.data && connector && !connector.lastFailure && stories.length === 0 && (
-              <p className="state">{t("backlog.empty")}</p>
-            )}
+          {backlog.data && !connector && <p className="state">{t("backlog.noConnector")}</p>}
 
-            {stories.length > 0 && (
-              <ul className="list">
+          {backlog.data && connector && !connector.lastFailure && stories.length === 0 && (
+            <p className="state">{t("backlog.empty")}</p>
+          )}
+
+          {stories.length > 0 && (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th className="table-num">{t("backlog.table.id")}</th>
+                  <th>{t("backlog.table.title")}</th>
+                  <th>{t("backlog.table.labels")}</th>
+                  <th>{t("backlog.table.state")}</th>
+                </tr>
+              </thead>
+              <tbody>
                 {stories.map((story) => (
-                  <li className="list-row" key={story.vendorId}>
-                    <div className="row">
-                      <span className="mono">{story.vendorId}</span>
-                      <span className="list-title">{story.title}</span>
-                    </div>
-                    <div className="row">
-                      {story.labels.map((label) => (
-                        <span className="badge badge-neutral" key={label}>
-                          {label}
+                  <tr key={story.vendorId}>
+                    <td className="table-num mono">{story.vendorId}</td>
+                    <td className="list-title">{story.title}</td>
+                    <td>
+                      {story.labels.length === 0 ? (
+                        <span className="empty-value">—</span>
+                      ) : (
+                        <span className="row">
+                          {story.labels.map((label) => (
+                            <span className="pill pill-neutral" key={label}>
+                              {label}
+                            </span>
+                          ))}
                         </span>
-                      ))}
-                      <span className="badge badge-info">{story.state}</span>
-                    </div>
-                  </li>
+                      )}
+                    </td>
+                    <td>
+                      <span
+                        className={story.state === "open" ? "pill pill-ok" : "pill pill-neutral"}
+                      >
+                        {story.state}
+                      </span>
+                    </td>
+                  </tr>
                 ))}
-              </ul>
-            )}
-          </section>
-        </div>
-      </main>
-    </div>
+              </tbody>
+            </table>
+          )}
+        </section>
+      </div>
+    </AppShell>
   );
 }
 
@@ -146,9 +193,9 @@ function ConnectorCard({
             <span className="badge badge-neutral">{connector.vendor}</span>
             {/* Vendor and health are two different facts; one badge cannot carry both. */}
             {connector.lastFailure ? (
-              <span className="badge badge-danger">{t("connector.unhealthy")}</span>
+              <span className="pill pill-danger">{t("connector.unhealthy")}</span>
             ) : (
-              <span className="badge badge-ok">{t("connector.healthy")}</span>
+              <span className="pill pill-ok">{t("connector.healthy")}</span>
             )}
           </div>
         ) : null}
