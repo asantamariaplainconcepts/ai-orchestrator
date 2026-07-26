@@ -14,6 +14,10 @@
   /* Brand */
   --brand: oklch(45% 0.13 258);
   --brand-hover: oklch(40% 0.13 258);
+  /* Brand as *text on the soft fill* (active nav). In light mode it coincides with --brand; in
+     dark it must diverge — the dark --brand was lowered for AA against white button text, which
+     leaves it under 4.5:1 as text on the dark --brand-soft. Two jobs, two tokens. Measured. */
+  --brand-text: oklch(45% 0.13 258);
   --brand-soft: oklch(96% 0.02 258);
   --brand-border: oklch(88% 0.04 258);
   --brand-on: #fff;
@@ -68,6 +72,7 @@
 
   --brand: oklch(54% 0.13 258);
   --brand-hover: oklch(49% 0.13 258);
+  --brand-text: oklch(78% 0.09 258);
   --brand-soft: oklch(20% 0.05 258);
   --brand-border: oklch(30% 0.08 258);
   --brand-on: #fff;
@@ -116,6 +121,7 @@
 
     --brand: oklch(54% 0.13 258);
     --brand-hover: oklch(49% 0.13 258);
+    --brand-text: oklch(78% 0.09 258);
     --brand-soft: oklch(20% 0.05 258);
     --brand-border: oklch(30% 0.08 258);
 

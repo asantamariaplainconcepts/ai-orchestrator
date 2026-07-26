@@ -6,36 +6,7 @@
  * Token composition only: no literal colours, sizes, or durations anywhere in this file.
  */
 
-/* ---- Layout shell ---------------------------------------------------------------------- */
-
-.app-shell {
-  min-height: 100%;
-  display: grid;
-  grid-template-rows: var(--header-h) 1fr;
-}
-
-.app-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-5);
-  padding-inline: var(--sp-7);
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-}
-
-.app-title {
-  font-size: var(--fs-16);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--ls-heading);
-}
-
-.app-main {
-  padding: var(--sp-8) var(--sp-7);
-  max-width: 1200px;
-  width: 100%;
-  margin-inline: auto;
-}
+/* ---- Layout primitives ------------------------------------------------------------------ */
 
 .stack {
   display: flex;
@@ -211,30 +182,6 @@
   border-color: var(--border);
 }
 
-.badge-ok {
-  color: var(--ok);
-  background: var(--ok-soft);
-  border-color: var(--ok-border);
-}
-
-.badge-warn {
-  color: var(--warn-text);
-  background: var(--warn-soft);
-  border-color: var(--warn-border);
-}
-
-.badge-danger {
-  color: var(--danger);
-  background: var(--danger-soft);
-  border-color: var(--danger-border);
-}
-
-.badge-info {
-  color: var(--info);
-  background: var(--info-soft);
-  border-color: var(--info-border);
-}
-
 /* ---- States ---------------------------------------------------------------------------- */
 
 /* Empty, loading and error states are components, not afterthoughts — every list has all three. */
@@ -252,4 +199,259 @@
   background: var(--danger-soft);
   border-style: solid;
   border-color: var(--danger-border);
+}
+
+/* ---- Application shell (sidebar + top bar) ---------------------------------------------- */
+/* Values are the measured reference observations from the README, expressed in tokens. */
+
+.shell {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: var(--sidebar-w) 1fr;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-4);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+/* Text only — the product identity area carries no logo or imagery (DEC-021). */
+.sidebar-brand {
+  padding: var(--sp-2) var(--sp-3) var(--sp-5);
+  font-size: var(--fs-16);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-heading);
+}
+
+/* --fg-muted, diverging from the reference's subtler grey: measured, --fg-subtle reaches only
+   2.75:1 on the sidebar surface in dark mode, and accessibility overrides the reference (the
+   same precedent as the dark brand in the README's provenance notes). */
+.nav-section {
+  padding: var(--sp-3) var(--sp-3) var(--sp-1);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-caps);
+  text-transform: uppercase;
+  color: var(--fg-muted);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-14);
+  font-weight: var(--fw-regular);
+  color: var(--fg-2);
+  border-radius: var(--r-2);
+  text-decoration: none;
+  transition:
+    background var(--t-fast) var(--ease),
+    color var(--t-fast) var(--ease);
+}
+
+.nav-item:hover {
+  background: var(--surface-2);
+  color: var(--fg);
+}
+
+/* Active is a tint, not a heavy highlight — measured as brand-soft fill with brand text.
+   --brand-text, not --brand: in dark mode the two diverge, because the dark --brand is tuned
+   for white text *on* it and measures only 3.55:1 *as* text on the dark soft fill. */
+.nav-item[aria-current="page"],
+.nav-item.active {
+  background: var(--brand-soft);
+  color: var(--brand-text);
+  font-weight: var(--fw-medium);
+}
+
+/* Pinned to the sidebar's bottom; carries a placeholder until authentication exists. */
+.user-card {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  font-size: var(--fs-13);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-5);
+  padding: var(--sp-4) var(--sp-7);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-12);
+  color: var(--fg-muted);
+}
+
+.breadcrumbs a {
+  color: inherit;
+}
+
+.page-title {
+  font-size: var(--fs-20);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-heading);
+}
+
+.shell-content {
+  padding: var(--sp-8) var(--sp-7);
+  max-width: 1200px;
+  width: 100%;
+}
+
+/* ---- Table ------------------------------------------------------------------------------ */
+/* Dense data rows; the reference's table treatment. Numeric columns align for comparison. */
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-13);
+}
+
+.table th {
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Status pill ------------------------------------------------------------------------ */
+/* Soft fill with a leading dot — status reads at a glance without carrying a heavy colour. */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: var(--fs-11);
+  font-weight: var(--fw-medium);
+  border-radius: var(--r-full);
+  border: 1px solid transparent;
+}
+
+.pill::before {
+  content: "";
+  width: var(--sp-1);
+  height: var(--sp-1);
+  border-radius: var(--r-full);
+  background: currentColor;
+}
+
+.pill-neutral {
+  color: var(--fg-muted);
+  background: var(--bg-muted);
+  border-color: var(--border);
+}
+
+.pill-ok {
+  color: var(--ok);
+  background: var(--ok-soft);
+  border-color: var(--ok-border);
+}
+
+.pill-warn {
+  color: var(--warn-text);
+  background: var(--warn-soft);
+  border-color: var(--warn-border);
+}
+
+.pill-danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+
+.pill-info {
+  color: var(--info);
+  background: var(--info-soft);
+  border-color: var(--info-border);
+}
+
+/* ---- Stat card -------------------------------------------------------------------------- */
+/* Label left, large count right, semantic accent on the left edge. */
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: var(--sp-1) solid var(--border-strong);
+  border-radius: var(--r-3);
+}
+
+.stat-card-label {
+  font-size: var(--fs-12);
+  font-weight: var(--fw-medium);
+  color: var(--fg-muted);
+}
+
+.stat-card-value {
+  font-size: var(--fs-26);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--ls-heading);
+  font-variant-numeric: tabular-nums;
+}
+
+/* A non-numeric stat (a health verdict) reads at body scale, not display scale. */
+.stat-card-value-text {
+  font-size: var(--fs-14);
+  font-weight: var(--fw-semibold);
+}
+
+.stat-card-brand {
+  border-left-color: var(--brand);
+}
+
+.stat-card-ok {
+  border-left-color: var(--ok);
+}
+
+.stat-card-warn {
+  border-left-color: var(--warn);
+}
+
+.stat-card-danger {
+  border-left-color: var(--danger);
+}
+
+.stat-card-info {
+  border-left-color: var(--info);
 }

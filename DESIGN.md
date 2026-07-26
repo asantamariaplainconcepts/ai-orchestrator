@@ -5,6 +5,7 @@
 colors:
   brand: "oklch(45% 0.13 258)"
   brand-hover: "oklch(40% 0.13 258)"
+  brand-text: "oklch(45% 0.13 258)"
   brand-soft: "oklch(96% 0.02 258)"
   brand-border: "oklch(88% 0.04 258)"
   brand-on: "#fff"
@@ -83,6 +84,7 @@ typography:
   lh-normal: "1.6"
   ls-heading: "-0.01em"
   ls-normal: "0"
+  ls-caps: "0.06em"
 ---
 
 # DESIGN.md — the design contract
