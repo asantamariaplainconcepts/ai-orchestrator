@@ -1,4 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Modules;
+using AiOrchestrator.Modules.Projects.Contracts;
+using AiOrchestrator.Modules.Projects.Features.Automations;
 using AiOrchestrator.Modules.Projects.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -43,5 +45,8 @@ public sealed class ProjectsModule : ModuleBase
         // Health must mean "can serve requests", which for this module includes its database.
         // The self-only check let the host report healthy before the DB was usable.
         services.AddHealthChecks().AddDbContextCheck<ProjectsDbContext>("projects-db");
+
+        // The Contracts read surface — the owner registers its own implementation.
+        services.AddScoped<IAutomationCatalog, AutomationCatalog>();
     }
 }

@@ -26,4 +26,7 @@
     <InternalsVisibleTo Include="AiOrchestrator.Modules.Projects.UnitTests" />
     <InternalsVisibleTo Include="AiOrchestrator.Modules.Projects.FunctionalTests" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\AiOrchestrator.Modules.Projects.Contracts\AiOrchestrator.Modules.Projects.Contracts.csproj" />
+  </ItemGroup>
 </Project>
