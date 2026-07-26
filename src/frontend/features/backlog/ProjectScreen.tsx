@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
+import { RunsSection } from "@/features/runs/RunsSection";
 import { useProjects } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -13,6 +14,7 @@ import type { ConnectorView } from "./types";
  */
 export function ProjectScreen() {
   const { projectId = "" } = useParams();
+  const [runsStoryFilter, setRunsStoryFilter] = useState<string | null>(null);
   const backlog = useBacklog(projectId);
   const refresh = useRefreshBacklog(projectId);
   const projects = useProjects();
@@ -71,6 +73,12 @@ export function ProjectScreen() {
         )}
 
         <AutomationsSection projectId={projectId} />
+
+        <RunsSection
+          projectId={projectId}
+          storyFilter={runsStoryFilter}
+          onClearFilter={() => setRunsStoryFilter(null)}
+        />
 
         <section className="card">
           <div className="card-header">
@@ -131,6 +139,7 @@ export function ProjectScreen() {
                   <th>{t("backlog.table.title")}</th>
                   <th>{t("backlog.table.labels")}</th>
                   <th>{t("backlog.table.state")}</th>
+                  <th>{t("backlog.table.runs")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,6 +166,17 @@ export function ProjectScreen() {
                       >
                         {story.state}
                       </span>
+                    </td>
+                    <td>
+                      {/* UC-021's per-Story view: jump to the Runs section filtered to this
+                          Story — an anchor, because the section lives on this same page. */}
+                      <a
+                        className="btn"
+                        href="#runs"
+                        onClick={() => setRunsStoryFilter(story.vendorId)}
+                      >
+                        {t("backlog.table.viewRuns")}
+                      </a>
                     </td>
                   </tr>
                 ))}
