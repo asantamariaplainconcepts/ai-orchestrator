@@ -77,8 +77,14 @@ az storage message put \
   --queue-name "$(terraform -chdir=infra/dev output -raw dispatch_queue_name)" \
   --account-name "$(terraform -chdir=infra/dev output -raw dispatch_queue_account)" \
   --auth-mode login \
-  --content "$(printf '{"v":1,"runId":"%s"}' "$(uuidgen | tr 'A-Z' 'a-z')" | base64)"
+  --content "$(printf '{"v":1,"runId":"%s"}' "$(uuidgen | tr 'A-Z' 'a-z')")"
 ```
+
+**Send the JSON as-is — do not base64 it.** The .NET client's message encoding is `None`, so it
+reads the stored text verbatim. A pre-encoded message is claimed, found unparseable, and dropped
+(by design), which looks from the outside like the scaler working and the worker doing nothing.
+Read the message back with `az storage message peek` if in doubt: what you see is what the worker
+sees.
 
 Then read back the execution — a job that ran is the artifact, not the enqueue's exit code:
 
