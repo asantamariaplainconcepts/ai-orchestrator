@@ -105,6 +105,8 @@ sealed class StubBacklogConnector : IBacklogConnector
     {
         Stories.Clear();
         Files.Clear();
+        Comments.Clear();
+        WriteStateError = null;
         Change = null;
     }
 
@@ -161,6 +163,56 @@ sealed class StubBacklogConnector : IBacklogConnector
     }
 
     // The Runs tier never reads documents; the seam still has to be satisfied honestly.
+
+    /// <summary>Comments the test can read back — the observable side of UC-017.</summary>
+    public List<string> Comments { get; } = [];
+
+    public Error? WriteStateError { get; set; }
+
+    public Task<ErrorOr<VendorStory?>> FetchStory(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<VendorStory?>>(
+            Stories.FirstOrDefault(story => story.VendorId == vendorStoryId)
+        );
+
+    public Task<ErrorOr<Success>> AddComment(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string comment,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        Comments.Add(comment);
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
+
+    public Task<ErrorOr<Success>> SetState(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string state,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (WriteStateError is { } error)
+        {
+            return Task.FromResult<ErrorOr<Success>>(error);
+        }
+
+        var index = Stories.FindIndex(story => story.VendorId == vendorStoryId);
+        if (index >= 0)
+        {
+            Stories[index] = Stories[index] with { State = state };
+        }
+
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
+
     public Task<ErrorOr<LinkedChange?>> FindLinkedChange(
         BacklogCoordinates coordinates,
         string vendorStoryId,
