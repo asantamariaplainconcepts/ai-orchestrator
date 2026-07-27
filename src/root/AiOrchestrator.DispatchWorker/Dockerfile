@@ -23,8 +23,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends nodejs npm git ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && npm install -g @anthropic-ai/claude-code@2.0.44 \
-    && claude --version
+    && npm install -g @anthropic-ai/claude-code@2.0.44 opencode-ai@1.18.6 \
+    && claude --version \
+    && opencode --version
 
 WORKDIR /app
 COPY --from=build /app .

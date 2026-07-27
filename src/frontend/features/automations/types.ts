@@ -15,7 +15,7 @@ export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
  */
 export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = ["ImplementToPullRequest"];
 
-export const AGENT_RUNTIMES = ["ClaudeCodeHeadless"] as const;
+export const AGENT_RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;
 
 export type AgentRuntime = (typeof AGENT_RUNTIMES)[number];
 
