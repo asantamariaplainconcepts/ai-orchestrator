@@ -55,6 +55,14 @@ sealed class Connector : Aggregate
 
     public DateTimeOffset? LastFailureAt { get; private set; }
 
+    /// <summary>
+    /// The name of the secret the vendor signs webhooks with — a name, never the value
+    /// (BR-010). Null means this Connector does not accept webhooks; polling still runs.
+    /// </summary>
+    public string? WebhookSecretName { get; private set; }
+
+    public void UseWebhookSecret(string? secretName) => WebhookSecretName = secretName;
+
     public static Connector Create(
         Guid projectId,
         BacklogVendor vendor,
