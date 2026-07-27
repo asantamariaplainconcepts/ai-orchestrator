@@ -39,6 +39,13 @@ It does **not** exercise KEDA (Aspire restarts the worker on a timer; KEDA scale
 length) or Key Vault (locally, secrets come from user secrets through the same resolver
 interface). Those two have exactly one proof, and it is in Azure.
 
+### Webhooks (optional)
+
+Polling is the baseline and always runs. To also trigger within seconds of a change, add a
+webhook at the vendor pointing at `POST /api/webhooks/github`, choose a secret, store it under
+a name your `ISecretResolver` can reach, and put that **name** on the Connector. A webhook that
+never arrives, or is refused, costs latency only — the next poll reconciles regardless.
+
 ### Everything else
 
 ```bash

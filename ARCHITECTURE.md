@@ -105,6 +105,14 @@ the ordinary reconciliation, so a `StoryChanged` produced by a portal click is
 indistinguishable from one produced at the vendor (DEC-027). Everything else about the mirror
 stays read-only (BR-008).
 
+**A webhook is a reason to look, not data to trust.** UC-010's endpoint verifies the vendor's
+signature (constant-time, mandatory — it is unauthenticated and triggers work) and then runs
+the *same* reconciliation the poller runs. Nothing is read from the payload but the repository
+it names. That is how BR-015's "webhook and polling events are identical" holds structurally
+rather than by two code paths promising to agree, and every refusal answers alike so an
+unauthenticated caller learns nothing about which repositories exist. Polling continues, so a
+missed webhook costs latency and never correctness.
+
 ## Dispatch
 
 A Run reaches an Agent through an Azure Storage Queue (DEC-013) that KEDA watches: a message
