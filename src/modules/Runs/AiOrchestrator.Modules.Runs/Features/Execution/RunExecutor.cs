@@ -44,6 +44,14 @@ sealed class RunExecutor(
             return;
         }
 
+        if (run.IsCancelled)
+        {
+            // Boundary one (run-cancellation D2): nothing has been spent yet, so stopping here
+            // costs nothing and the human's decision stands.
+            ExecutionLog.CancelledBeforeStart(logger, runId);
+            return;
+        }
+
         // The phase router (approval-gate D1): the Run's own record decides. An approval-gated
         // Run that nobody has approved gets phase 1; everything else gets execution.
         var planning = await IsPlanPhase(run, cancellationToken);
@@ -62,6 +70,15 @@ sealed class RunExecutor(
         try
         {
             var result = await Invoke(run, planning, cancellationToken);
+
+            // The human always wins the race (design D3): a cancellation that landed while the
+            // agent worked must not be overwritten by the outcome that arrived afterwards.
+            await database.Entry(run).ReloadAsync(cancellationToken);
+            if (run.IsCancelled)
+            {
+                ExecutionLog.CancelledDuringRun(logger, runId);
+                return;
+            }
 
             if (planning && result.Succeeded)
             {
@@ -241,6 +258,15 @@ sealed class RunExecutor(
                 return agentResult;
             }
 
+            // Boundary two (design D2): the spend is sunk, but the *consequence* is not. This
+            // check has to live here, immediately before Publish — one level up, after Invoke
+            // returns, the pull request already exists.
+            await database.Entry(run).ReloadAsync(cancellationToken);
+            if (run.IsCancelled)
+            {
+                return agentResult with { Succeeded = false, Log = "Cancelled before publishing." };
+            }
+
             var published = await workspace.Publish(
                 prepared.Value,
                 $"feat: story #{story.VendorStoryId} — {story.Title}",
@@ -325,6 +351,20 @@ static partial class ExecutionLog
         Message = "Run {RunId} succeeded (usage unknown: {UsageUnknown})"
     )]
     public static partial void Succeeded(ILogger logger, Guid runId, bool usageUnknown);
+
+    [LoggerMessage(
+        EventId = 3107,
+        Level = LogLevel.Information,
+        Message = "Run {RunId} was cancelled before its runtime was invoked — nothing was spent"
+    )]
+    public static partial void CancelledBeforeStart(ILogger logger, Guid runId);
+
+    [LoggerMessage(
+        EventId = 3108,
+        Level = LogLevel.Information,
+        Message = "Run {RunId} was cancelled during its invocation — the result is discarded and nothing is published"
+    )]
+    public static partial void CancelledDuringRun(ILogger logger, Guid runId);
 
     [LoggerMessage(EventId = 3104, Level = LogLevel.Warning, Message = "Run {RunId} failed")]
     public static partial void Failed(ILogger logger, Guid runId);
