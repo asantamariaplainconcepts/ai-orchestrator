@@ -9,11 +9,16 @@ export const AUTOMATION_ACTIONS = [
 export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
 
 /**
- * Which actions an Agent can actually perform today. The catalogue ships whole (DEC-026) but
- * only one action has an implementation, and an Automation that silently never runs is a trap —
- * so the interface marks the difference rather than hiding it (design D3).
+ * Every catalogue action executes since #26–#28 — the list stays so a future action added to
+ * the catalogue ahead of its implementation can be marked again, which is the situation this
+ * existed for.
  */
-export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = ["ImplementToPullRequest"];
+export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = [
+  "ImplementToPullRequest",
+  "RefineOrComment",
+  "TransitionState",
+  "Estimate",
+];
 
 export const AGENT_RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;
 
