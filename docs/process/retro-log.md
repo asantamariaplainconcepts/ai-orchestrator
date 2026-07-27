@@ -543,3 +543,24 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — thirteenth consecutive; same standing
   cause).
 - **ADR:** none new.
+
+## 2026-07-27 — story-detail
+
+- **Worked:** The finding that reordered the backlog — the Agent's prompt carried a headline and
+  no requirement — turned a "reading convenience" issue into the highest-leverage one available,
+  and fixing it was one field: the same mirrored body serves the detail page and the prompt.
+  Putting the body in `UpdateFrom`'s comparison means an *edited requirement* now announces
+  itself as a `StoryChanged`, which is exactly the change matching should react to. The XSS
+  claim was asserted where it is actually a fact — a real browser checking that
+  `window.__pwned` was never set — rather than trusted to the sanitiser's reputation.
+- **Didn't:** Adding a `.prose` class to the canonical kit, I reached for `--fs-18` and
+  `--lh-relaxed`; neither exists. The adherence gate would have caught literals, but *inventing
+  a token name that resolves to nothing* fails silently — the CSS just renders unstyled. I only
+  noticed because I grepped the token files to check. Separately, a five-field tuple in the E2E
+  stub fought the formatter twice before becoming the record it should always have been.
+- **Next time:** when writing kit CSS, grep the token files for the variables first — a
+  `var(--nonexistent)` is invisible to every gate we have and looks fine in review.
+- **Time invested:** not measured (source: **manual** — fourteenth consecutive; same standing
+  cause).
+- **ADR:** none new. The unresolvable-token gap is a real hole in the design gates; if it
+  recurs, the drift validator should assert every `var(--x)` in the kit resolves.
