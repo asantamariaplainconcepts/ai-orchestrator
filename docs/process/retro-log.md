@@ -866,3 +866,25 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — twenty-eighth consecutive).
 - **ADR:** none new. This is ADR-0005 working as intended — the pipeline was labelled unexercised,
   the first exercise found the defect, and nobody was surprised.
+
+## 2026-07-27 — ci-identity-subject (spec-less, DEC-025)
+
+- **Worked:** three deploy attempts, three genuine defects, each surfaced by running the thing
+  and none by review — which is ADR-0005's whole argument, now with receipts. The failures also
+  arrived in a good order: auth before plan before apply, so nothing was half-changed at any
+  point. And two of the fixes were *removals*: deleting the unattended job, and deleting the
+  script's assumption that it knew GitHub's subject format.
+- **Didn't:** the pattern across all three is the same and it is mine. I asserted things I could
+  have asked: the subject format (GitHub publishes it at
+  `actions/oidc/customization/sub`), the role needed for Key Vault (Terraform's own resources
+  say it manages secrets, so of course it reads them), and which token a job without an
+  `environment` receives. Each was one API call or one careful read away. The script also
+  contained the same class of bug I keep writing ADRs about: it checked the credential's *name*
+  and reported success, so a wrong subject would have been reported as fine forever.
+- **Next time:** for anything involving a credential, write the exact string each side will
+  present and compare them on paper before running. Three deploys and roughly an hour went to
+  discovering, one layer at a time, that two strings differed.
+- **Time invested:** not measured (source: **manual** — twenty-ninth consecutive).
+- **ADR:** none new. ADR-0004 already covers "existence is not correctness"; this is its third
+  instance and it is worth watching — if a fourth appears, the rule needs a check rather than
+  another retro line.
