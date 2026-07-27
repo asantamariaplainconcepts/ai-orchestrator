@@ -294,10 +294,14 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
 
     public string PullRequestUrl { get; set; } = "https://github.com/acme/portal/pull/1";
 
+    /// <summary>Whether Publish was reached — phase 1 must never get here (approval-gate).</summary>
+    public bool Published { get; private set; }
+
     public void Reset()
     {
         PrepareError = null;
         PublishError = null;
+        Published = false;
         PullRequestUrl = "https://github.com/acme/portal/pull/1";
     }
 
@@ -323,10 +327,13 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
         string body,
         string token,
         CancellationToken cancellationToken
-    ) =>
-        Task.FromResult<ErrorOr<PublishedChange>>(
+    )
+    {
+        Published = true;
+        return Task.FromResult<ErrorOr<PublishedChange>>(
             PublishError is { } error ? error : new PublishedChange(PullRequestUrl)
         );
+    }
 }
 
 [CollectionDefinition(Name)]

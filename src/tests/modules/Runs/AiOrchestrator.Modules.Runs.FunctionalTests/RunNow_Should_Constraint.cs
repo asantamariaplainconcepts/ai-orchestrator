@@ -135,8 +135,10 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task RunNow_Should_RefuseTheTwoPhaseLaneWithoutWriting()
+    public async Task RunNow_Should_CreateAnApprovalGatedRunLikeAnyOther()
     {
+        // The lane splits at execution, not creation (approval-gate D1) — until #22 this
+        // returned a "not implemented yet" refusal.
         var twoPhase = await _client.PostAsJsonAsync(
             $"/api/projects/{_projectId}/automations",
             new
@@ -153,9 +155,10 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
 
         var response = await Trigger("9", twoPhaseId);
 
-        ((int)response.StatusCode).ShouldBe(400);
-        (await response.Content.ReadAsStringAsync()).ShouldContain("TwoPhaseNotImplemented");
-        (await QueuedRunIds()).ShouldBeEmpty();
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var run = (await response.Content.ReadFromJsonAsync<RunNowResponse>())!;
+        run.Dispatched.ShouldBeTrue();
+        (await QueuedRunIds()).ShouldBe([run.Id]);
     }
 
     [Fact]
