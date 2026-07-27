@@ -222,38 +222,6 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
     }
 
     [Fact]
-    public async Task ANonExecutableAction_Should_FailStatingSo()
-    {
-        var automation = await _client.PostAsJsonAsync(
-            $"/api/projects/{_projectId}/automations",
-            new
-            {
-                triggerLabel = "ai:estimate",
-                triggerState = (string?)null,
-                action = "Estimate",
-                runtime = "ClaudeCodeHeadless",
-                requiresApproval = false,
-            }
-        );
-        automation.EnsureSuccessStatusCode();
-        var estimateId = (await automation.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
-
-        var response = await _client.PostAsJsonAsync(
-            $"/api/projects/{_projectId}/runs",
-            new { vendorStoryId = "9", automationId = estimateId }
-        );
-        response.EnsureSuccessStatusCode();
-        var runId = (await response.Content.ReadFromJsonAsync<RunNowResponse>())!.Id;
-
-        await Execute(runId);
-
-        var run = await Load(runId);
-        run.State.ShouldBe("Failed");
-        run.FailureReason!.ShouldContain("not executable yet");
-        fixture.Agent.Instructions.ShouldBeEmpty();
-    }
-
-    [Fact]
     public async Task DisablingAnAutomation_Should_NotBreakARunAlreadyInFlight()
     {
         // UC-006: disabling stops future matches, it does not reach into work already started.

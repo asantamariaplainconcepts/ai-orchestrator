@@ -718,3 +718,22 @@ times in the project this framework came from.
   something the test always wants anyway.
 - **Time invested:** not measured (source: **manual** — twenty-first consecutive).
 - **ADR:** none new.
+
+## 2026-07-27 — agent-actions
+
+- **Worked:** Batching three issues into one change was right: they shared a mechanism, and
+  writing one design meant the "unusable answer" rule (no invented estimate, no guessed state)
+  was decided once and applied three times rather than three times with drift. Asking the owner
+  where an estimate lives — rather than inventing a Projects v2 integration — kept a
+  three-action change small.
+- **Didn't:** The replace-the-estimate test failed and was right to. The first implementation
+  read a Story's current labels from the **Mirror**, which is a poll behind, so a second
+  estimate before the next refresh left both labels on the Story. It would have worked most of
+  the time in production, which is the worst way to be wrong. BR-008 already says the vendor is
+  the source of truth; I read our copy because it was closer to hand.
+- **Next time:** before a write that depends on current state, ask which copy of that state is
+  authoritative *at this instant* — the Mirror is authoritative for reading a backlog and never
+  for deciding a write that follows another write.
+- **Time invested:** not measured (source: **manual** — twenty-second consecutive).
+- **ADR:** none new. "Read the vendor when a write depends on a previous write" is a specific
+  instance of BR-008 rather than a new rule.

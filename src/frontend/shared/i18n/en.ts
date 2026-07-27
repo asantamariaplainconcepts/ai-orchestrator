@@ -93,7 +93,7 @@ export const en = {
   // saying so is the whole reason for shipping the catalogue whole (design D3).
   "automations.actionNotExecutable": "Not executable yet",
   "automations.catalogueHint":
-    "All four actions are configurable. Only Implement \u2192 PR can run today; the rest are recorded and will execute when their Agent lands.",
+    "All four actions execute: Implement \u2192 PR opens a pull request; Refine comments on the Story; Transition changes its state; Estimate labels it and explains itself.",
   "automations.table.trigger": "Trigger",
   "automations.table.action": "Action",
   "automations.table.approval": "Approval",

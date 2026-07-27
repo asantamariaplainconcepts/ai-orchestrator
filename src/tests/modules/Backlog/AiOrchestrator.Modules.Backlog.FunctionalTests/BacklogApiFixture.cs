@@ -79,6 +79,8 @@ sealed class StubBacklogConnector : IBacklogConnector
         VerifyError = null;
         FetchError = null;
         WriteError = null;
+        Comments.Clear();
+        WriteStateError = null;
         Change = null;
         Documents.Clear();
         Files.Clear();
@@ -152,6 +154,55 @@ sealed class StubBacklogConnector : IBacklogConnector
 
     /// <summary>The ref the last content read used — the head-ref contract, observable.</summary>
     public string? LastReadRef { get; private set; }
+
+    /// <summary>Comments the test can read back — the observable side of UC-017.</summary>
+    public List<string> Comments { get; } = [];
+
+    public Error? WriteStateError { get; set; }
+
+    public Task<ErrorOr<VendorStory?>> FetchStory(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<VendorStory?>>(
+            Stories.FirstOrDefault(story => story.VendorId == vendorStoryId)
+        );
+
+    public Task<ErrorOr<Success>> AddComment(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string comment,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        Comments.Add(comment);
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
+
+    public Task<ErrorOr<Success>> SetState(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string state,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (WriteStateError is { } error)
+        {
+            return Task.FromResult<ErrorOr<Success>>(error);
+        }
+
+        var index = Stories.FindIndex(story => story.VendorId == vendorStoryId);
+        if (index >= 0)
+        {
+            Stories[index] = Stories[index] with { State = state };
+        }
+
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
 
     public Task<ErrorOr<LinkedChange?>> FindLinkedChange(
         BacklogCoordinates coordinates,

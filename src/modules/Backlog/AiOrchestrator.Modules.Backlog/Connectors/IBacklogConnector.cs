@@ -49,6 +49,39 @@ interface IBacklogConnector
     /// from work-item relations, and "PullRequest" as a seam type would be a noun it has to
     /// pretend to speak.
     /// </summary>
+    /// <summary>
+    /// One Story as the vendor has it right now. The Mirror is refreshed by polling and is
+    /// therefore stale immediately after a Run changes something — a write that must *replace*
+    /// (the estimate label) has to read vendor truth, not our copy of it (BR-008).
+    /// </summary>
+    Task<ErrorOr<VendorStory?>> FetchStory(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>Posts a comment on the Story — the Agent's answer, in the vendor's own thread.</summary>
+    Task<ErrorOr<Success>> AddComment(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string comment,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>
+    /// Sets the Story's state. A state the vendor does not accept is refused with a stated
+    /// reason (design D4) — never guessed at, never silently ignored.
+    /// </summary>
+    Task<ErrorOr<Success>> SetState(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string state,
+        string token,
+        CancellationToken cancellationToken
+    );
+
     Task<ErrorOr<LinkedChange?>> FindLinkedChange(
         BacklogCoordinates coordinates,
         string vendorStoryId,
