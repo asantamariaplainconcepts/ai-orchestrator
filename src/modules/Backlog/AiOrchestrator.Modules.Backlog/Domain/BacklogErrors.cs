@@ -41,6 +41,13 @@ static class BacklogErrors
             $"The document '{path}' could not be read from the linked change."
         );
 
+    /// <summary>The vendor's state vocabulary is finite; naming what was refused saves a guess.</summary>
+    public static Error StateNotAccepted(string state, string accepted) =>
+        Error.Validation(
+            "Backlog.StateNotAccepted",
+            $"The vendor does not accept the state '{state}'. Accepted: {accepted}."
+        );
+
     public static Error ConnectorNotFound(Guid projectId) =>
         Error.NotFound("Connector.NotFound", $"Project '{projectId}' has no connector.");
 }

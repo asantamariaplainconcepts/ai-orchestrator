@@ -19,6 +19,7 @@ sealed class RunExecutor(
     IStoryReader stories,
     IAutomationCatalog automations,
     IConnectorReader connectors,
+    IStoryWriter storyWriter,
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
@@ -201,13 +202,24 @@ sealed class RunExecutor(
             );
         }
 
-        // The catalogue ships whole (DEC-026); only this action executes yet, and saying so
-        // beats a Run that silently does something else (agent-implements-pr spec).
+        var context =
+            $"Story #{story.VendorStoryId}: {story.Title}\n"
+            + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
+            + $"Description:\n{Requirement(story.Body)}";
+
+        // Every catalogue action executes now (DEC-026). Only implement-to-PR touches code, so
+        // only it prepares a workspace — the others are one prompt and one vendor write.
         if (automation.Action != "ImplementToPullRequest")
         {
-            return Failure(
-                $"Action '{automation.Action}' is not executable yet — it is recorded and will "
-                    + "run when its Agent lands."
+            return await RunSimpleAction(
+                run,
+                automation,
+                story,
+                context,
+                selection,
+                vendorToken,
+                aiKey,
+                cancellationToken
             );
         }
 
@@ -223,11 +235,6 @@ sealed class RunExecutor(
         {
             // The Agent implements; the ceremony is ours (design D1). The prompt says so, or
             // the agent and the workspace seam would both try to own the same push.
-            var context =
-                $"Story #{story.VendorStoryId}: {story.Title}\n"
-                + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
-                + $"Description:\n{Requirement(story.Body)}";
-
             var prompt = planning
                 ? "Read the repository at your current working directory and write a short "
                     + "implementation plan for the following story: the files you would change "
@@ -299,6 +306,135 @@ sealed class RunExecutor(
             }
         }
     }
+
+    /// <summary>
+    /// The three actions that touch no code (design D1): one prompt, one answer, one vendor
+    /// write. No workspace is prepared, which is also why they are fast and cheap.
+    /// </summary>
+    async Task<AgentResult> RunSimpleAction(
+        Run run,
+        AutomationDetail automation,
+        StorySnapshot story,
+        string context,
+        AgentRuntimeSelection selection,
+        string vendorToken,
+        string aiKey,
+        CancellationToken cancellationToken
+    )
+    {
+        var instruction = automation.Action switch
+        {
+            "RefineOrComment" =>
+                "Analyse the following story and reply with refinement questions, analysis, or "
+                    + "a draft of its acceptance criteria. Your whole reply becomes a comment on "
+                    + $"the story, so write it for its readers.\n\n{context}",
+            "TransitionState" =>
+                "Decide what state the following story should be in and reply with ONLY that "
+                    + $"state as a single word.\n\n{context}",
+            "Estimate" =>
+                "Estimate the following story in story points and reply with the number first, "
+                    + $"then one short paragraph explaining it.\n\n{context}",
+            _ => string.Empty,
+        };
+
+        if (instruction.Length == 0)
+        {
+            return Failure($"Action '{automation.Action}' has no implementation.");
+        }
+
+        // A temporary directory only because the runtime needs somewhere to be; nothing is
+        // cloned into it and nothing is published from it.
+        var workspacePath = Directory.CreateTempSubdirectory("action-").FullName;
+
+        AgentResult agentResult;
+        try
+        {
+            agentResult = await selection.Runtime.Execute(
+                new AgentInstruction(
+                    instruction,
+                    automation.Action,
+                    automation.Timeout,
+                    workspacePath,
+                    new AgentCredentials(vendorToken, aiKey)
+                ),
+                cancellationToken
+            );
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(workspacePath, recursive: true);
+            }
+            catch (IOException) { }
+        }
+
+        if (!agentResult.Succeeded)
+        {
+            return agentResult;
+        }
+
+        var answer = agentResult.Log.Trim();
+
+        var failure = automation.Action switch
+        {
+            "RefineOrComment" => await storyWriter.AddComment(
+                run.ProjectId,
+                run.VendorStoryId,
+                answer,
+                cancellationToken
+            ),
+            "TransitionState" => await storyWriter.SetState(
+                run.ProjectId,
+                run.VendorStoryId,
+                FirstWord(answer),
+                cancellationToken
+            ),
+            "Estimate" => await Estimate(run, answer, cancellationToken),
+            _ => "Unreachable.",
+        };
+
+        return failure is null
+            ? agentResult
+            : agentResult with
+            {
+                Succeeded = false,
+                Log = failure,
+            };
+    }
+
+    async Task<string?> Estimate(Run run, string answer, CancellationToken cancellationToken)
+    {
+        // The number is the estimate; a reply with none is a stated failure, never a guessed
+        // zero — an invented estimate is worse than no estimate (design D2).
+        var digits = new string([.. answer.TakeWhile(char.IsDigit)]);
+        if (digits.Length == 0 || !int.TryParse(digits, out var points))
+        {
+            return $"The agent's answer did not start with a number: '{Truncate(answer, 200)}'.";
+        }
+
+        var labelled = await storyWriter.SetEstimate(
+            run.ProjectId,
+            run.VendorStoryId,
+            points,
+            cancellationToken
+        );
+
+        return labelled
+            // UC-019 asks for the field AND the reasoning.
+            ?? await storyWriter.AddComment(
+                run.ProjectId,
+                run.VendorStoryId,
+                answer,
+                cancellationToken
+            );
+    }
+
+    static string FirstWord(string answer) =>
+        answer
+            .Split([' ', '\n', '\r', '.', ','], StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()
+        ?? answer;
 
     static AgentResult Failure(string log) =>
         new(Succeeded: false, Log: log, OutputLink: null, Usage: null);

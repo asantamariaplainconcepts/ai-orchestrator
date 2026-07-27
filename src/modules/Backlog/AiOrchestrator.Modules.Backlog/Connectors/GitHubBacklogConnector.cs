@@ -279,6 +279,119 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
+    public async Task<ErrorOr<VendorStory?>> FetchStory(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return (VendorStory?)null;
+        }
+
+        try
+        {
+            var issue = await clientFactory
+                .Create(token)
+                .Issue.Get(coordinates.Owner, coordinates.Repository, number);
+
+            return new VendorStory(
+                issue.Number.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                issue.Title,
+                issue.State.StringValue,
+                [.. issue.Labels.Select(label => label.Name)],
+                issue.Body
+            );
+        }
+        catch (NotFoundException)
+        {
+            return (VendorStory?)null;
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    public async Task<ErrorOr<Success>> AddComment(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string comment,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        try
+        {
+            await clientFactory
+                .Create(token)
+                .Issue.Comment.Create(coordinates.Owner, coordinates.Repository, number, comment);
+            return Result.Success;
+        }
+        catch (NotFoundException)
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    /// <summary>GitHub's whole state vocabulary for an issue — anything else is a refusal.</summary>
+    static readonly Dictionary<string, ItemState> States = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["open"] = ItemState.Open,
+        ["closed"] = ItemState.Closed,
+    };
+
+    public async Task<ErrorOr<Success>> SetState(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string state,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        if (!States.TryGetValue(state.Trim(), out var target))
+        {
+            return BacklogErrors.StateNotAccepted(state, string.Join(", ", States.Keys));
+        }
+
+        try
+        {
+            await clientFactory
+                .Create(token)
+                .Issue.Update(
+                    coordinates.Owner,
+                    coordinates.Repository,
+                    number,
+                    new IssueUpdate { State = target }
+                );
+            return Result.Success;
+        }
+        catch (NotFoundException)
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
     static bool TryParseIssueNumber(string vendorStoryId, out int number) =>
         int.TryParse(
             vendorStoryId,
