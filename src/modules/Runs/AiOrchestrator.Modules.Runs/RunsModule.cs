@@ -21,13 +21,6 @@ public sealed class RunsModule : ModuleBase
     /// </summary>
     public const string ProjectConcurrencyCapKey = "Runs:ProjectConcurrencyCap";
 
-    /// <summary>
-    /// Where the AI credential lives, by NAME (DEC-014 — the vault holds the value). Host
-    /// configuration until Project configuration gains a per-project field (its own issue);
-    /// the stated simplification is the name's scope, never its storage.
-    /// </summary>
-    public const string AiCredentialSecretNameKey = "Runs:AiCredentialSecretName";
-
     public override string Name => "Runs";
 
     public override async Task Migrate(
@@ -62,10 +55,6 @@ public sealed class RunsModule : ModuleBase
                     ProjectConcurrencyCapKey,
                     defaultValue: 2
                 ),
-                AiCredentialSecretName = configuration.GetValue(
-                    AiCredentialSecretNameKey,
-                    defaultValue: "anthropic-api-key"
-                )!,
             }
         );
 
@@ -85,7 +74,4 @@ sealed class RunsOptions
 {
     /// <summary>BR-002: max concurrent Runs in Planning/Executing per Project. Default 2.</summary>
     public required int ProjectConcurrencyCap { get; init; }
-
-    /// <summary>See <see cref="RunsModule.AiCredentialSecretNameKey"/> — a name, never a value.</summary>
-    public required string AiCredentialSecretName { get; init; }
 }

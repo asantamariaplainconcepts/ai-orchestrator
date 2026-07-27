@@ -122,4 +122,5 @@ enum AutomationAction
 enum AgentRuntime
 {
     ClaudeCodeHeadless = 1,
+    OpenCode = 2,
 }
