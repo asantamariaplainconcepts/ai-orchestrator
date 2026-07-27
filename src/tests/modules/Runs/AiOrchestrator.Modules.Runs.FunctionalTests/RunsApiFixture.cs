@@ -266,12 +266,19 @@ sealed class FakeAgentRuntime : IAgentRuntime
 
     public Exception? Throws { get; set; }
 
+    /// <summary>
+    /// Runs inside the invocation — the only honest way to make "cancelled mid-flight"
+    /// deterministic rather than a sleep-and-hope race.
+    /// </summary>
+    public Func<Task>? OnExecute { get; set; }
+
     public IReadOnlyList<AgentInstruction> Instructions => [.. _instructions];
 
     public void Reset()
     {
         _instructions.Clear();
         Throws = null;
+        OnExecute = null;
         Result = new AgentResult(
             Succeeded: true,
             Log: "ok",
@@ -280,15 +287,19 @@ sealed class FakeAgentRuntime : IAgentRuntime
         );
     }
 
-    public Task<AgentResult> Execute(
+    public async Task<AgentResult> Execute(
         AgentInstruction instruction,
         CancellationToken cancellationToken
     )
     {
         _instructions.Enqueue(instruction);
-        return Throws is { } exception
-            ? Task.FromException<AgentResult>(exception)
-            : Task.FromResult(Result);
+
+        if (OnExecute is { } during)
+        {
+            await during();
+        }
+
+        return Throws is { } exception ? throw exception : Result;
     }
 }
 

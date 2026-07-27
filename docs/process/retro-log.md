@@ -680,3 +680,22 @@ times in the project this framework came from.
   defects came out of exactly that phrasing.
 - **Time invested:** not measured (source: **manual** — nineteenth consecutive).
 - **ADR:** none new.
+
+## 2026-07-27 — run-cancellation
+
+- **Worked:** The guard added one change earlier caught cwd drift at commit time — the fourth
+  occurrence in this project, and the first that never reached a commit. Three retros had
+  promised that guard; building it finally converted a recurring apology into a property. On
+  the change itself, refusing to fake BR-012 was the right call: "terminate the job" is not
+  something a portal holding no handle on a KEDA-started job can do, so the design says
+  cooperative cancellation and the residual gap is written down in two places rather than left
+  for someone to discover.
+- **Didn't:** The mid-flight test failed on first run and was right to. My cancellation check
+  sat *after* `Invoke` returned — but `Invoke` publishes, so a cancelled Run would still have
+  opened a pull request while showing `Cancelled`. The design text said "before publishing" and
+  I implemented it one call level too high; only a test that asserted the *consequence*
+  (`Published == false`) rather than the state caught it.
+- **Next time:** when a design says "before X", put the check in the frame that performs X, not
+  in its caller. A boundary described in prose lands in the wrong place surprisingly easily.
+- **Time invested:** not measured (source: **manual** — twentieth consecutive).
+- **ADR:** none new.

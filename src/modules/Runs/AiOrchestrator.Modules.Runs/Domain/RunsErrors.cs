@@ -37,6 +37,13 @@ static class RunsErrors
             $"Run '{runId}' is {state}, not awaiting approval — there is no Plan to decide on."
         );
 
+    /// <summary>Cancelling something already finished is a question with no answer (design D4).</summary>
+    public static Error RunAlreadyFinished(Guid runId, string state) =>
+        Error.Conflict(
+            "Runs.AlreadyFinished",
+            $"Run '{runId}' is {state} — a finished Run cannot be cancelled."
+        );
+
     public static Error RunNotFound(Guid runId) =>
         Error.NotFound("Runs.NotFound", $"Run '{runId}' does not exist.");
 }

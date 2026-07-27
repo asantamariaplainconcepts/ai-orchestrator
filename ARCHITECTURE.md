@@ -190,6 +190,15 @@ stays held (BR-001). Approval stamps the Run and re-enqueues it, and phase 2 run
 approved Plan in its instruction; rejection ends the Run `Cancelled`. The routing lives in the
 Run's own record, not in a fifth state.
 
+**Cancellation is cooperative, and the gap is stated.** Cancelling writes `Cancelled`
+immediately — terminal, so the Story frees and the UI stops implying work — and the worker
+checks at two boundaries: before invoking the runtime, and immediately before publishing. A Run
+cancelled mid-agent therefore produces no branch and no pull request, and its outcome cannot
+overwrite the cancellation. What it does **not** do is kill an Agent already running: the
+portal holds no handle on a KEDA-started job, and a control-plane kill would need
+management-plane credentials in the portal identity plus an Azure-only path with no local
+equivalent. The invocation finishes (bounded by BR-005) and its work is discarded.
+
 **Stated limitations, on purpose.** Nothing promotes
 a `Queued` Run when capacity frees, because nothing can complete yet. And the Run insert and the
 queue enqueue cannot share a transaction: the Run commits first, so a crash between the two

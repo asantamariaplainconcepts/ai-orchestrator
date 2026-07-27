@@ -58,3 +58,14 @@ export function useRunChanges(projectId: string, runId: string) {
     queryFn: () => api.get<RunChangesView>(`/api/projects/${projectId}/runs/${runId}/changes`),
   });
 }
+
+/** UC-014 — stop a Run. Terminal Runs refuse, so the button hides once one finishes. */
+export function useCancelRun(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (runId: string) =>
+      api.post<unknown>(`/api/projects/${projectId}/runs/${runId}/cancel`, {}),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
+  });
+}

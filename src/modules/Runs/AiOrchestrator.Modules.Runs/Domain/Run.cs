@@ -122,11 +122,24 @@ sealed class Run : Aggregate
     }
 
     /// <summary>Rejected — terminal (BR-012), so the Story is free again (BR-001).</summary>
-    public void Reject(DateTimeOffset at)
+    public void Reject(DateTimeOffset at) => Cancel(at);
+
+    /// <summary>
+    /// Cancelled by a human. Terminal immediately (design D1): the Story frees now, not when
+    /// some worker acknowledges. No failure reason — a deliberate act is not a fault.
+    /// </summary>
+    public void Cancel(DateTimeOffset at)
     {
         State = RunState.Cancelled;
         EndedAt = at;
     }
+
+    /// <summary>
+    /// Whether a human's cancellation has already decided this Run's fate. The executor asks
+    /// before spending and before publishing, and its own outcome must never overwrite it
+    /// (design D3) — the human always wins that race.
+    /// </summary>
+    public bool IsCancelled => State == RunState.Cancelled;
 
     /// <summary>Phase 1 leaves StartedAt as the first phase's start; the wait is not work.</summary>
     void UpdatedNow(DateTimeOffset at) => StartedAt ??= at;
