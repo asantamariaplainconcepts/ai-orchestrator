@@ -1,7 +1,6 @@
-using System.Diagnostics;
-using System.Text;
 using System.Text.Json;
 using AiOrchestrator.BuildingBlocks.Agents;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -36,51 +35,23 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
         CancellationToken cancellationToken
     )
     {
-        using var process = new Process();
-        process.StartInfo = new ProcessStartInfo
-        {
-            FileName = CommandPath,
-            WorkingDirectory = instruction.WorkspacePath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-        };
-        process.StartInfo.ArgumentList.Add("-p");
-        process.StartInfo.ArgumentList.Add(instruction.Prompt);
-        process.StartInfo.ArgumentList.Add("--output-format");
-        process.StartInfo.ArgumentList.Add("json");
-
-        // The value lives in this process environment for the child's lifetime and nowhere
-        // else — never in the image, the template, or a file (BR-010, design D1).
-        process.StartInfo.Environment["ANTHROPIC_API_KEY"] = instruction.Credentials.AiApiKey;
-        process.StartInfo.Environment["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken;
-
-        var stdout = new StringBuilder();
-        var stderr = new StringBuilder();
-        process.OutputDataReceived += (_, e) => stdout.AppendLine(e.Data);
-        process.ErrorDataReceived += (_, e) => stderr.AppendLine(e.Data);
-
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        timeout.CancelAfter(instruction.Timeout);
-
-        try
-        {
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
-            await process.WaitForExitAsync(timeout.Token);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            try
+        var outcome = await HeadlessProcess.Run(
+            CommandPath,
+            ["-p", instruction.Prompt, "--output-format", "json"],
+            instruction.WorkspacePath,
+            new Dictionary<string, string>
             {
-                process.Kill(entireProcessTree: true);
-            }
-            catch (InvalidOperationException)
-            {
-                // Already exited between the timeout and the kill.
-            }
+                // The values live in the child's environment for its lifetime and nowhere
+                // else — never in the image, the template, or a file (BR-010, design D1).
+                ["ANTHROPIC_API_KEY"] = instruction.Credentials.AiApiKey,
+                ["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken,
+            },
+            instruction.Timeout,
+            cancellationToken
+        );
 
+        if (outcome.TimedOut)
+        {
             // BR-005: the phase timeout ends the Run; the reason names the limit that fired.
             return new AgentResult(
                 Succeeded: false,
@@ -90,7 +61,7 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
             );
         }
 
-        return Parse(process.ExitCode, stdout.ToString(), stderr.ToString());
+        return Parse(outcome.ExitCode, outcome.Stdout, outcome.Stderr);
     }
 
     AgentResult Parse(int exitCode, string stdout, string stderr)
@@ -147,16 +118,65 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
 
 public static class AgentRuntimeComposition
 {
+    /// <summary>Claude Code's credential name (DEC-014 — the vault holds the value).</summary>
+    public const string ClaudeCredentialKey = "Agents:ClaudeCodeHeadless:CredentialSecretName";
+
+    /// <summary>opencode's credential name; EMPTY by default — free models need none (D3).</summary>
+    public const string OpenCodeCredentialKey = "Agents:OpenCode:CredentialSecretName";
+
+    public const string OpenCodeModelKey = "Agents:OpenCode:Model";
+
     /// <summary>
-    /// Registers the runtime for any host that composes modules: the Runs module's executor
-    /// depends on the seam, and DI validation rightly demands the dependency exist even in
-    /// hosts that never invoke it.
+    /// Registers every runtime and the selector that maps an Automation's runtime name to one
+    /// of them (opencode-runtime design D1). Any host composing modules registers this: the
+    /// Runs module's executor depends on the seam, and DI validation rightly demands it.
     /// </summary>
     public static TBuilder AddAgentRuntime<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
-        builder.Services.AddSingleton<IAgentRuntime, ClaudeCodeHeadlessRuntime>();
+        builder.Services.AddSingleton<ClaudeCodeHeadlessRuntime>();
+        builder.Services.AddSingleton(
+            new OpenCodeOptions
+            {
+                Model = builder.Configuration.GetValue(
+                    OpenCodeModelKey,
+                    defaultValue: "opencode/deepseek-v4-flash-free"
+                )!,
+            }
+        );
+        builder.Services.AddSingleton<OpenCodeRuntime>();
+
+        var claudeCredential = builder.Configuration.GetValue(
+            ClaudeCredentialKey,
+            defaultValue: "anthropic-api-key"
+        );
+        var openCodeCredential = builder.Configuration.GetValue<string?>(
+            OpenCodeCredentialKey,
+            defaultValue: null
+        );
+
+        builder.Services.AddSingleton<IAgentRuntimeSelector>(provider => new AgentRuntimeSelector(
+            new Dictionary<string, AgentRuntimeSelection>(StringComparer.Ordinal)
+            {
+                ["ClaudeCodeHeadless"] = new(
+                    provider.GetRequiredService<ClaudeCodeHeadlessRuntime>(),
+                    claudeCredential
+                ),
+                ["OpenCode"] = new(
+                    provider.GetRequiredService<OpenCodeRuntime>(),
+                    string.IsNullOrWhiteSpace(openCodeCredential) ? null : openCodeCredential
+                ),
+            }
+        ));
+
         return builder;
+    }
+
+    sealed class AgentRuntimeSelector(IReadOnlyDictionary<string, AgentRuntimeSelection> runtimes)
+        : IAgentRuntimeSelector
+    {
+        public AgentRuntimeSelection? For(string runtimeName) =>
+            runtimes.TryGetValue(runtimeName, out var selection) ? selection : null;
     }
 }
 

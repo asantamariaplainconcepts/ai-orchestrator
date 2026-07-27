@@ -520,3 +520,26 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — twelfth consecutive; same standing
   cause).
 - **ADR:** none new.
+
+## 2026-07-27 — opencode-runtime
+
+- **Worked:** The grill did what the decision register said it would: OPN-004 closed by
+  observation, twice — the real CLI on the authoring machine, then the free-model run repeated
+  inside the built worker image with a clean environment, which converted the design's one
+  stated hypothesis into fact before the PR merged (a first: every other change shipped with
+  at least one hypothesis outstanding). The second runtime also proved the seam the cheap way:
+  the executor edit was subtraction (one runtime dependency became a selector), and both
+  runtimes ended up sharing one process runner, so BR-005's kill semantics now cannot drift.
+  The owner's "there are free models for testing" became a default (`deepseek-v4-flash-free`)
+  and a guarantee (the free path performs no vault lookup — asserted by recording every name
+  the host resolves).
+- **Didn't:** Two id collisions in a row while appending DEC-042 → DEC-043 → DEC-044: the
+  locked-decisions file is not numerically ordered, and "read the last entry" is not "read the
+  max id". A one-line grep for the max would have avoided both. Also the loop's own trigger
+  was ambiguous ("about 29") — one clarifying question fixed it, which is the cheap kind of
+  wrong.
+- **Next time:** allocating any sequential id (DEC, ADR, OPN) starts with grepping the max
+  across the whole file, never the tail — the same rule write-adr already applies to ADRs.
+- **Time invested:** not measured (source: **manual** — thirteenth consecutive; same standing
+  cause).
+- **ADR:** none new.

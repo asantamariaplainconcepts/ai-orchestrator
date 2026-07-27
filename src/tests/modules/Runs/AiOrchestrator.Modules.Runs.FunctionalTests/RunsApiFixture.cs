@@ -36,6 +36,12 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// <summary>The runtime faked at the seam — the same discipline as the vendor stub.</summary>
     internal FakeAgentRuntime Agent { get; } = new();
 
+    /// <summary>The second runtime's fake — selection tests prove each name reaches its own.</summary>
+    internal FakeAgentRuntime OpenCodeAgent { get; } = new();
+
+    /// <summary>Secret names the host resolved — the free-model path must not add any.</summary>
+    internal ResolvedNames SecretNames { get; } = new();
+
     /// <summary>The ceremony faked at its seam: scripted preparation and publication.</summary>
     internal FakeCodeWorkspace Workspace { get; } = new();
 
@@ -64,13 +70,23 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
         {
             services.RemoveAll<IBacklogConnector>();
             services.AddSingleton<IBacklogConnector>(Vendor);
-            services.AddSingleton<ISecretResolver>(new StubSecretResolver());
+            services.AddSingleton<ISecretResolver>(new StubSecretResolver(SecretNames));
 
             services.AddSingleton(Probe);
             services.AddIntegrationEventHandler<StoryChanged, DeliveryProbe.Handler>();
 
-            services.RemoveAll<IAgentRuntime>();
-            services.AddSingleton<IAgentRuntime>(Agent);
+            // Selection faked at ITS seam: each runtime name maps to its own recording fake;
+            // the OpenCode entry carries no credential name (free model, design D3).
+            services.RemoveAll<IAgentRuntimeSelector>();
+            services.AddSingleton<IAgentRuntimeSelector>(
+                new FakeRuntimeSelector(
+                    new Dictionary<string, AgentRuntimeSelection>(StringComparer.Ordinal)
+                    {
+                        ["ClaudeCodeHeadless"] = new(Agent, "anthropic-api-key"),
+                        ["OpenCode"] = new(OpenCodeAgent, null),
+                    }
+                )
+            );
 
             services.RemoveAll<ICodeWorkspace>();
             services.AddSingleton<ICodeWorkspace>(Workspace);
@@ -137,10 +153,32 @@ sealed class StubBacklogConnector : IBacklogConnector
     }
 }
 
-sealed class StubSecretResolver : ISecretResolver
+sealed class StubSecretResolver(ResolvedNames names) : ISecretResolver
 {
-    public Task<string> Resolve(string secretName, CancellationToken cancellationToken = default) =>
-        Task.FromResult("stub-token");
+    public Task<string> Resolve(string secretName, CancellationToken cancellationToken = default)
+    {
+        names.Record(secretName);
+        return Task.FromResult("stub-token");
+    }
+}
+
+/// <summary>Every name the host asked the vault for — BR-010's observable half.</summary>
+sealed class ResolvedNames
+{
+    readonly ConcurrentQueue<string> _names = new();
+
+    public IReadOnlyList<string> All => [.. _names];
+
+    public void Clear() => _names.Clear();
+
+    public void Record(string name) => _names.Enqueue(name);
+}
+
+sealed class FakeRuntimeSelector(IReadOnlyDictionary<string, AgentRuntimeSelection> runtimes)
+    : IAgentRuntimeSelector
+{
+    public AgentRuntimeSelection? For(string runtimeName) =>
+        runtimes.TryGetValue(runtimeName, out var selection) ? selection : null;
 }
 
 /// <summary>

@@ -198,6 +198,12 @@ usage. Claude Code headless implements it first (DEC-012), version-pinned in the
 the CLI is confined to its implementation file the way Octokit is confined to the GitHub
 connector.
 
+**The Automation's runtime picks the implementation.** `IAgentRuntimeSelector` maps the
+runtime name to its implementation and its credential's name — which may be absent: opencode's
+default model is a free one (`opencode/deepseek-v4-flash-free`, DEC-044) and a free-model Run
+performs no vault lookup at all. Adding a runtime is a composition registration, never an
+executor edit.
+
 **Nothing secret travels.** The queue message is still only a Run id. The worker — a full host
 composing the modules — loads the Run, Story and Automation through Contracts, resolves the
 project PAT and the AI credential **by name** at execution time (BR-010, DEC-014, DEC-030),

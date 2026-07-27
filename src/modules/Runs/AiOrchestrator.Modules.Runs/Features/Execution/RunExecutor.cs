@@ -20,9 +20,8 @@ sealed class RunExecutor(
     IAutomationCatalog automations,
     IConnectorReader connectors,
     ISecretResolver secrets,
-    IAgentRuntime runtime,
+    IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
-    RunsOptions options,
     TimeProvider clock,
     ILogger<RunExecutor> logger
 ) : IRunExecutor
@@ -119,12 +118,23 @@ sealed class RunExecutor(
             );
         }
 
+        // Selection is composition (opencode-runtime D1): the Automation's runtime names the
+        // implementation and its credential — which MAY be absent for free providers (D3).
+        var selection = runtimes.For(automation.Runtime);
+        if (selection is null)
+        {
+            return Failure($"No runtime named '{automation.Runtime}' is registered.");
+        }
+
         string vendorToken;
-        string aiKey;
+        var aiKey = string.Empty;
         try
         {
             vendorToken = await secrets.Resolve(connector.SecretName, cancellationToken);
-            aiKey = await secrets.Resolve(options.AiCredentialSecretName, cancellationToken);
+            if (selection.CredentialSecretName is { } credentialName)
+            {
+                aiKey = await secrets.Resolve(credentialName, cancellationToken);
+            }
         }
         catch (SecretNotFoundException exception)
         {
@@ -166,7 +176,7 @@ sealed class RunExecutor(
                 + "Make the code changes only. Do not commit, push, or open pull requests — "
                 + "the orchestrator publishes your changes when you are done.";
 
-            var agentResult = await runtime.Execute(
+            var agentResult = await selection.Runtime.Execute(
                 new AgentInstruction(
                     prompt,
                     automation.Action,
