@@ -41,7 +41,9 @@ sealed class UpdateAutomation : IUseCase
                             request.Action,
                             request.Runtime,
                             request.RequiresApproval,
-                            request.TimeoutMinutes
+                            request.TimeoutMinutes,
+                            request.RubricPath,
+                            request.ReadyLabel
                         ),
                         cancellationToken
                     );
@@ -100,7 +102,9 @@ sealed class UpdateAutomation : IUseCase
         string Action,
         string Runtime,
         bool RequiresApproval,
-        int? TimeoutMinutes
+        int? TimeoutMinutes,
+        string? RubricPath = null,
+        string? ReadyLabel = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>;
 
     internal sealed record SetEnabled(Guid ProjectId, Guid AutomationId, bool Enabled)
@@ -159,7 +163,9 @@ sealed class UpdateAutomation : IUseCase
                 command.RequiresApproval,
                 command.TimeoutMinutes is { } minutes
                     ? TimeSpan.FromMinutes(minutes)
-                    : CreateAutomation.DefaultTimeout
+                    : CreateAutomation.DefaultTimeout,
+                string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
+                string.IsNullOrWhiteSpace(command.ReadyLabel) ? null : command.ReadyLabel
             );
 
             // Excluding itself: an Automation must not be refused for colliding with the

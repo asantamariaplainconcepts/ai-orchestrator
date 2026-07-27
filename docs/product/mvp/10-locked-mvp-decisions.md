@@ -142,3 +142,11 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   secrets, including the database password — Terraform manages those secrets, so it reads them on
   every refresh. That is acceptable for a disposable environment in a solo repository and would
   not be for production data.
+
+- **DEC-048 — the action catalogue grows past MVP, starting with the grill** *(revises DEC-026)*:
+  DEC-026 fixed four actions for the MVP; the MVP shipped, and the catalogue now admits
+  post-MVP actions recorded here as they land. Fifth: `GrillToReady` (#79, UC-024) — the owner's
+  own workflow entry brought into the product, built on the conversational wait (#78). Its two
+  settings (rubric path, ready label) default in code to the framework's conventions; the rubric
+  is always the project's own document, read live, because a product-wide readiness bar would
+  impose one team's standards on every repository it touches.

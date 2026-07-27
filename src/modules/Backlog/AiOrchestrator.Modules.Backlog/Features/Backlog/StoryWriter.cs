@@ -20,6 +20,18 @@ sealed class StoryWriter(ConnectorAccess access) : IStoryWriter
                 connector.AddComment(coordinates, vendorStoryId, comment, token, cancellationToken)
         );
 
+    public Task<string?> ApplyLabel(
+        Guid projectId,
+        string vendorStoryId,
+        string label,
+        CancellationToken cancellationToken = default
+    ) =>
+        With(
+            projectId,
+            (connector, coordinates, token) =>
+                connector.ApplyLabel(coordinates, vendorStoryId, label, token, cancellationToken)
+        );
+
     public Task<string?> SetState(
         Guid projectId,
         string vendorStoryId,

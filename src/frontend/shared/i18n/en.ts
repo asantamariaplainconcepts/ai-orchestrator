@@ -81,6 +81,10 @@ export const en = {
   "story.documents.openChange": "Open the change",
 
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
+  "automations.rubricPath": "Readiness document",
+  "automations.rubricPathPlaceholder": "docs/process/definition-of-ready.md",
+  "automations.readyLabel": "Ready label",
+  "automations.readyLabelPlaceholder": "ready-for-proposal",
   "automations.defaults": "Set up defaults",
   "automations.defaults.hint":
     "Creates this framework's four Automations and makes sure their trigger labels exist in the connected repository. Safe to press twice \u2014 nothing is duplicated.",

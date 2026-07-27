@@ -18,6 +18,14 @@ public interface IStoryWriter
         CancellationToken cancellationToken = default
     );
 
+    /// <summary>Applies one label — the grill's ready label rides UC-008's write path.</summary>
+    Task<string?> ApplyLabel(
+        Guid projectId,
+        string vendorStoryId,
+        string label,
+        CancellationToken cancellationToken = default
+    );
+
     Task<string?> SetState(
         Guid projectId,
         string vendorStoryId,

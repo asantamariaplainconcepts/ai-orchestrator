@@ -4,6 +4,7 @@ export const AUTOMATION_ACTIONS = [
   "RefineOrComment",
   "TransitionState",
   "Estimate",
+  "GrillToReady",
 ] as const;
 
 export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
@@ -18,6 +19,7 @@ export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = [
   "RefineOrComment",
   "TransitionState",
   "Estimate",
+  "GrillToReady",
 ];
 
 export const AGENT_RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;
@@ -43,6 +45,10 @@ export interface CreateAutomationRequest {
   runtime: AgentRuntime;
   requiresApproval: boolean;
   timeoutMinutes: number | null;
+  /** Grill only: where the readiness document lives. Null means the framework's convention. */
+  rubricPath?: string | null;
+  /** Grill only: the label applied when the bar is met. Null means the convention. */
+  readyLabel?: string | null;
 }
 
 /** What applying the framework defaults did — partial success is the normal shape (design D2). */

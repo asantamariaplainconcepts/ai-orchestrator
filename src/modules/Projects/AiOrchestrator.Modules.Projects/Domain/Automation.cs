@@ -40,6 +40,15 @@ sealed class Automation : Aggregate
     /// </summary>
     public string? TriggerState { get; private set; }
 
+    /// <summary>
+    /// Grill only: where the readiness document lives in the connected repository. Null means
+    /// the framework's convention — the default is code, not data (grill design D5).
+    /// </summary>
+    public string? RubricPath { get; private set; }
+
+    /// <summary>Grill only: the label applied when the bar is met. Null means the convention.</summary>
+    public string? ReadyLabel { get; private set; }
+
     public AutomationAction Action { get; private set; }
 
     public AgentRuntime Runtime { get; private set; }
@@ -63,8 +72,15 @@ sealed class Automation : Aggregate
         AutomationAction action,
         AgentRuntime runtime,
         bool requiresApproval,
-        TimeSpan timeout
-    ) => new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout);
+        TimeSpan timeout,
+        string? rubricPath = null,
+        string? readyLabel = null
+    ) =>
+        new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
+        {
+            RubricPath = rubricPath,
+            ReadyLabel = readyLabel,
+        };
 
     /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
     public void UpdateTo(
@@ -73,7 +89,9 @@ sealed class Automation : Aggregate
         AutomationAction action,
         AgentRuntime runtime,
         bool requiresApproval,
-        TimeSpan timeout
+        TimeSpan timeout,
+        string? rubricPath = null,
+        string? readyLabel = null
     )
     {
         TriggerLabel = triggerLabel;
@@ -82,6 +100,8 @@ sealed class Automation : Aggregate
         Runtime = runtime;
         RequiresApproval = requiresApproval;
         Timeout = timeout;
+        RubricPath = rubricPath;
+        ReadyLabel = readyLabel;
     }
 
     /// <summary>
@@ -136,6 +156,12 @@ enum AutomationAction
     RefineOrComment = 2,
     TransitionState = 3,
     Estimate = 4,
+
+    /// <summary>
+    /// Interrogates a Story to its project's readiness bar through the conversational wait
+    /// (#79, revising DEC-026's four-action catalogue as DEC-048).
+    /// </summary>
+    GrillToReady = 5,
 }
 
 /// <summary>

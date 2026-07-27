@@ -155,9 +155,14 @@ rather than the author distinguishes question from answer, because DEC-030's sin
 can make them the same vendor account. Comments are never mirrored — they are read live at
 resume time (BR-008).
 
-**No production action uses this yet** (ADR-0006 notice): the first consumer is the grill action
-(#79), deliberately a separate change. Until it lands, `ConversationGate.AskAndWait` is reachable
-only from tests.
+**The grill action is its first consumer (#79, UC-024).** Each pass reads the project's own
+readiness document live from the repository (default `docs/process/definition-of-ready.md`,
+per-Automation override), evaluates the Story plus the whole conversation, and either asks the
+specific unmet criteria — entering the wait above — or applies a configurable ready label and a
+verdict comment. The verdict is a first-line contract like Estimate's number: `READY` or the
+questions verbatim, so a rambling model degrades into questions a human reads, never into a wrong
+state. The ready label rides UC-008's ordinary write path, which is what makes grill→propose
+chaining plain matching rather than an orchestrator.
 
 ## Dispatch
 

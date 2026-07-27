@@ -43,7 +43,9 @@ sealed class CreateAutomation : IUseCase
                         request.Action,
                         request.Runtime,
                         request.RequiresApproval,
-                        request.TimeoutMinutes
+                        request.TimeoutMinutes,
+                        request.RubricPath,
+                        request.ReadyLabel
                     );
 
                     var result = await sender.Send(command, cancellationToken);
@@ -67,7 +69,9 @@ sealed class CreateAutomation : IUseCase
         string Action,
         string Runtime,
         bool RequiresApproval,
-        int? TimeoutMinutes
+        int? TimeoutMinutes,
+        string? RubricPath = null,
+        string? ReadyLabel = null
     );
 
     internal sealed record Response(
@@ -88,7 +92,9 @@ sealed class CreateAutomation : IUseCase
         string Action,
         string Runtime,
         bool RequiresApproval,
-        int? TimeoutMinutes
+        int? TimeoutMinutes,
+        string? RubricPath = null,
+        string? ReadyLabel = null
     ) : ICommand<ErrorOr<Response>>;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -97,6 +103,8 @@ sealed class CreateAutomation : IUseCase
         {
             RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
             RuleFor(command => command.TriggerState).MaximumLength(100);
+            RuleFor(command => command.RubricPath).MaximumLength(300);
+            RuleFor(command => command.ReadyLabel).MaximumLength(200);
 
             // Parseable-to-the-enum is input validation, not a domain rule: an unknown action is
             // a malformed request, never a business conflict.
@@ -145,7 +153,9 @@ sealed class CreateAutomation : IUseCase
                 command.RequiresApproval,
                 command.TimeoutMinutes is { } minutes
                     ? TimeSpan.FromMinutes(minutes)
-                    : DefaultTimeout
+                    : DefaultTimeout,
+                string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
+                string.IsNullOrWhiteSpace(command.ReadyLabel) ? null : command.ReadyLabel
             );
 
             var overlap = await overlaps.Check(

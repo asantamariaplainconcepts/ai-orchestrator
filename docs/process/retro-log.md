@@ -948,3 +948,25 @@ times in the project this framework came from.
   green can lie about it.
 - **Time invested:** not measured (source: **manual** — thirty-second consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — grill-action
+
+- **Worked:** #78's foundation held without a single change — the grill consumed `AskAndWait`,
+  the resume checker and the marker exactly as shipped, which is what a Foundation/Product split
+  is supposed to buy. The chain test is the one worth keeping: a second Automation triggered by
+  the ready label fires through refresh and ordinary matching, proving grill→next-action needs
+  no orchestration code — DEC-027's both-sides labelling doing work it was designed for two
+  months before this feature existed. And the first-line verdict contract (READY or questions,
+  verbatim) meant the failure mode of a rambling model is a human reading slightly odd
+  questions, never a wrong state.
+- **Didn't:** `UpdateTo` with optional parameters was a trap I set and then caught in the same
+  hour — the existing edit path would have silently nulled a grill's settings on any edit,
+  because C# fills omitted optional arguments with their defaults. The #29/#30 unreachability
+  class again, but as data loss: everything compiles, every test passes, and the capability
+  quietly breaks on the first unrelated edit. Caught only because I asked "who else calls this?"
+  after changing the signature.
+- **Next time:** when adding optional parameters to a mutator, check every existing caller by
+  hand — an optional parameter is an invisible edit to all of them. Defaulting new state to
+  "preserve" is safer than defaulting to null when any caller mutates existing rows.
+- **Time invested:** not measured (source: **manual** — thirty-third consecutive).
+- **ADR:** none new. DEC-048 records the catalogue revision.

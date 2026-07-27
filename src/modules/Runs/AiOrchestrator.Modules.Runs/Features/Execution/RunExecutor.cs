@@ -20,6 +20,9 @@ sealed class RunExecutor(
     IAutomationCatalog automations,
     IConnectorReader connectors,
     IStoryWriter storyWriter,
+    IDocumentReader documents,
+    IConversationReader conversations,
+    Conversation.ConversationGate conversationGate,
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
@@ -70,7 +73,8 @@ sealed class RunExecutor(
 
         try
         {
-            var result = await Invoke(run, planning, cancellationToken);
+            var outcome = await Invoke(run, planning, cancellationToken);
+            var result = outcome.Result;
 
             // The human always wins the race (design D3): a cancellation that landed while the
             // agent worked must not be overwritten by the outcome that arrived afterwards.
@@ -81,7 +85,28 @@ sealed class RunExecutor(
                 return;
             }
 
-            if (planning && result.Succeeded)
+            if (outcome.Questions is { } questions && result.Succeeded)
+            {
+                // The grill's ask, deliberately after the cancellation boundary: a cancelled Run
+                // must not put questions on somebody's Story (#78/#79).
+                var delivery = await conversationGate.AskAndWait(
+                    run,
+                    questions,
+                    clock.GetUtcNow(),
+                    cancellationToken
+                );
+                if (delivery is not null)
+                {
+                    // A Run must never wait on questions nobody can read.
+                    run.Fail(clock.GetUtcNow(), Truncate(delivery, FailureLimit));
+                    ExecutionLog.Failed(logger, runId);
+                }
+                else
+                {
+                    ExecutionLog.AwaitingInput(logger, runId);
+                }
+            }
+            else if (planning && result.Succeeded)
             {
                 // BR-006: the wait is untimed and holds no cap slot — it is not work.
                 run.AwaitApproval(clock.GetUtcNow(), Truncate(result.Log, PlanLimit));
@@ -134,16 +159,18 @@ sealed class RunExecutor(
         return automation?.RequiresApproval ?? false;
     }
 
-    async Task<AgentResult> Invoke(Run run, bool planning, CancellationToken cancellationToken)
+    async Task<Outcome> Invoke(Run run, bool planning, CancellationToken cancellationToken)
     {
         var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
         if (story is null)
         {
-            return new AgentResult(
-                Succeeded: false,
-                Log: "The mirrored story no longer exists.",
-                OutputLink: null,
-                Usage: null
+            return new Outcome(
+                new AgentResult(
+                    Succeeded: false,
+                    Log: "The mirrored story no longer exists.",
+                    OutputLink: null,
+                    Usage: null
+                )
             );
         }
 
@@ -154,22 +181,26 @@ sealed class RunExecutor(
         );
         if (automation is null)
         {
-            return new AgentResult(
-                Succeeded: false,
-                Log: "The automation is no longer enabled on this project.",
-                OutputLink: null,
-                Usage: null
+            return new Outcome(
+                new AgentResult(
+                    Succeeded: false,
+                    Log: "The automation is no longer enabled on this project.",
+                    OutputLink: null,
+                    Usage: null
+                )
             );
         }
 
         var connector = await connectors.Find(run.ProjectId, cancellationToken);
         if (connector is null)
         {
-            return new AgentResult(
-                Succeeded: false,
-                Log: "The project has no connector.",
-                OutputLink: null,
-                Usage: null
+            return new Outcome(
+                new AgentResult(
+                    Succeeded: false,
+                    Log: "The project has no connector.",
+                    OutputLink: null,
+                    Usage: null
+                )
             );
         }
 
@@ -178,7 +209,7 @@ sealed class RunExecutor(
         var selection = runtimes.For(automation.Runtime);
         if (selection is null)
         {
-            return Failure($"No runtime named '{automation.Runtime}' is registered.");
+            return new Outcome(Failure($"No runtime named '{automation.Runtime}' is registered."));
         }
 
         string vendorToken;
@@ -194,11 +225,13 @@ sealed class RunExecutor(
         catch (SecretNotFoundException exception)
         {
             // The name that failed is safe to state; a value never appears (BR-010).
-            return new AgentResult(
-                Succeeded: false,
-                Log: $"Credential could not be resolved: {exception.Message}",
-                OutputLink: null,
-                Usage: null
+            return new Outcome(
+                new AgentResult(
+                    Succeeded: false,
+                    Log: $"Credential could not be resolved: {exception.Message}",
+                    OutputLink: null,
+                    Usage: null
+                )
             );
         }
 
@@ -207,14 +240,13 @@ sealed class RunExecutor(
             + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
             + $"Description:\n{Requirement(story.Body)}";
 
-        // Every catalogue action executes now (DEC-026). Only implement-to-PR touches code, so
-        // only it prepares a workspace — the others are one prompt and one vendor write.
-        if (automation.Action != "ImplementToPullRequest")
+        // The grill converses rather than writing once, so it routes before the simple
+        // actions (#79, DEC-048).
+        if (automation.Action == "GrillToReady")
         {
-            return await RunSimpleAction(
+            return await RunGrill(
                 run,
                 automation,
-                story,
                 context,
                 selection,
                 vendorToken,
@@ -223,12 +255,30 @@ sealed class RunExecutor(
             );
         }
 
+        // Every other catalogue action is one shot. Only implement-to-PR touches code, so only
+        // it prepares a workspace — the rest are one prompt and one vendor write.
+        if (automation.Action != "ImplementToPullRequest")
+        {
+            return new Outcome(
+                await RunSimpleAction(
+                    run,
+                    automation,
+                    story,
+                    context,
+                    selection,
+                    vendorToken,
+                    aiKey,
+                    cancellationToken
+                )
+            );
+        }
+
         var coordinates = new CodeCoordinates(connector.Owner, connector.Repository);
         var prepared = await workspace.Prepare(coordinates, run.Id, vendorToken, cancellationToken);
         if (prepared.IsError)
         {
             // Stage-named refusal (design D4): the reason says "clone", not "something".
-            return Failure(prepared.FirstError.Description);
+            return new Outcome(Failure(prepared.FirstError.Description));
         }
 
         try
@@ -262,7 +312,7 @@ sealed class RunExecutor(
             if (!agentResult.Succeeded || planning)
             {
                 // Phase 1 publishes nothing: a plan-phase pull request would be a lie.
-                return agentResult;
+                return new Outcome(agentResult);
             }
 
             // Boundary two (design D2): the spend is sunk, but the *consequence* is not. This
@@ -271,7 +321,13 @@ sealed class RunExecutor(
             await database.Entry(run).ReloadAsync(cancellationToken);
             if (run.IsCancelled)
             {
-                return agentResult with { Succeeded = false, Log = "Cancelled before publishing." };
+                return new Outcome(
+                    agentResult with
+                    {
+                        Succeeded = false,
+                        Log = "Cancelled before publishing.",
+                    }
+                );
             }
 
             var published = await workspace.Publish(
@@ -283,16 +339,18 @@ sealed class RunExecutor(
                 cancellationToken
             );
 
-            return published.IsError
-                ? agentResult with
-                {
-                    Succeeded = false,
-                    Log = published.FirstError.Description,
-                }
-                : agentResult with
-                {
-                    OutputLink = published.Value.PullRequestUrl,
-                };
+            return new Outcome(
+                published.IsError
+                    ? agentResult with
+                    {
+                        Succeeded = false,
+                        Log = published.FirstError.Description,
+                    }
+                    : agentResult with
+                    {
+                        OutputLink = published.Value.PullRequestUrl,
+                    }
+            );
         }
         finally
         {
@@ -305,6 +363,147 @@ sealed class RunExecutor(
                 // A leftover temp directory is not worth failing a finished Run over.
             }
         }
+    }
+
+    /// <summary>The framework's conventions; an Automation may override both (grill D5).</summary>
+    internal const string DefaultRubricPath = "docs/process/definition-of-ready.md";
+
+    internal const string DefaultReadyLabel = "ready-for-proposal";
+
+    /// <summary>
+    /// UC-024: interrogate the Story to its project's readiness bar. Each pass is stateless —
+    /// the rubric, the body and the whole conversation are re-read (grill D3) — and ends one of
+    /// three ways: READY (label + verdict, the Run succeeds), questions (the Run waits, #78),
+    /// or an honest failure. The rubric is read before anything is written (D2): a grill that
+    /// cannot find its bar must not put that confusion on somebody's backlog.
+    /// </summary>
+    async Task<Outcome> RunGrill(
+        Run run,
+        AutomationDetail automation,
+        string context,
+        AgentRuntimeSelection selection,
+        string vendorToken,
+        string aiKey,
+        CancellationToken cancellationToken
+    )
+    {
+        var rubricPath = automation.RubricPath ?? DefaultRubricPath;
+
+        var rubric = await documents.Read(run.ProjectId, rubricPath, cancellationToken);
+        if (rubric.Failure is not null)
+        {
+            return new Outcome(
+                Failure(
+                    $"The readiness document could not be read at '{rubricPath}': {rubric.Failure}"
+                )
+            );
+        }
+
+        var conversation = await conversations.ReadSince(
+            run.ProjectId,
+            run.VendorStoryId,
+            run.CreatedAt,
+            cancellationToken
+        );
+        if (conversation.Failure is not null)
+        {
+            return new Outcome(
+                Failure($"The conversation could not be read: {conversation.Failure}")
+            );
+        }
+
+        var dialogue = string.Join(
+            "\n\n",
+            conversation.Comments.Select(comment =>
+                Conversation.RunMarker.IsAgentComment(comment.Body)
+                    ? $"You previously asked:\n{StripMarker(comment.Body)}"
+                    : $"The human answered:\n{comment.Body}"
+            )
+        );
+
+        var prompt =
+            "You are assessing whether a story meets its team's Definition of Ready, quoted "
+            + "below. If every criterion is met, reply with the single word READY on the first "
+            + "line, followed by a short verdict naming the criteria that pass. If anything is "
+            + "missing, reply ONLY with the specific questions whose answers would close the "
+            + "gaps — name the missing criteria, never ask generically, and never repeat a "
+            + "question the conversation below has already answered.\n\n"
+            + $"Definition of Ready:\n{rubric.Content}\n\n{context}"
+            + (dialogue.Length > 0 ? $"\n\nConversation so far:\n{dialogue}" : string.Empty);
+
+        var workspacePath = Directory.CreateTempSubdirectory("grill-").FullName;
+        AgentResult agentResult;
+        try
+        {
+            agentResult = await selection.Runtime.Execute(
+                new AgentInstruction(
+                    prompt,
+                    automation.Action,
+                    automation.Timeout,
+                    workspacePath,
+                    new AgentCredentials(vendorToken, aiKey)
+                ),
+                cancellationToken
+            );
+        }
+        finally
+        {
+            try
+            {
+                Directory.Delete(workspacePath, recursive: true);
+            }
+            catch (IOException) { }
+        }
+
+        if (!agentResult.Succeeded)
+        {
+            return new Outcome(agentResult);
+        }
+
+        var answer = agentResult.Log.Trim();
+
+        if (!FirstWord(answer).Equals("READY", StringComparison.OrdinalIgnoreCase))
+        {
+            // Not ready: the whole reply is the questions. A rambling model degrades into
+            // questions a human reads — never into a wrong state (grill D1).
+            return new Outcome(agentResult, Questions: answer);
+        }
+
+        var readyLabel = automation.ReadyLabel ?? DefaultReadyLabel;
+
+        // The label rides UC-008's write path, so it lands at the vendor, returns as an
+        // ordinary StoryChanged, and can trigger the next Automation (grill D4).
+        var labelled = await storyWriter.ApplyLabel(
+            run.ProjectId,
+            run.VendorStoryId,
+            readyLabel,
+            cancellationToken
+        );
+        if (labelled is not null)
+        {
+            return new Outcome(agentResult with { Succeeded = false, Log = labelled });
+        }
+
+        var verdict =
+            answer.Length > "READY".Length
+                ? answer["READY".Length..].Trim()
+                : "The story meets its Definition of Ready.";
+        var commented = await storyWriter.AddComment(
+            run.ProjectId,
+            run.VendorStoryId,
+            Conversation.RunMarker.Sign(run.Id, verdict),
+            cancellationToken
+        );
+
+        return commented is not null
+            ? new Outcome(agentResult with { Succeeded = false, Log = commented })
+            : new Outcome(agentResult);
+    }
+
+    static string StripMarker(string body)
+    {
+        var lines = body.Split('\n');
+        return string.Join('\n', lines.Skip(1)).Trim();
     }
 
     /// <summary>
@@ -513,9 +712,22 @@ static partial class ExecutionLog
     public static partial void AwaitingApproval(ILogger logger, Guid runId);
 
     [LoggerMessage(
+        EventId = 6110,
+        Level = LogLevel.Information,
+        Message = "Run {RunId} asked its questions and awaits input"
+    )]
+    public static partial void AwaitingInput(ILogger logger, Guid runId);
+
+    [LoggerMessage(
         EventId = 3105,
         Level = LogLevel.Error,
         Message = "Run {RunId} crashed during execution and was marked Failed"
     )]
     public static partial void Crashed(ILogger logger, Exception exception, Guid runId);
 }
+
+/// <summary>
+/// What one invocation produced: the agent's result, and — grill only — the questions whose
+/// posting and wait must happen after the cancellation boundary in <see cref="RunExecutor.Execute"/>.
+/// </summary>
+sealed record Outcome(AgentResult Result, string? Questions = null);
