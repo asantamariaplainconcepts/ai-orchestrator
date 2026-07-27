@@ -737,3 +737,21 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — twenty-second consecutive).
 - **ADR:** none new. "Read the vendor when a write depends on a previous write" is a specific
   instance of BR-008 rather than a new rule.
+
+## 2026-07-27 — webhook-ingest
+
+- **Worked:** BR-015 decided the design rather than being checked against it afterwards. Once
+  "webhook and polling events must be identical" is taken seriously, parsing the payload is
+  visibly the wrong answer — it builds the second path the rule exists to prevent — and
+  "trigger the same reconciliation" makes the property structural. The test then demonstrates
+  it instead of asserting it: the payload names no stories, yet the mirror fills, which is only
+  possible if the reconciler did the work. Every test passed on the first run, which for a
+  change with five refusal cases is worth noting.
+- **Didn't:** Nothing went wrong. Worth recording *why*: this is the first change where the
+  hardest decision (payload-as-data versus payload-as-hint) was settled in the grill with the
+  rejected option written down, so implementation had nothing left to discover.
+- **Next time:** keep writing the rejected alternative into the issue. Three changes now
+  (#38's path convention, #23's control-plane kill, this one's payload parsing) went smoothly
+  because the tempting-but-wrong design was named and dismissed before any code existed.
+- **Time invested:** not measured (source: **manual** — twenty-third consecutive).
+- **ADR:** none new.
