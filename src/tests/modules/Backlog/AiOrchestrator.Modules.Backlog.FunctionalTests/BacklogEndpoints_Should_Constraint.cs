@@ -284,6 +284,104 @@ public class BacklogEndpoints_Should_Constraint(BacklogApiFixture fixture) : IAs
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task Documents_Should_ListWhatTheLinkedChangeTouches()
+    {
+        await Configure();
+        fixture.Vendor.Stories.Add(new VendorStory("1", "Add login", "open", [], null));
+        await Refresh();
+
+        fixture.Vendor.Change = new LinkedChange(
+            42,
+            "feat: add login",
+            "https://example.invalid/pull/42",
+            "abc123"
+        );
+        fixture.Vendor.Documents["docs/proposal.md"] = "# Proposal";
+        fixture.Vendor.Documents["docs/design.md"] = "# Design";
+
+        var documents = await _client.GetFromJsonAsync<DocumentsResponse>(
+            $"/api/projects/{_projectId}/backlog/stories/1/documents"
+        );
+
+        documents!.Change.ShouldNotBeNull();
+        documents.Change.Number.ShouldBe(42);
+        documents.Documents.ShouldBe(["docs/design.md", "docs/proposal.md"]);
+    }
+
+    [Fact]
+    public async Task Documents_Should_ReportNoLinkedChangeDistinctlyFromNoDocuments()
+    {
+        await Configure();
+        fixture.Vendor.Stories.Add(new VendorStory("1", "Add login", "open", [], null));
+        await Refresh();
+
+        // No linked change at all.
+        var none = await _client.GetFromJsonAsync<DocumentsResponse>(
+            $"/api/projects/{_projectId}/backlog/stories/1/documents"
+        );
+        none!.Change.ShouldBeNull();
+        none.Documents.ShouldBeEmpty();
+
+        // A change that simply adds no markdown — a different fact (design D5).
+        fixture.Vendor.Change = new LinkedChange(7, "chore", "https://example.invalid/7", "sha");
+        var empty = await _client.GetFromJsonAsync<DocumentsResponse>(
+            $"/api/projects/{_projectId}/backlog/stories/1/documents"
+        );
+        empty!.Change.ShouldNotBeNull();
+        empty.Documents.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task DocumentContent_Should_ReadAtTheChangesHeadRef()
+    {
+        await Configure();
+        fixture.Vendor.Stories.Add(new VendorStory("1", "Add login", "open", [], null));
+        await Refresh();
+
+        fixture.Vendor.Change = new LinkedChange(
+            42,
+            "feat",
+            "https://example.invalid/42",
+            "head-sha"
+        );
+        fixture.Vendor.Documents["docs/proposal.md"] = "# Proposal\n\nThe text.";
+
+        var content = await _client.GetFromJsonAsync<DocumentContentResponse>(
+            $"/api/projects/{_projectId}/backlog/stories/1/documents/content?path=docs/proposal.md"
+        );
+
+        content!.Content.ShouldContain("The text.");
+        // The head-ref contract, observed rather than assumed: this is what makes "the branch
+        // moved on" correct by construction.
+        content.HeadRef.ShouldBe("head-sha");
+        fixture.Vendor.LastReadRef.ShouldBe("head-sha");
+    }
+
+    [Fact]
+    public async Task DocumentContent_Should_SurfaceAReadFailureAsItself()
+    {
+        await Configure();
+        fixture.Vendor.Stories.Add(new VendorStory("1", "Add login", "open", [], null));
+        await Refresh();
+
+        fixture.Vendor.Change = new LinkedChange(42, "feat", "https://example.invalid/42", "sha");
+        fixture.Vendor.DocumentError = BacklogErrors.VendorUnavailable("connection reset");
+
+        var response = await _client.GetAsync(
+            $"/api/projects/{_projectId}/backlog/stories/1/documents/content?path=docs/x.md"
+        );
+
+        response.IsSuccessStatusCode.ShouldBeFalse();
+        (await response.Content.ReadAsStringAsync()).ShouldContain("VendorUnavailable");
+    }
+
+    sealed record ChangeResponse(int Number, string Title, string Url, string HeadRef);
+
+    sealed record DocumentsResponse(ChangeResponse? Change, IReadOnlyList<string> Documents);
+
+    sealed record DocumentContentResponse(string Path, string HeadRef, string Content);
+
     sealed record StoryDetailResponse(
         string VendorId,
         string Title,
