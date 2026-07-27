@@ -7,9 +7,10 @@ namespace AiOrchestrator.Modules.Backlog.Domain;
 /// (BR-008), and nothing here is ever edited by the application.
 /// <para>
 /// Identity is <see cref="VendorId"/>, never the title: a renamed Story is the same Story.
-/// <see cref="State"/> carries the <i>vendor's</i> state value rather than a canonical one,
-/// because a canonical vocabulary cannot be chosen from a single vendor — that mapping belongs to
-/// closing OPN-003 (design D9).
+/// <see cref="State"/> carries the <i>vendor's</i> state value rather than a canonical one, and
+/// permanently so: with two vendors implemented, DEC-045 settled that each one's process or
+/// repository owns its state names, and any set the product invented would name states no board
+/// has.
 /// </para>
 /// </summary>
 sealed class Story : Aggregate

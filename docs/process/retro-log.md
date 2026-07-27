@@ -797,7 +797,10 @@ times in the project this framework came from.
 - **Next time:** treat a comment naming an open `OPN-*`/`DEC-*` as a stale-marker. Both incidents
   had one sitting directly above the defect ("one runtime until OPN-004 closes", "GitHub is the
   only vendor until OPN-003 closes") and in both cases the decision had already closed. Grepping
-  for those references when a decision closes is cheap and mechanical.
+  for those references when a decision closes is cheap and mechanical — done here, and it found
+  three more: `Story.State`, `Automation.TriggerState`, and the `AgentRuntime` enum's summary,
+  which still said "One value" with two values in it. None was a bug, but all three told the next
+  reader a decision was pending when it was made.
 - **Time invested:** not measured (source: **manual** — twenty-fifth consecutive).
 - **ADR:** none new — this change is the first application of
   [ADR-0006](../adr/0006-a-capability-is-not-added-until-a-user-can-reach-it.md).
