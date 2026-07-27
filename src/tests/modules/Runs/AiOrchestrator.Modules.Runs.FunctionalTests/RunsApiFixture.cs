@@ -101,7 +101,15 @@ sealed class StubBacklogConnector : IBacklogConnector
 
     public List<VendorStory> Stories { get; } = [];
 
-    public void Reset() => Stories.Clear();
+    public void Reset()
+    {
+        Stories.Clear();
+        Files.Clear();
+        Change = null;
+    }
+
+    /// <summary>The change a Run's Story links to, when a test wants one.</summary>
+    public LinkedChange? Change { get; set; }
 
     public Task<ErrorOr<Success>> VerifyAccess(
         BacklogCoordinates coordinates,
@@ -158,14 +166,17 @@ sealed class StubBacklogConnector : IBacklogConnector
         string vendorStoryId,
         string token,
         CancellationToken cancellationToken
-    ) => Task.FromResult<ErrorOr<LinkedChange?>>((LinkedChange?)null);
+    ) => Task.FromResult<ErrorOr<LinkedChange?>>(Change);
 
-    public Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+    /// <summary>The change files a Run's detail page would show.</summary>
+    public List<ChangedFile> Files { get; } = [];
+
+    public Task<ErrorOr<IReadOnlyList<ChangedFile>>> ListChangeFiles(
         BacklogCoordinates coordinates,
         int changeNumber,
         string token,
         CancellationToken cancellationToken
-    ) => Task.FromResult<ErrorOr<IReadOnlyList<string>>>(new List<string>());
+    ) => Task.FromResult<ErrorOr<IReadOnlyList<ChangedFile>>>(Files);
 
     public Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,
