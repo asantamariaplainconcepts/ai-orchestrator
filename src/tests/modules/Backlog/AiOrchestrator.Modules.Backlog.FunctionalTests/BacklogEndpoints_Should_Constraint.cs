@@ -132,6 +132,83 @@ public class BacklogEndpoints_Should_Constraint(BacklogApiFixture fixture) : IAs
     }
 
     [Fact]
+    public async Task Configure_Should_DefaultToGitHubWhenNoVendorIsNamed()
+    {
+        // Every Connector configured before Azure DevOps existed omitted the field; they must
+        // keep meaning what they meant.
+        await Configure();
+
+        (await Read()).Connector!.Vendor.ShouldBe("GitHub");
+    }
+
+    [Fact]
+    public async Task Configure_Should_NeverSubstituteADifferentVendorForTheOneAsked()
+    {
+        // Only the GitHub implementation is registered here, so naming Azure DevOps must fail —
+        // the alternative, quietly using whichever connector is at hand, would verify an Azure
+        // DevOps organisation against github.com and store a Connector pointing at the wrong
+        // service entirely.
+        var response = await _client.PutAsJsonAsync(
+            $"/api/projects/{_projectId}/connector",
+            new
+            {
+                owner = "acme",
+                repository = "portal",
+                secretName = "acme-pat",
+                vendor = "AzureDevOps",
+            }
+        );
+
+        response.StatusCode.ShouldNotBe(HttpStatusCode.OK);
+        (await Read()).Connector.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Configure_Should_RefuseAVendorItCannotRecognise()
+    {
+        var response = await _client.PutAsJsonAsync(
+            $"/api/projects/{_projectId}/connector",
+            new
+            {
+                owner = "acme",
+                repository = "portal",
+                secretName = "acme-pat",
+                vendor = "GitLab",
+            }
+        );
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        // A misspelling is the dangerous case: silently falling back to GitHub would look like
+        // success and leave the Admin believing they configured something else.
+        (await Read()).Connector.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Configure_Should_RememberAndForgetASeparateCodeRepository()
+    {
+        (
+            await _client.PutAsJsonAsync(
+                $"/api/projects/{_projectId}/connector",
+                new
+                {
+                    owner = "acme",
+                    repository = "portal",
+                    secretName = "acme-pat",
+                    codeRepository = "portal-web",
+                }
+            )
+        ).EnsureSuccessStatusCode();
+
+        (await Read()).Connector!.CodeRepository.ShouldBe("portal-web");
+
+        // Reconfiguring without it must clear it, not leave the old value behind: a stale code
+        // repository would send Agents at a repository the Admin has just stopped naming.
+        await Configure();
+
+        (await Read()).Connector!.CodeRepository.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Refresh_Should_MirrorTheVendorsStories()
     {
         await Configure();
@@ -397,6 +474,7 @@ public class BacklogEndpoints_Should_Constraint(BacklogApiFixture fixture) : IAs
         string Owner,
         string Repository,
         string SecretName,
+        string? CodeRepository,
         DateTimeOffset? LastSyncedAt,
         string? LastFailure,
         DateTimeOffset? LastFailureAt

@@ -53,7 +53,7 @@ a blocking decision-closure item instead. Proposing on a guessed answer is the f
 exists to prevent.
 
 *Currently open and blocking:* `OPN-002` (Entra ID verification — blocks the auth slice and
-UC-001), `OPN-003` (Azure DevOps trigger semantics).
+UC-001). `OPN-003` closed with the Azure DevOps connector (DEC-045).
 
 ## Process gate
 

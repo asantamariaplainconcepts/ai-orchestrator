@@ -105,3 +105,14 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   summed for BR-011. Provider credentials ride the environment (`OPENCODE_API_KEY`) and MAY be
   absent: free models (`opencode/*-free`) run with none, verified with no ambient state.
   Default model `opencode/deepseek-v4-flash-free`, config-overridable.
+
+- **DEC-045 — Azure DevOps mapping** *(closes [OPN-003](07-open-decisions.md))*: a work item is
+  a Story (`System.Id` is the vendor id); the Connector's two coordinates are the organisation
+  and the project; `System.Tags` — one semicolon-delimited string — is the label set, so a
+  trigger label is a tag and matching is unchanged; `System.State` is passed through verbatim
+  exactly as GitHub's is, because the process template owns the vocabulary and normalising it
+  would invent states no board has. The estimate field is process-dependent
+  (`Microsoft.VSTS.Scheduling.StoryPoints` on Agile, `…Effort` on Scrum, absent on Basic): the
+  Connector tries them in order and **refuses** rather than guessing. Code lives in a repository
+  *inside* the project rather than being the project, so a Connector may name one separately;
+  GitHub leaves it empty. The implementation is **unexercised** — see ADR-0005.

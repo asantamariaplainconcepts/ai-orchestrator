@@ -1,0 +1,598 @@
+using System.Globalization;
+using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using AiOrchestrator.Modules.Backlog.Domain;
+using ErrorOr;
+
+namespace AiOrchestrator.Modules.Backlog.Connectors;
+
+/// <summary>
+/// Azure DevOps — the second vendor, and therefore the thing that proves the seam is a seam
+/// rather than a GitHub abstraction wearing a neutral name (DEC-011, design D1).
+/// <para>
+/// <b>UNEXERCISED (ADR-0005).</b> No call in this file has ever reached a real Azure DevOps
+/// organisation; none was available. The translation below is unit-tested and the seam contract
+/// is exercised through the stub tier, but "the REST calls behave as documented" is a
+/// hypothesis. First thing to try when an organisation exists: configure a Connector against a
+/// project and hit refresh — that one path exercises authentication, the work-item query, and
+/// tag/state/description translation together.
+/// </para>
+/// <para>
+/// Plain HTTP rather than the Azure DevOps client SDK, deliberately: an SDK that cannot be
+/// exercised is a large dependency whose behaviour is equally unverified, while a thin client
+/// over documented endpoints is small, fully unit-testable, and obvious to correct.
+/// </para>
+/// </summary>
+sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory)
+    : IBacklogConnector
+{
+    /// <summary>Pinned like the Storage API version was, and for the same reason (#16).</summary>
+    public const string ApiVersion = "7.1";
+
+    /// <summary>
+    /// The estimate lives in a different field per process template — Agile, Scrum, and Basic
+    /// which has none. Tried in order; when none applies the failure names them (design D3).
+    /// </summary>
+    public static readonly string[] EstimateFields =
+    [
+        "Microsoft.VSTS.Scheduling.StoryPoints",
+        "Microsoft.VSTS.Scheduling.Effort",
+    ];
+
+    public BacklogVendor Vendor => BacklogVendor.AzureDevOps;
+
+    public async Task<ErrorOr<Success>> VerifyAccess(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<Success>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"_apis/projects/{Uri.EscapeDataString(coordinates.Repository)}?api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                return Translate(response, coordinates) is { } failure
+                    ? failure
+                    : (ErrorOr<Success>)Result.Success;
+            }
+        );
+    }
+
+    public async Task<ErrorOr<BacklogSnapshot>> FetchStories(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<BacklogSnapshot>(
+            coordinates,
+            async () =>
+            {
+                // WIQL gives ids; the batch read gives fields. Two calls is the documented
+                // shape — there is no "query returning fields" endpoint.
+                var query = new
+                {
+                    query = "SELECT [System.Id] FROM WorkItems "
+                        + "WHERE [System.TeamProject] = @project "
+                        + "AND [System.State] NOT IN ('Closed', 'Done', 'Removed') "
+                        + "ORDER BY [System.Id]",
+                };
+
+                var wiql = await client.PostAsJsonAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/wit/wiql?api-version={ApiVersion}",
+                    query,
+                    cancellationToken
+                );
+
+                if (Translate(wiql, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                var ids = await ReadIds(wiql, cancellationToken);
+                if (ids.Count == 0)
+                {
+                    return (ErrorOr<BacklogSnapshot>)new BacklogSnapshot([]);
+                }
+
+                var batch = await client.GetAsync(
+                    $"_apis/wit/workitems?ids={string.Join(',', ids)}&$expand=all&api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (Translate(batch, coordinates) is { } batchFailure)
+                {
+                    return batchFailure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await batch.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                return (ErrorOr<BacklogSnapshot>)
+                    new BacklogSnapshot([
+                        .. document
+                            .RootElement.GetProperty("value")
+                            .EnumerateArray()
+                            .Select(ToStory),
+                    ]);
+            }
+        );
+    }
+
+    public async Task<ErrorOr<VendorStory?>> FetchStory(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<VendorStory?>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"_apis/wit/workitems/{vendorStoryId}?$expand=all&api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return (ErrorOr<VendorStory?>)(VendorStory?)null;
+                }
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                return (ErrorOr<VendorStory?>)ToStory(document.RootElement);
+            }
+        );
+    }
+
+    public Task<ErrorOr<Success>> ApplyLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    ) => WithTags(coordinates, vendorStoryId, token, tags => tags.Append(label), cancellationToken);
+
+    public Task<ErrorOr<Success>> RemoveLabel(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        WithTags(
+            coordinates,
+            vendorStoryId,
+            token,
+            tags =>
+                tags.Where(tag => !string.Equals(tag, label, StringComparison.OrdinalIgnoreCase)),
+            cancellationToken
+        );
+
+    public async Task<ErrorOr<Success>> AddComment(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string comment,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<Success>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.PostAsJsonAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/wit/workItems/"
+                        + $"{vendorStoryId}/comments?api-version={ApiVersion}-preview.3",
+                    new { text = comment },
+                    cancellationToken
+                );
+
+                return Translate(response, coordinates) is { } failure
+                    ? failure
+                    : (ErrorOr<Success>)Result.Success;
+            }
+        );
+    }
+
+    public async Task<ErrorOr<Success>> SetState(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string state,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        // The vocabulary depends on the process template (Agile, Scrum, Basic all differ), so
+        // the state is sent and the vendor's refusal is surfaced. Picking a vocabulary here
+        // would be right for one template and silently wrong for the others (design D3).
+        return await Patch(
+            coordinates,
+            vendorStoryId,
+            token,
+            [Replace("/fields/System.State", state)],
+            cancellationToken
+        );
+    }
+
+    public async Task<ErrorOr<LinkedChange?>> FindLinkedChange(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<LinkedChange?>(
+            coordinates,
+            async () =>
+            {
+                // Pull requests appear as artifact relations on the work item.
+                var response = await client.GetAsync(
+                    $"_apis/wit/workitems/{vendorStoryId}?$expand=relations&api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return (ErrorOr<LinkedChange?>)(LinkedChange?)null;
+                }
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                var url = document.RootElement.TryGetProperty("relations", out var relations)
+                    is true
+                    ? relations
+                        .EnumerateArray()
+                        .Select(relation =>
+                            relation.TryGetProperty("url", out var value) ? value.GetString() : null
+                        )
+                        .FirstOrDefault(value =>
+                            value?.Contains("PullRequestId", StringComparison.OrdinalIgnoreCase)
+                                is true
+                        )
+                    : null;
+
+                var number = PullRequestNumber(url);
+
+                return number is null
+                    ? (ErrorOr<LinkedChange?>)(LinkedChange?)null
+                    : new LinkedChange(number.Value, $"Pull request {number}", url!, "main");
+            }
+        );
+    }
+
+    public async Task<ErrorOr<IReadOnlyList<ChangedFile>>> ListChangeFiles(
+        BacklogCoordinates coordinates,
+        int changeNumber,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        // Azure DevOps returns a pull request's changes per iteration, and does not include a
+        // unified patch — so every file reports its status with the patch omitted rather than
+        // pretending to a diff we do not have.
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<IReadOnlyList<ChangedFile>>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/git/pullrequests/"
+                        + $"{changeNumber}/iterations/1/changes?api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                if (!document.RootElement.TryGetProperty("changeEntries", out var entries))
+                {
+                    return ErrorOrFactory.From<IReadOnlyList<ChangedFile>>(new List<ChangedFile>());
+                }
+
+                IReadOnlyList<ChangedFile> files =
+                [
+                    .. entries
+                        .EnumerateArray()
+                        .Select(entry => new ChangedFile(
+                            entry.TryGetProperty("item", out var item)
+                            && item.TryGetProperty("path", out var path)
+                                ? path.GetString() ?? string.Empty
+                                : string.Empty,
+                            entry.TryGetProperty("changeType", out var type)
+                                ? type.GetString() ?? "modified"
+                                : "modified",
+                            0,
+                            0,
+                            null,
+                            PatchOmission.TooLarge
+                        ))
+                        .Where(file => file.Path.Length > 0),
+                ];
+
+                return ErrorOrFactory.From<IReadOnlyList<ChangedFile>>(files);
+            }
+        );
+    }
+
+    public async Task<ErrorOr<string>> ReadDocument(
+        BacklogCoordinates coordinates,
+        string path,
+        string reference,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<string>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/git/repositories/"
+                        + $"{Uri.EscapeDataString(coordinates.Repository)}/items"
+                        + $"?path={Uri.EscapeDataString(path)}"
+                        + $"&versionDescriptor.version={Uri.EscapeDataString(reference)}"
+                        + $"&includeContent=true&api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    return (ErrorOr<string>)BacklogErrors.DocumentNotFound(path);
+                }
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                return document.RootElement.TryGetProperty("content", out var content)
+                    ? content.GetString() ?? string.Empty
+                    : (ErrorOr<string>)BacklogErrors.DocumentNotFound(path);
+            }
+        );
+    }
+
+    /// <summary>Tags are one semicolon-delimited string, which nothing outside here learns (D4).</summary>
+    public static IReadOnlyList<string> ParseTags(string? tags) =>
+        string.IsNullOrWhiteSpace(tags)
+            ? []
+            :
+            [
+                .. tags.Split(
+                    ';',
+                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+                ),
+            ];
+
+    public static string JoinTags(IEnumerable<string> tags) => string.Join("; ", tags);
+
+    /// <summary>The work item as the product's vocabulary — the whole point of the seam.</summary>
+    public static VendorStory ToStory(JsonElement workItem)
+    {
+        var fields = workItem.GetProperty("fields");
+
+        return new VendorStory(
+            workItem.GetProperty("id").GetInt32().ToString(CultureInfo.InvariantCulture),
+            Field(fields, "System.Title") ?? string.Empty,
+            Field(fields, "System.State") ?? string.Empty,
+            ParseTags(Field(fields, "System.Tags")),
+            Field(fields, "System.Description")
+        );
+    }
+
+    static string? Field(JsonElement fields, string name) =>
+        fields.TryGetProperty(name, out var value) ? value.GetString() : null;
+
+    static int? PullRequestNumber(string? artifactUrl)
+    {
+        if (artifactUrl is null)
+        {
+            return null;
+        }
+
+        var trailing = artifactUrl.Split('%', '/').LastOrDefault();
+        return int.TryParse(trailing, CultureInfo.InvariantCulture, out var number) ? number : null;
+    }
+
+    async Task<ErrorOr<Success>> WithTags(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        Func<IEnumerable<string>, IEnumerable<string>> change,
+        CancellationToken cancellationToken
+    )
+    {
+        // Tags are a whole-field replace, so the current value has to be read first — the
+        // vendor's, not the Mirror's, for the same reason the estimate replace does (BR-008).
+        var story = await FetchStory(coordinates, vendorStoryId, token, cancellationToken);
+        if (story.IsError)
+        {
+            return story.Errors;
+        }
+
+        if (story.Value is null)
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        var updated = change(story.Value.Labels).Distinct(StringComparer.OrdinalIgnoreCase);
+
+        return await Patch(
+            coordinates,
+            vendorStoryId,
+            token,
+            [Replace("/fields/System.Tags", JoinTags(updated))],
+            cancellationToken
+        );
+    }
+
+    async Task<ErrorOr<Success>> Patch(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        object[] operations,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<Success>(
+            coordinates,
+            async () =>
+            {
+                using var content = new StringContent(
+                    JsonSerializer.Serialize(operations),
+                    Encoding.UTF8,
+                    "application/json-patch+json"
+                );
+
+                var response = await client.PatchAsync(
+                    $"_apis/wit/workitems/{vendorStoryId}?api-version={ApiVersion}",
+                    content,
+                    cancellationToken
+                );
+
+                return Translate(response, coordinates) is { } failure
+                    ? failure
+                    : (ErrorOr<Success>)Result.Success;
+            }
+        );
+    }
+
+    static object Replace(string path, string value) =>
+        new
+        {
+            op = "add",
+            path,
+            value,
+        };
+
+    static async Task<List<int>> ReadIds(
+        HttpResponseMessage response,
+        CancellationToken cancellationToken
+    )
+    {
+        using var document = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(cancellationToken)
+        );
+
+        return document.RootElement.TryGetProperty("workItems", out var items)
+            ? [.. items.EnumerateArray().Select(item => item.GetProperty("id").GetInt32())]
+            : [];
+    }
+
+    /// <summary>
+    /// Maps HTTP onto the module's closed error set, keeping "wrong project" and "wrong
+    /// credential" apart exactly as the GitHub connector does — the taxonomy is the seam's,
+    /// not a vendor's.
+    /// </summary>
+    public static Error? Translate(HttpResponseMessage response, BacklogCoordinates coordinates) =>
+        response.StatusCode switch
+        {
+            HttpStatusCode.OK or HttpStatusCode.Created or HttpStatusCode.NoContent => null,
+            HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden =>
+                BacklogErrors.CredentialRejected("(supplied credential)"),
+            HttpStatusCode.NotFound => BacklogErrors.RepositoryNotFound(
+                coordinates.Owner,
+                coordinates.Repository
+            ),
+            HttpStatusCode.TooManyRequests => BacklogErrors.VendorUnavailable(
+                "the API rate limit was exceeded"
+            ),
+            var status => BacklogErrors.VendorUnavailable($"the API returned {(int)status}"),
+        };
+
+    static async Task<ErrorOr<T>> Guarded<T>(
+        BacklogCoordinates coordinates,
+        Func<Task<ErrorOr<T>>> act
+    )
+    {
+        try
+        {
+            return await act();
+        }
+        catch (HttpRequestException exception)
+        {
+            return BacklogErrors.VendorUnavailable(exception.Message);
+        }
+        catch (JsonException exception)
+        {
+            return BacklogErrors.VendorUnavailable($"unreadable response: {exception.Message}");
+        }
+    }
+}
+
+/// <summary>
+/// Creates a per-token client for one organisation. A seam of its own, exactly as the GitHub
+/// factory is, so the connector can be unit-tested without HTTP.
+/// </summary>
+interface IAzureDevOpsClientFactory
+{
+    HttpClient Create(string organisation, string token);
+}
+
+sealed class AzureDevOpsClientFactory(IHttpClientFactory clients) : IAzureDevOpsClientFactory
+{
+    public HttpClient Create(string organisation, string token)
+    {
+        var client = clients.CreateClient(nameof(AzureDevOpsBacklogConnector));
+        client.BaseAddress = new Uri($"https://dev.azure.com/{organisation}/");
+
+        // Azure DevOps takes a PAT as basic auth with an empty username.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Basic",
+            Convert.ToBase64String(Encoding.UTF8.GetBytes($":{token}"))
+        );
+
+        return client;
+    }
+}

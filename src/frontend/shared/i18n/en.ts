@@ -37,12 +37,22 @@ export const en = {
 
   "connector.heading": "Connector",
   "connector.none": "No backlog connected. Configure a Connector to read Stories.",
+  "connector.vendor": "Vendor",
+  "connector.vendor.gitHub": "GitHub",
+  "connector.vendor.azureDevOps": "Azure DevOps",
+  "connector.vendor.unexercised": "not yet run against a real organisation",
   "connector.owner": "Owner",
+  "connector.organisation": "Organisation",
+  "connector.project": "Project",
   "connector.ownerPlaceholder": "acme",
   "connector.repository": "Repository",
   "connector.repositoryPlaceholder": "portal",
   "connector.secretName": "Secret name",
   "connector.secretNamePlaceholder": "acme-github-pat",
+  "connector.codeRepository": "Code repository",
+  "connector.codeRepositoryPlaceholder": "portal-web",
+  "connector.codeRepositoryHint":
+    "Azure DevOps keeps code in repositories inside the project. Name the one Agents should open pull requests against; leave it empty if no Automation touches code.",
   "connector.secretHint":
     "The name of the secret holding the access token. The token itself is never stored here.",
   "connector.healthy": "Connected",
