@@ -45,7 +45,12 @@ sealed class ListRuns : IUseCase
         string? OutputLink,
         string? Plan,
         DateTimeOffset? ApprovedAt,
-        string? FailureReason
+        string? FailureReason,
+        // Null means the runtime reported nothing (BR-011). Zero means it reported zero —
+        // a real value since #30's free models, and the two must never render alike.
+        long? InputTokens,
+        long? OutputTokens,
+        decimal? CostUsd
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -83,7 +88,10 @@ sealed class ListRuns : IUseCase
                     run.OutputLink,
                     run.Plan,
                     run.ApprovedAt,
-                    run.FailureReason
+                    run.FailureReason,
+                    run.UsageInputTokens,
+                    run.UsageOutputTokens,
+                    run.CostUsd
                 )),
             ];
         }
