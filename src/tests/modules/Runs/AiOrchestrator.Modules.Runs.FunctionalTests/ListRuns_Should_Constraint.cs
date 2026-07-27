@@ -102,13 +102,17 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToList();
 
-        // outputLink joined in agent-implements-pr — the field now has a producer (D5).
+        // outputLink joined in agent-implements-pr; plan/approvedAt/failureReason in
+        // approval-gate — each a deliberate widening, which is why this test exists.
         fields.ShouldBe([
+            "approvedAt",
             "automationId",
             "createdAt",
             "dispatchedAt",
+            "failureReason",
             "id",
             "outputLink",
+            "plan",
             "state",
             "vendorStoryId",
         ]);

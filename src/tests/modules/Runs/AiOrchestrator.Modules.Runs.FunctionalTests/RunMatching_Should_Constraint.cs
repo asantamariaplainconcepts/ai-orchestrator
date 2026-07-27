@@ -127,18 +127,20 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     }
 
     [Fact]
-    public async Task ATwoPhaseMatch_Should_CreateNothingYet()
+    public async Task ATwoPhaseMatch_Should_CreateAndDispatchLikeAnyOther()
     {
-        // Design D6: the approval lane is its own issue; a true-flagged match refuses loudly
-        // (MatchingLog.TwoPhaseRefused) and writes nothing.
+        // Until #22 this asserted a refusal. The lane splits at execution, not creation
+        // (approval-gate D1): the Run is created and dispatched, and the worker pauses it on
+        // its Plan — which ApprovalGate_Should_Constraint covers.
         await AddAutomation("run-me", requiresApproval: true);
         fixture.Vendor.Stories.Add(new VendorStory("1", "Add login", "open", ["run-me"]));
 
         await Refresh();
         await fixture.Probe.WaitForAtLeast(_projectId, 1);
 
-        (await Runs()).ShouldBeEmpty();
-        (await QueuedRunIds()).ShouldBeEmpty();
+        var run = (await Runs()).Single();
+        run.State.ShouldBe(nameof(RunState.Queued));
+        (await QueuedRunIds()).ShouldBe([run.Id]);
     }
 
     [Fact]

@@ -1,3 +1,4 @@
+import { Link } from "react-router";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { t, tCount } from "@/shared/i18n";
 import { useRuns } from "./useRuns";
@@ -74,7 +75,9 @@ export function RunsSection({
               const automation = byId.get(run.automationId);
               return (
                 <tr key={run.id}>
-                  <td className="table-num mono">{run.vendorStoryId}</td>
+                  <td className="table-num mono">
+                    <Link to={`/projects/${projectId}/runs/${run.id}`}>{run.vendorStoryId}</Link>
+                  </td>
                   <td>
                     {automation ? (
                       <span className="row">

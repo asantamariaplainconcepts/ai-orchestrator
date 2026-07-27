@@ -30,11 +30,13 @@ static class RunsErrors
                 + "Wait for it to finish, or cancel it once cancellation exists."
         );
 
-    /// <summary>BR-007's two-phase lane — the stated limitation, not silence.</summary>
-    public static Error TwoPhaseNotImplemented(Guid automationId) =>
-        Error.Validation(
-            "Runs.TwoPhaseNotImplemented",
-            $"Automation '{automationId}' requires approval, and the two-phase lane is not "
-                + "implemented yet. No Run was created."
+    /// <summary>Approve/reject only mean something while a Run is waiting for a decision.</summary>
+    public static Error RunNotAwaitingApproval(Guid runId, string state) =>
+        Error.Conflict(
+            "Runs.NotAwaitingApproval",
+            $"Run '{runId}' is {state}, not awaiting approval — there is no Plan to decide on."
         );
+
+    public static Error RunNotFound(Guid runId) =>
+        Error.NotFound("Runs.NotFound", $"Run '{runId}' does not exist.");
 }

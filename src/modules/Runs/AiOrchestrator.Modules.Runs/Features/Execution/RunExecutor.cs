@@ -44,14 +44,32 @@ sealed class RunExecutor(
             return;
         }
 
-        run.MarkExecuting(clock.GetUtcNow());
+        // The phase router (approval-gate D1): the Run's own record decides. An approval-gated
+        // Run that nobody has approved gets phase 1; everything else gets execution.
+        var planning = await IsPlanPhase(run, cancellationToken);
+
+        if (planning)
+        {
+            run.MarkPlanning(clock.GetUtcNow());
+        }
+        else
+        {
+            run.MarkExecuting(clock.GetUtcNow());
+        }
+
         await database.SaveChangesAsync(cancellationToken);
 
         try
         {
-            var result = await Invoke(run, cancellationToken);
+            var result = await Invoke(run, planning, cancellationToken);
 
-            if (result.Succeeded)
+            if (planning && result.Succeeded)
+            {
+                // BR-006: the wait is untimed and holds no cap slot — it is not work.
+                run.AwaitApproval(clock.GetUtcNow(), Truncate(result.Log, PlanLimit));
+                ExecutionLog.AwaitingApproval(logger, runId);
+            }
+            else if (result.Succeeded)
             {
                 run.Succeed(
                     clock.GetUtcNow(),
@@ -64,7 +82,7 @@ sealed class RunExecutor(
             }
             else
             {
-                run.Fail(clock.GetUtcNow(), Truncate(result.Log));
+                run.Fail(clock.GetUtcNow(), Truncate(result.Log, FailureLimit));
                 ExecutionLog.Failed(logger, runId);
             }
         }
@@ -72,14 +90,33 @@ sealed class RunExecutor(
         {
             // A crash between Executing and a terminal state must still end the Run: nothing
             // will redeliver (BR-004), so an eternal Executing would hold the Story hostage.
-            run.Fail(clock.GetUtcNow(), Truncate(exception.Message));
+            run.Fail(clock.GetUtcNow(), Truncate(exception.Message, FailureLimit));
             ExecutionLog.Crashed(logger, exception, runId);
         }
 
         await database.SaveChangesAsync(cancellationToken);
     }
 
-    async Task<AgentResult> Invoke(Run run, CancellationToken cancellationToken)
+    /// <summary>
+    /// True when this Run still owes a Plan. Reads the Automation rather than a state flag so
+    /// a mid-flight change to the Automation cannot strand a Run in the wrong lane.
+    /// </summary>
+    async Task<bool> IsPlanPhase(Run run, CancellationToken cancellationToken)
+    {
+        if (run.ApprovedAt is not null)
+        {
+            return false;
+        }
+
+        var automation = await automations.Detail(
+            run.ProjectId,
+            run.AutomationId,
+            cancellationToken
+        );
+        return automation?.RequiresApproval ?? false;
+    }
+
+    async Task<AgentResult> Invoke(Run run, bool planning, CancellationToken cancellationToken)
     {
         var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
         if (story is null)
@@ -169,13 +206,23 @@ sealed class RunExecutor(
         {
             // The Agent implements; the ceremony is ours (design D1). The prompt says so, or
             // the agent and the workspace seam would both try to own the same push.
-            var prompt =
-                $"Implement the following story in the repository at your current working "
-                + $"directory.\n\nStory #{story.VendorStoryId}: {story.Title}\n"
+            var context =
+                $"Story #{story.VendorStoryId}: {story.Title}\n"
                 + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
-                + $"Description:\n{Requirement(story.Body)}\n\n"
-                + "Make the code changes only. Do not commit, push, or open pull requests — "
-                + "the orchestrator publishes your changes when you are done.";
+                + $"Description:\n{Requirement(story.Body)}";
+
+            var prompt = planning
+                ? "Read the repository at your current working directory and write a short "
+                    + "implementation plan for the following story: the files you would change "
+                    + "and why, in markdown. Change nothing — this is a proposal a human will "
+                    + $"review before any code is written.\n\n{context}"
+                // The approved Plan is an input (design D2): without it the human blessed a
+                // document the Agent never sees again.
+                : $"Implement the following story in the repository at your current working "
+                    + $"directory.\n\n{context}\n\n"
+                    + PlanSection(run.Plan)
+                    + "Make the code changes only. Do not commit, push, or open pull requests — "
+                    + "the orchestrator publishes your changes when you are done.";
 
             var agentResult = await selection.Runtime.Execute(
                 new AgentInstruction(
@@ -188,8 +235,9 @@ sealed class RunExecutor(
                 cancellationToken
             );
 
-            if (!agentResult.Succeeded)
+            if (!agentResult.Succeeded || planning)
             {
+                // Phase 1 publishes nothing: a plan-phase pull request would be a lie.
                 return agentResult;
             }
 
@@ -229,7 +277,17 @@ sealed class RunExecutor(
     static AgentResult Failure(string log) =>
         new(Succeeded: false, Log: log, OutputLink: null, Usage: null);
 
-    static string Truncate(string text) => text.Length <= 1000 ? text : text[..1000];
+    const int FailureLimit = 1000;
+
+    /// <summary>Bounded like the prompt body, and for the same reason (story-detail D3).</summary>
+    const int PlanLimit = 20000;
+
+    static string Truncate(string text, int limit) => text.Length <= limit ? text : text[..limit];
+
+    static string PlanSection(string? plan) =>
+        string.IsNullOrWhiteSpace(plan)
+            ? string.Empty
+            : $"A human approved this plan — follow it:\n{plan}\n\n";
 
     /// <summary>
     /// The requirement, bounded at the prompt rather than at rest (design D3): the Mirror keeps
@@ -270,6 +328,13 @@ static partial class ExecutionLog
 
     [LoggerMessage(EventId = 3104, Level = LogLevel.Warning, Message = "Run {RunId} failed")]
     public static partial void Failed(ILogger logger, Guid runId);
+
+    [LoggerMessage(
+        EventId = 3106,
+        Level = LogLevel.Information,
+        Message = "Run {RunId} produced a plan and is awaiting approval"
+    )]
+    public static partial void AwaitingApproval(ILogger logger, Guid runId);
 
     [LoggerMessage(
         EventId = 3105,

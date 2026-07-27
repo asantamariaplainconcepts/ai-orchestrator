@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
 import type { RunView } from "./types";
 
@@ -18,5 +18,22 @@ export function useRuns(projectId: string, vendorStoryId: string | null) {
     // one thing this page exists to show. A slow poll is not streaming (DEC-031 — logs are
     // fetched, not streamed); it just keeps the list honest while the page is open.
     refetchInterval: 10_000,
+  });
+}
+
+/**
+ * UC-013 — the decision. Approve re-enqueues the Run for execution; reject ends it. Both
+ * re-read the list, because either way the Run's state just changed.
+ */
+export function useDecideOnPlan(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ runId, approve }: { runId: string; approve: boolean }) =>
+      api.post<unknown>(
+        `/api/projects/${projectId}/runs/${runId}/${approve ? "approve" : "reject"}`,
+        {},
+      ),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
   });
 }
