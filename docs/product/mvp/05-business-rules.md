@@ -15,8 +15,10 @@ where possible, a machine gate (validator, DB constraint, command refusal).
 - **BR-005 — Phase timeout.** Each Agent phase (Planning, Executing) has a timeout,
   default **30 min**, Admin-configurable per Automation. On timeout the job is killed
   and the Run marked `Failed`.
-- **BR-006 — Approval waits are untimed.** `AwaitingApproval` and `Queued` do not count
-  toward any timeout; a Run may await approval indefinitely.
+- **BR-006 — Human waits are untimed.** `AwaitingApproval`, `AwaitingInput` and `Queued` do
+  not count toward any timeout; a Run may wait on a human — an approval, or an answer to its
+  questions (#78) — indefinitely. Waiting still blocks the Story (BR-001) and is always
+  cancellable (BR-012).
 - **BR-012 — Cancellation.** `Queued`/`AwaitingApproval` Runs are discarded without a
   job; `Planning`/`Executing` Runs have their job terminated. Either way the Run ends
   `Cancelled` (terminal). ([DEC-041](10-locked-mvp-decisions.md))

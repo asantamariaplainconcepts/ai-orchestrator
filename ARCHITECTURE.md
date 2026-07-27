@@ -145,6 +145,20 @@ rather than by two code paths promising to agree, and every refusal answers alik
 unauthenticated caller learns nothing about which repositories exist. Polling continues, so a
 missed webhook costs latency and never correctness.
 
+**A Run can wait for a human and resume (#78).** The shape is the approval gate's, generalised:
+an agent pass that ends with questions posts them on the Story signed with a run marker
+(`<!-- aio:run:<id> -->`), the Run enters `AwaitingInput` — active for BR-001, untimed per
+BR-006 — and the container exits. Nothing idles. A checker polls only the Runs that are waiting;
+a comment newer than the questions and not carrying a marker sends the Run back to `Queued`, and
+ordinary dispatch re-runs it with the re-read Story plus the whole conversation. The marker
+rather than the author distinguishes question from answer, because DEC-030's single project PAT
+can make them the same vendor account. Comments are never mirrored — they are read live at
+resume time (BR-008).
+
+**No production action uses this yet** (ADR-0006 notice): the first consumer is the grill action
+(#79), deliberately a separate change. Until it lands, `ConversationGate.AskAndWait` is reachable
+only from tests.
+
 ## Dispatch
 
 A Run reaches an Agent through an Azure Storage Queue (DEC-013) that KEDA watches: a message

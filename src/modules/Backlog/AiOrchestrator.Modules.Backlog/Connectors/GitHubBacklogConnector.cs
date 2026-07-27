@@ -307,6 +307,52 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
+    public async Task<ErrorOr<IReadOnlyList<StoryComment>>> ReadComments(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        DateTimeOffset since,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            // Octokit passes `since` to the API, so the vendor does the filtering; this is one
+            // page for any Run that is actually mid-conversation.
+            var comments = await client.Issue.Comment.GetAllForIssue(
+                coordinates.Owner,
+                coordinates.Repository,
+                number,
+                new IssueCommentRequest { Since = since }
+            );
+
+            return ErrorOrFactory.From<IReadOnlyList<StoryComment>>([
+                .. comments
+                    .Where(comment => comment.CreatedAt >= since)
+                    .OrderBy(comment => comment.CreatedAt)
+                    .Select(comment => new StoryComment(
+                        comment.Body ?? string.Empty,
+                        comment.CreatedAt
+                    )),
+            ]);
+        }
+        catch (NotFoundException)
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
     public async Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,
         string path,
