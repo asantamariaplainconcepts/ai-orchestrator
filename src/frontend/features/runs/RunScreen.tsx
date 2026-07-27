@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
+import { RunChanges } from "./RunChanges";
 import { useDecideOnPlan, useRuns } from "./useRuns";
 
 /**
@@ -125,6 +126,8 @@ export function RunScreen() {
             )}
           </section>
         )}
+
+        {run && <RunChanges projectId={projectId} runId={runId} />}
       </div>
     </AppShell>
   );

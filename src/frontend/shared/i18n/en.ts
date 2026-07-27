@@ -145,6 +145,15 @@ export const en = {
   "run.error": "Could not load this Run.",
   "run.notFound": "This Run no longer exists.",
   "run.section.plan": "Plan",
+  // File changes (UC-024) — the diff the Agent produced.
+  "run.section.changes": "Changes",
+  "run.changes.loading": "Reading the changed files\u2026",
+  "run.changes.error": "Could not read the changes from the repository.",
+  "run.changes.noChange": "This Run has not opened a pull request.",
+  "run.changes.noFiles": "The pull request touched no files.",
+  "run.changes.binary": "Binary file \u2014 no diff to show. Open the pull request to inspect it.",
+  "run.changes.tooLarge":
+    "This diff is too large to render here. Open the pull request to read it in full.",
   "run.plan.none": "This Run has no Plan \u2014 its Automation runs without approval.",
   "run.plan.waiting": "Waiting for your decision.",
   "run.approve": "Approve and run",
