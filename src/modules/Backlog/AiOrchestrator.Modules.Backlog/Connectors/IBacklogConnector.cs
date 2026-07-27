@@ -56,8 +56,12 @@ interface IBacklogConnector
         CancellationToken cancellationToken
     );
 
-    /// <summary>The markdown documents the change adds or modifies — deletions excluded.</summary>
-    Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+    /// <summary>
+    /// Every file the change touched, with the vendor's own unified patch (design D1/D2 of
+    /// run-file-changes). The documents list is a projection of this — one vendor call, two
+    /// consumers, rather than two calls against the same endpoint.
+    /// </summary>
+    Task<ErrorOr<IReadOnlyList<ChangedFile>>> ListChangeFiles(
         BacklogCoordinates coordinates,
         int changeNumber,
         string token,
@@ -87,6 +91,27 @@ readonly record struct BacklogCoordinates(string Owner, string Repository);
 
 /// <summary>What a fetch returned. An empty list means the repository has no open Stories.</summary>
 sealed record BacklogSnapshot(IReadOnlyList<VendorStory> Stories);
+
+/// <summary>
+/// One file a change touched. <see cref="Patch"/> is the vendor's unified diff, or null with a
+/// <see cref="PatchOmitted"/> reason — a truncated patch shown as complete is the failure this
+/// shape exists to prevent (design D3).
+/// </summary>
+sealed record ChangedFile(
+    string Path,
+    string Status,
+    int Additions,
+    int Deletions,
+    string? Patch,
+    PatchOmission? PatchOmitted
+);
+
+/// <summary>Why a diff cannot be shown — stated, never silently empty.</summary>
+enum PatchOmission
+{
+    Binary = 1,
+    TooLarge = 2,
+}
 
 /// <summary>
 /// A change referencing a Story — the work written for it. <see cref="HeadRef"/> is what

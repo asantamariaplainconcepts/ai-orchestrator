@@ -203,7 +203,10 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
-    public async Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+    /// <summary>The vendor omits patches for binary files; large ones we omit ourselves.</summary>
+    const int PatchSizeLimit = 200_000;
+
+    public async Task<ErrorOr<IReadOnlyList<ChangedFile>>> ListChangeFiles(
         BacklogCoordinates coordinates,
         int changeNumber,
         string token,
@@ -221,12 +224,21 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
             );
 
             return files
-                .Where(file =>
-                    !string.Equals(file.Status, "removed", StringComparison.Ordinal)
-                    && file.FileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
-                )
-                .Select(file => file.FileName)
-                .OrderBy(path => path, StringComparer.Ordinal)
+                .Select(file => new ChangedFile(
+                    file.FileName,
+                    file.Status,
+                    file.Additions,
+                    file.Deletions,
+                    // A patch we cannot show is stated, never truncated (design D3).
+                    string.IsNullOrEmpty(file.Patch)
+                    || file.Patch.Length > PatchSizeLimit
+                        ? null
+                        : file.Patch,
+                    string.IsNullOrEmpty(file.Patch) ? PatchOmission.Binary
+                        : file.Patch.Length > PatchSizeLimit ? PatchOmission.TooLarge
+                        : null
+                ))
+                .OrderBy(file => file.Path, StringComparer.Ordinal)
                 .ToList();
         }
         catch (Exception exception)

@@ -258,6 +258,62 @@
   text-align: left;
 }
 
+/* ---- Diff ------------------------------------------------------------------------------- */
+
+/* A unified patch from a vendor. Colour distinguishes added from removed and nothing else —
+   syntax highlighting is deliberately out (run-file-changes D5). The block scrolls itself so a
+   long line cannot widen the page. */
+.diff {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  line-height: var(--lh-tight);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  overflow-x: auto;
+}
+
+.diff-line {
+  display: block;
+  padding: 0 var(--sp-2);
+  white-space: pre;
+}
+
+.diff-added {
+  background: var(--ok-soft);
+  color: var(--ok);
+}
+
+.diff-removed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Hunk headers orient the reader without competing with the changes themselves. */
+.diff-hunk {
+  background: var(--bg-muted);
+  color: var(--fg-muted);
+}
+
+/* One changed file: its path and counts, then its patch. */
+.diff-file-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background: var(--bg-muted);
+  border-bottom: 1px solid var(--border);
+}
+
+.diff-added-count {
+  color: var(--ok);
+  font-variant-numeric: tabular-nums;
+}
+
+.diff-removed-count {
+  color: var(--danger);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ---- Badge ----------------------------------------------------------------------------- */
 
 .badge {
