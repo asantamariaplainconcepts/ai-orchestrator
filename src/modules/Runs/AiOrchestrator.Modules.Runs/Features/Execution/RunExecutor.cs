@@ -22,6 +22,7 @@ sealed class RunExecutor(
     IStoryWriter storyWriter,
     IDocumentReader documents,
     IConversationReader conversations,
+    IChangeFileReader changes,
     Conversation.ConversationGate conversationGate,
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
@@ -255,9 +256,36 @@ sealed class RunExecutor(
             );
         }
 
-        // Every other catalogue action is one shot. Only implement-to-PR touches code, so only
-        // it prepares a workspace — the rest are one prompt and one vendor write.
-        if (automation.Action != "ImplementToPullRequest")
+        var proposing = automation.Action == "ProposeSpec";
+
+        if (proposing)
+        {
+            // Both refusals precede the workspace: no spend on a Story this action cannot
+            // honestly serve (#80). A missing body means there is nothing to propose from —
+            // inventing the requirement would be worse than refusing.
+            if (string.IsNullOrWhiteSpace(story.Body))
+            {
+                return new Outcome(
+                    Failure("The story has no description — there is nothing to propose from.")
+                );
+            }
+
+            // One open change per Story (BR-001's spirit at the artifact level).
+            var linked = await changes.ForStory(
+                run.ProjectId,
+                run.VendorStoryId,
+                cancellationToken
+            );
+            if (linked is not null)
+            {
+                return new Outcome(Failure($"The story already has an open change: {linked.Url}."));
+            }
+        }
+
+        // Every other catalogue action is one shot. Only the two PR-producing actions touch a
+        // repository, so only they prepare a workspace — the rest are one prompt and one
+        // vendor write.
+        if (automation.Action != "ImplementToPullRequest" && !proposing)
         {
             return new Outcome(
                 await RunSimpleAction(
@@ -285,11 +313,21 @@ sealed class RunExecutor(
         {
             // The Agent implements; the ceremony is ours (design D1). The prompt says so, or
             // the agent and the workspace seam would both try to own the same push.
-            var prompt = planning
-                ? "Read the repository at your current working directory and write a short "
-                    + "implementation plan for the following story: the files you would change "
-                    + "and why, in markdown. Change nothing — this is a proposal a human will "
-                    + $"review before any code is written.\n\n{context}"
+            var prompt =
+                proposing
+                    ? "Write a proposal for the following story as documentation files in the "
+                        + "repository at your current working directory: why, what changes, impact, "
+                        + "and a task breakdown. Follow the repository's own conventions for such "
+                        + "documents where its instructions declare any (AGENTS.md, CONTRIBUTING); "
+                        + $"otherwise create them under docs/proposals/story-{story.VendorStoryId}/. "
+                        + "Write documentation only — change no code. Do not commit, push, or open "
+                        + "pull requests — the orchestrator publishes your changes when you are "
+                        + $"done.\n\n{context}"
+                : planning
+                    ? "Read the repository at your current working directory and write a short "
+                        + "implementation plan for the following story: the files you would change "
+                        + "and why, in markdown. Change nothing — this is a proposal a human will "
+                        + $"review before any code is written.\n\n{context}"
                 // The approved Plan is an input (design D2): without it the human blessed a
                 // document the Agent never sees again.
                 : $"Implement the following story in the repository at your current working "
@@ -332,9 +370,15 @@ sealed class RunExecutor(
 
             var published = await workspace.Publish(
                 prepared.Value,
-                $"feat: story #{story.VendorStoryId} — {story.Title}",
-                $"Automated implementation of story #{story.VendorStoryId} "
-                    + $"({connector.Owner}/{connector.Repository}) by run {run.Id}.",
+                proposing
+                    ? $"docs: proposal for story #{story.VendorStoryId} — {story.Title}"
+                    : $"feat: story #{story.VendorStoryId} — {story.Title}",
+                proposing
+                    ? $"Proposal for story #{story.VendorStoryId} "
+                        + $"({connector.Owner}/{connector.Repository}) by run {run.Id}. "
+                        + "Documentation only — the review is the gate."
+                    : $"Automated implementation of story #{story.VendorStoryId} "
+                        + $"({connector.Owner}/{connector.Repository}) by run {run.Id}.",
                 vendorToken,
                 cancellationToken
             );

@@ -970,3 +970,21 @@ times in the project this framework came from.
   "preserve" is safer than defaulting to null when any caller mutates existing rows.
 - **Time invested:** not measured (source: **manual** — thirty-third consecutive).
 - **ADR:** none new. DEC-048 records the catalogue revision.
+
+## 2026-07-28 — propose-action
+
+- **Worked:** the cheapest change of the three, exactly as the slicing predicted — propose is
+  implement with a different prompt and PR framing, and the refusals were the only new logic.
+  Putting both refusals before `Prepare` made them assertable as absences: the test's evidence
+  is a workspace that never existed and an instruction list that stayed empty, which is stronger
+  than any assertion about what did happen. The three-issue chain (#78 foundation → #79 consumer
+  → #80 independent sibling) never blocked on itself: propose touched nothing the other two
+  built.
+- **Didn't:** nothing failed. The reason worth recording: every hard decision was already made
+  and written down before this change started — the wait machinery in #78's design, the verdict
+  contract in #79's, the pipeline reuse in this one's proposal. Third consecutive change where
+  implementation discovered nothing the grill and the specs had not.
+- **Next time:** keep sizing the last slice of a chain to be the boring one. The temptation is
+  to save something interesting for the end; the end is where fatigue lives.
+- **Time invested:** not measured (source: **manual** — thirty-fourth consecutive).
+- **ADR:** none new.

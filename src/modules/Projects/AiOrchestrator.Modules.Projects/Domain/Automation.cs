@@ -162,6 +162,12 @@ enum AutomationAction
     /// (#79, revising DEC-026's four-action catalogue as DEC-048).
     /// </summary>
     GrillToReady = 5,
+
+    /// <summary>
+    /// Turns a ready Story into a documentation pull request — the reviewable step between
+    /// ready and implemented (#80, UC-025; DEC-048 licenses the growth).
+    /// </summary>
+    ProposeSpec = 6,
 }
 
 /// <summary>

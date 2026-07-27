@@ -435,11 +435,15 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
     /// <summary>Whether Publish was reached — phase 1 must never get here (approval-gate).</summary>
     public bool Published { get; private set; }
 
+    /// <summary>Whether a workspace was prepared at all — propose's refusals must precede it.</summary>
+    public bool Prepared { get; private set; }
+
     public void Reset()
     {
         PrepareError = null;
         PublishError = null;
         Published = false;
+        Prepared = false;
         PullRequestUrl = "https://github.com/acme/portal/pull/1";
     }
 
@@ -452,12 +456,20 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
         Task.FromResult<ErrorOr<PreparedWorkspace>>(
             PrepareError is { } error
                 ? error
-                : new PreparedWorkspace(
-                    coordinates,
-                    Directory.CreateTempSubdirectory("fake-ws-").FullName,
-                    $"run/{runId}"
+                : Track(
+                    new PreparedWorkspace(
+                        coordinates,
+                        Directory.CreateTempSubdirectory("fake-ws-").FullName,
+                        $"run/{runId}"
+                    )
                 )
         );
+
+    PreparedWorkspace Track(PreparedWorkspace workspace)
+    {
+        Prepared = true;
+        return workspace;
+    }
 
     public Task<ErrorOr<PublishedChange>> Publish(
         PreparedWorkspace workspace,
