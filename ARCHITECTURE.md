@@ -99,6 +99,13 @@ only then moves the app revision. A failed migration leaves the previous revisio
 Server never migrates, in any environment — locally the AppHost's `migrations` resource does it,
 in Azure the job does.
 
+**Who holds the credential.** Pull-request validation holds none and asks for none, which is what
+makes a fork's PR harmless. Deployment holds a federated OIDC credential scoped to the `dev`
+Environment, and GitHub will not mint a token for it until a reviewer approves the run — with the
+Terraform plan already printed in the summary (DEC-046). The approval is the same human decision
+the earlier terminal-only posture protected; moving it into the browser is what stopped it from
+being a single point of failure attached to one laptop.
+
 **The Connector seam writes exactly one thing: labels.** UC-008 licenses the portal to apply
 or remove a trigger label; the write goes to the vendor first and the mirror follows through
 the ordinary reconciliation, so a `StoryChanged` produced by a portal click is

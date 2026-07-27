@@ -1,0 +1,171 @@
+name: Deploy (dev)
+
+# Applies infrastructure and deploys the portal to the dev environment.
+#
+# This workflow holds Azure credentials, which the Terraform validation lane deliberately does
+# not (see terraform.yml). The safeguard is not the absence of credentials — it is that the
+# credential is short-lived, federated to this repository's `dev` Environment, and unusable
+# until a human approves the run with the plan in front of them (DEC-046, superseding design D7).
+#
+# Split into two jobs on purpose: `plan` runs unattended and prints what would change, `deploy`
+# waits for a reviewer. An Environment gate approves a whole job, so the plan has to finish in a
+# job of its own or the approver would be asked to authorise something they cannot yet see.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image tag to deploy (defaults to the commit SHA)"
+        required: false
+        type: string
+
+# One deploy at a time. Two concurrent runs would race on Terraform state and on the container
+# app revision, and the loser would silently win — whichever finished last.
+concurrency:
+  group: deploy-dev
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write # required for OIDC; nothing here uses a stored Azure password
+
+env:
+  TERRAFORM_VERSION: 1.15.6
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # This repository is public, so these logs are public. GitHub redacts secret *values*
+      # automatically, which covers the id where it comes from the secret — but not where
+      # Terraform echoes it back inside a resource ID it read from state. Masking the value
+      # explicitly covers both, and costs one step.
+      - name: Mask the subscription id
+        run: echo "::add-mask::${{ secrets.ARM_SUBSCRIPTION_ID }}"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Initialise
+        working-directory: infra/dev
+        run: |
+          set -euo pipefail
+          terraform init -input=false \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="use_azuread_auth=true"
+
+      # The subscription guard (design D3) fails here, at plan time, if the federated credential
+      # ever points at the wrong subscription — before a single resource is touched.
+      - name: Plan
+        working-directory: infra/dev
+        env:
+          TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        run: |
+          set -euo pipefail
+          terraform plan -input=false -no-color -out=tfplan | tee plan.txt
+          {
+            echo "### Terraform plan"
+            echo '```'
+            tail -30 plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      # The approver in the next job needs the exact plan, not a recomputed one — otherwise they
+      # approve one thing and apply another.
+      - name: Keep the plan for the approved run
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan
+          path: infra/dev/tfplan
+          retention-days: 1
+
+  deploy:
+    needs: plan
+    runs-on: ubuntu-latest
+    # The approval gate. Reviewers are configured on the Environment, not here, so tightening
+    # them never needs a commit.
+    environment:
+      name: dev
+      url: ${{ steps.verify.outputs.portal_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mask the subscription id
+        run: echo "::add-mask::${{ secrets.ARM_SUBSCRIPTION_ID }}"
+
+      - uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
+
+      - name: Initialise
+        working-directory: infra/dev
+        run: |
+          set -euo pipefail
+          terraform init -input=false \
+            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
+            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}" \
+            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
+            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
+            -backend-config="use_azuread_auth=true"
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: tfplan
+          path: infra/dev
+
+      - name: Apply the approved plan
+        working-directory: infra/dev
+        env:
+          TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+        run: terraform apply -input=false -no-color tfplan
+
+      # deploy.sh owns the release ordering — push, migrate, wait, then move the revision. CI
+      # calls it rather than restating it, so the sequence that protects a running app cannot
+      # drift between the two ways of invoking it (ADR-0003).
+      - name: Deploy
+        env:
+          TAG: ${{ inputs.tag || github.sha }}
+        run: ./infra/deploy.sh
+
+      # A green deploy step means the commands returned zero. It does not mean the site serves
+      # (ADR-0004), so ask the running app.
+      - name: Verify the portal answers
+        id: verify
+        working-directory: infra/dev
+        run: |
+          set -euo pipefail
+          url="$(terraform output -raw portal_url)"
+          echo "portal_url=${url}" >> "$GITHUB_OUTPUT"
+          for attempt in $(seq 1 20); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "${url}/api/health" || echo 000)"
+            if [ "${code}" = "200" ]; then
+              echo "✓ ${url}/api/health → 200 (attempt ${attempt})"
+              exit 0
+            fi
+            echo "  ${url}/api/health → ${code}, retrying"
+            sleep 15
+          done
+          echo "✗ the portal never returned 200 — the revision moved but the app is not serving" >&2
+          exit 1

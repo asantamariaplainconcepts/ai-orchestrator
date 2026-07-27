@@ -1,8 +1,8 @@
 name: Terraform
 
-# Validation only. Apply is a human action with their own Azure identity (design D7): this
-# workflow has no credentials and requests none, so the worst it can do to the subscription is
-# nothing.
+# Validation only, and credential-free on purpose: this lane runs on pull requests, including
+# from forks, so the worst it can do to the subscription is nothing. Applying happens in
+# deploy.yml, which holds a federated credential that a reviewer must release (DEC-046).
 on:
   workflow_call:
 

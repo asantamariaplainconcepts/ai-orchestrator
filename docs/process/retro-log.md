@@ -804,3 +804,25 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — twenty-fifth consecutive).
 - **ADR:** none new — this change is the first application of
   [ADR-0006](../adr/0006-a-capability-is-not-added-until-a-user-can-reach-it.md).
+
+## 2026-07-27 — deploy-from-ci (spec-less, DEC-025)
+
+- **Worked:** the blocker turned out to be better than the thing it blocked. `terraform apply` is
+  denied to me at the permission layer and the owner had no terminal, which looked like a dead
+  end — but "nobody can reach dev" is a much better problem to solve than "one person can". The
+  fix removes the terminal from the path entirely rather than widening a permission, and it
+  reuses `deploy.sh` instead of restating it, so the release ordering still has one owner. The
+  plan/deploy job split came from taking the gate seriously: an Environment approves a whole job,
+  so a single job would have asked for approval of something not yet computed.
+- **Didn't:** D7 had been quietly false for a while before anyone noticed — CI *should* have no
+  credentials was written as CI *has* none and applying is human, in three places, and the second
+  half stopped being a safeguard the moment the human lost terminal access. A posture that
+  depends on an unstated assumption about the operator is not a posture. Also found `tfplan`
+  missing from `.gitignore`: the section right above it exists entirely to keep the subscription
+  id out of a public repo, and a saved plan carries it under a filename that looks innocuous.
+- **Next time:** when a rule says "X is a human action", write down *which* human and *with what
+  access*. Both D7 and the OPN-002 Entra blocker assume owner capabilities that were never
+  verified; one of them has now cost a full stop.
+- **Time invested:** not measured (source: **manual** — twenty-sixth consecutive).
+- **ADR:** none new. DEC-046 supersedes design D7; the pipeline is labelled unexercised per
+  ADR-0005, which is the existing rule doing its job rather than a new one.
