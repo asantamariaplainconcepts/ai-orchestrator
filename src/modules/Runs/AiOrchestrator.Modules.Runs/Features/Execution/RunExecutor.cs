@@ -173,6 +173,7 @@ sealed class RunExecutor(
                 $"Implement the following story in the repository at your current working "
                 + $"directory.\n\nStory #{story.VendorStoryId}: {story.Title}\n"
                 + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
+                + $"Description:\n{Requirement(story.Body)}\n\n"
                 + "Make the code changes only. Do not commit, push, or open pull requests — "
                 + "the orchestrator publishes your changes when you are done.";
 
@@ -229,6 +230,19 @@ sealed class RunExecutor(
         new(Succeeded: false, Log: log, OutputLink: null, Usage: null);
 
     static string Truncate(string text) => text.Length <= 1000 ? text : text[..1000];
+
+    /// <summary>
+    /// The requirement, bounded at the prompt rather than at rest (design D3): the Mirror keeps
+    /// the vendor's whole body, but an unbounded prompt is a cost and timeout surprise. The
+    /// truncation says so, because an Agent silently given half a requirement will confidently
+    /// implement half a story.
+    /// </summary>
+    const int PromptBodyLimit = 8000;
+
+    static string Requirement(string? body) =>
+        string.IsNullOrWhiteSpace(body) ? "(the story has no description)"
+        : body.Length <= PromptBodyLimit ? body
+        : body[..PromptBodyLimit] + "\n\n[description truncated by the orchestrator]";
 }
 
 static partial class ExecutionLog
