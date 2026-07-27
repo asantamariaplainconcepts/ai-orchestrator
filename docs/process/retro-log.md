@@ -889,6 +889,24 @@ times in the project this framework came from.
   instance and it is worth watching — if a fourth appears, the rule needs a check rather than
   another retro line.
 
+## 2026-07-27 — deploy-pipeline-exercised (spec-less, DEC-025)
+
+- **Worked:** the pipeline is green and the portal answers `201` to a real write, which exercises
+  app, database and vault together — the check this repo insists on precisely because a `200`
+  from any URL proves nothing. Four attempts, four defects, all found by running. The order they
+  arrived in was kind: auth, auth, plan, then success, so nothing was ever half-applied.
+- **Didn't:** I wrote two predictions into the README about what would fail — `ARM_USE_OIDC` and
+  an *AcrPush* grant — and **both were wrong**, while the three things that actually failed were
+  not on the list. Predicting is still right; the lesson is that a written prediction is a
+  hypothesis to be checked off, not a shortlist that makes other causes less likely. Keeping them
+  in the file after they were disproved would have been worse than not writing them.
+- **Next time:** when a doc says something is unverified, treat the moment it *becomes* verified
+  as part of the same change, not as tidying. This entry exists because "has never run" outlived
+  its truth by exactly one run — the ADR-0006 failure mode, caught in minutes only because that
+  ADR was written this morning.
+- **Time invested:** not measured (source: **manual** — thirtieth consecutive).
+- **ADR:** none new.
+
 ## 2026-07-27 — automation-defaults
 
 - **Worked:** the grill asked what the button creates, and the answer moved the whole change. "Also

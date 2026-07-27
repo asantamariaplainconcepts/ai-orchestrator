@@ -109,15 +109,19 @@ Two lanes, deliberately separate:
   naming the branch, which no credential here accepts, and making one that did would hand every
   push to `main` rights over the resource group by a route nobody chose.
 
-**Approval is per environment, not per pipeline** (DEC-047). `dev` has no required reviewer and
-deploys unattended: it is disposable, and the owner deploys to it many times a day. `prod` will
-have one, and its own identity — a run holding dev's credential cannot reach it, because the
-subject names the environment.
+**Approval is per environment, not per pipeline** (DEC-047). `prod` will have a reviewer and its
+own identity — a run holding dev's credential cannot reach it, because the subject names the
+environment.
 
-The consequence, stated rather than buried: with no reviewer on `dev`, anyone who can merge to
-`main` can change that resource group and read its secrets. Terraform *manages* the vault's
-secrets, so it reads their values on every refresh; the deploy identity therefore holds
-*Key Vault Secrets Officer* and can see the database password. Fine for an environment
+**`dev` currently still has a required reviewer**, so every deploy waits for one click. DEC-047's
+position is that it need not: dev is disposable and `terraform destroy` recreates it. Removing it
+is Settings → Environments → `dev` → uncheck *Required reviewers*, and nothing in this repository
+changes when you do — which is the point of keeping reviewers out of version control.
+
+The consequence of removing it, stated rather than buried: anyone who can merge to `main` would
+then be able to change that resource group and read its secrets unattended. Terraform *manages*
+the vault's secrets, so it reads their values on every refresh; the deploy identity therefore
+holds *Key Vault Secrets Officer* and can see the database password. Fine for an environment
 `terraform destroy` recreates. Not fine for production data.
 
 ## Setting up the deploy credential
@@ -158,11 +162,14 @@ with reviewers, the run waits at Actions → the run → *Review deployments*, a
 is a commit rather than a diff of resources: showing the plan first would need a job outside the
 environment, and therefore a credential mintable without approval.
 
-**This pipeline has never run** (ADR-0005). Its YAML parses, `shellcheck` and `terraform fmt`
-pass, and every step is one that has worked by hand — but the federated credential does not exist
-yet, so nothing has exercised the token exchange, the role assignments, or `az acr login` from a
-runner identity. Three attempts in, the record so far — each failure found by running it, none by
-review:
+**This pipeline has run** — [run 30293533800](https://github.com/asantamariaplainconcepts/ai-orchestrator/actions/runs/30293533800),
+green end to end: token exchange, backend auth, plan, apply, `deploy.sh`, health check. Verified
+from outside afterwards rather than trusting the workflow's own verdict: `POST /api/projects`
+against the deployed portal returned **201** with the created entity, which exercises the app,
+Postgres and Key Vault together.
+
+It took four attempts, and every defect was found by running it — none by review. Worth keeping,
+because the same three mistakes are available to anyone wiring OIDC:
 
 1. **`azure/login`, wrong subject shape.** The plan job declared no environment, so its token
    named the branch; no credential accepted it, and none should have (#69).
@@ -171,10 +178,14 @@ review:
 3. **`terraform plan`, 403 on Key Vault.** Terraform manages the vault's secrets and reads their
    values on refresh; `Contributor` is management plane only (#73).
 
-`Initialise` passed on attempt three, so the backend does inherit the OIDC session and
-`ARM_USE_OIDC` was not needed. Still untested past `plan`: `az acr login` from a runner identity
-— `Contributor` is documented to cover registry push, and if it does not, grant *AcrPush* on the
-registry.
+`ARM_USE_OIDC` turned out to be unnecessary — the backend inherits the CLI session — and
+`Contributor` does cover `az acr login`, so no *AcrPush* grant was needed. Both were predictions
+in this file; both were wrong, which is the argument for writing predictions down.
+
+**Still not exercised:** a from-scratch apply into an empty subscription, `terraform destroy`, and
+a *failing* migration. That last one matters most — the ordering that keeps a bad migration from
+taking the site down is verified by design and by a local run, not by CI having watched it
+happen.
 
 ## Cost
 
