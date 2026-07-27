@@ -101,6 +101,13 @@ export const en = {
   "automations.approvalRequired": "Required",
   "automations.approvalNone": "Automatic",
   "automations.minutes": "min",
+  // Editing (UC-006): disabling stops future matches; enabling can be refused by BR-003.
+  "automations.enable": "Enable",
+  "automations.disable": "Disable",
+  "automations.disabled": "Disabled",
+  "automations.enableFailed":
+    "Could not enable it \u2014 its trigger now overlaps another Automation.",
+  "automations.table.status": "Status",
 
   // Shell — sidebar, top bar. The brand area is catalogue text only (DEC-021).
   "shell.nav.section": "Workspace",

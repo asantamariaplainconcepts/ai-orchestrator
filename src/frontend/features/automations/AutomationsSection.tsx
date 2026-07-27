@@ -2,7 +2,7 @@ import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, AutomationAction } from "./types";
-import { useAutomations, useCreateAutomation } from "./useAutomations";
+import { useAutomations, useCreateAutomation, useSetAutomationEnabled } from "./useAutomations";
 
 /**
  * UC-005 on the project page. No styles are declared here; the one control the kit lacked
@@ -10,6 +10,8 @@ import { useAutomations, useCreateAutomation } from "./useAutomations";
  */
 export function AutomationsSection({ projectId }: { projectId: string }) {
   const automations = useAutomations(projectId);
+  // Enabling can be refused by BR-003's re-check; disabling never is (design D2).
+  const setEnabled = useSetAutomationEnabled(projectId);
   const create = useCreateAutomation(projectId);
 
   const [triggerLabel, setTriggerLabel] = useState("");
@@ -133,6 +135,12 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         {create.isError && (
           <p className="state state-error" role="alert">
             {t("automations.saveFailed")}
+
+            {setEnabled.isError && (
+              <p className="state state-error" role="alert">
+                {t("automations.enableFailed")}
+              </p>
+            )}
           </p>
         )}
       </form>
@@ -153,6 +161,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               <th>{t("automations.table.action")}</th>
               <th>{t("automations.table.approval")}</th>
               <th className="table-num">{t("automations.table.timeout")}</th>
+              <th>{t("automations.table.status")}</th>
             </tr>
           </thead>
           <tbody>
@@ -187,6 +196,26 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                 </td>
                 <td className="table-num">
                   {automation.timeoutMinutes} {t("automations.minutes")}
+                </td>
+                <td>
+                  <span className="row">
+                    {automation.enabled ? null : (
+                      <span className="pill pill-neutral">{t("automations.disabled")}</span>
+                    )}
+                    <button
+                      className="btn"
+                      type="button"
+                      disabled={setEnabled.isPending}
+                      onClick={() =>
+                        setEnabled.mutate({
+                          id: automation.id,
+                          enabled: !automation.enabled,
+                        })
+                      }
+                    >
+                      {automation.enabled ? t("automations.disable") : t("automations.enable")}
+                    </button>
+                  </span>
                 </td>
               </tr>
             ))}
