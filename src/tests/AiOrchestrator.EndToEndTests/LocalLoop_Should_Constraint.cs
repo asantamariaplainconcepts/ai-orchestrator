@@ -12,6 +12,7 @@ namespace AiOrchestrator.EndToEndTests;
 /// "it worked when someone looked" and a claim CI re-checks on every push.
 /// </para>
 /// </summary>
+[Trait("Category", "E2E")]
 [Collection(AppHostCollection.Name)]
 public class LocalLoop_Should_Constraint(AppHostFixture fixture)
 {
