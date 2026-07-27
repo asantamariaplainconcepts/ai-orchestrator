@@ -2,14 +2,18 @@ name: Deploy (dev)
 
 # Applies infrastructure and deploys the portal to the dev environment.
 #
-# This workflow holds Azure credentials, which the Terraform validation lane deliberately does
-# not (see terraform.yml). The safeguard is not the absence of credentials — it is that the
-# credential is short-lived, federated to this repository's `dev` Environment, and unusable
-# until a human approves the run with the plan in front of them (DEC-046, superseding design D7).
+# One job, and that is the security property rather than a simplification: every step that can
+# reach Azure sits inside the `dev` Environment, so GitHub will not mint a token at all until a
+# reviewer has approved the run (DEC-046). There is no unattended path to the subscription.
 #
-# Split into two jobs on purpose: `plan` runs unattended and prints what would change, `deploy`
-# waits for a reviewer. An Environment gate approves a whole job, so the plan has to finish in a
-# job of its own or the approver would be asked to authorise something they cannot yet see.
+# An earlier shape ran the plan in a separate job so the approver could read it before deciding.
+# It could not authenticate — a job with no environment gets a token whose subject names the
+# branch, not the environment — and the fixes were both worse than the problem. A second
+# credential scoped to the branch would hand every push to main Contributor with no approval; a
+# separate read-only identity would still need Key Vault read access, because Terraform refreshes
+# secret resources by reading their values, and an unattended identity that can read the database
+# password is exactly what BR-010 exists to prevent. What is approved here is "release this
+# commit to dev", against Terraform that already passed validation in PR review.
 
 on:
   push:
@@ -31,12 +35,14 @@ permissions:
   contents: read
   id-token: write # required for OIDC; nothing here uses a stored Azure password
 
-env:
-  TERRAFORM_VERSION: 1.15.6
-
 jobs:
-  plan:
+  deploy:
     runs-on: ubuntu-latest
+    # The approval gate. Reviewers are configured on the Environment, not here, so tightening
+    # them never needs a commit.
+    environment:
+      name: dev
+      url: ${{ steps.verify.outputs.portal_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,7 +61,7 @@ jobs:
 
       - uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_version: 1.15.6
           terraform_wrapper: false
 
       - name: Initialise
@@ -69,8 +75,12 @@ jobs:
             -backend-config="key=${{ vars.TF_STATE_KEY }}" \
             -backend-config="use_azuread_auth=true"
 
-      # The subscription guard (design D3) fails here, at plan time, if the federated credential
-      # ever points at the wrong subscription — before a single resource is touched.
+      # Planned and applied as two steps over one saved plan file, so what is applied is exactly
+      # what was printed — and the printed plan is in the summary of the run that made the
+      # change, which is where anyone asking "what did this deploy do" will look.
+      #
+      # The subscription guard (design D3) fails here if the federated credential ever points at
+      # the wrong subscription, before a single resource is touched.
       - name: Plan
         working-directory: infra/dev
         env:
@@ -85,57 +95,7 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # The approver in the next job needs the exact plan, not a recomputed one — otherwise they
-      # approve one thing and apply another.
-      - name: Keep the plan for the approved run
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: infra/dev/tfplan
-          retention-days: 1
-
-  deploy:
-    needs: plan
-    runs-on: ubuntu-latest
-    # The approval gate. Reviewers are configured on the Environment, not here, so tightening
-    # them never needs a commit.
-    environment:
-      name: dev
-      url: ${{ steps.verify.outputs.portal_url }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Mask the subscription id
-        run: echo "::add-mask::${{ secrets.ARM_SUBSCRIPTION_ID }}"
-
-      - uses: azure/login@v2
-        with:
-          client-id: ${{ secrets.AZURE_CLIENT_ID }}
-          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
-
-      - uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-          terraform_wrapper: false
-
-      - name: Initialise
-        working-directory: infra/dev
-        run: |
-          set -euo pipefail
-          terraform init -input=false \
-            -backend-config="resource_group_name=${{ vars.TF_STATE_RESOURCE_GROUP }}" \
-            -backend-config="storage_account_name=${{ secrets.TF_STATE_STORAGE_ACCOUNT }}" \
-            -backend-config="container_name=${{ vars.TF_STATE_CONTAINER }}" \
-            -backend-config="key=${{ vars.TF_STATE_KEY }}" \
-            -backend-config="use_azuread_auth=true"
-
-      - uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: infra/dev
-
-      - name: Apply the approved plan
+      - name: Apply
         working-directory: infra/dev
         env:
           TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}

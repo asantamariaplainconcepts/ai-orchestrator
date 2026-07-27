@@ -104,8 +104,11 @@ Two lanes, deliberately separate:
   `terraform validate`, `shellcheck`. It has **no Azure credentials** and requests none, so the
   worst a pull request from anywhere can do to the subscription is nothing.
 - **[deploy.yml](../.github/workflows/deploy.yml)** runs on merge to `main` and on dispatch. It
-  *does* hold a credential — federated, short-lived, and scoped to the `dev` Environment — and it
-  cannot use it until a reviewer approves the run with the plan already printed (DEC-046).
+  *does* hold a credential — federated, short-lived, and scoped to the `dev` Environment — and
+  GitHub will not mint it at all until a reviewer approves the run (DEC-046). The whole workflow
+  is one job for that reason: a job outside the environment gets a token subject naming the
+  branch, which no credential here accepts, and making one that did would hand every push to
+  `main` unattended rights over the resource group.
 
 The human decision that design D7 protected is intact; what changed is its form. It used to be a
 command typed at a terminal, which meant no terminal, no deploy. It is now a click on a plan,
@@ -142,14 +145,19 @@ Then start a run:
 gh workflow run "Deploy (dev)" --repo asantamariaplainconcepts/ai-orchestrator --ref main
 ```
 
-The `plan` job finishes unattended; the `deploy` job waits for your approval with the plan in the
-run summary. Approve it in Actions → the run → *Review deployments*.
+The run waits for your approval before it can reach Azure at all. Approve it in Actions → the
+run → *Review deployments*; the plan is printed in the summary of the run that made the change.
+
+You approve a commit rather than a diff of resources. Showing the plan first would need a job
+outside the environment, and therefore a credential usable without approval — which is the thing
+being protected against. The Terraform in that commit already passed `validate` in PR review.
 
 **This pipeline has never run** (ADR-0005). Its YAML parses, `shellcheck` and `terraform fmt`
 pass, and every step is one that has worked by hand — but the federated credential does not exist
 yet, so nothing has exercised the token exchange, the role assignments, or `az acr login` from a
-runner identity. Treat the first run as the test it is, and expect one of two failures rather
-than none:
+runner identity. The first attempt failed in `azure/login` and the repair is already in — the
+unattended plan job could not be authenticated, and should not have been (#69). Two failures are
+still plausible past that point:
 
 - **`Initialise` fails authorizing the blob** — the backend is not picking up the federated
   credential. Add `ARM_USE_OIDC: true` to the Terraform steps' `env` in `deploy.yml`.
