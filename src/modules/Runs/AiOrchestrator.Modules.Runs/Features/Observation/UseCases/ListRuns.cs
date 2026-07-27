@@ -42,7 +42,10 @@ sealed class ListRuns : IUseCase
         string State,
         DateTimeOffset CreatedAt,
         DateTimeOffset? DispatchedAt,
-        string? OutputLink
+        string? OutputLink,
+        string? Plan,
+        DateTimeOffset? ApprovedAt,
+        string? FailureReason
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -77,7 +80,10 @@ sealed class ListRuns : IUseCase
                     run.State.ToString(),
                     run.CreatedAt,
                     run.DispatchedAt,
-                    run.OutputLink
+                    run.OutputLink,
+                    run.Plan,
+                    run.ApprovedAt,
+                    run.FailureReason
                 )),
             ];
         }

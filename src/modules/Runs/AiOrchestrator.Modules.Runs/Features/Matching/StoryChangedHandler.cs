@@ -63,13 +63,6 @@ sealed class StoryChangedHandler(
 static partial class MatchingLog
 {
     [LoggerMessage(
-        EventId = 3001,
-        Level = LogLevel.Warning,
-        Message = "Automation {AutomationId} matched but requires approval — the two-phase lane is not implemented yet, no Run was created"
-    )]
-    public static partial void TwoPhaseRefused(ILogger logger, Guid automationId);
-
-    [LoggerMessage(
         EventId = 3002,
         Level = LogLevel.Information,
         Message = "Run {RunId} created Queued: project {ProjectId} is at its concurrency cap (BR-002)"

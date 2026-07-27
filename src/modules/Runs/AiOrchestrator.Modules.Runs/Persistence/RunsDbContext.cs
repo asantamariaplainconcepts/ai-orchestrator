@@ -24,6 +24,7 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
             run.Property(entity => entity.State).HasConversion<string>().HasMaxLength(50);
             run.Property(entity => entity.FailureReason).HasMaxLength(1000);
             run.Property(entity => entity.OutputLink).HasMaxLength(500);
+            run.Property(entity => entity.Plan).HasMaxLength(65536);
 
             // BR-001 as a constraint, not a hope: one Run per Story reference across the
             // active states. Every current state is active (see RunState); the filter is
@@ -31,7 +32,7 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
             // only if someone consciously edits the list — the rule stays chosen, not drifted.
             run.HasIndex(entity => new { entity.ProjectId, entity.VendorStoryId })
                 .IsUnique()
-                .HasFilter("\"State\" IN ('Queued', 'Planning', 'AwaitingApproval', 'Executing')");
+                .HasFilter(RunStates.ActiveStateFilter());
 
             // BR-002 counts Planning/Executing per project; make that lookup cheap.
             run.HasIndex(entity => new { entity.ProjectId, entity.State });

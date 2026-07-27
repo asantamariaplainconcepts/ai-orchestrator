@@ -128,9 +128,6 @@ sealed class RunNow : IUseCase
                     WaitingAtCap: false
                 ),
                 RunCreation.AlreadyActive => RunsErrors.StoryHasActiveRun(command.VendorStoryId),
-                RunCreation.TwoPhaseRefused refused => RunsErrors.TwoPhaseNotImplemented(
-                    refused.AutomationId
-                ),
                 _ => Error.Unexpected(
                     "Runs.UnknownOutcome",
                     "Run creation returned an unknown outcome."

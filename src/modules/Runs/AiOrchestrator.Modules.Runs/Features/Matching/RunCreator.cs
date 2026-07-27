@@ -10,8 +10,9 @@ namespace AiOrchestrator.Modules.Runs.Features.Matching;
 
 /// <summary>
 /// The one Run-creation path (BR-013's structural consequence, design D1 of run-now): event
-/// matching and Run now both come through here, so BR-001, BR-002 and the BR-007 lane split
-/// are enforced by exactly one piece of code. The outcome is data; each caller chooses its
+/// matching and Run now both come through here, so BR-001 and BR-002 are enforced by exactly
+/// one piece of code. Both lanes create the same Run — BR-007 splits at <i>execution</i>
+/// (approval-gate D1), not at creation. The outcome is data; each caller chooses its
 /// voice — the event handler stays silent where at-least-once makes silence correct, the
 /// endpoint answers the human.
 /// </summary>
@@ -30,24 +31,14 @@ sealed class RunCreator(
         CancellationToken cancellationToken
     )
     {
-        if (automation.RequiresApproval)
-        {
-            // The stated limitation (module-integration-events → run-orchestration D6): the
-            // two-phase lane is its own issue, and parking a Run now would freeze approval
-            // semantics before it is designed.
-            MatchingLog.TwoPhaseRefused(logger, automation.AutomationId);
-            return new RunCreation.TwoPhaseRefused(automation.AutomationId);
-        }
-
         // BR-001 pre-check keeps the common case quiet; the index owns the race below. The
-        // state list mirrors the index filter exactly: terminal Runs free the Story, so they
-        // must be as invisible here as they are to the constraint.
+        // state list is the SAME array the index filter is generated from — hand-copying it
+        // is what let a terminal state hold a Story hostage twice.
         var hasActiveRun = await database.Runs.AnyAsync(
             run =>
                 run.ProjectId == projectId
                 && run.VendorStoryId == vendorStoryId
-                && run.State != RunState.Succeeded
-                && run.State != RunState.Failed,
+                && RunStates.Active.Contains(run.State),
             cancellationToken
         );
         if (hasActiveRun)
@@ -121,9 +112,6 @@ abstract record RunCreation
 
     /// <summary>BR-001: the Story already has an active Run; nothing was written.</summary>
     public sealed record AlreadyActive : RunCreation;
-
-    /// <summary>BR-007's two-phase lane, not implemented yet; nothing was written.</summary>
-    public sealed record TwoPhaseRefused(Guid AutomationId) : RunCreation;
 
     /// <summary>The Run exists but the enqueue failed — visible as Queued with no DispatchedAt.</summary>
     public sealed record DispatchFailed(Guid RunId) : RunCreation;
