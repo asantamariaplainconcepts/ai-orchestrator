@@ -2,9 +2,14 @@ name: Deploy (dev)
 
 # Applies infrastructure and deploys the portal to the dev environment.
 #
-# One job, and that is the security property rather than a simplification: every step that can
-# reach Azure sits inside the `dev` Environment, so GitHub will not mint a token at all until a
-# reviewer has approved the run (DEC-046). There is no unattended path to the subscription.
+# One job, and that is a security property rather than a simplification: every step that can
+# reach Azure sits inside the `dev` Environment, so GitHub mints a token scoped to *that*
+# environment and nothing else. A future `prod` environment gets its own credential, and a run
+# holding dev's cannot touch it.
+#
+# Whether a run waits for a human is a property of the environment, not of this file (DEC-047).
+# `dev` is disposable and runs unattended; `prod` will require a reviewer. Do not read the
+# `environment:` key below as an approval gate — check the environment's settings.
 #
 # An earlier shape ran the plan in a separate job so the approver could read it before deciding.
 # It could not authenticate — a job with no environment gets a token whose subject names the

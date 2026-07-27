@@ -54,8 +54,12 @@ Environment  : ${ENVIRONMENT}
 App          : ${APP_NAME}
 Grants       : Contributor + User Access Administrator on ${RESOURCE_GROUP}
                Storage Blob Data Contributor on ${STATE_STORAGE}
+               Key Vault Secrets Officer on the vault in ${RESOURCE_GROUP}
 
-This lets an approved GitHub Actions run change that resource group.
+This lets a GitHub Actions run change that resource group and read its secrets,
+including the database password — Terraform manages those secrets, so it reads
+them on every refresh. Whether a run must be approved first is decided by the
+required reviewers on the ${ENVIRONMENT} environment.
 EOF
 
 read -r -p "Create/verify the deploy identity? [y/N] " reply
@@ -79,22 +83,45 @@ else
 fi
 sp_object_id="$(az ad sp show --id "${app_id}" --query id -o tsv)"
 
+# Ask GitHub what it will actually present rather than assembling the subject by hand. The
+# default format now embeds the immutable owner and repository IDs — `repo:owner@123/repo@456`
+# — which survives a rename, and which no amount of reading the docs would have told us as
+# reliably as the API does.
+sub_prefix="$(gh api "repos/${REPO}/actions/oidc/customization/sub" --jq .sub_claim_prefix 2>/dev/null || true)"
+[ -n "${sub_prefix}" ] || sub_prefix="repo:${REPO}"
+
 # Scoped to the environment rather than to a branch. That is what makes the approval gate
 # load-bearing: GitHub only mints a token for a run a reviewer has already released, so the
 # credential cannot be used by an unapproved run at all.
-credential_subject="repo:${REPO}:environment:${ENVIRONMENT}"
+credential_subject="${sub_prefix}:environment:${ENVIRONMENT}"
 credential_name="github-${ENVIRONMENT}-environment"
 
-if az ad app federated-credential show \
+credential_parameters="$(printf '{"name":"%s","issuer":"https://token.actions.githubusercontent.com","subject":"%s","audiences":["api://AzureADTokenExchange"]}' \
+  "${credential_name}" "${credential_subject}")"
+
+# Compare the subject, not merely the name. A credential that exists with the wrong subject is
+# the failure this script is meant to prevent, and "it is already there" would hide it on every
+# subsequent run (ADR-0004).
+existing_subject="$(az ad app federated-credential show \
   --id "${app_id}" \
   --federated-credential-id "${credential_name}" \
-  --output none 2>/dev/null; then
-  echo "✓ federated credential ${credential_name} already exists"
+  --query subject -o tsv 2>/dev/null || true)"
+
+if [ "${existing_subject}" = "${credential_subject}" ]; then
+  echo "✓ federated credential matches ${credential_subject}"
+elif [ -n "${existing_subject}" ]; then
+  az ad app federated-credential update \
+    --id "${app_id}" \
+    --federated-credential-id "${credential_name}" \
+    --parameters "${credential_parameters}" \
+    --output none
+  echo "✓ corrected federated credential subject"
+  echo "    was: ${existing_subject}"
+  echo "    now: ${credential_subject}"
 else
   az ad app federated-credential create \
     --id "${app_id}" \
-    --parameters "$(printf '{"name":"%s","issuer":"https://token.actions.githubusercontent.com","subject":"%s","audiences":["api://AzureADTokenExchange"]}' \
-      "${credential_name}" "${credential_subject}")" \
+    --parameters "${credential_parameters}" \
     --output none
   echo "✓ created federated credential for ${credential_subject}"
 fi
@@ -106,6 +133,9 @@ state_scope="$(az storage account show \
   --name "${STATE_STORAGE}" \
   --resource-group "${STATE_RG}" \
   --query id -o tsv)"
+vault_scope="$(az keyvault list \
+  --resource-group "${RESOURCE_GROUP}" \
+  --query "[0].id" -o tsv)"
 
 grant() {
   local role="$1" scope="$2"
@@ -133,20 +163,41 @@ grant "Contributor" "${rg_scope}"
 grant "User Access Administrator" "${rg_scope}"
 grant "Storage Blob Data Contributor" "${state_scope}"
 
+# Key Vault RBAC is a separate plane from Contributor, and Terraform *manages* the secrets in
+# this vault — so it reads their values on every refresh, not just when writing them. Without
+# this, plan fails 403 before it can propose anything. It also means the deploy identity can
+# read the database password: unavoidable while Terraform owns those secrets, and the reason
+# the environment gate is worth keeping wherever the data is not disposable.
+if [ -n "${vault_scope}" ]; then
+  grant "Key Vault Secrets Officer" "${vault_scope}"
+else
+  echo "! no key vault found in ${RESOURCE_GROUP} — skipping the secrets grant"
+  echo "  (expected before the first terraform apply; re-run this script afterwards)"
+fi
+
 # --- GitHub ------------------------------------------------------------------------------
 
 # Without a required reviewer the environment is a label, not a gate, and the credential above
-# becomes usable unattended — which is the whole thing this design refuses.
-reviewer_id="$(gh api user --jq .id)"
-gh api --method PUT "repos/${REPO}/environments/${ENVIRONMENT}" \
-  --input - >/dev/null <<EOF
-{"reviewers":[{"type":"User","id":${reviewer_id}}]}
-EOF
-echo "✓ environment ${ENVIRONMENT} requires approval from $(gh api user --jq .login)"
+# becomes usable unattended — which is the whole thing this design refuses. Existing reviewers
+# are left alone: deploy.yml deliberately keeps them out of version control so they can be
+# tightened without a commit, and a script that overwrote them would undo that on every run.
+existing_reviewers="$(gh api "repos/${REPO}/environments/${ENVIRONMENT}" \
+  --jq '[.protection_rules[]?|select(.type=="required_reviewers")|.reviewers[].reviewer.login]|join(", ")' \
+  2>/dev/null || true)"
 
-# Repository-level, not environment-level, and that distinction matters: the plan job runs
-# without an environment so that it needs no approval, which also means it cannot read a secret
-# scoped to one.
+if [ -n "${existing_reviewers}" ]; then
+  echo "✓ environment ${ENVIRONMENT} already requires approval from ${existing_reviewers}"
+else
+  gh api --method PUT "repos/${REPO}/environments/${ENVIRONMENT}" \
+    --input - >/dev/null <<EOF
+{"reviewers":[{"type":"User","id":$(gh api user --jq .id)}]}
+EOF
+  echo "✓ environment ${ENVIRONMENT} now requires approval from $(gh api user --jq .login)"
+fi
+
+# Repository-level. The workflow is a single job inside the environment, so environment-scoped
+# secrets would also work — repository level keeps one place to look, and nothing outside an
+# approved run can read them either way, because nothing outside one runs.
 gh secret set AZURE_CLIENT_ID --repo "${REPO}" --body "${app_id}"
 gh secret set AZURE_TENANT_ID --repo "${REPO}" --body "${tenant_id}"
 printf '%s' "${subscription_id}" | gh secret set ARM_SUBSCRIPTION_ID --repo "${REPO}"

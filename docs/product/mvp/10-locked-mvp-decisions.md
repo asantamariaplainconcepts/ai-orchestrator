@@ -128,3 +128,17 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   secret, is scoped to a resource group rather than the subscription, and cannot be minted at all
   for an unapproved run. Pull-request validation stays credential-free (`terraform.yml`), which
   is the property that actually made D7 safe and is unchanged.
+
+- **DEC-047 — approval is a property of the environment, not of the pipeline** *(refines
+  DEC-046)*: the Environment is what scopes a credential — a token minted for `dev` names `dev`
+  in its subject and no credential elsewhere accepts it, so `prod` will hold its own identity
+  that a dev run cannot reach. Whether a run *waits for a human* is separate, configured as
+  required reviewers on each environment, and set per environment by how expensive being wrong
+  is. **`dev` runs unattended**: it is disposable, `terraform destroy` recreates it, and the
+  owner deploys to it many times a day. **`prod` will require a reviewer.** DEC-046 read as
+  though the gate were intrinsic to the design; it is not, and saying so is what keeps the next
+  environment from inheriting dev's answer by accident. The consequence to state plainly: with no
+  reviewer on `dev`, anyone who can merge to `main` can change that resource group and read its
+  secrets, including the database password — Terraform manages those secrets, so it reads them on
+  every refresh. That is acceptable for a disposable environment in a solo repository and would
+  not be for production data.
