@@ -3,6 +3,8 @@ export interface ConnectorView {
   owner: string;
   repository: string;
   secretName: string;
+  /** Only Azure DevOps needs this: on GitHub the backlog and the code are the same repository. */
+  codeRepository: string | null;
   lastSyncedAt: string | null;
   /** Non-null means the last poll failed — which is a different fact from "no Stories". */
   lastFailure: string | null;
@@ -12,7 +14,7 @@ export interface ConnectorView {
 export interface StoryView {
   vendorId: string;
   title: string;
-  /** The vendor's own state value; not normalised until OPN-003 closes (design D9). */
+  /** The vendor's own state value, never normalised — OPN-003 closed by keeping it that way. */
   state: string;
   labels: string[];
 }
@@ -22,10 +24,16 @@ export interface BacklogView {
   stories: StoryView[];
 }
 
+export const BACKLOG_VENDORS = ["GitHub", "AzureDevOps"] as const;
+
+export type BacklogVendor = (typeof BACKLOG_VENDORS)[number];
+
 export interface ConfigureConnectorRequest {
   owner: string;
   repository: string;
   secretName: string;
+  vendor: BacklogVendor;
+  codeRepository: string | null;
 }
 
 /** UC-022's detail read — the body arrives verbatim and is sanitised at render (design D2). */

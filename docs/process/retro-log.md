@@ -755,3 +755,30 @@ times in the project this framework came from.
   because the tempting-but-wrong design was named and dismissed before any code existed.
 - **Time invested:** not measured (source: **manual** — twenty-third consecutive).
 - **ADR:** none new.
+
+## 2026-07-27 — azure-devops-connector
+
+- **Worked:** the seam paid for itself exactly where it was supposed to. Adding a whole second
+  vendor touched no caller: not the poller, not the reconciler, not matching, not the API. The
+  result worth keeping is the guardrail suite passing *with two implementations present* — until
+  now "no vendor SDK escapes its implementation" was a rule enforced against a single vendor,
+  which proves very little. Closing OPN-003 also turned out to be mostly a matter of refusing to
+  decide: the honest answer for state vocabulary was to keep passing the vendor's own value
+  through, which is what the seam already did, and having two real vendors in hand is what made
+  that defensible rather than lazy.
+- **Didn't:** the change was one inspection away from shipping unreachable. Everything was green
+  — build, 23 unit tests, the guardrails — and `ConfigureConnector` still hardcoded
+  `const BacklogVendor vendor = BacklogVendor.GitHub`, so no Azure DevOps Connector could be
+  configured. Worse, checking the same pattern elsewhere found that **#30 already shipped this
+  bug**: the portal's runtime picker is still `disabled` with a comment saying "one runtime until
+  OPN-004 closes", and OPN-004 closed in that change. opencode has been unreachable from the
+  portal since it merged. Second occurrence, so it graduates: **ADR-0006**. My first fix was also
+  wrong in an instructive way — it fell back to GitHub on an unparseable vendor string, which
+  turns a typo into a Connector that verifies an Azure DevOps organisation against github.com.
+  Silent fallback is worse than the hardcoding it replaced.
+- **Next time:** before implementing behind an existing seam, trace the path from the form
+  control or HTTP request down to the seam and list every place the first implementation's
+  uniqueness was assumed. It takes minutes and it is the only step that would have caught either
+  incident, because both defects lived in code the change never modified.
+- **Time invested:** not measured (source: **manual** — twenty-fourth consecutive).
+- **ADR:** [ADR-0006 — A capability is not added until a user can reach it](../adr/0006-a-capability-is-not-added-until-a-user-can-reach-it.md).

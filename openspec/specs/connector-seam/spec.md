@@ -19,25 +19,6 @@ second vendor can be added without touching any caller.
 - **WHEN** code outside the GitHub implementation is inspected
 - **THEN** no GitHub SDK type appears in a signature, a domain type, or an API contract
 
-### Requirement: the seam is normalised, not lowest-common-denominator
-
-The abstraction SHALL express Stories in the product's own vocabulary — id, title, state, labels
-— rather than mirroring any one vendor's schema. Vendor-specific mapping SHALL live in that
-vendor's implementation.
-
-#### Scenario: vendors disagree about vocabulary
-
-- **WHEN** a vendor calls its concepts something other than Story, state or label
-- **THEN** the mapping happens inside that vendor's implementation, and the rest of the system
-  sees the product's vocabulary (DEC-005)
-
-#### Scenario: state values are not yet normalised
-
-- **WHEN** a Story's state is read from a vendor
-- **THEN** the vendor's own state value is carried through, because a canonical state vocabulary
-  cannot be chosen from one vendor — that mapping belongs to closing OPN-003, against two real
-  vendors rather than one imagined one
-
 ### Requirement: the Backlog module owns its data and references projects by identity
 
 The Backlog module SHALL own the Connector and Story data and SHALL reference a Project by its
@@ -125,4 +106,33 @@ guessed at or silently ignored. Both SHALL reuse the existing error taxonomy.
 
 - **WHEN** a transition names a state the vendor does not accept
 - **THEN** the write is refused, naming the state, and nothing changes
+
+### Requirement: the seam is normalised, and state values are the deliberate exception
+
+The abstraction SHALL express Stories in the product's own vocabulary — id, title, state, labels
+— rather than mirroring any one vendor's schema. Vendor-specific mapping SHALL live in that
+vendor's implementation.
+
+State values SHALL be carried through verbatim from whichever vendor produced them, and the
+product SHALL NOT define a canonical state vocabulary. With two real vendors implemented this is
+settled rather than deferred (DEC-045): a GitHub repository and an Azure DevOps process template
+each own their own state names, and any set the product invented would name states that no board
+has and force every write to guess a translation.
+
+#### Scenario: vendors disagree about vocabulary
+
+- **WHEN** a vendor calls its concepts something other than Story, state or label
+- **THEN** the mapping happens inside that vendor's implementation, and the rest of the system
+  sees the product's vocabulary (DEC-005)
+
+#### Scenario: state values stay the vendor's own
+
+- **WHEN** a Story's state is read from either vendor
+- **THEN** that vendor's own state value is carried through unaltered
+
+#### Scenario: a state the vendor will not accept
+
+- **WHEN** a state is written that the vendor's process does not allow
+- **THEN** the vendor's refusal is surfaced naming what was attempted, rather than being mapped
+  onto some nearest product state
 

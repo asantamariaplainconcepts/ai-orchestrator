@@ -32,6 +32,7 @@ sealed class GetBacklog : IUseCase
         string Owner,
         string Repository,
         string SecretName,
+        string? CodeRepository,
         DateTimeOffset? LastSyncedAt,
         string? LastFailure,
         DateTimeOffset? LastFailureAt
@@ -59,6 +60,7 @@ sealed class GetBacklog : IUseCase
                     entity.Owner,
                     entity.Repository,
                     entity.SecretName,
+                    entity.CodeRepository,
                     entity.LastSyncedAt,
                     entity.LastFailure,
                     entity.LastFailureAt

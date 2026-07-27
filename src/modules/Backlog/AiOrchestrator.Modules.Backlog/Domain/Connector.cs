@@ -63,6 +63,15 @@ sealed class Connector : Aggregate
 
     public void UseWebhookSecret(string? secretName) => WebhookSecretName = secretName;
 
+    /// <summary>
+    /// Where the code lives, when that is not where the backlog lives. Empty for GitHub, whose
+    /// issues and code share a repository; on Azure DevOps it names the repository inside the
+    /// project that the implement-to-PR action clones (design D5).
+    /// </summary>
+    public string? CodeRepository { get; private set; }
+
+    public void UseCodeRepository(string? repository) => CodeRepository = repository;
+
     public static Connector Create(
         Guid projectId,
         BacklogVendor vendor,
@@ -107,4 +116,10 @@ sealed class Connector : Aggregate
 enum BacklogVendor
 {
     GitHub = 1,
+
+    /// <summary>
+    /// Work items in an organisation/project; tags where GitHub has labels; a state vocabulary
+    /// and estimate field that depend on the project's process template (DEC-011, OPN-003).
+    /// </summary>
+    AzureDevOps = 2,
 }

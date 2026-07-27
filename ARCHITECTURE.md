@@ -105,6 +105,22 @@ the ordinary reconciliation, so a `StoryChanged` produced by a portal click is
 indistinguishable from one produced at the vendor (DEC-027). Everything else about the mirror
 stays read-only (BR-008).
 
+**Two vendors, one seam — and only one of them proven.** Azure DevOps implements every
+`IBacklogConnector` method beside GitHub (DEC-045): a work item is a Story, `System.Tags` is the
+label set, and the two Connector coordinates are the organisation and the project. Because code
+lives in a repository *inside* an Azure DevOps project rather than being the project, a Connector
+may name a code repository separately; GitHub leaves it empty. Where a concept is
+process-dependent — the state vocabulary, the estimate field, which differ between Agile, Scrum
+and Basic — the connector attempts what was asked and surfaces the vendor's refusal rather than
+assuming a mapping.
+
+That implementation is **unexercised**: it has never run against a real Azure DevOps
+organisation, because no organisation is available to this project. What is verified is the
+translation (unit-tested in both directions) and the containment (the guardrail suite passes with
+two vendor implementations present, which is the property the seam existed to provide). The REST
+calls themselves are a stated hypothesis, labelled as one in the class and in the portal's vendor
+picker, per ADR-0005. Treat the first real connection as a test, not a deployment.
+
 **A webhook is a reason to look, not data to trust.** UC-010's endpoint verifies the vendor's
 signature (constant-time, mandatory — it is unauthenticated and triggers work) and then runs
 the *same* reconciliation the poller runs. Nothing is read from the payload but the repository

@@ -50,6 +50,12 @@ public sealed class BacklogModule : ModuleBase
         services.AddSingleton<IGitHubClientFactory, GitHubClientFactory>();
         services.AddScoped<IBacklogConnector, GitHubBacklogConnector>();
 
+        // The second vendor (DEC-011). Registering alongside is all it takes — which is the
+        // result the seam was designed for.
+        services.AddHttpClient(nameof(AzureDevOpsBacklogConnector));
+        services.AddSingleton<IAzureDevOpsClientFactory, AzureDevOpsClientFactory>();
+        services.AddScoped<IBacklogConnector, AzureDevOpsBacklogConnector>();
+
         services.AddScoped<BacklogSynchroniser>();
         services.AddScoped<ConnectorAccess>();
         services.AddScoped<LabelWriteBack>();

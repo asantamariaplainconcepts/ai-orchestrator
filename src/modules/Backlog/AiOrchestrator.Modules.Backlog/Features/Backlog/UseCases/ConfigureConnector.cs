@@ -40,7 +40,9 @@ sealed class ConfigureConnector : IUseCase
                         projectId,
                         request.Owner,
                         request.Repository,
-                        request.SecretName
+                        request.SecretName,
+                        request.Vendor,
+                        request.CodeRepository
                     );
                     var result = await sender.Send(command, cancellationToken);
 
@@ -50,7 +52,16 @@ sealed class ConfigureConnector : IUseCase
             .WithName(nameof(ConfigureConnector))
             .WithTags("Backlog");
 
-    internal sealed record Request(string Owner, string Repository, string SecretName);
+    // Vendor and CodeRepository are optional: omitting the vendor means GitHub, which is what
+    // every Connector configured before Azure DevOps existed was, and GitHub has no separate code
+    // repository to name.
+    internal sealed record Request(
+        string Owner,
+        string Repository,
+        string SecretName,
+        string? Vendor = null,
+        string? CodeRepository = null
+    );
 
     /// <summary>Note what is absent: no token. Only ever the name of one (BR-010).</summary>
     internal sealed record Response(
@@ -58,14 +69,17 @@ sealed class ConfigureConnector : IUseCase
         string Vendor,
         string Owner,
         string Repository,
-        string SecretName
+        string SecretName,
+        string? CodeRepository
     );
 
     internal sealed record Command(
         Guid ProjectId,
         string Owner,
         string Repository,
-        string SecretName
+        string SecretName,
+        string? Vendor = null,
+        string? CodeRepository = null
     ) : ICommand<ErrorOr<Response>>;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -75,6 +89,19 @@ sealed class ConfigureConnector : IUseCase
             RuleFor(command => command.Owner).NotEmpty().MaximumLength(200);
             RuleFor(command => command.Repository).NotEmpty().MaximumLength(200);
             RuleFor(command => command.SecretName).NotEmpty().MaximumLength(200);
+
+            // Unspecified means GitHub, but *misspelled* must not: silently falling back would
+            // verify an Azure DevOps organisation against github.com and store the wrong vendor.
+            RuleFor(command => command.Vendor!)
+                .Must(value => Enum.TryParse<BacklogVendor>(value, out _))
+                .When(command => !string.IsNullOrWhiteSpace(command.Vendor))
+                .WithMessage(
+                    $"Vendor must be one of: {string.Join(", ", Enum.GetNames<BacklogVendor>())}."
+                );
+
+            RuleFor(command => command.CodeRepository!)
+                .MaximumLength(200)
+                .When(command => command.CodeRepository is not null);
         }
     }
 
@@ -89,8 +116,11 @@ sealed class ConfigureConnector : IUseCase
             CancellationToken cancellationToken
         )
         {
-            // GitHub is the only vendor until OPN-003 closes; the seam already allows a second.
-            const BacklogVendor vendor = BacklogVendor.GitHub;
+            // OPN-003 is closed and Azure DevOps is registered, so the vendor is a choice now.
+            // The Validator has already rejected anything unparseable, so absent means GitHub.
+            var vendor = string.IsNullOrWhiteSpace(command.Vendor)
+                ? BacklogVendor.GitHub
+                : Enum.Parse<BacklogVendor>(command.Vendor);
 
             var implementation = connectors.FirstOrDefault(candidate => candidate.Vendor == vendor);
             if (implementation is null)
@@ -142,6 +172,11 @@ sealed class ConfigureConnector : IUseCase
                 );
             }
 
+            // Set on both paths, so clearing the field on a reconfigure actually clears it.
+            connector.UseCodeRepository(
+                string.IsNullOrWhiteSpace(command.CodeRepository) ? null : command.CodeRepository
+            );
+
             await database.SaveChangesAsync(cancellationToken);
 
             return new Response(
@@ -149,7 +184,8 @@ sealed class ConfigureConnector : IUseCase
                 connector.Vendor.ToString(),
                 connector.Owner,
                 connector.Repository,
-                connector.SecretName
+                connector.SecretName,
+                connector.CodeRepository
             );
         }
     }

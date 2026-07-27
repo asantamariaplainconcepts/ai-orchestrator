@@ -15,7 +15,8 @@ import {
   useWriteStoryLabel,
 } from "./useBacklog";
 import { ApiError } from "@/shared/http/client";
-import type { ConnectorView } from "./types";
+import { BACKLOG_VENDORS } from "./types";
+import type { BacklogVendor, ConnectorView } from "./types";
 
 /**
  * UC-004 + UC-007 on one page: the Connector configuration and the mirrored Stories.
@@ -353,14 +354,34 @@ function ConnectorCard({
   connector: ConnectorView | null;
 }) {
   const configure = useConfigureConnector(projectId);
+  const [vendor, setVendor] = useState<BacklogVendor>(
+    (connector?.vendor as BacklogVendor) ?? "GitHub",
+  );
   const [owner, setOwner] = useState(connector?.owner ?? "");
   const [repository, setRepository] = useState(connector?.repository ?? "");
   const [secretName, setSecretName] = useState(connector?.secretName ?? "");
+  const [codeRepository, setCodeRepository] = useState(connector?.codeRepository ?? "");
+
+  // The two coordinates mean different things per vendor — organisation/project on Azure DevOps,
+  // owner/repository on GitHub. Labelling both "Owner" would ask an Admin to translate.
+  const coordinateLabels =
+    vendor === "AzureDevOps"
+      ? { owner: t("connector.organisation"), repository: t("connector.project") }
+      : { owner: t("connector.owner"), repository: t("connector.repository") };
+
+  // On GitHub the backlog and the code are one repository, so there is nothing to name.
+  const needsCodeRepository = vendor === "AzureDevOps";
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!owner.trim() || !repository.trim() || !secretName.trim()) return;
-    configure.mutate({ owner, repository, secretName });
+    configure.mutate({
+      owner,
+      repository,
+      secretName,
+      vendor,
+      codeRepository: needsCodeRepository && codeRepository.trim() ? codeRepository : null,
+    });
   }
 
   return (
@@ -385,8 +406,27 @@ function ConnectorCard({
       <form className="stack" onSubmit={submit}>
         <div className="row">
           <div className="field">
+            <label className="label" htmlFor="vendor">
+              {t("connector.vendor")}
+            </label>
+            <select
+              id="vendor"
+              className="input"
+              value={vendor}
+              onChange={(event) => setVendor(event.target.value as BacklogVendor)}
+            >
+              {BACKLOG_VENDORS.map((candidate) => (
+                <option key={candidate} value={candidate}>
+                  {candidate === "AzureDevOps"
+                    ? `${t("connector.vendor.azureDevOps")} — ${t("connector.vendor.unexercised")}`
+                    : t("connector.vendor.gitHub")}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
             <label className="label" htmlFor="owner">
-              {t("connector.owner")}
+              {coordinateLabels.owner}
             </label>
             <input
               id="owner"
@@ -398,7 +438,7 @@ function ConnectorCard({
           </div>
           <div className="field">
             <label className="label" htmlFor="repository">
-              {t("connector.repository")}
+              {coordinateLabels.repository}
             </label>
             <input
               id="repository"
@@ -420,12 +460,29 @@ function ConnectorCard({
               placeholder={t("connector.secretNamePlaceholder")}
             />
           </div>
+          {needsCodeRepository ? (
+            <div className="field">
+              <label className="label" htmlFor="code-repository">
+                {t("connector.codeRepository")}
+              </label>
+              <input
+                id="code-repository"
+                className="input"
+                value={codeRepository}
+                onChange={(event) => setCodeRepository(event.target.value)}
+                placeholder={t("connector.codeRepositoryPlaceholder")}
+              />
+            </div>
+          ) : null}
           <button className="btn btn-primary" type="submit" disabled={configure.isPending}>
             {configure.isPending ? t("connector.saving") : t("connector.save")}
           </button>
         </div>
 
         <p className="card-hint">{t("connector.secretHint")}</p>
+        {needsCodeRepository ? (
+          <p className="card-hint">{t("connector.codeRepositoryHint")}</p>
+        ) : null}
 
         {configure.isError && (
           <p className="state state-error" role="alert">
