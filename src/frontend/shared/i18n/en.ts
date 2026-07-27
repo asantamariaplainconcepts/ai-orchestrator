@@ -60,6 +60,15 @@ export const en = {
   "story.loading": "Loading the Story\u2026",
   "story.error": "Could not load the Story.",
   "story.noDescription": "This Story has no description in the repository.",
+  // Documents (UC-023) — three absences, three messages (design D5).
+  "story.documents.heading": "Specification",
+  "story.documents.loading": "Looking for the change written for this Story\u2026",
+  "story.documents.error": "Could not reach the repository to look for documents.",
+  "story.documents.noChange": "No pull request references this Story yet.",
+  "story.documents.noDocuments": "The linked change adds no markdown documents.",
+  "story.documents.contentLoading": "Loading the document\u2026",
+  "story.documents.contentError": "Could not read this document from the repository.",
+  "story.documents.openChange": "Open the change",
 
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
   "automations.heading": "Automations",
