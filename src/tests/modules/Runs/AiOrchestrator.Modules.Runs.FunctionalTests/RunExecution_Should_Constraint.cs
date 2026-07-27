@@ -253,6 +253,25 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         fixture.Agent.Instructions.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task DisablingAnAutomation_Should_NotBreakARunAlreadyInFlight()
+    {
+        // UC-006: disabling stops future matches, it does not reach into work already started.
+        // The catalog's Detail read is deliberately unfiltered by Enabled for exactly this.
+        var runId = await Dispatch();
+
+        (
+            await _client.PostAsync(
+                $"/api/projects/{_projectId}/automations/{_automationId}/disable",
+                content: null
+            )
+        ).EnsureSuccessStatusCode();
+
+        await Execute(runId);
+
+        (await Load(runId)).State.ShouldBe("Succeeded");
+    }
+
     sealed record ProjectResponse(Guid Id, string Name);
 
     sealed record AutomationResponse(Guid Id);

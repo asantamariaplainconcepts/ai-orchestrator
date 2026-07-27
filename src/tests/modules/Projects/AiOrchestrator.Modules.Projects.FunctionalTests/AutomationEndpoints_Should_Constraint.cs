@@ -55,6 +55,109 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
             )
         )!;
 
+    Task<HttpResponseMessage> Update(
+        Guid id,
+        string label,
+        string? state = null,
+        string action = "ImplementToPullRequest"
+    ) =>
+        _client.PutAsJsonAsync(
+            $"/api/projects/{_projectId}/automations/{id}",
+            new
+            {
+                triggerLabel = label,
+                triggerState = state,
+                action,
+                runtime = "ClaudeCodeHeadless",
+                requiresApproval = false,
+                timeoutMinutes = (int?)null,
+            }
+        );
+
+    Task<HttpResponseMessage> SetEnabled(Guid id, bool enabled) =>
+        _client.PostAsync(
+            $"/api/projects/{_projectId}/automations/{id}/{(enabled ? "enable" : "disable")}",
+            content: null
+        );
+
+    async Task<Guid> CreateId(string label, string? state = null)
+    {
+        var response = await Create(label, state);
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
+    }
+
+    [Fact]
+    public async Task Update_Should_ApplyTheChange()
+    {
+        var id = await CreateId("ai:implement");
+
+        (await Update(id, "ai:build", "open")).EnsureSuccessStatusCode();
+
+        var automation = (await List()).Single();
+        automation.TriggerLabel.ShouldBe("ai:build");
+        automation.TriggerState.ShouldBe("open");
+    }
+
+    [Fact]
+    public async Task Update_Should_NotCompareTheAutomationWithItself()
+    {
+        var id = await CreateId("ai:implement");
+
+        // Editing only the action leaves the trigger identical — refusing this as an overlap
+        // would make every Automation uneditable after creation.
+        (
+            await Update(id, "ai:implement", state: null, action: "Estimate")
+        ).EnsureSuccessStatusCode();
+
+        (await List()).Single().Action.ShouldBe("Estimate");
+    }
+
+    [Fact]
+    public async Task Update_Should_BeRefusedWhenItWouldOverlapAnother()
+    {
+        var first = await CreateId("ai:implement", "open");
+        await CreateId("ai:review");
+
+        // BR-003's subsumption case, reached by editing rather than creating: a state-less
+        // trigger matches everything the state-specific one does.
+        var response = await Update(first, "ai:review");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        // Nothing changed: the stored Automation still has its original trigger.
+        (await List())
+            .Single(automation => automation.Id == first)
+            .TriggerLabel.ShouldBe("ai:implement");
+    }
+
+    [Fact]
+    public async Task Disabling_Should_NeverBeRefused_AndEnablingShould()
+    {
+        var first = await CreateId("ai:implement", "open");
+
+        (await SetEnabled(first, enabled: false)).EnsureSuccessStatusCode();
+        (await List()).Single(a => a.Id == first).Enabled.ShouldBeFalse();
+
+        // While it was off, a trigger that subsumes it appeared — so re-enabling must refuse.
+        await CreateId("ai:implement");
+
+        var response = await SetEnabled(first, enabled: true);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        (await List()).Single(a => a.Id == first).Enabled.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task AnUnknownAutomation_Should_Be404()
+    {
+        (await Update(Guid.CreateVersion7(), "ai:implement")).StatusCode.ShouldBe(
+            HttpStatusCode.NotFound
+        );
+        (await SetEnabled(Guid.CreateVersion7(), enabled: false)).StatusCode.ShouldBe(
+            HttpStatusCode.NotFound
+        );
+    }
+
     [Fact]
     public async Task Create_Should_StoreTheAutomationAndDefaultItsTimeout()
     {
