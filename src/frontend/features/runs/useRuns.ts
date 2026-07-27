@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
-import type { RunView } from "./types";
+import type { ProjectCost, RunView } from "./types";
 
 const runsKey = (projectId: string, vendorStoryId: string | null) =>
   ["runs", projectId, vendorStoryId] as const;
@@ -68,4 +68,27 @@ export function useCancelRun(projectId: string) {
       api.post<unknown>(`/api/projects/${projectId}/runs/${runId}/cancel`, {}),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
   });
+}
+
+export function useProjectCost(projectId: string) {
+  return useQuery({
+    queryKey: ["project-cost", projectId] as const,
+    queryFn: () => api.get<ProjectCost>(`/api/projects/${projectId}/runs/cost`),
+    refetchInterval: 15_000,
+  });
+}
+
+/**
+ * Money as money, and unknown as unknown. Since #30's free models a cost of zero is a real
+ * reported value, so null must never fall through to "0.00" (design D1).
+ */
+export function formatCost(cost: number | null): string | null {
+  return cost === null
+    ? null
+    : new Intl.NumberFormat("en", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4,
+      }).format(cost);
 }

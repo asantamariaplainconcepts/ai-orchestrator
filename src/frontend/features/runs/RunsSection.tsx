@@ -1,7 +1,7 @@
 import { Link } from "react-router";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { t, tCount } from "@/shared/i18n";
-import { useRuns } from "./useRuns";
+import { formatCost, useRuns } from "./useRuns";
 import type { RunView } from "./types";
 
 /**
@@ -110,9 +110,10 @@ export function RunsSection({
                       <span className="empty-value">—</span>
                     )}
                   </td>
-                  {/* No producer yet (#25 cost) — absent data shown as absent. */}
-                  <td>
-                    <span className="empty-value">—</span>
+                  <td className="table-num mono">
+                    {formatCost(run.costUsd) ?? (
+                      <span className="empty-value">{t("runs.cost.unknown")}</span>
+                    )}
                   </td>
                 </tr>
               );

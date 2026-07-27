@@ -41,14 +41,21 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 : $"/api/projects/{_projectId}/runs?vendorStoryId={vendorStoryId}"
         );
 
-    async Task Seed(string vendorStoryId, string state, DateTimeOffset createdAt)
+    async Task Seed(
+        string vendorStoryId,
+        string state,
+        DateTimeOffset createdAt,
+        decimal? cost = null,
+        long? input = null,
+        long? output = null
+    )
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
         await database.Database.ExecuteSqlAsync(
             $"""
-            INSERT INTO runs.runs ("Id", "ProjectId", "VendorStoryId", "AutomationId", "State", "CreatedAt")
-            VALUES ({Guid.CreateVersion7()}, {_projectId}, {vendorStoryId}, {Guid.CreateVersion7()}, {state}, {createdAt})
+            INSERT INTO runs.runs ("Id", "ProjectId", "VendorStoryId", "AutomationId", "State", "CreatedAt", "CostUsd", "UsageInputTokens", "UsageOutputTokens")
+            VALUES ({Guid.CreateVersion7()}, {_projectId}, {vendorStoryId}, {Guid.CreateVersion7()}, {state}, {createdAt}, {cost}, {input}, {output})
             """
         );
     }
@@ -107,16 +114,61 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         fields.ShouldBe([
             "approvedAt",
             "automationId",
+            "costUsd",
             "createdAt",
             "dispatchedAt",
             "failureReason",
             "id",
+            "inputTokens",
             "outputLink",
+            "outputTokens",
             "plan",
             "state",
             "vendorStoryId",
         ]);
     }
+
+    [Fact]
+    public async Task Cost_Should_SumOnlyReportedRunsAndCountTheRest()
+    {
+        var origin = DateTimeOffset.UtcNow.AddMinutes(-5);
+        await Seed("1", "Succeeded", origin, cost: 0.25m, input: 100, output: 50);
+        // A free-model Run: it reported, and what it reported was zero (design D1).
+        await Seed("2", "Succeeded", origin, cost: 0m, input: 10, output: 5);
+        // Never reported: must not be folded in as zero, or the total lies quietly.
+        await Seed("3", "Succeeded", origin, cost: null, input: null, output: null);
+
+        var cost = await _client.GetFromJsonAsync<CostResponse>(
+            $"/api/projects/{_projectId}/runs/cost"
+        );
+
+        cost!.TotalCostUsd.ShouldBe(0.25m);
+        cost.TotalInputTokens.ShouldBe(110);
+        cost.ReportedRuns.ShouldBe(2);
+        cost.UnknownRuns.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task List_Should_DistinguishAZeroCostFromAnUnknownOne()
+    {
+        var origin = DateTimeOffset.UtcNow.AddMinutes(-5);
+        await Seed("free", "Succeeded", origin, cost: 0m, input: 1, output: 1);
+        await Seed("silent", "Succeeded", origin, cost: null, input: null, output: null);
+
+        var runs = await List();
+
+        runs!.Single(run => run.VendorStoryId == "free").CostUsd.ShouldBe(0m);
+        // The whole point: null, not 0 — "free" and "we were not told" are different facts.
+        runs!.Single(run => run.VendorStoryId == "silent").CostUsd.ShouldBeNull();
+    }
+
+    sealed record CostResponse(
+        decimal TotalCostUsd,
+        long TotalInputTokens,
+        long TotalOutputTokens,
+        int ReportedRuns,
+        int UnknownRuns
+    );
 
     sealed record ProjectResponse(Guid Id, string Name);
 
@@ -126,6 +178,7 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         Guid AutomationId,
         string State,
         DateTimeOffset? CreatedAt,
-        DateTimeOffset? DispatchedAt
+        DateTimeOffset? DispatchedAt,
+        decimal? CostUsd
     );
 }

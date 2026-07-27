@@ -699,3 +699,22 @@ times in the project this framework came from.
   in its caller. A boundary described in prose lands in the wrong place surprisingly easily.
 - **Time invested:** not measured (source: **manual** — twentieth consecutive).
 - **ADR:** none new.
+
+## 2026-07-27 — run-cost-visibility
+
+- **Worked:** The grill corrected the *issue* rather than the code. #18 had already persisted
+  tokens and cost and already nulled a missing report, so UC-020's storage half shipped changes
+  ago; had the issue been implemented as written, someone would have rebuilt it. Reading the
+  code before believing the backlog is what turned a feature into a display change. The
+  distinction that carries the work — `0.00` reported versus nothing reported — only became
+  load-bearing when #30 introduced free models, and it would have been invisible to anyone
+  writing this issue before that.
+- **Didn't:** A fifth `ShouldContain`/`Single` nullability error, same shape as the previous
+  four. The lesson from the run-file-changes retro ("write the null-forgiving operator as you
+  type") has not stuck because it is a habit, not a gate.
+- **Next time:** the pattern is mechanical enough to notice while writing: any assertion chained
+  off a nullable-returning helper in these functional tests needs `!`. If it recurs a seventh
+  time, make the helpers return non-nullable and throw instead — the compiler is asking for
+  something the test always wants anyway.
+- **Time invested:** not measured (source: **manual** — twenty-first consecutive).
+- **ADR:** none new.
