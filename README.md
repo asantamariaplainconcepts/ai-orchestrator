@@ -14,9 +14,30 @@ cd src/frontend && pnpm install && cd ../..
 aspire run --apphost src/root/AiOrchestrator.AppHost
 ```
 
-That is the whole inner loop: it starts PostgreSQL, Azurite, the API host, and the Vite dev
-server, and serves the app same-origin through the host. Git hooks install themselves on the
-first `dotnet build`.
+That is the whole inner loop: PostgreSQL, Azurite, migrations, the API host, the Vite dev
+server **and the dispatch worker**, served same-origin through the host. Git hooks install
+themselves on the first `dotnet build`.
+
+It seeds a **Demo project** with an Automation on opencode's free model, so the loop is
+clickable immediately and costs nothing to run — no AI credential is needed.
+
+To point that project at a repository you control, add its coordinates and a PAT before the
+first run:
+
+```bash
+cd src/root/AiOrchestrator.Server
+dotnet user-secrets set "LocalLoop:Repository" "your-org/your-repo"
+dotnet user-secrets set "local-github-pat" "<a PAT with repo scope>"
+```
+
+Then label a Story `ai:implement` in the portal and watch a Run appear, execute, and open a
+pull request.
+
+**What the local loop proves, and what it does not.** It exercises the real queue contract,
+matching, agent execution and pull-request publication — the same code that runs deployed.
+It does **not** exercise KEDA (Aspire restarts the worker on a timer; KEDA scales on queue
+length) or Key Vault (locally, secrets come from user secrets through the same resolver
+interface). Those two have exactly one proof, and it is in Azure.
 
 ### Everything else
 
