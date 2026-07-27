@@ -151,6 +151,29 @@ sealed class StubBacklogConnector : IBacklogConnector
 
         return Task.FromResult<ErrorOr<Success>>(Result.Success);
     }
+
+    // The Runs tier never reads documents; the seam still has to be satisfied honestly.
+    public Task<ErrorOr<LinkedChange?>> FindLinkedChange(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<ErrorOr<LinkedChange?>>((LinkedChange?)null);
+
+    public Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+        BacklogCoordinates coordinates,
+        int changeNumber,
+        string token,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<ErrorOr<IReadOnlyList<string>>>(new List<string>());
+
+    public Task<ErrorOr<string>> ReadDocument(
+        BacklogCoordinates coordinates,
+        string path,
+        string reference,
+        string token,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<ErrorOr<string>>(string.Empty);
 }
 
 sealed class StubSecretResolver(ResolvedNames names) : ISecretResolver

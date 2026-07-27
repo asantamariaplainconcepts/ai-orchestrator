@@ -147,6 +147,126 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
+    public async Task<ErrorOr<LinkedChange?>> FindLinkedChange(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!TryParseIssueNumber(vendorStoryId, out var number))
+        {
+            return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            // The timeline carries cross-reference events: a PR whose body says "Closes #41"
+            // appears here. Newest first, because the current change is the interesting one.
+            var timeline = await client.Issue.Timeline.GetAllForIssue(
+                coordinates.Owner,
+                coordinates.Repository,
+                number
+            );
+
+            var referencing = timeline
+                .Where(entry => entry.Source?.Issue?.PullRequest is not null)
+                .Select(entry => entry.Source!.Issue!)
+                .OrderByDescending(issue => issue.Number)
+                .FirstOrDefault();
+
+            if (referencing is null)
+            {
+                return (LinkedChange?)null;
+            }
+
+            var pullRequest = await client.PullRequest.Get(
+                coordinates.Owner,
+                coordinates.Repository,
+                referencing.Number
+            );
+
+            return new LinkedChange(
+                pullRequest.Number,
+                pullRequest.Title,
+                pullRequest.HtmlUrl,
+                // The head SHA, not the branch name: the ref documents are read at must mean
+                // one thing even while the branch keeps moving during a read.
+                pullRequest.Head.Sha
+            );
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    public async Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+        BacklogCoordinates coordinates,
+        int changeNumber,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            var files = await client.PullRequest.Files(
+                coordinates.Owner,
+                coordinates.Repository,
+                changeNumber
+            );
+
+            return files
+                .Where(file =>
+                    !string.Equals(file.Status, "removed", StringComparison.Ordinal)
+                    && file.FileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+                )
+                .Select(file => file.FileName)
+                .OrderBy(path => path, StringComparer.Ordinal)
+                .ToList();
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    public async Task<ErrorOr<string>> ReadDocument(
+        BacklogCoordinates coordinates,
+        string path,
+        string reference,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            var contents = await client.Repository.Content.GetAllContentsByRef(
+                coordinates.Owner,
+                coordinates.Repository,
+                path,
+                reference
+            );
+
+            var content = contents.FirstOrDefault()?.Content;
+            return content is null ? BacklogErrors.DocumentNotFound(path) : content;
+        }
+        catch (NotFoundException)
+        {
+            return BacklogErrors.DocumentNotFound(path);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
     static bool TryParseIssueNumber(string vendorStoryId, out int number) =>
         int.TryParse(
             vendorStoryId,

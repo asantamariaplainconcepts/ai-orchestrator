@@ -37,3 +37,15 @@ export interface StoryDetail {
   body: string | null;
   lastSeenAt: string;
 }
+
+/** UC-023 — the change written for a Story and the documents it touches. */
+export interface StoryDocuments {
+  change: { number: number; title: string; url: string; headRef: string } | null;
+  documents: string[];
+}
+
+export interface StoryDocumentContent {
+  path: string;
+  headRef: string;
+  content: string;
+}

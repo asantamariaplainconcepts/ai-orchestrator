@@ -79,6 +79,10 @@ sealed class StubBacklogConnector : IBacklogConnector
         VerifyError = null;
         FetchError = null;
         WriteError = null;
+        Change = null;
+        Documents.Clear();
+        DocumentError = null;
+        LastReadRef = null;
         Interlocked.Exchange(ref _fetches, 0);
     }
 
@@ -137,6 +141,57 @@ sealed class StubBacklogConnector : IBacklogConnector
             vendorStoryId,
             story => story with { Labels = [.. story.Labels.Where(existing => existing != label)] }
         );
+
+    /// <summary>The change the test says references a Story, or none.</summary>
+    public LinkedChange? Change { get; set; }
+
+    public Dictionary<string, string> Documents { get; } = new(StringComparer.Ordinal);
+
+    public Error? DocumentError { get; set; }
+
+    /// <summary>The ref the last content read used — the head-ref contract, observable.</summary>
+    public string? LastReadRef { get; private set; }
+
+    public Task<ErrorOr<LinkedChange?>> FindLinkedChange(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<ErrorOr<LinkedChange?>>(Change);
+
+    public Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+        BacklogCoordinates coordinates,
+        int changeNumber,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<IReadOnlyList<string>>>(
+            DocumentError is { } error
+                ? error
+                : Documents.Keys.OrderBy(p => p, StringComparer.Ordinal).ToList()
+        );
+
+    public Task<ErrorOr<string>> ReadDocument(
+        BacklogCoordinates coordinates,
+        string path,
+        string reference,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        LastReadRef = reference;
+
+        if (DocumentError is { } error)
+        {
+            return Task.FromResult<ErrorOr<string>>(error);
+        }
+
+        return Task.FromResult<ErrorOr<string>>(
+            Documents.TryGetValue(path, out var content)
+                ? content
+                : BacklogErrors.DocumentNotFound(path)
+        );
+    }
 
     Task<ErrorOr<Success>> Write(string vendorStoryId, Func<VendorStory, VendorStory> mutate)
     {

@@ -3,6 +3,7 @@ import { RunsSection } from "@/features/runs/RunsSection";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
 import { renderStoryMarkdown } from "./markdown";
+import { StoryDocuments } from "./StoryDocuments";
 import { useStory } from "./useBacklog";
 
 /**
@@ -66,6 +67,8 @@ export function StoryScreen() {
               <p className="state">{t("story.noDescription")}</p>
             ))}
         </section>
+
+        <StoryDocuments projectId={projectId} vendorStoryId={vendorStoryId} />
 
         {/* The Story's own Runs — the per-Story view UC-021 promised, in its natural home. */}
         <RunsSection

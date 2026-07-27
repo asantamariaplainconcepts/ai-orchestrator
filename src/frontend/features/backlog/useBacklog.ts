@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
-import type { BacklogView, ConfigureConnectorRequest, StoryDetail } from "./types";
+import type {
+  BacklogView,
+  ConfigureConnectorRequest,
+  StoryDetail,
+  StoryDocumentContent,
+  StoryDocuments,
+} from "./types";
 
 const backlogKey = (projectId: string) => ["backlog", projectId] as const;
 
@@ -17,6 +23,34 @@ export function useStory(projectId: string, vendorStoryId: string) {
     queryFn: () =>
       api.get<StoryDetail>(
         `/api/projects/${projectId}/backlog/stories/${encodeURIComponent(vendorStoryId)}`,
+      ),
+  });
+}
+
+export function useStoryDocuments(projectId: string, vendorStoryId: string) {
+  return useQuery({
+    queryKey: ["story-documents", projectId, vendorStoryId] as const,
+    queryFn: () =>
+      api.get<StoryDocuments>(
+        `/api/projects/${projectId}/backlog/stories/${encodeURIComponent(vendorStoryId)}/documents`,
+      ),
+  });
+}
+
+export function useStoryDocumentContent(
+  projectId: string,
+  vendorStoryId: string,
+  path: string | null,
+) {
+  return useQuery({
+    queryKey: ["story-document", projectId, vendorStoryId, path] as const,
+    // Live reads (design D3): there is no cache to invalidate because there is no cache.
+    enabled: path !== null,
+    queryFn: () =>
+      api.get<StoryDocumentContent>(
+        `/api/projects/${projectId}/backlog/stories/${encodeURIComponent(
+          vendorStoryId,
+        )}/documents/content?path=${encodeURIComponent(path!)}`,
       ),
   });
 }

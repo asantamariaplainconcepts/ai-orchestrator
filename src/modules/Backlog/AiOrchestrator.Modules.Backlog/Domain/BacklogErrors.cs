@@ -34,6 +34,13 @@ static class BacklogErrors
             $"The vendor has no story '{vendorStoryId}' in this repository."
         );
 
+    /// <summary>Distinct from "no linked change" and "no documents" (design D5).</summary>
+    public static Error DocumentNotFound(string path) =>
+        Error.NotFound(
+            "Backlog.DocumentNotFound",
+            $"The document '{path}' could not be read from the linked change."
+        );
+
     public static Error ConnectorNotFound(Guid projectId) =>
         Error.NotFound("Connector.NotFound", $"Project '{projectId}' has no connector.");
 }

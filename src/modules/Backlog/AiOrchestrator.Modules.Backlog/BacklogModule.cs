@@ -51,6 +51,7 @@ public sealed class BacklogModule : ModuleBase
         services.AddScoped<IBacklogConnector, GitHubBacklogConnector>();
 
         services.AddScoped<BacklogSynchroniser>();
+        services.AddScoped<ConnectorAccess>();
         services.AddScoped<LabelWriteBack>();
 
         // The Contracts read surface — the owner registers its own implementation.
