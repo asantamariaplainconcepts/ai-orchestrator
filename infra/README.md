@@ -104,15 +104,21 @@ Two lanes, deliberately separate:
   `terraform validate`, `shellcheck`. It has **no Azure credentials** and requests none, so the
   worst a pull request from anywhere can do to the subscription is nothing.
 - **[deploy.yml](../.github/workflows/deploy.yml)** runs on merge to `main` and on dispatch. It
-  *does* hold a credential — federated, short-lived, and scoped to the `dev` Environment — and
-  GitHub will not mint it at all until a reviewer approves the run (DEC-046). The whole workflow
-  is one job for that reason: a job outside the environment gets a token subject naming the
-  branch, which no credential here accepts, and making one that did would hand every push to
-  `main` unattended rights over the resource group.
+  *does* hold a credential — federated, short-lived, and scoped to the `dev` Environment. The
+  whole workflow is one job for that reason: a job outside the environment gets a token subject
+  naming the branch, which no credential here accepts, and making one that did would hand every
+  push to `main` rights over the resource group by a route nobody chose.
 
-The human decision that design D7 protected is intact; what changed is its form. It used to be a
-command typed at a terminal, which meant no terminal, no deploy. It is now a click on a plan,
-which is available from a phone.
+**Approval is per environment, not per pipeline** (DEC-047). `dev` has no required reviewer and
+deploys unattended: it is disposable, and the owner deploys to it many times a day. `prod` will
+have one, and its own identity — a run holding dev's credential cannot reach it, because the
+subject names the environment.
+
+The consequence, stated rather than buried: with no reviewer on `dev`, anyone who can merge to
+`main` can change that resource group and read its secrets. Terraform *manages* the vault's
+secrets, so it reads their values on every refresh; the deploy identity therefore holds
+*Key Vault Secrets Officer* and can see the database password. Fine for an environment
+`terraform destroy` recreates. Not fine for production data.
 
 ## Setting up the deploy credential
 
@@ -133,8 +139,9 @@ What it creates:
 | Azure | federated credential on `<sub_claim_prefix>:environment:dev` | scoped to the **environment**, not a branch, so a token can only be minted for a run a reviewer already approved. The prefix is read from GitHub rather than assembled: the default now embeds immutable owner and repo IDs, and a hand-built subject silently fails to match |
 | Azure | *Contributor* + *User Access Administrator* on `rg-aio-dev` | Terraform creates role assignments of its own, and granting a role is itself a permission |
 | Azure | *Storage Blob Data Contributor* on the state account | the backend authenticates as the workflow identity |
-| GitHub | environment `dev` with you as required reviewer | without this the environment is a label, not a gate. Existing reviewers are never overwritten — they are kept out of version control so they can be tightened without a commit |
-| GitHub | 4 secrets, 3 variables, at **repository** level | one place to look; nothing outside an approved run can read them either way, because nothing outside one runs |
+| Azure | *Key Vault Secrets Officer* on the vault | Terraform manages the secrets, so it reads their values on every refresh — without this, `plan` fails 403 before proposing anything |
+| GitHub | environment `dev`, reviewers left as they are | the environment scopes the credential; approval is configured separately per environment (DEC-047) and is deliberately not in version control, so it can be tightened without a commit |
+| GitHub | 4 secrets, 3 variables, at **repository** level | one place to look |
 
 Every grant is scoped to the resource group, never the subscription: a deploy identity that can
 reach everything is one compromised workflow away from being able to change everything.
@@ -145,24 +152,29 @@ Then start a run:
 gh workflow run "Deploy (dev)" --repo asantamariaplainconcepts/ai-orchestrator --ref main
 ```
 
-The run waits for your approval before it can reach Azure at all. Approve it in Actions → the
-run → *Review deployments*; the plan is printed in the summary of the run that made the change.
-
-You approve a commit rather than a diff of resources. Showing the plan first would need a job
-outside the environment, and therefore a credential usable without approval — which is the thing
-being protected against. The Terraform in that commit already passed `validate` in PR review.
+On `dev` the run proceeds unattended and the plan is printed in the summary of the run that made
+the change — which is where anyone asking "what did this deploy do" will look. On an environment
+with reviewers, the run waits at Actions → the run → *Review deployments*, and what is approved
+is a commit rather than a diff of resources: showing the plan first would need a job outside the
+environment, and therefore a credential mintable without approval.
 
 **This pipeline has never run** (ADR-0005). Its YAML parses, `shellcheck` and `terraform fmt`
 pass, and every step is one that has worked by hand — but the federated credential does not exist
 yet, so nothing has exercised the token exchange, the role assignments, or `az acr login` from a
-runner identity. The first attempt failed in `azure/login` and the repair is already in — the
-unattended plan job could not be authenticated, and should not have been (#69). Two failures are
-still plausible past that point:
+runner identity. Three attempts in, the record so far — each failure found by running it, none by
+review:
 
-- **`Initialise` fails authorizing the blob** — the backend is not picking up the federated
-  credential. Add `ARM_USE_OIDC: true` to the Terraform steps' `env` in `deploy.yml`.
-- **`az acr login` fails in the deploy step** — `Contributor` on the resource group is documented
-  to cover registry push, but if it does not, grant *AcrPush* on the registry itself.
+1. **`azure/login`, wrong subject shape.** The plan job declared no environment, so its token
+   named the branch; no credential accepted it, and none should have (#69).
+2. **`azure/login`, wrong subject value.** GitHub's default subject embeds immutable owner and
+   repository IDs; the script had assembled `repo:owner/repo` by hand (#71).
+3. **`terraform plan`, 403 on Key Vault.** Terraform manages the vault's secrets and reads their
+   values on refresh; `Contributor` is management plane only (#73).
+
+`Initialise` passed on attempt three, so the backend does inherit the OIDC session and
+`ARM_USE_OIDC` was not needed. Still untested past `plan`: `az acr login` from a runner identity
+— `Contributor` is documented to cover registry push, and if it does not, grant *AcrPush* on the
+registry.
 
 ## Cost
 

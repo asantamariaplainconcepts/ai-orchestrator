@@ -54,8 +54,12 @@ Environment  : ${ENVIRONMENT}
 App          : ${APP_NAME}
 Grants       : Contributor + User Access Administrator on ${RESOURCE_GROUP}
                Storage Blob Data Contributor on ${STATE_STORAGE}
+               Key Vault Secrets Officer on the vault in ${RESOURCE_GROUP}
 
-This lets an approved GitHub Actions run change that resource group.
+This lets a GitHub Actions run change that resource group and read its secrets,
+including the database password — Terraform manages those secrets, so it reads
+them on every refresh. Whether a run must be approved first is decided by the
+required reviewers on the ${ENVIRONMENT} environment.
 EOF
 
 read -r -p "Create/verify the deploy identity? [y/N] " reply
@@ -129,6 +133,9 @@ state_scope="$(az storage account show \
   --name "${STATE_STORAGE}" \
   --resource-group "${STATE_RG}" \
   --query id -o tsv)"
+vault_scope="$(az keyvault list \
+  --resource-group "${RESOURCE_GROUP}" \
+  --query "[0].id" -o tsv)"
 
 grant() {
   local role="$1" scope="$2"
@@ -155,6 +162,18 @@ grant() {
 grant "Contributor" "${rg_scope}"
 grant "User Access Administrator" "${rg_scope}"
 grant "Storage Blob Data Contributor" "${state_scope}"
+
+# Key Vault RBAC is a separate plane from Contributor, and Terraform *manages* the secrets in
+# this vault — so it reads their values on every refresh, not just when writing them. Without
+# this, plan fails 403 before it can propose anything. It also means the deploy identity can
+# read the database password: unavoidable while Terraform owns those secrets, and the reason
+# the environment gate is worth keeping wherever the data is not disposable.
+if [ -n "${vault_scope}" ]; then
+  grant "Key Vault Secrets Officer" "${vault_scope}"
+else
+  echo "! no key vault found in ${RESOURCE_GROUP} — skipping the secrets grant"
+  echo "  (expected before the first terraform apply; re-run this script afterwards)"
+fi
 
 # --- GitHub ------------------------------------------------------------------------------
 

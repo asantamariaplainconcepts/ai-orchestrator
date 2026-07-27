@@ -26,10 +26,21 @@ resource "azurerm_key_vault" "main" {
 
 # The human running terraform must be able to write the secrets below. Without this the apply
 # fails at the first secret with a 403 — RBAC on the vault does not follow from owning it.
+# Bootstraps the *first* operator: creating a vault and immediately writing secrets to it needs
+# the data-plane role, and nothing else has granted it yet at that point.
+#
+# principal_id is ignored after creation on purpose. It resolves to whoever is running Terraform,
+# so without this a CI apply would move the role off the human who bootstrapped the environment,
+# and their next local apply would move it back — each run silently revoking the other. Operators
+# added later are granted out of band by infra/ci-identity.sh, which is also where CI gets it.
 resource "azurerm_role_assignment" "terraform_operator_secrets" {
   scope                = azurerm_key_vault.main.id
   role_definition_name = "Key Vault Secrets Officer"
   principal_id         = data.azurerm_client_config.current.object_id
+
+  lifecycle {
+    ignore_changes = [principal_id]
+  }
 }
 
 # Role assignments are eventually consistent; writing a secret immediately after granting the
