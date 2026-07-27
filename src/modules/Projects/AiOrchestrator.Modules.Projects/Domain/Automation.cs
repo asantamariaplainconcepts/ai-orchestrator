@@ -35,8 +35,8 @@ sealed class Automation : Aggregate
     public string TriggerLabel { get; private set; } = string.Empty;
 
     /// <summary>
-    /// The vendor's own state string, or null for "any state". Not normalised — the Mirror keeps
-    /// vendor vocabulary until OPN-003 closes, and inventing one here would have to be undone.
+    /// The vendor's own state string, or null for "any state". Not normalised, by decision: the
+    /// Mirror keeps vendor vocabulary (DEC-045), so a trigger names what the board actually says.
     /// </summary>
     public string? TriggerState { get; private set; }
 
@@ -139,9 +139,8 @@ enum AutomationAction
 }
 
 /// <summary>
-/// Runtimes an Automation can name (DEC-012). One value: opencode depends on the still-open
-/// OPN-004, and RULE-006 forbids shipping scope behind an open decision. The enum exists so #30
-/// adds a value rather than a column.
+/// Runtimes an Automation can name (DEC-012), in the order they were added. opencode's contract
+/// was observed rather than guessed before it was added here (DEC-044, closing OPN-004).
 /// </summary>
 enum AgentRuntime
 {

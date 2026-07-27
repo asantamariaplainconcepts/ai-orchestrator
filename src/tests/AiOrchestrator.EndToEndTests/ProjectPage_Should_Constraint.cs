@@ -41,6 +41,34 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task EveryImplementedRuntimeAndVendor_Should_BeSelectableFromTheForm()
+    {
+        // ADR-0006. Both of this project's seams have now shipped a second implementation that
+        // was complete, tested, and impossible to choose — one behind a disabled control, one
+        // behind a hardcoded constant. Asserting at the seam cannot catch that; only asserting
+        // at the control a human actually uses can.
+        var page = await fixture.Browser.NewPageAsync();
+        var projectId = await CreateProject(page, "Reachability");
+
+        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}");
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 })
+            .WaitForAsync(new() { Timeout = 30_000 });
+
+        var runtime = page.Locator("#runtime");
+        (await runtime.IsDisabledAsync()).ShouldBeFalse();
+        var runtimes = await runtime.Locator("option").AllInnerTextsAsync();
+        runtimes.ShouldContain("ClaudeCodeHeadless");
+        runtimes.ShouldContain("OpenCode");
+
+        var vendor = page.Locator("#vendor");
+        (await vendor.IsDisabledAsync()).ShouldBeFalse();
+        var vendors = await vendor.Locator("option").AllInnerTextsAsync();
+        vendors.Count.ShouldBe(2);
+        // Substring, not equality: the Azure DevOps option carries its unexercised warning.
+        vendors.ShouldContain(text => text.Contains("Azure DevOps"));
+    }
+
+    [Fact]
     public async Task ProjectPage_Should_ReportTheFailure_WhenTheConnectorCannotBeConfigured()
     {
         var page = await fixture.Browser.NewPageAsync();

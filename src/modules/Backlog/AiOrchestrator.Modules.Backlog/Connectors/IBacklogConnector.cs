@@ -5,7 +5,7 @@ namespace AiOrchestrator.Modules.Backlog.Connectors;
 
 /// <summary>
 /// The single seam through which vendor backlogs are reached. No vendor SDK type appears in this
-/// file or in anything that consumes it — that is what lets a second vendor (OPN-003) slot in
+/// file or in anything that consumes it — that is what let a second vendor (DEC-045) slot in
 /// without touching the polling loop, the mirror, or the API.
 /// </summary>
 interface IBacklogConnector

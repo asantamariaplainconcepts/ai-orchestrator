@@ -17,7 +17,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
   const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
-  const [runtime] = useState<AgentRuntime>("ClaudeCodeHeadless");
+  const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
   const [requiresApproval, setRequiresApproval] = useState(false);
 
   function submit(event: React.FormEvent) {
@@ -103,9 +103,12 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
             <label className="label" htmlFor="runtime">
               {t("automations.runtime")}
             </label>
-            {/* One runtime until OPN-004 closes; a select with a single option is honest about
-                the shape without pretending there is a choice. */}
-            <select id="runtime" className="input" value={runtime} disabled>
+            <select
+              id="runtime"
+              className="input"
+              value={runtime}
+              onChange={(event) => setRuntime(event.target.value as AgentRuntime)}
+            >
               {AGENT_RUNTIMES.map((candidate) => (
                 <option key={candidate} value={candidate}>
                   {candidate}
