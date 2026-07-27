@@ -108,10 +108,37 @@ sealed class StubBacklogConnector : IBacklogConnector
         Comments.Clear();
         WriteStateError = null;
         Change = null;
+        RepositoryLabels.Clear();
+        EnsureLabelError = null;
     }
 
     /// <summary>The change a Run's Story links to, when a test wants one.</summary>
     public LinkedChange? Change { get; set; }
+
+    /// <summary>
+    /// Labels that exist in the *repository*, as distinct from labels on a Story. The
+    /// distinction is the point of the test: ensuring a label must not touch anybody's backlog
+    /// item.
+    /// </summary>
+    public HashSet<string> RepositoryLabels { get; } = [];
+
+    public Error? EnsureLabelError { get; set; }
+
+    public Task<ErrorOr<Success>> EnsureLabel(
+        BacklogCoordinates coordinates,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (EnsureLabelError is { } error)
+        {
+            return Task.FromResult<ErrorOr<Success>>(error);
+        }
+
+        RepositoryLabels.Add(label);
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
+    }
 
     public Task<ErrorOr<Success>> VerifyAccess(
         BacklogCoordinates coordinates,

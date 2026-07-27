@@ -2,7 +2,12 @@ import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, AutomationAction } from "./types";
-import { useAutomations, useCreateAutomation, useSetAutomationEnabled } from "./useAutomations";
+import {
+  useApplyAutomationDefaults,
+  useAutomations,
+  useCreateAutomation,
+  useSetAutomationEnabled,
+} from "./useAutomations";
 
 /**
  * UC-005 on the project page. No styles are declared here; the one control the kit lacked
@@ -13,6 +18,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // Enabling can be refused by BR-003's re-check; disabling never is (design D2).
   const setEnabled = useSetAutomationEnabled(projectId);
   const create = useCreateAutomation(projectId);
+  const defaults = useApplyAutomationDefaults(projectId);
 
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
@@ -51,7 +57,37 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
             </span>
           ) : null}
         </div>
+        <button
+          className="btn"
+          type="button"
+          onClick={() => defaults.mutate()}
+          disabled={defaults.isPending}
+          title={t("automations.defaults.hint")}
+        >
+          {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
+        </button>
       </div>
+
+      {/* Partial success is the normal outcome, so the result is reported rather than reduced
+          to success or failure (design D2). */}
+      {defaults.isError && (
+        <p className="state state-error" role="alert">
+          {t("automations.defaults.failed")}
+        </p>
+      )}
+      {defaults.data ? (
+        <p className="card-hint">
+          {defaults.data.created.length > 0
+            ? `${defaults.data.created.length} ${t("automations.defaults.created")}`
+            : t("automations.defaults.nothingNew")}
+          {defaults.data.skipped.length > 0
+            ? ` · ${defaults.data.skipped.length} ${t("automations.defaults.skipped")}`
+            : ""}
+          {/* A label that never reached the vendor is not selectable there, which is the whole
+              point of the action — so it is said, not implied. */}
+          {defaults.data.labelNote ? ` · ${t("automations.defaults.labels")}` : ""}
+        </p>
+      ) : null}
 
       <form className="stack" onSubmit={submit}>
         <div className="row">

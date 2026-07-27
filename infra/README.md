@@ -109,15 +109,19 @@ Two lanes, deliberately separate:
   naming the branch, which no credential here accepts, and making one that did would hand every
   push to `main` rights over the resource group by a route nobody chose.
 
-**Approval is per environment, not per pipeline** (DEC-047). `dev` has no required reviewer and
-deploys unattended: it is disposable, and the owner deploys to it many times a day. `prod` will
-have one, and its own identity — a run holding dev's credential cannot reach it, because the
-subject names the environment.
+**Approval is per environment, not per pipeline** (DEC-047). `prod` will have a reviewer and its
+own identity — a run holding dev's credential cannot reach it, because the subject names the
+environment.
 
-The consequence, stated rather than buried: with no reviewer on `dev`, anyone who can merge to
-`main` can change that resource group and read its secrets. Terraform *manages* the vault's
-secrets, so it reads their values on every refresh; the deploy identity therefore holds
-*Key Vault Secrets Officer* and can see the database password. Fine for an environment
+**`dev` currently still has a required reviewer**, so every deploy waits for one click. DEC-047's
+position is that it need not: dev is disposable and `terraform destroy` recreates it. Removing it
+is Settings → Environments → `dev` → uncheck *Required reviewers*, and nothing in this repository
+changes when you do — which is the point of keeping reviewers out of version control.
+
+The consequence of removing it, stated rather than buried: anyone who can merge to `main` would
+then be able to change that resource group and read its secrets unattended. Terraform *manages*
+the vault's secrets, so it reads their values on every refresh; the deploy identity therefore
+holds *Key Vault Secrets Officer* and can see the database password. Fine for an environment
 `terraform destroy` recreates. Not fine for production data.
 
 ## Setting up the deploy credential

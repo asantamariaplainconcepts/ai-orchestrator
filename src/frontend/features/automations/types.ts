@@ -44,3 +44,11 @@ export interface CreateAutomationRequest {
   requiresApproval: boolean;
   timeoutMinutes: number | null;
 }
+
+/** What applying the framework defaults did — partial success is the normal shape (design D2). */
+export interface AutomationDefaultsResult {
+  created: Automation[];
+  skipped: { triggerLabel: string; reason: string }[];
+  /** Null when every trigger label is present at the vendor; otherwise why it is not. */
+  labelNote: string | null;
+}
