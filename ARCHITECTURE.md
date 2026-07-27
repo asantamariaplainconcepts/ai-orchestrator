@@ -155,6 +155,13 @@ rather than the author distinguishes question from answer, because DEC-030's sin
 can make them the same vendor account. Comments are never mirrored — they are read live at
 resume time (BR-008).
 
+**Propose closes the chain (#80, UC-025).** A ready Story becomes a documentation PR through
+the same workspace pipeline implement uses — different prompt, different PR framing, no new
+publishing machinery. Its two refusals run before any workspace exists: a bodyless Story is
+"nothing to propose from", and a Story with a linked change is named rather than duplicated. The
+full loop is now three ordinary Automations wired by labels alone: `ai:grill` marks ready, ready
+triggers propose, and an Admin can send the proposal onward to implement.
+
 **The grill action is its first consumer (#79, UC-024).** Each pass reads the project's own
 readiness document live from the repository (default `docs/process/definition-of-ready.md`,
 per-Automation override), evaluates the Story plus the whole conversation, and either asks the

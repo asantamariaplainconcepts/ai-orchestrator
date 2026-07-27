@@ -83,3 +83,8 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
   questions on the Story, answers resume the Run, and a met bar becomes a configurable ready
   label plus a verdict comment. The ready label can trigger the next Automation (DEC-048,
   revising DEC-026; #79).
+- **UC-025 — Member triggers a proposal for a ready Story.** A `ProposeSpec` Automation turns a
+  ready Story into a documentation pull request — why, what changes, impact, tasks — through the
+  same publishing pipeline as implementation. A Story with no body is refused (nothing to
+  propose from), as is one whose linked change already exists. Chains from UC-024's ready label
+  (#80; DEC-048).
