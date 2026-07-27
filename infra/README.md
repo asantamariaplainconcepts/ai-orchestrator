@@ -1,6 +1,7 @@
 # Infrastructure
 
-Terraform for the Azure **dev** environment, plus the two scripts that bootstrap and release it.
+Terraform for the Azure **dev** environment, plus the three scripts that bootstrap, entitle and
+release it. Each one is idempotent, confirms before it acts, and refuses the wrong subscription.
 
 ## Once per subscription
 
@@ -112,65 +113,48 @@ which is available from a phone.
 
 ## Setting up the deploy credential
 
-One-time, and **entirely in the browser** — no CLI. Everything below is in the Azure portal and
-GitHub's settings.
+```bash
+./infra/ci-identity.sh
+```
 
-**1. Azure — app registration.** Microsoft Entra ID → App registrations → New registration. Name
-it `github-ai-orchestrator-dev`, single tenant, no redirect URI. Keep the **Application (client)
-ID** and **Directory (tenant) ID**.
+Once per subscription, by a human with `az login` and `gh auth login`. Idempotent, and it refuses
+to run against the wrong subscription — the same SHA-256 guard Terraform uses, checked *before*
+anything is created rather than at plan time. The subscription id goes from `az` straight into
+`gh secret set` through a pipe and is never printed.
 
-**2. Azure — federated credential.** In that registration: Certificates & secrets → Federated
-credentials → Add → *GitHub Actions deploying Azure resources*.
+What it creates:
 
-| Field | Value |
-|---|---|
-| Organization | `asantamariaplainconcepts` |
-| Repository | `ai-orchestrator` |
-| Entity type | **Environment** |
-| Environment name | `dev` |
-
-Entity type matters. Scoping to the environment rather than to the branch is what makes the
-approval gate load-bearing: a token is only ever issued for a run that has already been approved.
-**No client secret is created** — that is the point of OIDC.
-
-**3. Azure — roles.** The registration's service principal needs, on `rg-aio-dev`:
-*Contributor* (Terraform manages the resources) and *User Access Administrator* (Terraform creates
-role assignments, and granting roles is itself a permission). On the state storage account:
-*Storage Blob Data Contributor*. Subscription → Access control (IAM) → Add role assignment for
-each.
-
-Scope them to the resource group, never the subscription. A deploy identity that can reach
-anything is one compromised workflow away from being able to change anything.
-
-**4. GitHub — Environment.** Settings → Environments → New environment → `dev`. Add yourself under
-**Required reviewers**. This is the gate; without it the credential is usable unattended.
-
-**5. GitHub — secrets and variables.** On that environment (or the repository):
-
-| Kind | Name | Value |
+| Where | What | Why this shape |
 |---|---|---|
-| Secret | `AZURE_CLIENT_ID` | Application (client) ID from step 1 |
-| Secret | `AZURE_TENANT_ID` | Directory (tenant) ID from step 1 |
-| Secret | `ARM_SUBSCRIPTION_ID` | the subscription id |
-| Secret | `TF_STATE_STORAGE_ACCOUNT` | `staiotfstate<hash>`, printed by `bootstrap.sh` |
-| Variable | `TF_STATE_RESOURCE_GROUP` | `rg-aio-tfstate` |
-| Variable | `TF_STATE_CONTAINER` | `tfstate` |
-| Variable | `TF_STATE_KEY` | `dev.tfstate` |
+| Azure | app registration `github-ai-orchestrator-dev` | no client secret exists — that is the point of OIDC |
+| Azure | federated credential on `repo:…:environment:dev` | scoped to the **environment**, not a branch, so a token can only be minted for a run a reviewer already approved |
+| Azure | *Contributor* + *User Access Administrator* on `rg-aio-dev` | Terraform creates role assignments of its own, and granting a role is itself a permission |
+| Azure | *Storage Blob Data Contributor* on the state account | the backend authenticates as the workflow identity |
+| GitHub | environment `dev` with you as required reviewer | without this the environment is a label, not a gate |
+| GitHub | 4 secrets, 3 variables, at **repository** level | the plan job declares no environment so that it needs no approval — which also means it cannot read an environment-scoped secret |
 
-The subscription id is a secret here for one reason beyond policy: **this repository is public, so
-Actions logs are public**, and GitHub redacts secret values wherever they appear in a log. The
-storage account name embeds a hash of the subscription id, so it gets the same treatment.
+Every grant is scoped to the resource group, never the subscription: a deploy identity that can
+reach everything is one compromised workflow away from being able to change everything.
 
-**6. Run it.** Actions → Deploy (dev) → Run workflow. The `plan` job finishes unattended; the
-`deploy` job waits for your approval with the plan in the run summary.
+Then start a run:
+
+```bash
+gh workflow run "Deploy (dev)" --repo asantamariaplainconcepts/ai-orchestrator --ref main
+```
+
+The `plan` job finishes unattended; the `deploy` job waits for your approval with the plan in the
+run summary. Approve it in Actions → the run → *Review deployments*.
 
 **This pipeline has never run** (ADR-0005). Its YAML parses, `shellcheck` and `terraform fmt`
 pass, and every step is one that has worked by hand — but the federated credential does not exist
 yet, so nothing has exercised the token exchange, the role assignments, or `az acr login` from a
-runner identity. Treat the first run as the test it is. The two things most likely to be wrong
-are the role scope in step 3 (`Contributor` on the resource group should cover ACR push, and if
-it does not the fix is to add *AcrPush* on the registry) and a provider that was registered
-interactively on a laptop but never in this subscription's own configuration.
+runner identity. Treat the first run as the test it is, and expect one of two failures rather
+than none:
+
+- **`Initialise` fails authorizing the blob** — the backend is not picking up the federated
+  credential. Add `ARM_USE_OIDC: true` to the Terraform steps' `env` in `deploy.yml`.
+- **`az acr login` fails in the deploy step** — `Contributor` on the resource group is documented
+  to cover registry push, but if it does not, grant *AcrPush* on the registry itself.
 
 ## Cost
 
