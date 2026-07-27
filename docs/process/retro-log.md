@@ -826,3 +826,21 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — twenty-sixth consecutive).
 - **ADR:** none new. DEC-046 supersedes design D7; the pipeline is labelled unexercised per
   ADR-0005, which is the existing rule doing its job rather than a new one.
+
+## 2026-07-27 — ci-identity-script (spec-less, DEC-025)
+
+- **Worked:** the owner pushed back on my output rather than accepting it — "¿y si hacemos un
+  sh?" — and they were right. Turning the README's command list into a script surfaced three
+  defects that prose had been hiding: a hardcoded storage account name that the sibling script
+  derives from a hash, no existence checks, and no subscription guard on the one action that
+  hands CI power over a resource group. None of those were visible as *text*; they became obvious
+  the moment the question was "what happens on the second run".
+- **Didn't:** I wrote the manual steps first and only scripted them when asked. `infra/` already
+  had two idempotent, confirming, guard-checking scripts — the convention was established and I
+  documented against it instead of following it. Writing instructions for a human to execute is
+  the reflex; it is also the version that cannot be tested.
+- **Next time:** if a sequence of commands is going into a doc, ask whether it belongs in a
+  script *in that repository's existing shape* before writing the prose. The tell here was that
+  the answer to "how do I do X" was six numbered steps rather than one command.
+- **Time invested:** not measured (source: **manual** — twenty-seventh consecutive).
+- **ADR:** none new. This is the existing `infra/` convention being applied, not a new rule.
