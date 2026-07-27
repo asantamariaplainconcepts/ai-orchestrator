@@ -1,9 +1,4 @@
-using AiOrchestrator.BuildingBlocks.Secrets;
-using AiOrchestrator.Modules.Backlog.Connectors;
-using AiOrchestrator.Modules.Backlog.Domain;
-using AiOrchestrator.Modules.Backlog.Persistence;
 using ErrorOr;
-using Microsoft.EntityFrameworkCore;
 
 namespace AiOrchestrator.Modules.Backlog.Features.Backlog;
 
@@ -13,12 +8,7 @@ namespace AiOrchestrator.Modules.Backlog.Features.Backlog;
 /// label the vendor rejected, and the resulting <c>StoryChanged</c> comes from the ordinary
 /// reconciler — portal labelling and vendor labelling are one mechanism (DEC-027).
 /// </summary>
-sealed class LabelWriteBack(
-    BacklogDbContext database,
-    IEnumerable<IBacklogConnector> connectors,
-    ISecretResolver secrets,
-    BacklogSynchroniser synchroniser
-)
+sealed class LabelWriteBack(ConnectorAccess access, BacklogSynchroniser synchroniser)
 {
     public Task<ErrorOr<int>> Apply(
         Guid projectId,
@@ -42,37 +32,14 @@ sealed class LabelWriteBack(
         CancellationToken cancellationToken
     )
     {
-        var connector = await database.Connectors.FirstOrDefaultAsync(
-            entity => entity.ProjectId == projectId,
-            cancellationToken
-        );
-
-        if (connector is null)
+        var context = await access.Resolve(projectId, cancellationToken);
+        if (context.IsError)
         {
-            return BacklogErrors.ConnectorNotFound(projectId);
+            return context.Errors;
         }
 
-        var implementation = connectors.FirstOrDefault(candidate =>
-            candidate.Vendor == connector.Vendor
-        );
-        if (implementation is null)
-        {
-            return BacklogErrors.VendorUnavailable(
-                $"no connector is registered for {connector.Vendor}"
-            );
-        }
+        var (implementation, coordinates, token) = context.Value;
 
-        string token;
-        try
-        {
-            token = await secrets.Resolve(connector.SecretName, cancellationToken);
-        }
-        catch (SecretNotFoundException)
-        {
-            return BacklogErrors.SecretNotFound(connector.SecretName);
-        }
-
-        var coordinates = new BacklogCoordinates(connector.Owner, connector.Repository);
         var written = apply
             ? await implementation.ApplyLabel(
                 coordinates,

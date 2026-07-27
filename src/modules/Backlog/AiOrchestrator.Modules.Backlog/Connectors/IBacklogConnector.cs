@@ -43,6 +43,36 @@ interface IBacklogConnector
         CancellationToken cancellationToken
     );
 
+    /// <summary>
+    /// The change (pull request, in GitHub's dialect) that references this Story, or null when
+    /// none does. Vendor-neutral by design (story-documents D1): a second vendor answers this
+    /// from work-item relations, and "PullRequest" as a seam type would be a noun it has to
+    /// pretend to speak.
+    /// </summary>
+    Task<ErrorOr<LinkedChange?>> FindLinkedChange(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>The markdown documents the change adds or modifies — deletions excluded.</summary>
+    Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+        BacklogCoordinates coordinates,
+        int changeNumber,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>A document's content at a ref — read live, never mirrored (design D3).</summary>
+    Task<ErrorOr<string>> ReadDocument(
+        BacklogCoordinates coordinates,
+        string path,
+        string reference,
+        string token,
+        CancellationToken cancellationToken
+    );
+
     Task<ErrorOr<Success>> RemoveLabel(
         BacklogCoordinates coordinates,
         string vendorStoryId,
@@ -57,6 +87,12 @@ readonly record struct BacklogCoordinates(string Owner, string Repository);
 
 /// <summary>What a fetch returned. An empty list means the repository has no open Stories.</summary>
 sealed record BacklogSnapshot(IReadOnlyList<VendorStory> Stories);
+
+/// <summary>
+/// A change referencing a Story — the work written for it. <see cref="HeadRef"/> is what
+/// documents are read at, so a branch that has moved on shows its current content.
+/// </summary>
+sealed record LinkedChange(int Number, string Title, string Url, string HeadRef);
 
 /// <summary>A Story as the vendor reports it, in the product's field vocabulary (DEC-005).</summary>
 sealed record VendorStory(
