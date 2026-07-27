@@ -19,17 +19,32 @@ var migrations = builder
     .WithReference(database)
     .WaitFor(database);
 
+// The dispatch worker. Since #18 it composes the modules, so it needs the database as much as
+// the queue — without it the process throws at startup, which nobody saw because the resource
+// used to require an explicit start and nobody pressed it.
+//
+// It drains the queue and exits by design (#16), so Aspire restarts it and a queued Run is
+// picked up within seconds. That is NOT KEDA: KEDA scales on queue length and can scale to
+// zero; this restarts unconditionally and burns a little idle CPU. What the AppHost proves is
+// the queue contract and the agent loop — never the scale rule.
+var dispatch = builder
+    .AddProject<Projects.AiOrchestrator_DispatchWorker>("dispatch")
+    .WithReference(database)
+    .WaitFor(database)
+    .WithReference(queues)
+    .WaitFor(queues)
+    .WaitForCompletion(migrations);
+
+if (builder.ExecutionContext.IsRunMode)
+{
+    // A timer starts each drain pass locally, because nothing else will. Deployed, this is
+    // unset and the job drains once and exits — the pass itself is identical either way.
+    dispatch.WithEnvironment("Dispatch__LocalPollSeconds", "5");
+}
+
 // The server's endpoints come from its launchSettings "http" profile — without that profile the
 // resource has no named endpoint and nothing can resolve it. ASPNETCORE_ENVIRONMENT is left out
 // of that profile on purpose, so the AppHost and the E2E fixture stay in charge of it.
-// The dispatch worker runs locally as an ordinary resource: KEDA has no local equivalent, so
-// what the AppHost proves is the queue contract, not the scaler. Explicit here rather than
-// implied, because a green local run must not be mistaken for a working scale rule.
-builder
-    .AddProject<Projects.AiOrchestrator_DispatchWorker>("dispatch")
-    .WithReference(queues)
-    .WaitFor(queues)
-    .WithExplicitStart();
 
 var server = builder
     .AddProject<Projects.AiOrchestrator_Server>("server")
@@ -49,6 +64,10 @@ var server = builder
 if (builder.ExecutionContext.IsRunMode)
 {
     server.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
+
+    // The demo seeder runs only here (local-agent-loop design D3). No deployed template sets
+    // this, and the seeder refuses without it — a property rather than a promise.
+    server.WithEnvironment("LocalLoop:Seed", "true");
 }
 
 await builder.Build().RunAsync();
