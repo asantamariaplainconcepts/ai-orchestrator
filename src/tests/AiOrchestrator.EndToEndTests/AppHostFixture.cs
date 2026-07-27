@@ -22,6 +22,13 @@ public sealed class AppHostFixture : IAsyncLifetime
     public string ServerBaseUrl { get; private set; } = string.Empty;
 
     /// <summary>
+    /// The running composition. Exposed so a test can assert on the composition itself — #50
+    /// exists because a resource was mis-wired for four changes with nothing watching.
+    /// </summary>
+    public DistributedApplication App =>
+        _app ?? throw new InvalidOperationException("The AppHost has not started.");
+
+    /// <summary>
     /// The vendor, stubbed at the HTTP boundary. Tests arrange it before driving the page; the
     /// host runs its real GitHub connector against it, so no live token is ever needed.
     /// </summary>
