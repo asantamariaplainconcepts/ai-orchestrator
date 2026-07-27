@@ -589,3 +589,27 @@ times in the project this framework came from.
   tree (#16), a stray directory (#41), and now a misplaced bundle plus a mislabelled commit. It
   has graduated past "tooling hygiene" — the next occurrence should produce a hook or an ADR
   rather than another retro line.
+
+## 2026-07-27 — approval-gate
+
+- **Worked:** Making the lane split at *execution* rather than creation (design D1) meant the
+  gate needed no fifth state, no new index, and no change to the cap query — approval is an
+  `ApprovedAt` stamp plus a re-enqueue, and the worker routes on the record it already reads.
+  Writing the three easy-to-break rules into one test (BR-006 untimed, BR-002 no cap slot,
+  BR-001 Story still held) was worth more than three separate ones: they are only interesting
+  *together*, because the natural bug is treating the two phases as one long Run. And insisting
+  the approved Plan ride into phase 2's instruction turned approval from a UI gesture into a
+  contract.
+- **Didn't:** The new tests found that the BR-001 pre-check's hand-copied state list had never
+  learned about `Cancelled`, so a rejected Run held its Story forever — the **second** drift of
+  that same copy (the first was terminal states in agent-runtime-seam). Fixing the instance
+  twice was the mistake; it is now one `RunStates.Active` array that also generates the index's
+  SQL filter, so a future state cannot be added to one and forgotten in the other.
+- **Next time:** when a database constraint and application code must agree on a set, generate
+  one from the other. Two hand-maintained copies of the same list is not duplication to tidy
+  later — it is a defect with a delay fuse, and this one went off twice.
+- **Time invested:** not measured (source: **manual** — sixteenth consecutive; same standing
+  cause).
+- **ADR:** none new. "Derive the constraint and the query from one definition" is closely
+  related to ADR-0003 (one owner per derived artifact) and is arguably an instance of it —
+  worth folding into that ADR's examples rather than writing a new one.
