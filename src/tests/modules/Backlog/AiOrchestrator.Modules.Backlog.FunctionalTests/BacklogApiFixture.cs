@@ -81,6 +81,7 @@ sealed class StubBacklogConnector : IBacklogConnector
         WriteError = null;
         Change = null;
         Documents.Clear();
+        Files.Clear();
         DocumentError = null;
         LastReadRef = null;
         Interlocked.Exchange(ref _fetches, 0);
@@ -159,17 +160,33 @@ sealed class StubBacklogConnector : IBacklogConnector
         CancellationToken cancellationToken
     ) => Task.FromResult<ErrorOr<LinkedChange?>>(Change);
 
-    public Task<ErrorOr<IReadOnlyList<string>>> ListChangeDocuments(
+    /// <summary>Files beyond the documents — set when a test cares about diffs.</summary>
+    public List<ChangedFile> Files { get; } = [];
+
+    public Task<ErrorOr<IReadOnlyList<ChangedFile>>> ListChangeFiles(
         BacklogCoordinates coordinates,
         int changeNumber,
         string token,
         CancellationToken cancellationToken
-    ) =>
-        Task.FromResult<ErrorOr<IReadOnlyList<string>>>(
-            DocumentError is { } error
-                ? error
-                : Documents.Keys.OrderBy(p => p, StringComparer.Ordinal).ToList()
-        );
+    )
+    {
+        if (DocumentError is { } error)
+        {
+            return Task.FromResult<ErrorOr<IReadOnlyList<ChangedFile>>>(error);
+        }
+
+        // Documents are markdown files, so a test that only set Documents still gets a
+        // coherent files list — the same projection the product makes.
+        IReadOnlyList<ChangedFile> files =
+        [
+            .. Documents
+                .Keys.OrderBy(path => path, StringComparer.Ordinal)
+                .Select(path => new ChangedFile(path, "modified", 1, 0, "@@ patch", null)),
+            .. Files,
+        ];
+
+        return Task.FromResult<ErrorOr<IReadOnlyList<ChangedFile>>>(files.ToList());
+    }
 
     public Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,

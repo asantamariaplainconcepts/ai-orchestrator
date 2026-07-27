@@ -57,6 +57,7 @@ public sealed class BacklogModule : ModuleBase
         // The Contracts read surface — the owner registers its own implementation.
         services.AddScoped<IStoryReader, StoryReader>();
         services.AddScoped<IConnectorReader, ConnectorReader>();
+        services.AddScoped<IChangeFileReader, ChangeFileReader>();
 
         var gitHubBaseAddress = configuration.GetValue<string?>("Backlog:GitHub:BaseAddress");
         var options = new BacklogOptions

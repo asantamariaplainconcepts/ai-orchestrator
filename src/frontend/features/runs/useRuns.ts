@@ -37,3 +37,24 @@ export function useDecideOnPlan(projectId: string) {
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
   });
 }
+
+export interface RunChangedFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch: string | null;
+  patchOmittedReason: "Binary" | "TooLarge" | null;
+}
+
+export interface RunChangesView {
+  change: { number: number; url: string; files: RunChangedFile[] } | null;
+}
+
+/** UC-024 — read live at the change (BR-008), so there is nothing to invalidate. */
+export function useRunChanges(projectId: string, runId: string) {
+  return useQuery({
+    queryKey: ["run-changes", projectId, runId] as const,
+    queryFn: () => api.get<RunChangesView>(`/api/projects/${projectId}/runs/${runId}/changes`),
+  });
+}

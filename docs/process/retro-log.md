@@ -613,3 +613,22 @@ times in the project this framework came from.
 - **ADR:** none new. "Derive the constraint and the query from one definition" is closely
   related to ADR-0003 (one owner per derived artifact) and is arguably an instance of it —
   worth folding into that ADR's examples rather than writing a new one.
+
+## 2026-07-27 — run-file-changes
+
+- **Worked:** The grill's finding that the data was *already fetched and discarded* turned a
+  feature into a projection: `ListChangeDocuments` had been calling `PullRequest.Files` and
+  keeping only markdown names, so this change removed a round-trip rather than adding one.
+  Typing the omission (`Binary` / `TooLarge`) instead of returning an empty patch made the
+  honest behaviour the only expressible one — there is no code path that can produce a
+  truncated diff, because the seam has nowhere to put one. And the previous retro's "grep the
+  tokens first" became a check across the *whole* kit rather than the new classes alone; it
+  passes today, which is worth knowing since nothing had ever verified it.
+- **Didn't:** Four `ShouldContain` nullability errors in three consecutive changes now — the
+  same fix each time (`!` after a nullable projection). It costs one build cycle every time and
+  is entirely predictable from the record type's own nullability.
+- **Next time:** when a test projects nullable columns into a record, write the assertions with
+  the null-forgiving operator as you type them; the compiler will demand it regardless.
+- **Time invested:** not measured (source: **manual** — seventeenth consecutive; same standing
+  cause).
+- **ADR:** none new.

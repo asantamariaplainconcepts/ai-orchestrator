@@ -109,15 +109,17 @@ sealed class GetStoryDocuments : IUseCase
                 return new Response(Change: null, Documents: []);
             }
 
-            var documents = await connector.ListChangeDocuments(
+            var files = await connector.ListChangeFiles(
                 coordinates,
                 change.Value.Number,
                 token,
                 cancellationToken
             );
 
-            return documents.IsError
-                ? documents.Errors
+            // The documents list is the markdown projection of the files list (design D1):
+            // one vendor call, two consumers. Deletions are not documents.
+            return files.IsError
+                ? files.Errors
                 : new Response(
                     new ChangeView(
                         change.Value.Number,
@@ -125,7 +127,14 @@ sealed class GetStoryDocuments : IUseCase
                         change.Value.Url,
                         change.Value.HeadRef
                     ),
-                    documents.Value
+                    [
+                        .. files
+                            .Value.Where(file =>
+                                !string.Equals(file.Status, "removed", StringComparison.Ordinal)
+                                && file.Path.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+                            )
+                            .Select(file => file.Path),
+                    ]
                 );
         }
     }
