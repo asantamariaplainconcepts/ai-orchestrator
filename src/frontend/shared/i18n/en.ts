@@ -143,6 +143,12 @@ export const en = {
   "runs.table.dispatched": "Dispatched",
   "runs.table.output": "Output",
   "runs.table.cost": "Cost",
+  // BR-011: a Run that reported nothing is unknown, never zero — free models make 0.00 real.
+  "runs.cost.unknown": "unknown",
+  "runs.cost.heading": "Agent cost",
+  "runs.cost.reported": "across Runs that reported",
+  "runs.cost.excluded": "not reported",
+  "run.field.tokens": "Tokens",
   "runs.table.openOutput": "View PR",
   "runs.table.open": "Open",
   // The approval gate (UC-013/UC-015).

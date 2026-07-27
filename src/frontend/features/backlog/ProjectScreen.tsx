@@ -4,6 +4,7 @@ import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { useRunNow } from "@/features/runs/useRunNow";
+import { formatCost, useProjectCost } from "@/features/runs/useRuns";
 import { useProjects } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -29,6 +30,7 @@ export function ProjectScreen() {
   const automations = useAutomations(projectId);
   const writeLabel = useWriteStoryLabel(projectId);
   const runNow = useRunNow(projectId);
+  const cost = useProjectCost(projectId);
 
   // UC-012: chosen Story + Automation. One enabled Automation means one click; more mean the
   // row carries a picker — the choice cannot be guessed on the Member's behalf.
@@ -83,6 +85,21 @@ export function ProjectScreen() {
             <div className="stat-card stat-card-warn">
               <span className="stat-card-label">{t("backlog.stats.labelled")}</span>
               <span className="stat-card-value">{labelledCount}</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-card-label">{t("runs.cost.heading")}</span>
+              <span className="stat-card-value">
+                {formatCost(cost.data?.totalCostUsd ?? null) ?? "—"}
+              </span>
+              {/* Never a bare total: a reader must be able to tell "cheap" from "unmeasured". */}
+              <span className="card-hint">
+                {cost.data
+                  ? `${cost.data.reportedRuns} ${t("runs.cost.reported")}` +
+                    (cost.data.unknownRuns > 0
+                      ? ` · ${cost.data.unknownRuns} ${t("runs.cost.excluded")}`
+                      : "")
+                  : null}
+              </span>
             </div>
             <div
               className={

@@ -3,7 +3,7 @@ import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
 import { RunChanges } from "./RunChanges";
-import { useCancelRun, useDecideOnPlan, useRuns } from "./useRuns";
+import { formatCost, useCancelRun, useDecideOnPlan, useRuns } from "./useRuns";
 
 /**
  * UC-013's review surface — the page the use case always assumed and #20 did not build. The
@@ -95,6 +95,22 @@ export function RunScreen() {
                         {t("runs.table.openOutput")}
                       </a>
                     ) : null
+                  }
+                />
+                <Field
+                  label={t("runs.table.cost")}
+                  value={
+                    formatCost(run.costUsd) ?? (
+                      <span className="empty-value">{t("runs.cost.unknown")}</span>
+                    )
+                  }
+                />
+                <Field
+                  label={t("run.field.tokens")}
+                  value={
+                    run.inputTokens === null
+                      ? null
+                      : `${run.inputTokens.toLocaleString("en")} in / ${(run.outputTokens ?? 0).toLocaleString("en")} out`
                   }
                 />
                 <Field label={t("run.field.failure")} value={run.failureReason} />

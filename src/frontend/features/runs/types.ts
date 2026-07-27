@@ -15,4 +15,16 @@ export interface RunView {
   plan: string | null;
   approvedAt: string | null;
   failureReason: string | null;
+  /** Null means the runtime reported nothing (BR-011) — never the same as a zero cost. */
+  inputTokens: number | null;
+  outputTokens: number | null;
+  costUsd: number | null;
+}
+
+export interface ProjectCost {
+  totalCostUsd: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  reportedRuns: number;
+  unknownRuns: number;
 }
