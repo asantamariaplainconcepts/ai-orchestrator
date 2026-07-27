@@ -29,16 +29,30 @@ coincide SHALL leave it empty.
 - **THEN** no vendor SDK appears outside the Connectors folder and the seam's types remain
   vendor-neutral
 
-## MODIFIED Requirements
+## REMOVED Requirements
 
 ### Requirement: the seam is normalised, not lowest-common-denominator
 
+**Reason:** its state-value scenario was written while OPN-003 was open and says the mapping is
+still to be chosen. The decision is now made (DEC-045) and it is the opposite of provisional, so
+the requirement is restated below rather than left describing a pending choice.
+
+**Migration:** none — the behaviour is unchanged. Only the requirement's stated reason changes,
+from "not decided yet" to "decided, and deliberately vendor-owned".
+
+## ADDED Requirements
+
+### Requirement: the seam is normalised, and state values are the deliberate exception
+
 The abstraction SHALL express Stories in the product's own vocabulary — id, title, state, labels
 — rather than mirroring any one vendor's schema. Vendor-specific mapping SHALL live in that
-vendor's implementation. State values are the deliberate exception: they SHALL be carried
-through verbatim, because with two real vendors in hand the vocabulary is owned by the
-repository's or the project's own configuration, and any canonical set the product invented
-would name states no board has (DEC-045).
+vendor's implementation.
+
+State values SHALL be carried through verbatim from whichever vendor produced them, and the
+product SHALL NOT define a canonical state vocabulary. With two real vendors implemented this is
+settled rather than deferred (DEC-045): a GitHub repository and an Azure DevOps process template
+each own their own state names, and any set the product invented would name states that no board
+has and force every write to guess a translation.
 
 #### Scenario: vendors disagree about vocabulary
 
@@ -49,5 +63,10 @@ would name states no board has (DEC-045).
 #### Scenario: state values stay the vendor's own
 
 - **WHEN** a Story's state is read from either vendor
-- **THEN** that vendor's own state value is carried through unaltered, and no product-wide state
-  vocabulary is introduced
+- **THEN** that vendor's own state value is carried through unaltered
+
+#### Scenario: a state the vendor will not accept
+
+- **WHEN** a state is written that the vendor's process does not allow
+- **THEN** the vendor's refusal is surfaced naming what was attempted, rather than being mapped
+  onto some nearest product state
