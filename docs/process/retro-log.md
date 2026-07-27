@@ -564,3 +564,28 @@ times in the project this framework came from.
   cause).
 - **ADR:** none new. The unresolvable-token gap is a real hole in the design gates; if it
   recurs, the drift validator should assert every `var(--x)` in the kit resolves.
+
+## 2026-07-27 — story-documents
+
+- **Worked:** Keeping the seam's vocabulary product-shaped paid immediately: `FindLinkedChange`
+  rather than `GetPullRequest` means #29's Azure DevOps connector answers it from work-item
+  relations without pretending to speak GitHub. Reading at the change's head SHA (not the branch
+  name) made "the branch moved on" correct by construction, and the stub records which ref the
+  read used, so that property is observed rather than trusted. The third duplicate of "resolve
+  connector, implementation and credential" was the right moment to extract `ConnectorAccess` —
+  two copies is a coincidence, three is a helper.
+- **Didn't:** Working-directory drift put the entire change bundle in
+  `src/frontend/openspec/changes/` — the fourth incident this session and the first to reach a
+  commit, because nothing checks where an OpenSpec bundle lands. Worse, the fix commit swept
+  twenty implementation files under a "move the bundle" subject; I split it into four honest
+  commits, but only because I read the stat output. The standing "start every block with an
+  absolute cd" note from the run-now retro plainly is not sticking as a note.
+- **Next time:** `openspec validate <change>` should be run from the repo root immediately after
+  the bundle is written — it fails loudly on a bundle that is not under `openspec/`, which is
+  the cheap gate this session kept not having.
+- **Time invested:** not measured (source: **manual** — fifteenth consecutive; same standing
+  cause).
+- **ADR:** none new, but cwd drift is now a **fourth** occurrence and has cost a stray committed
+  tree (#16), a stray directory (#41), and now a misplaced bundle plus a mislabelled commit. It
+  has graduated past "tooling hygiene" — the next occurrence should produce a hook or an ADR
+  rather than another retro line.
