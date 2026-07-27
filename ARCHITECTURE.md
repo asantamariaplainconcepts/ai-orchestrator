@@ -183,8 +183,14 @@ as matching — the difference is voice, not rules. Where the event handler is c
 (a duplicate delivery, an active Run), the endpoint answers the human: a 409 naming BR-001, a
 stated two-phase limitation, a "waiting at the cap" note.
 
-**Stated limitations, on purpose.** `requiresApproval = true` matches create nothing yet (the
-two-phase lane is its own issue — the refusal is logged naming the Automation). Nothing promotes
+**Both lanes are real.** `requiresApproval = false` goes straight to execution;
+`requiresApproval = true` produces a Plan, pauses at `AwaitingApproval` publishing nothing, and
+waits for a human — untimed (BR-006) and holding no concurrency slot (BR-002), though the Story
+stays held (BR-001). Approval stamps the Run and re-enqueues it, and phase 2 runs with the
+approved Plan in its instruction; rejection ends the Run `Cancelled`. The routing lives in the
+Run's own record, not in a fifth state.
+
+**Stated limitations, on purpose.** Nothing promotes
 a `Queued` Run when capacity frees, because nothing can complete yet. And the Run insert and the
 queue enqueue cannot share a transaction: the Run commits first, so a crash between the two
 leaves a visible `Queued` Run with no message — logged loudly, recovered by *Run now* (BR-013)
