@@ -130,11 +130,11 @@ What it creates:
 | Where | What | Why this shape |
 |---|---|---|
 | Azure | app registration `github-ai-orchestrator-dev` | no client secret exists — that is the point of OIDC |
-| Azure | federated credential on `repo:…:environment:dev` | scoped to the **environment**, not a branch, so a token can only be minted for a run a reviewer already approved |
+| Azure | federated credential on `<sub_claim_prefix>:environment:dev` | scoped to the **environment**, not a branch, so a token can only be minted for a run a reviewer already approved. The prefix is read from GitHub rather than assembled: the default now embeds immutable owner and repo IDs, and a hand-built subject silently fails to match |
 | Azure | *Contributor* + *User Access Administrator* on `rg-aio-dev` | Terraform creates role assignments of its own, and granting a role is itself a permission |
 | Azure | *Storage Blob Data Contributor* on the state account | the backend authenticates as the workflow identity |
-| GitHub | environment `dev` with you as required reviewer | without this the environment is a label, not a gate |
-| GitHub | 4 secrets, 3 variables, at **repository** level | the plan job declares no environment so that it needs no approval — which also means it cannot read an environment-scoped secret |
+| GitHub | environment `dev` with you as required reviewer | without this the environment is a label, not a gate. Existing reviewers are never overwritten — they are kept out of version control so they can be tightened without a commit |
+| GitHub | 4 secrets, 3 variables, at **repository** level | one place to look; nothing outside an approved run can read them either way, because nothing outside one runs |
 
 Every grant is scoped to the resource group, never the subscription: a deploy identity that can
 reach everything is one compromised workflow away from being able to change everything.
