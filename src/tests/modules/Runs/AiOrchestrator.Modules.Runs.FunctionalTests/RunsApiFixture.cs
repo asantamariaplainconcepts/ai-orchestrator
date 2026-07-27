@@ -111,6 +111,7 @@ sealed class StubBacklogConnector : IBacklogConnector
         Change = null;
         StoryComments.Clear();
         ReadCommentsError = null;
+        Documents.Clear();
         RepositoryLabels.Clear();
         EnsureLabelError = null;
     }
@@ -285,13 +286,21 @@ sealed class StubBacklogConnector : IBacklogConnector
         CancellationToken cancellationToken
     ) => Task.FromResult<ErrorOr<IReadOnlyList<ChangedFile>>>(Files);
 
+    /// <summary>Repository documents by path; a path not present reads as the vendor's 404.</summary>
+    public Dictionary<string, string> Documents { get; } = [];
+
     public Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,
         string path,
         string reference,
         string token,
         CancellationToken cancellationToken
-    ) => Task.FromResult<ErrorOr<string>>(string.Empty);
+    ) =>
+        Task.FromResult<ErrorOr<string>>(
+            Documents.TryGetValue(path, out var content)
+                ? content
+                : AiOrchestrator.Modules.Backlog.Domain.BacklogErrors.DocumentNotFound(path)
+        );
 }
 
 sealed class StubSecretResolver(ResolvedNames names) : ISecretResolver

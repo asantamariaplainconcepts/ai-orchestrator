@@ -75,3 +75,11 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 
 - **UC-021 — Member views Runs.** Per project and per story: state, timestamps,
   runtime, output link, logs (fetched), cost ([DEC-031](10-locked-mvp-decisions.md)).
+
+## Post-MVP use cases
+
+- **UC-024 — Member grills a Story to ready.** A `GrillToReady` Automation interrogates a Story
+  against the project's own readiness document, one pass per exchange: unmet criteria become
+  questions on the Story, answers resume the Run, and a met bar becomes a configurable ready
+  label plus a verdict comment. The ready label can trigger the next Automation (DEC-048,
+  revising DEC-026; #79).

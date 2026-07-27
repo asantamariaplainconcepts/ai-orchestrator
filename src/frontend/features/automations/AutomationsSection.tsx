@@ -25,6 +25,11 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
   const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
   const [requiresApproval, setRequiresApproval] = useState(false);
+  const [rubricPath, setRubricPath] = useState("");
+  const [readyLabel, setReadyLabel] = useState("");
+
+  // Only the grill converses with a rubric; the fields would be noise on every other action.
+  const isGrill = action === "GrillToReady";
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -39,6 +44,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         runtime,
         requiresApproval,
         timeoutMinutes: null,
+        rubricPath: isGrill && rubricPath.trim() ? rubricPath.trim() : null,
+        readyLabel: isGrill && readyLabel.trim() ? readyLabel.trim() : null,
       },
       { onSuccess: () => setTriggerLabel("") },
     );
@@ -152,6 +159,34 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               ))}
             </select>
           </div>
+          {isGrill ? (
+            <>
+              <div className="field">
+                <label className="label" htmlFor="rubric-path">
+                  {t("automations.rubricPath")}
+                </label>
+                <input
+                  id="rubric-path"
+                  className="input"
+                  value={rubricPath}
+                  onChange={(event) => setRubricPath(event.target.value)}
+                  placeholder={t("automations.rubricPathPlaceholder")}
+                />
+              </div>
+              <div className="field">
+                <label className="label" htmlFor="ready-label">
+                  {t("automations.readyLabel")}
+                </label>
+                <input
+                  id="ready-label"
+                  className="input"
+                  value={readyLabel}
+                  onChange={(event) => setReadyLabel(event.target.value)}
+                  placeholder={t("automations.readyLabelPlaceholder")}
+                />
+              </div>
+            </>
+          ) : null}
           <div className="field-inline">
             <input
               id="requires-approval"
