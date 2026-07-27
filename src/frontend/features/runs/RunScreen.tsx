@@ -3,7 +3,7 @@ import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
 import { RunChanges } from "./RunChanges";
-import { useDecideOnPlan, useRuns } from "./useRuns";
+import { useCancelRun, useDecideOnPlan, useRuns } from "./useRuns";
 
 /**
  * UC-013's review surface — the page the use case always assumed and #20 did not build. The
@@ -16,9 +16,15 @@ export function RunScreen() {
   // second source of the same truth.
   const runs = useRuns(projectId, null);
   const decide = useDecideOnPlan(projectId);
+  const cancel = useCancelRun(projectId);
 
   const run = runs.data?.find((candidate) => candidate.id === runId);
   const awaiting = run?.state === "AwaitingApproval";
+
+  // Only an unfinished Run can be cancelled; the API refuses the rest, so the control follows.
+  const cancellable =
+    run !== undefined &&
+    ["Queued", "Planning", "AwaitingApproval", "Executing"].includes(run.state);
 
   return (
     <AppShell
@@ -36,11 +42,23 @@ export function RunScreen() {
               <h2>{t("run.title.fallback")}</h2>
               {run ? <span className="pill pill-neutral">{run.state}</span> : null}
             </div>
-            {run ? (
-              <Link className="btn" to={`/projects/${projectId}/stories/${run.vendorStoryId}`}>
-                {t("run.field.story")} #{run.vendorStoryId}
-              </Link>
-            ) : null}
+            <div className="row">
+              {cancellable ? (
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={cancel.isPending}
+                  onClick={() => cancel.mutate(runId)}
+                >
+                  {cancel.isPending ? t("run.cancelling") : t("run.cancel")}
+                </button>
+              ) : null}
+              {run ? (
+                <Link className="btn" to={`/projects/${projectId}/stories/${run.vendorStoryId}`}>
+                  {t("run.field.story")} #{run.vendorStoryId}
+                </Link>
+              ) : null}
+            </div>
           </div>
 
           {runs.isPending && <p className="state">{t("run.loading")}</p>}
@@ -50,6 +68,12 @@ export function RunScreen() {
             </p>
           )}
           {runs.data && !run && <p className="state">{t("run.notFound")}</p>}
+
+          {cancel.isError && (
+            <p className="state state-error" role="alert">
+              {t("run.cancelFailed")}
+            </p>
+          )}
 
           {run && (
             <table className="table">
