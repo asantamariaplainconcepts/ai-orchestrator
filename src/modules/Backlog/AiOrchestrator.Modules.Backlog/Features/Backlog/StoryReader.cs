@@ -23,7 +23,8 @@ sealed class StoryReader(BacklogDbContext database) : IStoryReader
                 story.VendorId,
                 story.Title,
                 story.State,
-                story.Labels
+                story.Labels,
+                story.Body
             ))
             .FirstOrDefaultAsync(cancellationToken);
 }

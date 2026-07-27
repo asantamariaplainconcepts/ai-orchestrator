@@ -21,5 +21,7 @@ public sealed record StorySnapshot(
     string VendorStoryId,
     string Title,
     string State,
-    IReadOnlyList<string> Labels
+    IReadOnlyList<string> Labels,
+    /// <summary>The requirement itself — what an Agent needs to implement anything (design D3).</summary>
+    string? Body
 );

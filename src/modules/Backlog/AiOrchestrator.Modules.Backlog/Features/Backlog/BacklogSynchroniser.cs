@@ -161,6 +161,7 @@ sealed class BacklogSynchroniser(
                         vendorStory.Title,
                         vendorStory.State,
                         vendorStory.Labels,
+                        vendorStory.Body,
                         seenAt
                     )
                 )
@@ -182,6 +183,7 @@ sealed class BacklogSynchroniser(
                         vendorStory.Title,
                         vendorStory.State,
                         vendorStory.Labels,
+                        vendorStory.Body,
                         seenAt
                     )
                 );

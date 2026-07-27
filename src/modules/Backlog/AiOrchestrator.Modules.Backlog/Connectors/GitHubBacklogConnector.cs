@@ -58,7 +58,8 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
                     issue.Title,
                     // The vendor's own state value, deliberately not normalised (design D9).
                     issue.State.StringValue,
-                    [.. issue.Labels.Select(label => label.Name)]
+                    [.. issue.Labels.Select(label => label.Name)],
+                    issue.Body
                 ))
                 .ToList();
 
