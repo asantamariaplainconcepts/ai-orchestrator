@@ -79,8 +79,10 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
     {
         fixture.GitHub.Repositories.Add("acme/portal");
         fixture.GitHub.Issues.Clear();
-        fixture.GitHub.Issues.Add((41, "Ship the connector", "open", ["ai:implement"]));
-        fixture.GitHub.Issues.Add((42, "Wire the poller", "open", []));
+        fixture.GitHub.Issues.Add(
+            new StubIssue(41, "Ship the connector", "open", ["ai:implement"])
+        );
+        fixture.GitHub.Issues.Add(new StubIssue(42, "Wire the poller", "open", []));
 
         var page = await fixture.Browser.NewPageAsync();
         var projectId = await CreateProject(page, "Backlog page — mirrored");
@@ -110,6 +112,61 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
 
         // And the stub really was the far end, rather than the page rendering something cached.
         fixture.GitHub.Requests.ShouldContain("/api/v3/repos/acme/portal/issues");
+    }
+
+    [Fact]
+    public async Task StoryDetail_Should_RenderTheDescriptionAndNeutraliseHostileMarkdown()
+    {
+        // The body is untrusted input from whatever repository a project points at, so the
+        // security claim is asserted against the rendered DOM in a real browser — the only
+        // place "no script ran" is a fact rather than a hope (design D2, ADR-0004).
+        fixture.GitHub.Repositories.Add("acme/portal");
+        fixture.GitHub.Issues.Clear();
+        fixture.GitHub.Issues.Add(
+            new StubIssue(
+                77,
+                "Hostile story",
+                "open",
+                [],
+                "## The requirement\n\nSomething **real** here.\n\n"
+                    + "<script>window.__pwned = true;</script>\n\n"
+                    + "[click me](javascript:window.__pwned=true)"
+            )
+        );
+
+        var page = await fixture.Browser.NewPageAsync();
+        var projectId = await CreateProject(page, "Story detail — hostile markdown");
+
+        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}");
+        await page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 })
+            .WaitForAsync(new() { Timeout = 30_000 });
+        await page.GetByLabel("Owner").FillAsync("acme");
+        await page.GetByLabel("Repository").FillAsync("portal");
+        await page.GetByLabel("Secret name").FillAsync(AppHostFixture.SecretName);
+        await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
+
+        var refresh = page.GetByRole(AriaRole.Button, new() { Name = "Refresh backlog" });
+        await refresh.WaitForAsync(new() { Timeout = 15_000 });
+        await Assertions.Expect(refresh).ToBeEnabledAsync(new() { Timeout = 15_000 });
+        await refresh.ClickAsync();
+
+        await page.GetByRole(AriaRole.Link, new() { Name = "Hostile story" })
+            .ClickAsync(new() { Timeout = 20_000 });
+
+        // The real content rendered as markdown…
+        await Assertions
+            .Expect(page.GetByRole(AriaRole.Heading, new() { Name = "The requirement" }))
+            .ToBeVisibleAsync(new() { Timeout = 20_000 });
+
+        // …the script never executed…
+        (await page.EvaluateAsync<bool?>("() => window.__pwned ?? null")).ShouldBeNull();
+
+        // …no script element survived sanitising…
+        (await page.Locator(".prose script").CountAsync()).ShouldBe(0);
+
+        // …and the javascript: href is gone rather than merely unclicked.
+        var hostileHref = await page.Locator(".prose a").First.GetAttributeAsync("href");
+        (hostileHref ?? string.Empty).ShouldNotStartWith("javascript:");
     }
 
     async Task<string> CreateProject(IPage page, string name)

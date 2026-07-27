@@ -247,6 +247,53 @@ public class BacklogEndpoints_Should_Constraint(BacklogApiFixture fixture) : IAs
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task Refresh_Should_MirrorTheDescriptionAndCountAnEditAsAChange()
+    {
+        await Configure();
+        fixture.Vendor.Stories.Add(
+            new VendorStory("1", "Add login", "open", [], "The original requirement")
+        );
+        await Refresh();
+
+        var story = await _client.GetFromJsonAsync<StoryDetailResponse>(
+            $"/api/projects/{_projectId}/backlog/stories/1"
+        );
+        story!.Body.ShouldBe("The original requirement");
+
+        // An edited description is a change — the Agent would want to react to exactly this.
+        fixture.Vendor.Stories[0] = new VendorStory("1", "Add login", "open", [], "Rewritten");
+        var refreshed = await Refresh();
+        var changes = await refreshed.Content.ReadFromJsonAsync<RefreshResponse>();
+        changes!.Changes.ShouldBe(1);
+
+        (
+            await _client.GetFromJsonAsync<StoryDetailResponse>(
+                $"/api/projects/{_projectId}/backlog/stories/1"
+            )
+        )!.Body.ShouldBe("Rewritten");
+    }
+
+    [Fact]
+    public async Task GetStory_Should_RefuseAStoryTheMirrorDoesNotHold()
+    {
+        await Configure();
+
+        var response = await _client.GetAsync($"/api/projects/{_projectId}/backlog/stories/nope");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+    }
+
+    sealed record StoryDetailResponse(
+        string VendorId,
+        string Title,
+        string State,
+        IReadOnlyList<string> Labels,
+        string? Body
+    );
+
+    sealed record RefreshResponse(int Changes);
+
     sealed record ConnectorResponse(
         string Vendor,
         string Owner,

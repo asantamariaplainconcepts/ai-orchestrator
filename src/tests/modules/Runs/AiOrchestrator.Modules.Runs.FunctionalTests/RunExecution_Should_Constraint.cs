@@ -61,7 +61,9 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         automation.EnsureSuccessStatusCode();
         _automationId = (await automation.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
 
-        fixture.Vendor.Stories.Add(new VendorStory("9", "A story", "open", []));
+        fixture.Vendor.Stories.Add(
+            new VendorStory("9", "A story", "open", [], "Build the thing properly.")
+        );
         await _client.PostAsync($"/api/projects/{_projectId}/backlog/refresh", null);
         await fixture.Probe.WaitForAtLeast(_projectId, 1);
     }
@@ -125,6 +127,8 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         instruction.Credentials.VendorAccessToken.ShouldBe("stub-token");
         instruction.Prompt.ShouldContain("#9");
         instruction.Prompt.ShouldContain("Do not commit");
+        // The requirement itself, not just the headline (#37's whole point).
+        instruction.Prompt.ShouldContain("Build the thing properly.");
     }
 
     [Fact]

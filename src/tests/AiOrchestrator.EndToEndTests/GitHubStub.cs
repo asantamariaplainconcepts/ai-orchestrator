@@ -37,8 +37,8 @@ public sealed class GitHubStub : IAsyncDisposable
     /// <summary>Pass to the host as <c>Backlog:GitHub:BaseAddress</c>.</summary>
     public Uri BaseAddress { get; }
 
-    /// <summary>Issues the stub reports, as (number, title, state, labels).</summary>
-    public List<(int Number, string Title, string State, string[] Labels)> Issues { get; } = [];
+    /// <summary>Issues the stub reports.</summary>
+    public List<StubIssue> Issues { get; } = [];
 
     /// <summary>Repositories the stub knows about, as "owner/name". Anything else answers 404.</summary>
     public HashSet<string> Repositories { get; } = new(StringComparer.OrdinalIgnoreCase);
@@ -147,6 +147,7 @@ public sealed class GitHubStub : IAsyncDisposable
                 number = issue.Number,
                 title = issue.Title,
                 state = issue.State,
+                body = issue.Body,
                 labels = issue.Labels.Select(label => new
                 {
                     id = 1,
@@ -188,3 +189,13 @@ public sealed class GitHubStub : IAsyncDisposable
         _stopping.Dispose();
     }
 }
+
+/// <summary>One issue as the stub reports it — a record rather than a tuple so a new field
+/// (the body arrived with #37) reads at the call site instead of being a positional guess.</summary>
+public sealed record StubIssue(
+    int Number,
+    string Title,
+    string State,
+    string[] Labels,
+    string? Body = null
+);

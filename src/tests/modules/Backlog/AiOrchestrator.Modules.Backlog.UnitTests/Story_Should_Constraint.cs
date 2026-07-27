@@ -15,36 +15,88 @@ public class Story_Should_Constraint
     [Fact]
     public void UpdateFrom_Should_ReportNoChangeWhenNothingDiffers()
     {
-        var story = Story.Create(Guid.NewGuid(), "42", "Add login", "open", ["bug"], Now);
+        var story = Story.Create(
+            Guid.NewGuid(),
+            "42",
+            "Add login",
+            "open",
+            ["bug"],
+            "A description",
+            Now
+        );
 
-        story.UpdateFrom("Add login", "open", ["bug"], Now.AddMinutes(1)).ShouldBeFalse();
+        story
+            .UpdateFrom("Add login", "open", ["bug"], "A description", Now.AddMinutes(1))
+            .ShouldBeFalse();
     }
 
     [Fact]
     public void UpdateFrom_Should_ReportChangeWhenTitleDiffers()
     {
-        var story = Story.Create(Guid.NewGuid(), "42", "Add login", "open", ["bug"], Now);
+        var story = Story.Create(
+            Guid.NewGuid(),
+            "42",
+            "Add login",
+            "open",
+            ["bug"],
+            "A description",
+            Now
+        );
 
-        story.UpdateFrom("Add sign-in", "open", ["bug"], Now).ShouldBeTrue();
+        story.UpdateFrom("Add sign-in", "open", ["bug"], "A description", Now).ShouldBeTrue();
         story.Title.ShouldBe("Add sign-in");
     }
 
     [Fact]
     public void UpdateFrom_Should_ReportChangeWhenLabelsDiffer()
     {
-        var story = Story.Create(Guid.NewGuid(), "42", "Add login", "open", ["bug"], Now);
+        var story = Story.Create(
+            Guid.NewGuid(),
+            "42",
+            "Add login",
+            "open",
+            ["bug"],
+            "A description",
+            Now
+        );
 
-        story.UpdateFrom("Add login", "open", ["bug", "ui"], Now).ShouldBeTrue();
+        story.UpdateFrom("Add login", "open", ["bug", "ui"], "A description", Now).ShouldBeTrue();
         story.Labels.ShouldBe(["bug", "ui"]);
+    }
+
+    [Fact]
+    public void UpdateFrom_Should_ReportChangeWhenTheDescriptionDiffers()
+    {
+        var story = Story.Create(
+            Guid.NewGuid(),
+            "42",
+            "Add login",
+            "open",
+            ["bug"],
+            "Old text",
+            Now
+        );
+
+        // An edited requirement is exactly the change an Agent would want to react to.
+        story.UpdateFrom("Add login", "open", ["bug"], "New text", Now).ShouldBeTrue();
+        story.Body.ShouldBe("New text");
     }
 
     [Fact]
     public void UpdateFrom_Should_KeepIdentityAcrossARename()
     {
-        var story = Story.Create(Guid.NewGuid(), "42", "Old title", "open", [], Now);
+        var story = Story.Create(
+            Guid.NewGuid(),
+            "42",
+            "Old title",
+            "open",
+            [],
+            "A description",
+            Now
+        );
         var id = story.Id;
 
-        story.UpdateFrom("Completely different title", "open", [], Now);
+        story.UpdateFrom("Completely different title", "open", [], "A description", Now);
 
         // A renamed Story is the same Story — this is what stops the mirror duplicating on rename.
         story.VendorId.ShouldBe("42");
@@ -54,10 +106,18 @@ public class Story_Should_Constraint
     [Fact]
     public void UpdateFrom_Should_AlwaysAdvanceLastSeen()
     {
-        var story = Story.Create(Guid.NewGuid(), "42", "Add login", "open", [], Now);
+        var story = Story.Create(
+            Guid.NewGuid(),
+            "42",
+            "Add login",
+            "open",
+            [],
+            "A description",
+            Now
+        );
         var later = Now.AddMinutes(5);
 
-        story.UpdateFrom("Add login", "open", [], later);
+        story.UpdateFrom("Add login", "open", [], "A description", later);
 
         // Unchanged content still means "seen just now" — otherwise a stable Story looks stale.
         story.LastSeenAt.ShouldBe(later);
