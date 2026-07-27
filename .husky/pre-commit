@@ -13,5 +13,18 @@ if [ -n "$STAGED_CS" ]; then
   git -C "$REPO_ROOT" add $STAGED_CS
 fi
 
+# OpenSpec bundles belong at the repository root. Working-directory drift has buried one under
+# src/ and two under src/frontend/ across this project's history — each time the change built
+# and tested fine, because a misplaced-but-valid markdown tree is invisible to every other gate.
+# This is the cheap check that was missing.
+STRAY_SPECS=$(git -C "$REPO_ROOT" diff --cached --name-only --diff-filter=ACM \
+  | grep -E '(^|/)openspec/' | grep -v '^openspec/' || true)
+if [ -n "$STRAY_SPECS" ]; then
+  echo "An OpenSpec bundle is staged outside the root openspec/ directory:" >&2
+  echo "$STRAY_SPECS" >&2
+  echo "Move it to openspec/ — this is working-directory drift, not a new location." >&2
+  exit 1
+fi
+
 # pnpm/node_modules live only under src/frontend now.
 (cd "$REPO_ROOT/src/frontend" && pnpm exec lint-staged)

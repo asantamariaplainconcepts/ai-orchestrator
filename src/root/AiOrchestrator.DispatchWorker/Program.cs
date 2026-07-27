@@ -5,6 +5,7 @@ using AiOrchestrator.ServiceDefaults.Agents;
 using AiOrchestrator.ServiceDefaults.Dispatch;
 using AiOrchestrator.ServiceDefaults.IntegrationEvents;
 using AiOrchestrator.ServiceDefaults.Secrets;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -36,24 +37,55 @@ using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DispatchWorker");
 var reader = host.Services.GetRequiredService<DispatchQueueReader>();
 
-// Drain rather than take one: KEDA's scaler and the queue length are eventually consistent, so a
-// job that handled exactly one message would leave stragglers waiting for the next poll. The
-// loop ends when the queue is empty, which is what makes the job exit and scale back to zero.
-var handled = 0;
-
-while (await reader.Claim() is { } runId)
+// A "pass" drains the queue and returns. Draining rather than taking one message is
+// deliberate: KEDA's scaler and the queue length are eventually consistent, so a job that
+// handled exactly one message would leave stragglers waiting for the next poll.
+async Task<int> DrainOnce()
 {
-    handled++;
-    WorkerLog.Claimed(logger, runId);
+    var claimed = 0;
 
-    // A scope per Run: the executor takes DbContexts, and one Run's failure must not leak
-    // tracked state into the next.
-    await using var scope = host.Services.CreateAsyncScope();
-    var executor = scope.ServiceProvider.GetRequiredService<IRunExecutor>();
-    await executor.Execute(runId);
+    while (await reader.Claim() is { } runId)
+    {
+        claimed++;
+        WorkerLog.Claimed(logger, runId);
+
+        // A scope per Run: the executor takes DbContexts, and one Run's failure must not leak
+        // tracked state into the next.
+        await using var scope = host.Services.CreateAsyncScope();
+        var executor = scope.ServiceProvider.GetRequiredService<IRunExecutor>();
+        await executor.Execute(runId);
+    }
+
+    return claimed;
 }
 
-WorkerLog.PassComplete(logger, handled);
+// Deployed, one pass IS the job: it drains and the process exits, which is what lets KEDA scale
+// back to zero. Locally there is no KEDA, and an exited process picks up nothing — so the local
+// composition sets this interval and a timer starts the next pass instead.
+//
+// The divergence is precisely one thing: WHAT decides to start a pass (a timer here, queue
+// length in Azure). The pass itself is byte-for-byte the same code, so what the local loop
+// proves about draining and executing is exactly what production does. What it proves about
+// scaling is nothing.
+var repeatInterval = builder.Configuration.GetValue<int?>("Dispatch:LocalPollSeconds");
+
+if (repeatInterval is null or <= 0)
+{
+    WorkerLog.PassComplete(logger, await DrainOnce());
+    return;
+}
+
+using var passes = new PeriodicTimer(TimeSpan.FromSeconds(repeatInterval.Value));
+
+do
+{
+    var handled = await DrainOnce();
+
+    if (handled > 0)
+    {
+        WorkerLog.PassComplete(logger, handled);
+    }
+} while (await passes.WaitForNextTickAsync());
 
 /// <summary>
 /// Source-generated log delegates. Required by CA1848 rather than chosen — and the event ids are

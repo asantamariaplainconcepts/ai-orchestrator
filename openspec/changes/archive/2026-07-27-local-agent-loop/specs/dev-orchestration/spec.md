@@ -1,8 +1,7 @@
-# dev-orchestration Specification
+# dev-orchestration
 
-## Purpose
-TBD - created by archiving change project-scaffolding. Update Purpose after archive.
-## Requirements
+## MODIFIED Requirements
+
 ### Requirement: one-command dev loop
 
 `src/root/AiOrchestrator.AppHost` (Aspire) SHALL compose the full inner loop — the Server,
@@ -32,16 +31,7 @@ and as **not** exercising KEDA scaling or Key Vault, whose only proof is Azure.
 - **THEN** the Run is executed and reaches a terminal state, observable in the portal, with no
   cloud resources and no AI credential
 
-### Requirement: OpenTelemetry from day 0
-
-`AiOrchestrator.ServiceDefaults` SHALL wire OTel logs, metrics, and traces for every
-service, with exporters selected by environment (OTLP locally, Azure Monitor in cloud
-per DEC-023). `/api/health` and `/api/alive` SHALL be excluded from traces.
-
-#### Scenario: traces flow locally
-
-- **WHEN** the exemplar endpoint handles a request in the dev loop
-- **THEN** its trace is visible in the Aspire dashboard, and health probes produce none
+## ADDED Requirements
 
 ### Requirement: the local composition seeds a demo project
 
@@ -64,4 +54,3 @@ name the repository it points at from configuration rather than inventing one.
 
 - **WHEN** the Server runs without the local composition's flag
 - **THEN** the seeder does not run
-

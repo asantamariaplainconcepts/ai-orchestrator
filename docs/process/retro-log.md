@@ -632,3 +632,32 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — seventeenth consecutive; same standing
   cause).
 - **ADR:** none new.
+
+## 2026-07-27 — local-agent-loop
+
+- **Worked:** The change existed because a resource had been mis-wired for four changes with
+  nothing watching, so the fix that matters is not the database reference — it is the two E2E
+  tests that now assert the *composition itself*. When driving `aspire run` by hand proved
+  unreliable from this session, moving the exercise into the E2E tier turned a one-time manual
+  observation into something CI re-checks forever; that is strictly better than what task 3.1
+  originally asked for. Keeping the drain pass byte-identical between local and deployed, and
+  letting only the *trigger* differ (timer vs KEDA), meant the local loop proves the real
+  execution path and nothing false about scaling.
+- **Didn't:** Three separate verification failures stacked in one afternoon, and each nearly
+  ended in a wrong conclusion. (1) A Docker Hub outage reddened CI; diagnosing it as a flake was
+  right, but stopping there would have been wrong — the re-run is what exposed the real bug
+  underneath. (2) `gh run rerun --failed` printed nothing and did nothing; I only noticed
+  because the run list had no new entry, having nearly reported "re-running" while nothing was
+  queued. (3) My new E2E tests lacked `[Trait("Category", "E2E")]`, so they ran in the job that
+  has no Playwright browser — invisible locally because I ran `dotnet test` unfiltered while CI
+  runs `--filter "Category!=E2E"`. And cwd drift buried the OpenSpec bundle under
+  `src/frontend/` for the third time in this project.
+- **Next time:** when a change adds tests to a tier CI treats specially, run **CI's exact
+  command** locally before pushing — `dotnet test --filter "Category!=E2E"` here. "It passed
+  locally" is only evidence if the local invocation is the same one.
+- **Time invested:** not measured (source: **manual** — eighteenth consecutive; same standing
+  cause).
+- **ADR:** none new — but the cwd-drift finding finally produced its guard instead of another
+  line here: `.husky/pre-commit` now refuses a staged OpenSpec bundle outside the root, and the
+  guard was proven against the real case before committing. The retro promise from run-now is
+  discharged.

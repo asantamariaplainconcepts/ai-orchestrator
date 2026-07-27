@@ -2,6 +2,7 @@ using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.BuildingBlocks.Secrets;
+using AiOrchestrator.Server;
 using AiOrchestrator.ServiceDefaults;
 using AiOrchestrator.ServiceDefaults.Agents;
 using AiOrchestrator.ServiceDefaults.Dispatch;
@@ -49,6 +50,10 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
+
+// Local convenience only: it refuses unless the AppHost's run composition asked for it, so a
+// deployed host has no way to invoke it (local-agent-loop D3).
+builder.Services.AddHostedService<LocalLoopSeeder>();
 
 var app = builder.Build();
 
