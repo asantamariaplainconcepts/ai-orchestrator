@@ -86,7 +86,34 @@ sealed class StubBacklogConnector : IBacklogConnector
         Files.Clear();
         DocumentError = null;
         LastReadRef = null;
+        RepositoryLabels.Clear();
+        EnsureLabelError = null;
         Interlocked.Exchange(ref _fetches, 0);
+    }
+
+    /// <summary>
+    /// Labels that exist in the *repository*, as distinct from labels on a Story. The
+    /// distinction is the point of the test: ensuring a label must not touch anybody's backlog
+    /// item.
+    /// </summary>
+    public HashSet<string> RepositoryLabels { get; } = [];
+
+    public Error? EnsureLabelError { get; set; }
+
+    public Task<ErrorOr<Success>> EnsureLabel(
+        BacklogCoordinates coordinates,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (EnsureLabelError is { } error)
+        {
+            return Task.FromResult<ErrorOr<Success>>(error);
+        }
+
+        RepositoryLabels.Add(label);
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
     }
 
     public Task<ErrorOr<Success>> VerifyAccess(

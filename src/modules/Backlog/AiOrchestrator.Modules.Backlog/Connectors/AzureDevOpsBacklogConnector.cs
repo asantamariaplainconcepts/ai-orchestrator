@@ -169,6 +169,20 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
         );
     }
 
+    /// <summary>
+    /// A deliberate no-op. Azure DevOps tags are not repository objects — there is no tag until
+    /// one is applied to a work item, and the only way to "create" one would be to tag somebody
+    /// else's backlog item to satisfy our own bookkeeping. Succeeding without acting is the
+    /// honest answer; the caller reports to the Admin that labels were not ensured, so the
+    /// asymmetry is visible rather than implied (automation-defaults design D3).
+    /// </summary>
+    public Task<ErrorOr<Success>> EnsureLabel(
+        BacklogCoordinates coordinates,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<ErrorOr<Success>>(Result.Success);
+
     public Task<ErrorOr<Success>> ApplyLabel(
         BacklogCoordinates coordinates,
         string vendorStoryId,

@@ -112,6 +112,15 @@ the ordinary reconciliation, so a `StoryChanged` produced by a portal click is
 indistinguishable from one produced at the vendor (DEC-027). Everything else about the mirror
 stays read-only (BR-008).
 
+**The seam's one repository-level write.** Every other Connector method names a Story;
+`EnsureLabel` names only the repository. It exists because a trigger label nobody has applied yet
+does not exist at the vendor, so a Member cannot choose it there — the product could apply labels
+long before it could create one. GitHub creates-or-succeeds. **Azure DevOps returns success
+without acting**, because its tags are not repository objects: they come into being when applied
+to a work item, and the only way to fake one would be to tag somebody's backlog item to satisfy
+our own bookkeeping. The caller reports that labels were not ensured, so the asymmetry reaches
+the Admin rather than being swallowed.
+
 **Two vendors, one seam — and only one of them proven.** Azure DevOps implements every
 `IBacklogConnector` method beside GitHub (DEC-045): a work item is a Story, `System.Tags` is the
 label set, and the two Connector coordinates are the organisation and the project. Because code

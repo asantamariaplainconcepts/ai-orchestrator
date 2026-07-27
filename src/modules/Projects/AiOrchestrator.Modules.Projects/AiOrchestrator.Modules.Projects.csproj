@@ -9,6 +9,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
+    <!-- Contracts only, never the implementation: the Projects module ensures trigger labels
+         exist at the vendor without knowing which vendor that is (MOD002). -->
+    <ProjectReference Include="..\..\Backlog\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

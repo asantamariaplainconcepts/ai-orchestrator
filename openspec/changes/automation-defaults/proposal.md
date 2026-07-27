@@ -13,6 +13,8 @@ never been able to create one.
 
 ## What Changes
 
+No Automation cap is involved: BR-002 caps concurrent **Runs**, and the issue cited it wrongly.
+
 - **A default set, in code.** Four Automations — `ai:implement` → ImplementToPullRequest,
   `ai:refine` → RefineOrComment, `ai:estimate` → Estimate, `ai:transition` → TransitionState —
   on the free opencode runtime (DEC-044), approval required only on the one that writes code

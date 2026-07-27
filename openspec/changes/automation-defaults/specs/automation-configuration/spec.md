@@ -28,10 +28,6 @@ whole operation, and the remaining defaults SHALL still be created.
 - **THEN** that one is reported as skipped, the others are created, and the existing Automation
   is left exactly as it was
 
-#### Scenario: the project is at its Automation cap
-
-- **WHEN** applying the defaults would exceed the project's cap
-- **THEN** the cap is enforced and the response names the defaults that were not created
 
 ### Requirement: the default trigger labels are ensured in the connected backlog
 

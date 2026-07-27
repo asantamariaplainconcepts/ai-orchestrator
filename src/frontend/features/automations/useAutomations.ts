@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
-import type { Automation, CreateAutomationRequest } from "./types";
+import type { Automation, AutomationDefaultsResult, CreateAutomationRequest } from "./types";
 
 const automationsKey = (projectId: string) => ["automations", projectId] as const;
 
@@ -17,6 +17,17 @@ export function useCreateAutomation(projectId: string) {
   return useMutation({
     mutationFn: (request: CreateAutomationRequest) =>
       api.post<Automation>(`/api/projects/${projectId}/automations`, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+  });
+}
+
+/** Safe to repeat: BR-003 refuses the overlaps, so a second press creates nothing. */
+export function useApplyAutomationDefaults(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      api.post<AutomationDefaultsResult>(`/api/projects/${projectId}/automations/defaults`, {}),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
   });
 }
