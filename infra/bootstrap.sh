@@ -4,7 +4,9 @@
 # Idempotent: every step checks before it creates, so running this twice changes nothing. Prints
 # the backend configuration to pass to `terraform init` when it finishes.
 #
-# Run once per subscription, by a human with their own az login (design D2/D7).
+# Run once per subscription, by a human with their own az login (design D2). This one stays
+# manual after DEC-046 moved deploys into CI: it creates the state backend that CI's own
+# credential needs in order to exist, so nothing in CI can bootstrap it.
 set -euo pipefail
 
 LOCATION="${LOCATION:-northeurope}"

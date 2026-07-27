@@ -6,7 +6,8 @@
 # serving — the schema never changes underneath a running app, and a broken migration never
 # takes the site down with it.
 #
-# Run by a human with their own az login. CI has no credentials by design (design D7).
+# Called two ways: by a human with their own az login, and by deploy.yml after a reviewer
+# approves the run (DEC-046). Both get the same ordering because both call this script.
 set -euo pipefail
 
 TAG="${TAG:-$(git rev-parse --short HEAD)}"

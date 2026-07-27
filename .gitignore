@@ -40,3 +40,7 @@ sessions.jsonl
 *.tfvars.json
 backend.hcl
 crash.log
+# A saved plan carries the resolved resource graph — subscription id and all — in a file whose
+# name gives no hint that it is sensitive.
+tfplan
+*.tfplan

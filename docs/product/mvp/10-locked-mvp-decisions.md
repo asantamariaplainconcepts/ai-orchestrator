@@ -116,3 +116,15 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   Connector tries them in order and **refuses** rather than guessing. Code lives in a repository
   *inside* the project rather than being the project, so a Connector may name one separately;
   GitHub leaves it empty. The implementation is **unexercised** — see ADR-0005.
+
+- **DEC-046 — the deploy credential lives in CI, behind an approval** *(supersedes design D7 of
+  the azure-dev-infrastructure change)*: `terraform apply` and `deploy.sh` run in GitHub Actions
+  under a federated (OIDC) identity scoped to this repository's `dev` Environment, released only
+  when a required reviewer approves a run whose plan has already been printed. D7 held that apply
+  must be a human action with their own Azure identity; that was right about *what* needed
+  protecting — a human decision in front of a plan — and wrong about the form, because it assumed
+  the human always has a terminal. When the owner did not, the posture stopped protecting
+  anything and simply prevented all deployment. The credential is short-lived, has no client
+  secret, is scoped to a resource group rather than the subscription, and cannot be minted at all
+  for an unapproved run. Pull-request validation stays credential-free (`terraform.yml`), which
+  is the property that actually made D7 safe and is unchanged.
