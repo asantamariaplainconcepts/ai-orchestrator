@@ -53,6 +53,14 @@ export const en = {
 
   "project.back": "All projects",
 
+  // Story detail (UC-022) — the description is where the requirement lives.
+  "story.title.fallback": "Story",
+  "story.crumb.backlog": "Backlog",
+  "story.backToBacklog": "Back to backlog",
+  "story.loading": "Loading the Story\u2026",
+  "story.error": "Could not load the Story.",
+  "story.noDescription": "This Story has no description in the repository.",
+
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
   "automations.heading": "Automations",
   "automations.count.one": "Automation",

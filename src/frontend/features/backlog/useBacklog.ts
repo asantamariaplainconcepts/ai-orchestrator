@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
-import type { BacklogView, ConfigureConnectorRequest } from "./types";
+import type { BacklogView, ConfigureConnectorRequest, StoryDetail } from "./types";
 
 const backlogKey = (projectId: string) => ["backlog", projectId] as const;
 
@@ -8,6 +8,16 @@ export function useBacklog(projectId: string) {
   return useQuery({
     queryKey: backlogKey(projectId),
     queryFn: () => api.get<BacklogView>(`/api/projects/${projectId}/backlog`),
+  });
+}
+
+export function useStory(projectId: string, vendorStoryId: string) {
+  return useQuery({
+    queryKey: ["story", projectId, vendorStoryId] as const,
+    queryFn: () =>
+      api.get<StoryDetail>(
+        `/api/projects/${projectId}/backlog/stories/${encodeURIComponent(vendorStoryId)}`,
+      ),
   });
 }
 

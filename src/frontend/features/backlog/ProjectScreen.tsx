@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useParams } from "react-router";
+import { Link, useParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
@@ -190,7 +190,11 @@ export function ProjectScreen() {
                 {stories.map((story) => (
                   <tr key={story.vendorId}>
                     <td className="table-num mono">{story.vendorId}</td>
-                    <td className="list-title">{story.title}</td>
+                    <td className="list-title">
+                      <Link to={`/projects/${projectId}/stories/${story.vendorId}`}>
+                        {story.title}
+                      </Link>
+                    </td>
                     <td>
                       <span className="row">
                         {story.labels.map((label) =>
