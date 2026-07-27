@@ -20,8 +20,3 @@ proposing work that depends on one of these — a decision-closure task goes fir
   designed from the normalized event model. **Closes:** during grill of the AzDO
   connector issue.
 
-- **OPN-004 — opencode runtime contract.** How the opencode image receives the story
-  prompt, provider credentials, and reports usage (BR-011) is undefined. **Blocks:**
-  the second runtime image (second per DEC-012 sequencing) — not the runtime seam.
-  **Closes:** during grill of the opencode runtime issue, with the contract proven
-  against the real CLI (ADR-0006 discipline).

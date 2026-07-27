@@ -98,3 +98,10 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   (internal Plain Concepts reference material) is gitignored; the public repo carries
   only artifacts authored for ai-orchestrator. Kit assets enter individually as they
   are adapted and renamed. Resolves the DEC-018 (public) vs kit-provenance conflict.
+- **DEC-044 — opencode runtime contract** *(closes [OPN-004](07-open-decisions.md), observed
+  against CLI v1.18.6 on the authoring machine AND in a clean container)*: invocation is
+  `opencode run -m <provider/model> --format json "<prompt>"`; output is a JSONL event stream —
+  `text` events carry the reply, `step_finish` events carry `part.tokens` and `part.cost`,
+  summed for BR-011. Provider credentials ride the environment (`OPENCODE_API_KEY`) and MAY be
+  absent: free models (`opencode/*-free`) run with none, verified with no ambient state.
+  Default model `opencode/deepseek-v4-flash-free`, config-overridable.

@@ -12,10 +12,10 @@ discovery gave hosts.
 `opencode run -m opencode/deepseek-v4-flash-free --format json "Reply with exactly: ok"`
 exited 0 with three JSONL events: `step_start`; `text` (part.text = "ok"); `step_finish`
 (part.tokens {input, output, reasoning, cache}, part.cost = 0). Usage = sum over
-`step_finish`; log = concatenated `text` parts. No credential was present. UNVERIFIED HALF
-(hypothesis): that "no credential" survives a clean container environment — the authoring
-machine may carry ambient opencode state. The in-container spike settles it; a wrong guess
-degrades to a Failed run with the CLI's own stderr as evidence, not to silence.
+`step_finish`; log = concatenated `text` parts. No credential was present. The formerly
+unverified half is now OBSERVED too: the same run inside the built worker image with a clean
+environment (HOME=/tmp) answered exit 0, identical shapes, cost 0 — "no credential" survives
+containerisation.
 
 ## D3 — Credential absence is a supported configuration, not an error path
 
