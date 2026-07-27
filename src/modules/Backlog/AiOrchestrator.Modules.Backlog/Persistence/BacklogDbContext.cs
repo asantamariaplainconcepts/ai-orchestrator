@@ -30,6 +30,8 @@ sealed class BacklogDbContext(DbContextOptions<BacklogDbContext> options) : DbCo
         modelBuilder.Entity<Story>(story =>
         {
             story.ToTable("stories");
+            // Generous but bounded: GitHub caps issue bodies at 65536 characters.
+            story.Property(entity => entity.Body).HasMaxLength(65536);
             story.HasKey(entity => entity.Id);
             // Identity is (project, vendor id) — a rename must not create a second Story.
             story.HasIndex(entity => new { entity.ProjectId, entity.VendorId }).IsUnique();

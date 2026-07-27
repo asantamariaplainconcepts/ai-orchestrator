@@ -21,7 +21,8 @@ sealed class Story : Aggregate
         string vendorId,
         string title,
         string state,
-        IReadOnlyCollection<string> labels
+        IReadOnlyCollection<string> labels,
+        string? body
     )
     {
         ProjectId = projectId;
@@ -29,6 +30,7 @@ sealed class Story : Aggregate
         Title = title;
         State = state;
         Labels = [.. labels];
+        Body = body;
     }
 
     public Guid ProjectId { get; private set; }
@@ -42,6 +44,13 @@ sealed class Story : Aggregate
 
     public List<string> Labels { get; private set; } = [];
 
+    /// <summary>
+    /// The issue description — where the actual requirement lives. Mirrored verbatim (BR-008);
+    /// sanitising happens at render, never at rest, or the Mirror would silently differ from
+    /// the issue it mirrors (design D2).
+    /// </summary>
+    public string? Body { get; private set; }
+
     /// <summary>When this Story was last seen in a vendor response.</summary>
     public DateTimeOffset LastSeenAt { get; private set; }
 
@@ -51,10 +60,11 @@ sealed class Story : Aggregate
         string title,
         string state,
         IReadOnlyCollection<string> labels,
+        string? body,
         DateTimeOffset seenAt
     )
     {
-        var story = new Story(projectId, vendorId, title, state, labels);
+        var story = new Story(projectId, vendorId, title, state, labels, body);
         story.LastSeenAt = seenAt;
         return story;
     }
@@ -64,14 +74,19 @@ sealed class Story : Aggregate
         string title,
         string state,
         IReadOnlyCollection<string> labels,
+        string? body,
         DateTimeOffset seenAt
     )
     {
-        var changed = Title != title || State != state || !Labels.SequenceEqual(labels);
+        // The body is in the comparison on purpose: an edited requirement is exactly the change
+        // an Agent would want to react to, so it must announce itself like any other.
+        var changed =
+            Title != title || State != state || Body != body || !Labels.SequenceEqual(labels);
 
         Title = title;
         State = state;
         Labels = [.. labels];
+        Body = body;
         LastSeenAt = seenAt;
 
         return changed;

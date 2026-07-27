@@ -63,5 +63,7 @@ sealed record VendorStory(
     string VendorId,
     string Title,
     string State,
-    IReadOnlyList<string> Labels
+    IReadOnlyList<string> Labels,
+    /// <summary>The issue body as the vendor holds it — never sanitised at rest (design D2).</summary>
+    string? Body = null
 );

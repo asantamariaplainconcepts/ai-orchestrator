@@ -163,6 +163,101 @@
   color: var(--fg-subtle);
 }
 
+/* ---- Prose ------------------------------------------------------------------------------ */
+
+/* Rendered markdown from an external source (a Story's description). Every value is a token:
+   vendor content controls the text, never the typography. Long words and code blocks are
+   contained so a pasted URL cannot widen the page. */
+.prose {
+  color: var(--fg);
+  font-size: var(--fs-14);
+  line-height: var(--lh-normal);
+  overflow-wrap: anywhere;
+}
+
+.prose > * + * {
+  margin-top: var(--sp-3);
+}
+
+.prose h1,
+.prose h2,
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-weight: var(--fw-semibold);
+  line-height: var(--lh-tight);
+}
+
+.prose h1 {
+  font-size: var(--fs-20);
+}
+
+.prose h2 {
+  font-size: var(--fs-16);
+}
+
+.prose h3,
+.prose h4,
+.prose h5,
+.prose h6 {
+  font-size: var(--fs-14);
+}
+
+.prose ul,
+.prose ol {
+  padding-left: var(--sp-5);
+}
+
+.prose li + li {
+  margin-top: var(--sp-1);
+}
+
+.prose code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+  padding: 0 var(--sp-1);
+  background: var(--bg-muted);
+  border-radius: var(--r-1);
+}
+
+.prose pre {
+  padding: var(--sp-3);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  overflow-x: auto;
+}
+
+.prose pre code {
+  padding: 0;
+  background: none;
+}
+
+.prose blockquote {
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--border-strong);
+  color: var(--fg-muted);
+}
+
+.prose a {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+.prose table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-13);
+}
+
+.prose th,
+.prose td {
+  padding: var(--sp-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+
 /* ---- Badge ----------------------------------------------------------------------------- */
 
 .badge {

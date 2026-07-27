@@ -27,3 +27,13 @@ export interface ConfigureConnectorRequest {
   repository: string;
   secretName: string;
 }
+
+/** UC-022's detail read — the body arrives verbatim and is sanitised at render (design D2). */
+export interface StoryDetail {
+  vendorId: string;
+  title: string;
+  state: string;
+  labels: string[];
+  body: string | null;
+  lastSeenAt: string;
+}
