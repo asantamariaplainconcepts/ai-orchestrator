@@ -844,3 +844,25 @@ times in the project this framework came from.
   the answer to "how do I do X" was six numbered steps rather than one command.
 - **Time invested:** not measured (source: **manual** — twenty-seventh consecutive).
 - **ADR:** none new. This is the existing `infra/` convention being applied, not a new rule.
+
+## 2026-07-27 — one-approved-deploy-job (spec-less, DEC-025)
+
+- **Worked:** the first real run failed in the most useful possible way — an auth error whose
+  message contained the whole diagnosis, on the very first step that touched Azure, before
+  anything could be changed. And the repair was subtraction. Both instincts (add a second
+  credential, add a second identity) would have shipped a standing unattended path to the
+  subscription; deleting the unattended job removed the category. The identity the owner had
+  already created needed no change, which is the tell that the credential design was right and
+  only the workflow was wrong.
+- **Didn't:** I invented a requirement — "the approver should see the plan first" — and let it
+  drive the architecture without checking what it cost. It cost the one property the whole
+  design existed for. Worse, the flaw was visible in the YAML: a job with no `environment` and a
+  credential scoped to one cannot both be correct, and I wrote them ten lines apart. `terraform
+  validate` and a YAML parse cannot catch a claim about *which identity a job gets*, so nothing
+  in CI was ever going to tell me.
+- **Next time:** when a workflow authenticates, write down the token subject each job will
+  present and compare it to the credential, before running anything. It is one line of reasoning
+  per job and it is the only check that would have caught this without burning a deploy.
+- **Time invested:** not measured (source: **manual** — twenty-eighth consecutive).
+- **ADR:** none new. This is ADR-0005 working as intended — the pipeline was labelled unexercised,
+  the first exercise found the defect, and nobody was surprised.
