@@ -229,6 +229,15 @@ and the values live exactly as long as the child process does.
 succeeded. The result-JSON shape is verified by exercising, and the parser is defensive so a
 shape surprise degrades to honesty, not to failed Runs.
 
+**Every catalogue action executes.** The executor dispatches on the Automation's action:
+implement-to-PR clones and publishes; refine-or-comment posts the Agent's answer as a Story
+comment; transition-state writes the state it names (the vendor's vocabulary is finite, and
+anything outside it is refused, not guessed); estimate writes an `estimate:<n>` label plus the
+reasoning as a comment, replacing any previous estimate by reading the **vendor's** labels
+rather than the Mirror's — the Mirror is a poll behind, and replacing against it would leave
+two estimates on a Story. Only implement-to-PR prepares a workspace; the other three touch no
+code, which is why they are fast.
+
 **ImplementToPullRequest is real, and the ceremony is code.** `ICodeWorkspace` clones on a
 run-scoped branch, and after the Agent implements (and only implements — the prompt forbids it
 the ceremony), commits, pushes and opens the PR whose URL lands on the Run and in the Runs
