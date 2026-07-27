@@ -926,3 +926,25 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — thirty-first consecutive).
 - **ADR:** none new. ADR-0006 was applied rather than extended: the E2E reachability test now
   covers this button, so the capability cannot ship unreachable.
+
+## 2026-07-28 — conversational-runs
+
+- **Worked:** the design was mostly recognition, not invention. "A Run waiting on a human" already
+  existed as the approval gate; generalising it meant the container lifecycle, the untimed wait
+  and the requeue-to-resume all came free, and the migration regenerating BR-001's index from
+  `RunStates.Active` — the mechanism built after two drift incidents — did its job silently on
+  the first state added since. The marker insight (one PAT means the agent and the human can be
+  the same account, so authorship cannot separate question from answer) came from reading DEC-030
+  rather than from a bug, which is the cheap time to find it.
+- **Didn't:** a Python edit asserted on its second anchor *after* building the new interface text
+  but before writing the file, so the whole edit silently never happened — and the build stayed
+  green for twenty minutes because the implementations were just extra public methods no contract
+  demanded. I caught it only because "0 implementations in the stubs and a green build" cannot
+  both be true. A multi-step scripted edit that can fail between steps must write after each
+  step or verify after the last; "the script ran" is not "the file changed" (ADR-0004's shape,
+  in tooling).
+- **Next time:** after any scripted edit to an interface or contract, grep the file for the new
+  member before building — one line, and it catches the half-applied edit before the compiler's
+  green can lie about it.
+- **Time invested:** not measured (source: **manual** — thirty-second consecutive).
+- **ADR:** none new.

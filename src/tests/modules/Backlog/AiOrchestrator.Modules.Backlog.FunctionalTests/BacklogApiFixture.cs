@@ -86,6 +86,7 @@ sealed class StubBacklogConnector : IBacklogConnector
         Files.Clear();
         DocumentError = null;
         LastReadRef = null;
+        StoryComments.Clear();
         RepositoryLabels.Clear();
         EnsureLabelError = null;
         Interlocked.Exchange(ref _fetches, 0);
@@ -115,6 +116,27 @@ sealed class StubBacklogConnector : IBacklogConnector
         RepositoryLabels.Add(label);
         return Task.FromResult<ErrorOr<Success>>(Result.Success);
     }
+
+    /// <summary>The Story's comments as the vendor holds them, appendable by tests.</summary>
+    public List<(string StoryId, StoryComment Comment)> StoryComments { get; } = [];
+
+    public Task<ErrorOr<IReadOnlyList<StoryComment>>> ReadComments(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        DateTimeOffset since,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<IReadOnlyList<StoryComment>>>(
+            ErrorOrFactory.From<IReadOnlyList<StoryComment>>([
+                .. StoryComments
+                    .Where(entry =>
+                        entry.StoryId == vendorStoryId && entry.Comment.CreatedAt >= since
+                    )
+                    .Select(entry => entry.Comment)
+                    .OrderBy(comment => comment.CreatedAt),
+            ])
+        );
 
     public Task<ErrorOr<Success>> VerifyAccess(
         BacklogCoordinates coordinates,

@@ -69,6 +69,9 @@ sealed class Run : Aggregate
     /// </summary>
     public DateTimeOffset? ApprovedAt { get; private set; }
 
+    /// <summary>Set while AwaitingInput; the resume check reads comments from this moment on.</summary>
+    public DateTimeOffset? WaitingSince { get; private set; }
+
     /// <summary>BR-011/DEC-038: all three null together means "unknown" — never invented.</summary>
     public long? UsageInputTokens { get; private set; }
 
@@ -121,6 +124,27 @@ sealed class Run : Aggregate
         ApprovedAt = at;
     }
 
+    /// <summary>
+    /// The pass ended by asking. Shaped exactly like <see cref="AwaitApproval"/> — the container
+    /// exits, the wait is untimed (BR-006 grown from approval to human waits), and the Story
+    /// stays blocked (BR-001). <paramref name="at"/> is also the resume check's watermark: only
+    /// comments after it can wake this Run.
+    /// </summary>
+    public void AwaitInput(DateTimeOffset at)
+    {
+        State = RunState.AwaitingInput;
+        WaitingSince = at;
+        EndedAt = null;
+        UpdatedNow(at);
+    }
+
+    /// <summary>An answer arrived: back to Queued, and ordinary dispatch does the rest.</summary>
+    public void Resume()
+    {
+        State = RunState.Queued;
+        WaitingSince = null;
+    }
+
     /// <summary>Rejected — terminal (BR-012), so the Story is free again (BR-001).</summary>
     public void Reject(DateTimeOffset at) => Cancel(at);
 
@@ -169,6 +193,12 @@ enum RunState
 
     /// <summary>A rejected Plan, or a cancelled Run (#23). Terminal, and outside BR-001's filter.</summary>
     Cancelled = 7,
+
+    /// <summary>
+    /// The agent asked and a human has not yet answered (#78). Active for BR-001 — a Story
+    /// mid-conversation must not start a second Run — and untimed like approval (BR-006).
+    /// </summary>
+    AwaitingInput = 8,
 }
 
 /// <summary>
@@ -186,6 +216,7 @@ static class RunStates
         RunState.Planning,
         RunState.AwaitingApproval,
         RunState.Executing,
+        RunState.AwaitingInput,
     ];
 
     /// <summary>The SQL the partial unique index filters on — same list, no second copy.</summary>

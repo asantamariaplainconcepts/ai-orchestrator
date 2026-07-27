@@ -371,6 +371,66 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
         );
     }
 
+    /// <summary>
+    /// Work item comments via the comments API. UNEXERCISED like the rest of this class
+    /// (ADR-0005): the endpoint and shape follow the documented contract, verified against no
+    /// real organisation.
+    /// </summary>
+    public async Task<ErrorOr<IReadOnlyList<StoryComment>>> ReadComments(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        DateTimeOffset since,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<IReadOnlyList<StoryComment>>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/wit/workItems/{vendorStoryId}/comments?api-version=7.1-preview.4",
+                    cancellationToken
+                );
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                if (!document.RootElement.TryGetProperty("comments", out var comments))
+                {
+                    return ErrorOrFactory.From<IReadOnlyList<StoryComment>>(
+                        Array.Empty<StoryComment>()
+                    );
+                }
+
+                // The comments API has no `since` parameter, so the filtering that GitHub's
+                // vendor does for us happens here instead.
+                return ErrorOrFactory.From<IReadOnlyList<StoryComment>>([
+                    .. comments
+                        .EnumerateArray()
+                        .Select(comment => new StoryComment(
+                            comment.TryGetProperty("text", out var text)
+                                ? text.GetString() ?? string.Empty
+                                : string.Empty,
+                            comment.TryGetProperty("createdDate", out var created)
+                                ? created.GetDateTimeOffset()
+                                : DateTimeOffset.MinValue
+                        ))
+                        .Where(comment => comment.CreatedAt >= since)
+                        .OrderBy(comment => comment.CreatedAt),
+                ]);
+            }
+        );
+    }
+
     public async Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,
         string path,

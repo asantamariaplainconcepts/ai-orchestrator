@@ -20,6 +20,8 @@ public sealed class RunsModule : ModuleBase
     /// overridable per host, not hardcoded into the handler.
     /// </summary>
     public const string ProjectConcurrencyCapKey = "Runs:ProjectConcurrencyCap";
+    public const string ResumeCheckEnabledKey = "Runs:ResumeCheckEnabled";
+    public const string ResumeCheckSecondsKey = "Runs:ResumeCheckSeconds";
 
     public override string Name => "Runs";
 
@@ -63,6 +65,23 @@ public sealed class RunsModule : ModuleBase
 
         // The one creation path both matching and Run now share (BR-013).
         services.AddScoped<RunCreator>();
+
+        // Conversations (#78): the primitives every conversational action shares, and the
+        // checker that wakes waiting Runs. Opt-out like the backlog poller — production checks,
+        // the test host drives one pass deterministically instead.
+        services.AddScoped<Features.Conversation.ConversationGate>();
+        if (configuration.GetValue(ResumeCheckEnabledKey, defaultValue: true))
+        {
+            services.AddSingleton<Microsoft.Extensions.Hosting.IHostedService>(
+                provider => new Features.Conversation.ResumeChecker(
+                    provider.GetRequiredService<Microsoft.Extensions.DependencyInjection.IServiceScopeFactory>(),
+                    TimeSpan.FromSeconds(
+                        configuration.GetValue(ResumeCheckSecondsKey, defaultValue: 60)
+                    ),
+                    provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Features.Conversation.ResumeChecker>>()
+                )
+            );
+        }
 
         // The first consumer of the event stream: matching reacts to story changes.
         services.AddIntegrationEventHandler<StoryChanged, StoryChangedHandler>();

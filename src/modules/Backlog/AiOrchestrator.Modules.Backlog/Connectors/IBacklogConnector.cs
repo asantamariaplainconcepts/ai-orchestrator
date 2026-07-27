@@ -119,6 +119,19 @@ interface IBacklogConnector
         CancellationToken cancellationToken
     );
 
+    /// <summary>
+    /// The Story's comments from a moment onwards, oldest first — read live, never mirrored
+    /// (BR-008). Exists for resuming conversations (conversational-runs), so the shape of the
+    /// question is "anything since the agent asked?", not "the whole history".
+    /// </summary>
+    Task<ErrorOr<IReadOnlyList<StoryComment>>> ReadComments(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        DateTimeOffset since,
+        string token,
+        CancellationToken cancellationToken
+    );
+
     /// <summary>A document's content at a ref — read live, never mirrored (design D3).</summary>
     Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,
@@ -169,6 +182,9 @@ enum PatchOmission
 /// documents are read at, so a branch that has moved on shows its current content.
 /// </summary>
 sealed record LinkedChange(int Number, string Title, string Url, string HeadRef);
+
+/// <summary>One comment on a Story, as the seam speaks it.</summary>
+sealed record StoryComment(string Body, DateTimeOffset CreatedAt);
 
 /// <summary>A Story as the vendor reports it, in the product's field vocabulary (DEC-005).</summary>
 sealed record VendorStory(

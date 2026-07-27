@@ -65,6 +65,7 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
         base.ConfigureWebHost(builder);
 
         builder.UseSetting("Backlog:PollingEnabled", "false");
+        builder.UseSetting("Runs:ResumeCheckEnabled", "false");
 
         builder.ConfigureTestServices(services =>
         {
@@ -108,6 +109,8 @@ sealed class StubBacklogConnector : IBacklogConnector
         Comments.Clear();
         WriteStateError = null;
         Change = null;
+        StoryComments.Clear();
+        ReadCommentsError = null;
         RepositoryLabels.Clear();
         EnsureLabelError = null;
     }
@@ -139,6 +142,31 @@ sealed class StubBacklogConnector : IBacklogConnector
         RepositoryLabels.Add(label);
         return Task.FromResult<ErrorOr<Success>>(Result.Success);
     }
+
+    /// <summary>The Story's comments as the vendor holds them, appendable by tests.</summary>
+    public List<(string StoryId, StoryComment Comment)> StoryComments { get; } = [];
+
+    public Error? ReadCommentsError { get; set; }
+
+    public Task<ErrorOr<IReadOnlyList<StoryComment>>> ReadComments(
+        BacklogCoordinates coordinates,
+        string vendorStoryId,
+        DateTimeOffset since,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        ReadCommentsError is { } error
+            ? Task.FromResult<ErrorOr<IReadOnlyList<StoryComment>>>(error)
+            : Task.FromResult<ErrorOr<IReadOnlyList<StoryComment>>>(
+                ErrorOrFactory.From<IReadOnlyList<StoryComment>>([
+                    .. StoryComments
+                        .Where(entry =>
+                            entry.StoryId == vendorStoryId && entry.Comment.CreatedAt >= since
+                        )
+                        .Select(entry => entry.Comment)
+                        .OrderBy(comment => comment.CreatedAt),
+                ])
+            );
 
     public Task<ErrorOr<Success>> VerifyAccess(
         BacklogCoordinates coordinates,
