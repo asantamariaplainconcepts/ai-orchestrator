@@ -661,3 +661,22 @@ times in the project this framework came from.
   line here: `.husky/pre-commit` now refuses a staged OpenSpec bundle outside the root, and the
   guard was proven against the real case before committing. The retro promise from run-now is
   discharged.
+
+## 2026-07-27 — automation-editing
+
+- **Worked:** Writing acceptance criterion 5 — "in-flight work is untouched" — before the code
+  found a defect the CRUD would otherwise have shipped: `IAutomationCatalog.Detail` filtered on
+  `Enabled`, so disabling an Automation failed any Run already executing, the exact opposite of
+  what UC-006 says. Nothing in the issue's original text would have caught it; the criterion
+  did, because it described a behaviour rather than a feature. Extracting one `OverlapGuard`
+  for create/edit/enable also kept #14's subsumption finding from needing a second
+  implementation to rediscover it.
+- **Didn't:** Nothing went wrong mechanically this cycle, which is itself the observation worth
+  recording: it is the first change in a while where the retro's standing lessons (run CI's own
+  filtered command, grep before assuming, guard rather than promise) were applied *before* the
+  mistake rather than after it.
+- **Next time:** keep writing criteria as behaviours the system must exhibit under change
+  ("editing X does not disturb Y"), not as features to add. Two of the last three genuine
+  defects came out of exactly that phrasing.
+- **Time invested:** not measured (source: **manual** — nineteenth consecutive).
+- **ADR:** none new.
