@@ -14,8 +14,11 @@ public interface IAutomationCatalog
     );
 
     /// <summary>
-    /// What execution needs about one enabled Automation — action, runtime and timeout as the
-    /// worker consumes them. Null when disabled, deleted, or another project's.
+    /// What execution needs about one Automation — action, runtime and timeout as the worker
+    /// consumes them. Deliberately <b>not</b> filtered by <c>Enabled</c>: disabling stops
+    /// future matches (UC-006), it does not kill work already in flight, and a Run that
+    /// started under an Automation must be able to finish under it. Null only when the
+    /// Automation does not exist in this project.
     /// </summary>
     Task<AutomationDetail?> Detail(
         Guid projectId,
