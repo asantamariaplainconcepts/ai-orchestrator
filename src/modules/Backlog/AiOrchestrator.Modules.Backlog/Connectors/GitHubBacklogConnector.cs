@@ -13,6 +13,13 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
 {
     public BacklogVendor Vendor => BacklogVendor.GitHub;
 
+    /// <summary>
+    /// GitHub requires a colour when creating a label and has no "let the vendor decide".
+    /// One neutral grey for every label this product creates: picking per-action colours would
+    /// be this repository deciding how somebody else's backlog should look.
+    /// </summary>
+    internal const string DefaultLabelColour = "ededed";
+
     public async Task<ErrorOr<Success>> VerifyAccess(
         BacklogCoordinates coordinates,
         string token,
@@ -102,6 +109,59 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         {
             // For an *apply*, 404 means the issue (or repository) is gone — a real refusal.
             return BacklogErrors.StoryNotFound(vendorStoryId);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
+    public async Task<ErrorOr<Success>> EnsureLabel(
+        BacklogCoordinates coordinates,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            await client.Issue.Labels.Get(coordinates.Owner, coordinates.Repository, label);
+            // Already there. Deliberately not compared on colour or description: this method
+            // guarantees the label is choosable, not that it looks a particular way, and
+            // rewriting an Admin's colour would be a surprise nobody asked for.
+            return Result.Success;
+        }
+        catch (NotFoundException)
+        {
+            // Falls through to creation — a missing label is the reason to call this, not a
+            // failure. A missing *repository* raises the same exception and is caught below by
+            // the create call, where 404 genuinely means the repository.
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+
+        try
+        {
+            await client.Issue.Labels.Create(
+                coordinates.Owner,
+                coordinates.Repository,
+                new NewLabel(label, DefaultLabelColour)
+            );
+            return Result.Success;
+        }
+        catch (NotFoundException)
+        {
+            return BacklogErrors.RepositoryNotFound(coordinates.Owner, coordinates.Repository);
+        }
+        catch (ApiValidationException)
+        {
+            // 422 here means the label was created between the Get and the Create — two Admins
+            // pressing the button at once. The postcondition holds, so this is success.
+            return Result.Success;
         }
         catch (Exception exception)
         {

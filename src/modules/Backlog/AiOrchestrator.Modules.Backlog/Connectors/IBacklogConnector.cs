@@ -44,6 +44,24 @@ interface IBacklogConnector
     );
 
     /// <summary>
+    /// Ensures a label exists in the <b>repository</b> — the seam's only method that names no
+    /// Story. Until now the product could apply a label but never create one, which meant a
+    /// trigger label nobody had used yet was not offerable in the vendor's own interface.
+    /// <para>
+    /// Idempotent in the strong sense: "already there" is success, so a caller never has to ask
+    /// first. A vendor with no repository-level notion of a label succeeds without acting rather
+    /// than manufacturing one by tagging an arbitrary work item — see the Azure DevOps
+    /// implementation (automation-defaults design D3).
+    /// </para>
+    /// </summary>
+    Task<ErrorOr<Success>> EnsureLabel(
+        BacklogCoordinates coordinates,
+        string label,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>
     /// The change (pull request, in GitHub's dialect) that references this Story, or null when
     /// none does. Vendor-neutral by design (story-documents D1): a second vendor answers this
     /// from work-item relations, and "PullRequest" as a seam type would be a noun it has to

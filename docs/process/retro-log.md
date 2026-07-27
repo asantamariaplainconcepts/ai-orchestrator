@@ -888,3 +888,23 @@ times in the project this framework came from.
 - **ADR:** none new. ADR-0004 already covers "existence is not correctness"; this is its third
   instance and it is worth watching — if a fourth appears, the rule needs a check rather than
   another retro line.
+
+## 2026-07-27 — automation-defaults
+
+- **Worked:** the grill asked what the button creates, and the answer moved the whole change. "Also
+  the labels" sounded like a detail and was the actual work: the seam could apply a label to a
+  Story but never create one in a repository, so a trigger nobody had used yet was invisible in
+  the vendor's own interface. The feature would have shipped looking complete and been useless
+  for the case it exists for — a project nobody has labelled anything in yet. The test that pins
+  it asserts the *absence* of a change: labels reach the repository while the single Story keeps
+  an empty label list.
+- **Didn't:** I put an acceptance criterion in the issue citing BR-002 as an Automation cap. BR-002
+  caps concurrent **Runs**; no Automation cap exists anywhere. Had I not checked, the honest
+  reading of my own issue would have been to build the limit — inventing a product constraint
+  inside a change about seeding defaults, which is precisely what RULE-005 forbids. Citing a rule
+  by number felt like rigour and was the opposite: I never opened the file.
+- **Next time:** when an issue cites a `BR-*`, read the rule's sentence into the issue rather than
+  its number. A number cannot be wrong on inspection; a sentence can.
+- **Time invested:** not measured (source: **manual** — thirty-first consecutive).
+- **ADR:** none new. ADR-0006 was applied rather than extended: the E2E reachability test now
+  covers this button, so the capability cannot ship unreachable.

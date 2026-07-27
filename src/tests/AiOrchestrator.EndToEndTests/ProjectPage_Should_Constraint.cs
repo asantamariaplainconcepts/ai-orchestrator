@@ -60,6 +60,12 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         runtimes.ShouldContain("ClaudeCodeHeadless");
         runtimes.ShouldContain("OpenCode");
 
+        // The one-click set-up is a capability too, and an unreachable button is the exact
+        // failure this test exists for.
+        var setUpDefaults = page.GetByRole(AriaRole.Button, new() { Name = "Set up defaults" });
+        (await setUpDefaults.IsVisibleAsync()).ShouldBeTrue();
+        (await setUpDefaults.IsDisabledAsync()).ShouldBeFalse();
+
         var vendor = page.Locator("#vendor");
         (await vendor.IsDisabledAsync()).ShouldBeFalse();
         var vendors = await vendor.Locator("option").AllInnerTextsAsync();
