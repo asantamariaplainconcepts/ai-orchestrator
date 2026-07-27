@@ -36,6 +36,9 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 - **UC-023 — Member reads the documents attached to a Story's work.** The markdown its
   linked change adds or modifies, read live at that change's head through the Connector and
   rendered sanitised. Distinct from UC-013 (an Agent's Plan, which is data on a Run).
+- **UC-024 — Member reviews the file changes a Run produced.** The files its pull request
+  touched, with the vendor's unified patch, read live at the change and shown beside the Plan
+  that was approved. Binary and over-large patches state why rather than truncating.
 - **UC-009 — System polls the backlog.** Per-project poll (default 60 s, configurable)
   refreshes the Mirror and emits normalized story events ([DEC-028](10-locked-mvp-decisions.md)).
 - **UC-010 — System ingests a vendor webhook.** GitHub/AzDO events normalize into the
