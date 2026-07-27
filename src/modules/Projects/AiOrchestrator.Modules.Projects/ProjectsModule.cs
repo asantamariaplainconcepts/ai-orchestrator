@@ -48,5 +48,6 @@ public sealed class ProjectsModule : ModuleBase
 
         // The Contracts read surface — the owner registers its own implementation.
         services.AddScoped<IAutomationCatalog, AutomationCatalog>();
+        services.AddScoped<OverlapGuard>();
     }
 }

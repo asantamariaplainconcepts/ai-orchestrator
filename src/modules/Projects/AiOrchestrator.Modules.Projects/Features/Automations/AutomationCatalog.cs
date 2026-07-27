@@ -35,8 +35,10 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
     {
         // Materialise then project: the detail carries enum names, and ToString() inside an EF
         // projection translates to SQL rather than evaluating in .NET (the #7 lesson).
+        // No Enabled filter: an in-flight Run must be able to finish under an Automation that
+        // was disabled after it started (UC-006 — disabling stops future matches only).
         var automation = await database.Automations.FirstOrDefaultAsync(
-            entity => entity.Id == automationId && entity.ProjectId == projectId && entity.Enabled,
+            entity => entity.Id == automationId && entity.ProjectId == projectId,
             cancellationToken
         );
 

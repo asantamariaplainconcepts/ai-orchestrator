@@ -66,6 +66,30 @@ sealed class Automation : Aggregate
         TimeSpan timeout
     ) => new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout);
 
+    /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
+    public void UpdateTo(
+        string triggerLabel,
+        string? triggerState,
+        AutomationAction action,
+        AgentRuntime runtime,
+        bool requiresApproval,
+        TimeSpan timeout
+    )
+    {
+        TriggerLabel = triggerLabel;
+        TriggerState = triggerState;
+        Action = action;
+        Runtime = runtime;
+        RequiresApproval = requiresApproval;
+        Timeout = timeout;
+    }
+
+    /// <summary>
+    /// Disabling makes the Automation invisible to BR-003 and to matching; enabling makes it
+    /// visible again, which is why only enabling re-runs the overlap check.
+    /// </summary>
+    public void SetEnabled(bool enabled) => Enabled = enabled;
+
     /// <summary>
     /// BR-003's <i>intersects</i>, made precise (design D1): two Automations overlap when some
     /// Story could match both.

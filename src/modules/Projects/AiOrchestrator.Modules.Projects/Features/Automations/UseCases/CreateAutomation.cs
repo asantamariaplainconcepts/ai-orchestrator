@@ -118,7 +118,7 @@ sealed class CreateAutomation : IUseCase
         }
     }
 
-    internal sealed class Handler(ProjectsDbContext database)
+    internal sealed class Handler(ProjectsDbContext database, OverlapGuard overlaps)
         : IAppCommandHandler<Command, ErrorOr<Response>>
     {
         public async Task<ErrorOr<Response>> Handle(
@@ -148,23 +148,15 @@ sealed class CreateAutomation : IUseCase
                     : DefaultTimeout
             );
 
-            // Only this Project's Automations can conflict, and only on the same label — so the
-            // comparison set is small enough to evaluate in memory, where the domain rule lives.
-            // Pushing Overlaps() into SQL would split the rule across two languages.
-            var candidates = await database
-                .Automations.Where(existing =>
-                    existing.ProjectId == command.ProjectId
-                    && existing.TriggerLabel == command.TriggerLabel
-                )
-                .ToListAsync(cancellationToken);
-
-            if (candidates.Find(candidate.Overlaps) is { } conflict)
+            var overlap = await overlaps.Check(
+                candidate,
+                command.ProjectId,
+                excluding: null,
+                cancellationToken
+            );
+            if (overlap.IsError)
             {
-                return ProjectErrors.TriggerOverlaps(
-                    command.TriggerLabel,
-                    candidate.TriggerState,
-                    Describe(conflict)
-                );
+                return overlap.Errors;
             }
 
             database.Automations.Add(candidate);
@@ -172,11 +164,6 @@ sealed class CreateAutomation : IUseCase
 
             return ToResponse(candidate);
         }
-
-        static string Describe(Automation automation) =>
-            automation.TriggerState is null
-                ? $"'{automation.TriggerLabel}' (any state)"
-                : $"'{automation.TriggerLabel}' in state '{automation.TriggerState}'";
     }
 
     internal static Response ToResponse(Automation automation) =>

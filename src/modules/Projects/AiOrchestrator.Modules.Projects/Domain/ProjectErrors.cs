@@ -19,6 +19,12 @@ static class ProjectErrors
     /// their rules is in the way, and the whole point of a config-time gate is that the fix is
     /// obvious while they are still looking at the form.
     /// </summary>
+    public static Error AutomationNotFound(Guid automationId) =>
+        Error.NotFound(
+            "Automation.NotFound",
+            $"Automation '{automationId}' does not exist in this project."
+        );
+
     public static Error TriggerOverlaps(string label, string? state, string conflictingTrigger) =>
         Error.Conflict(
             "Automation.TriggerOverlaps",

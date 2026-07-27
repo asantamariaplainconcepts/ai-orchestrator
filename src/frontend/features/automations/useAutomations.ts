@@ -20,3 +20,27 @@ export function useCreateAutomation(projectId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
   });
 }
+
+export function useUpdateAutomation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, request }: { id: string; request: CreateAutomationRequest }) =>
+      api.put<Automation>(`/api/projects/${projectId}/automations/${id}`, request),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+  });
+}
+
+/** Enabling can be refused (BR-003 re-check); disabling never is. */
+export function useSetAutomationEnabled(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      api.post<Automation>(
+        `/api/projects/${projectId}/automations/${id}/${enabled ? "enable" : "disable"}`,
+        {},
+      ),
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+  });
+}
