@@ -60,6 +60,10 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         runtimes.ShouldContain("ClaudeCodeHeadless");
         runtimes.ShouldContain("OpenCode");
 
+        // The inbox is a capability too (UC-026): its nav entry must exist and lead somewhere.
+        var inboxNav = page.GetByRole(AriaRole.Link, new() { Name = "Inbox" });
+        (await inboxNav.IsVisibleAsync()).ShouldBeTrue();
+
         // The one-click set-up is a capability too, and an unreachable button is the exact
         // failure this test exists for.
         var setUpDefaults = page.GetByRole(AriaRole.Button, new() { Name = "Set up defaults" });

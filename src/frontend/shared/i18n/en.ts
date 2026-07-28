@@ -35,6 +35,18 @@ export const en = {
   "backlog.syncedAt": "Last synced",
   "backlog.neverSynced": "Never synced",
 
+  "inbox.heading": "Waiting on you",
+  "inbox.loading": "Loading\u2026",
+  "inbox.error": "Could not load the inbox.",
+  "inbox.empty":
+    "Nothing is waiting on you. Runs that need an approval, an answer or a decision will appear here.",
+  "inbox.justNow": "just now",
+  "inbox.reason.approval": "Approve a plan",
+  "inbox.reason.input": "Answer a question",
+  "inbox.reason.failure": "Decide about a failure",
+  "inbox.table.story": "Story",
+  "inbox.table.reason": "Needs",
+  "inbox.table.waiting": "Waiting",
   "connector.heading": "Connector",
   "connector.none": "No backlog connected. Configure a Connector to read Stories.",
   "connector.vendor": "Vendor",
@@ -140,6 +152,7 @@ export const en = {
   // Shell — sidebar, top bar. The brand area is catalogue text only (DEC-021).
   "shell.nav.section": "Workspace",
   "shell.nav.projects": "Projects",
+  "shell.nav.inbox": "Inbox",
   // Honest placeholder: authentication does not exist yet (#12); no identity is invented.
   "shell.user.name": "Not signed in",
   "shell.user.hint": "Sign-in arrives with Entra ID",
