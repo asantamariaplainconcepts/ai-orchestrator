@@ -77,6 +77,11 @@ PR **before any code**, implemented on that same PR, then squash-merged with its
 a retro entry appended. Hotfixes and pure infra changes may use the lighter spec-less lane
 (DEC-025). The ceremonies and their commands land in bootstrap Phases 2–3.
 
+## Run it yourself
+
+A machine with Docker and git runs the whole system — no SDK, no Azure, no registry. See
+[SELF-HOSTING.md](SELF-HOSTING.md).
+
 ## License
 
 MIT — see [LICENSE](LICENSE). This product is open source on purpose: **anyone should be able to

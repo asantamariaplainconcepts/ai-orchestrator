@@ -1,0 +1,35 @@
+name: Compose drift
+
+# The self-host compose is generated from the AppHost (ADR-0003: one owner). This regenerates
+# it and fails when the committed artifact no longer matches the composition — the check that
+# keeps a committed generated file honest (#99). Same shape as the design-system drift gate.
+on:
+  workflow_call:
+
+jobs:
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Install the Aspire CLI
+        # Pinned to the repo's AppHost package line: a CLI upgrade should be a visible commit,
+        # not a silent change in what this gate accepts.
+        run: dotnet tool install --global Aspire.Cli --version 13.4.4
+
+      - name: Regenerate
+        run: ./scripts/generate-compose.sh
+
+      - name: Compare with the committed artifact
+        run: |
+          set -euo pipefail
+          if ! git diff --exit-code -- selfhost/docker-compose.yaml; then
+            echo "::error::selfhost/docker-compose.yaml drifted from the AppHost." \
+              "Run scripts/generate-compose.sh and commit the result."
+            exit 1
+          fi
+          echo "✓ the committed compose matches the AppHost"
