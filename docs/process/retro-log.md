@@ -1192,3 +1192,24 @@ times in the project this framework came from.
   file works". Two of the six defects lived exactly in that gap.
 - **Time invested:** not measured (source: **manual** — forty-fifth consecutive).
 - **ADR:** none new. DEC-049 gains its first exercised artifact.
+
+## 2026-07-28 — adopt-foundations
+
+- **Worked:** the collision hunt before any code. Diffing both systems' `:root` vocabularies
+  mechanically found `--border`/`--info` shadowing that no visual review would have attributed
+  (both values are plausible grays), and classified the third collision (`--font-sans`) as
+  harmless for a stated reason — `@theme inline` inlines values into utilities — that doubled
+  as the mechanism carrying Outfit to migrated surfaces without touching the kit's font. The
+  atlas- prefix rename was provably render-identical; coexistence held on first boot, and the
+  one toggle driving both dark hooks kept a half-migrated page from splitting into two themes.
+- **Didn't:** CI came back red on a pre-existing flaky backend test — the label-chain
+  functional test asserted the matched Run synchronously while matching rides CAP's background
+  dispatch (2-of-3 failures locally on untouched code). Not this change's defect, but this
+  change paid for it. The fixture already owned the right shape (DeliveryProbe's deadline
+  poll); the test simply didn't use it.
+- **Next time:** when two styling systems must share a document, diff their custom-property
+  vocabularies before writing code — a `:root` name collision is silent, theme-dependent, and
+  invisible in code review, and five minutes of comm(1) beats an afternoon of "why is this
+  border a slightly different gray".
+- **Time invested:** not measured (source: **manual** — forty-sixth consecutive).
+- **ADR:** none new. DEC-051 carries the decision.
