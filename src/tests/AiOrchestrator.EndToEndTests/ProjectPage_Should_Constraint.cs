@@ -26,12 +26,18 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
 
         await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}");
 
-        // Seeing the Connector heading proves the route resolved and the bundle executed; a
-        // server-side fallback alone would have rendered the shell without it.
+        // An unconfigured project lands on Settings with the form open (dashboard-tabs design
+        // D3): the one day configuration IS the job. Seeing the Connector heading also proves
+        // the route resolved and the bundle executed — a server-side fallback alone would have
+        // rendered the shell without it.
         var heading = page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 });
         await heading.WaitForAsync(new() { Timeout = 30_000 });
 
+        // The backlog's absence is stated on the tab that would have shown it.
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Operate" }).ClickAsync();
+
         var emptyState = page.GetByText("No backlog connected", new() { Exact = false });
+        await emptyState.WaitForAsync(new() { Timeout = 15_000 });
         (await emptyState.IsVisibleAsync()).ShouldBeTrue();
 
         // Refresh is meaningless without a Connector, and an enabled button that always fails is
@@ -54,7 +60,22 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         await page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 })
             .WaitForAsync(new() { Timeout = 30_000 });
 
+        // Since dashboard-tabs these controls live on the Automations tab, and creation sits
+        // behind an explicit button. Reachable by navigation is still reachable — which is the
+        // distinction this test exists to police: relocated is fine, unreachable is not.
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Automations" }).ClickAsync();
+
+        // The one-click set-up is a capability too, and an unreachable button is the exact
+        // failure this test exists for.
+        var setUpDefaults = page.GetByRole(AriaRole.Button, new() { Name = "Set up defaults" });
+        await setUpDefaults.WaitForAsync(new() { Timeout = 15_000 });
+        (await setUpDefaults.IsVisibleAsync()).ShouldBeTrue();
+        (await setUpDefaults.IsDisabledAsync()).ShouldBeFalse();
+
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" }).ClickAsync();
+
         var runtime = page.Locator("#runtime");
+        await runtime.WaitForAsync(new() { Timeout = 15_000 });
         (await runtime.IsDisabledAsync()).ShouldBeFalse();
         var runtimes = await runtime.Locator("option").AllInnerTextsAsync();
         runtimes.ShouldContain("ClaudeCodeHeadless");
@@ -64,13 +85,10 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         var inboxNav = page.GetByRole(AriaRole.Link, new() { Name = "Inbox" });
         (await inboxNav.IsVisibleAsync()).ShouldBeTrue();
 
-        // The one-click set-up is a capability too, and an unreachable button is the exact
-        // failure this test exists for.
-        var setUpDefaults = page.GetByRole(AriaRole.Button, new() { Name = "Set up defaults" });
-        (await setUpDefaults.IsVisibleAsync()).ShouldBeTrue();
-        (await setUpDefaults.IsDisabledAsync()).ShouldBeFalse();
+        await page.GetByRole(AriaRole.Tab, new() { Name = "Settings" }).ClickAsync();
 
         var vendor = page.Locator("#vendor");
+        await vendor.WaitForAsync(new() { Timeout = 15_000 });
         (await vendor.IsDisabledAsync()).ShouldBeFalse();
         var vendors = await vendor.Locator("option").AllInnerTextsAsync();
         vendors.Count.ShouldBe(2);

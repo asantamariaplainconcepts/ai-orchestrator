@@ -1,5 +1,12 @@
 import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, AutomationAction } from "./types";
 import {
@@ -11,8 +18,9 @@ import {
 } from "./useAutomations";
 
 /**
- * UC-005 on the project page. No styles are declared here; the one control the kit lacked
- * (a checkbox) was added to the kit and regenerated rather than styled inline.
+ * UC-005 on its own tab. Creation lives behind an explicit button (dashboard-tabs): a form that
+ * is always open tells the reader this page is for configuring, which is false on every day but
+ * the first.
  */
 export function AutomationsSection({ projectId }: { projectId: string }) {
   const automations = useAutomations(projectId);
@@ -22,6 +30,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const defaults = useApplyAutomationDefaults(projectId);
   const remove = useDeleteAutomation(projectId);
 
+  const [creating, setCreating] = useState(false);
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
   const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
@@ -49,49 +58,66 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         rubricPath: isGrill && rubricPath.trim() ? rubricPath.trim() : null,
         readyLabel: isGrill && readyLabel.trim() ? readyLabel.trim() : null,
       },
-      { onSuccess: () => setTriggerLabel("") },
+      {
+        onSuccess: () => {
+          setTriggerLabel("");
+          setCreating(false);
+        },
+      },
     );
   }
 
   const rows = automations.data ?? [];
 
   return (
-    <section className="card">
-      <div className="card-header">
-        <div className="row">
-          <h2>{t("automations.heading")}</h2>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold">{t("automations.heading")}</h2>
           {automations.data ? (
-            <span className="badge badge-neutral">
+            <Badge variant="secondary">
               {tCount(rows.length, "automations.count.one", "automations.count.other")}
-            </span>
+            </Badge>
           ) : null}
         </div>
-        <button
-          className="btn"
-          type="button"
-          onClick={() => defaults.mutate()}
-          disabled={defaults.isPending}
-          title={t("automations.defaults.hint")}
-        >
-          {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => defaults.mutate()}
+            disabled={defaults.isPending}
+            title={t("automations.defaults.hint")}
+          >
+            {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
+          </Button>
+          <Button type="button" onClick={() => setCreating((open) => !open)}>
+            {creating ? t("automations.new.close") : t("automations.new")}
+          </Button>
+        </div>
       </div>
 
-      {/* Partial success is the normal outcome, so the result is reported rather than reduced
-          to success or failure (design D2). */}
       {/* The refusal carries the rule, so it gets its own line rather than a generic error. */}
       {remove.isError && (
-        <p className="state state-error" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {t("automations.delete.refused")}
         </p>
       )}
+      {/* Enabling's refusal is its own outcome — previously nested inside the create error, so
+          it only ever appeared when creation had failed too. */}
+      {setEnabled.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          {t("automations.enableFailed")}
+        </p>
+      )}
       {defaults.isError && (
-        <p className="state state-error" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {t("automations.defaults.failed")}
         </p>
       )}
+      {/* Partial success is the normal outcome, so the result is reported rather than reduced
+          to success or failure (design D2). */}
       {defaults.data ? (
-        <p className="card-hint">
+        <p className="text-xs text-muted-foreground">
           {defaults.data.created.length > 0
             ? `${defaults.data.created.length} ${t("automations.defaults.created")}`
             : t("automations.defaults.nothingNew")}
@@ -104,215 +130,190 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         </p>
       ) : null}
 
-      <form className="stack" onSubmit={submit}>
-        <div className="row">
-          <div className="field">
-            <label className="label" htmlFor="trigger-label">
-              {t("automations.trigger")}
-            </label>
-            <input
-              id="trigger-label"
-              className="input"
-              value={triggerLabel}
-              onChange={(event) => setTriggerLabel(event.target.value)}
-              placeholder={t("automations.triggerPlaceholder")}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="trigger-state">
-              {t("automations.state")}
-            </label>
-            <input
-              id="trigger-state"
-              className="input"
-              value={triggerState}
-              onChange={(event) => setTriggerState(event.target.value)}
-              placeholder={t("automations.statePlaceholder")}
-            />
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="action">
-              {t("automations.action")}
-            </label>
-            <select
-              id="action"
-              className="input"
-              value={action}
-              onChange={(event) => setAction(event.target.value as AutomationAction)}
-            >
-              {AUTOMATION_ACTIONS.map((candidate) => (
-                <option key={candidate} value={candidate}>
-                  {candidate}
-                  {EXECUTABLE_ACTIONS.includes(candidate)
-                    ? ""
-                    : ` — ${t("automations.actionNotExecutable")}`}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label className="label" htmlFor="runtime">
-              {t("automations.runtime")}
-            </label>
-            <select
-              id="runtime"
-              className="input"
-              value={runtime}
-              onChange={(event) => setRuntime(event.target.value as AgentRuntime)}
-            >
-              {AGENT_RUNTIMES.map((candidate) => (
-                <option key={candidate} value={candidate}>
-                  {candidate}
-                </option>
-              ))}
-            </select>
-          </div>
-          {isGrill ? (
-            <>
-              <div className="field">
-                <label className="label" htmlFor="rubric-path">
-                  {t("automations.rubricPath")}
-                </label>
-                <input
-                  id="rubric-path"
-                  className="input"
-                  value={rubricPath}
-                  onChange={(event) => setRubricPath(event.target.value)}
-                  placeholder={t("automations.rubricPathPlaceholder")}
-                />
+      {creating && (
+        <Card>
+          <CardContent>
+            <form className="flex flex-col gap-4" onSubmit={submit}>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="trigger-label">{t("automations.trigger")}</Label>
+                  <Input
+                    id="trigger-label"
+                    value={triggerLabel}
+                    onChange={(event) => setTriggerLabel(event.target.value)}
+                    placeholder={t("automations.triggerPlaceholder")}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="trigger-state">{t("automations.state")}</Label>
+                  <Input
+                    id="trigger-state"
+                    value={triggerState}
+                    onChange={(event) => setTriggerState(event.target.value)}
+                    placeholder={t("automations.statePlaceholder")}
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="action">{t("automations.action")}</Label>
+                  <NativeSelect
+                    id="action"
+                    value={action}
+                    onChange={(event) => setAction(event.target.value as AutomationAction)}
+                  >
+                    {AUTOMATION_ACTIONS.map((candidate) => (
+                      <option key={candidate} value={candidate}>
+                        {candidate}
+                        {EXECUTABLE_ACTIONS.includes(candidate)
+                          ? ""
+                          : ` — ${t("automations.actionNotExecutable")}`}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="runtime">{t("automations.runtime")}</Label>
+                  <NativeSelect
+                    id="runtime"
+                    value={runtime}
+                    onChange={(event) => setRuntime(event.target.value as AgentRuntime)}
+                  >
+                    {AGENT_RUNTIMES.map((candidate) => (
+                      <option key={candidate} value={candidate}>
+                        {candidate}
+                      </option>
+                    ))}
+                  </NativeSelect>
+                </div>
+                {isGrill ? (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="rubric-path">{t("automations.rubricPath")}</Label>
+                      <Input
+                        id="rubric-path"
+                        value={rubricPath}
+                        onChange={(event) => setRubricPath(event.target.value)}
+                        placeholder={t("automations.rubricPathPlaceholder")}
+                      />
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="ready-label">{t("automations.readyLabel")}</Label>
+                      <Input
+                        id="ready-label"
+                        value={readyLabel}
+                        onChange={(event) => setReadyLabel(event.target.value)}
+                        placeholder={t("automations.readyLabelPlaceholder")}
+                      />
+                    </div>
+                  </>
+                ) : null}
               </div>
-              <div className="field">
-                <label className="label" htmlFor="ready-label">
-                  {t("automations.readyLabel")}
-                </label>
-                <input
-                  id="ready-label"
-                  className="input"
-                  value={readyLabel}
-                  onChange={(event) => setReadyLabel(event.target.value)}
-                  placeholder={t("automations.readyLabelPlaceholder")}
-                />
+
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="requires-approval"
+                    checked={requiresApproval}
+                    onCheckedChange={(checked) => setRequiresApproval(checked === true)}
+                  />
+                  <Label htmlFor="requires-approval">{t("automations.approval")}</Label>
+                </div>
+                <Button type="submit" disabled={create.isPending}>
+                  {create.isPending ? t("automations.adding") : t("automations.add")}
+                </Button>
               </div>
-            </>
-          ) : null}
-          <div className="field-inline">
-            <input
-              id="requires-approval"
-              className="checkbox"
-              type="checkbox"
-              checked={requiresApproval}
-              onChange={(event) => setRequiresApproval(event.target.checked)}
-            />
-            <label className="label" htmlFor="requires-approval">
-              {t("automations.approval")}
-            </label>
-          </div>
-          <button className="btn btn-primary" type="submit" disabled={create.isPending}>
-            {create.isPending ? t("automations.adding") : t("automations.add")}
-          </button>
-        </div>
 
-        <p className="card-hint">{t("automations.catalogueHint")}</p>
+              <p className="text-xs text-muted-foreground">{t("automations.catalogueHint")}</p>
 
-        {create.isError && (
-          <p className="state state-error" role="alert">
-            {t("automations.saveFailed")}
+              {create.isError && (
+                <p className="text-sm text-destructive" role="alert">
+                  {t("automations.saveFailed")}
+                </p>
+              )}
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
-            {setEnabled.isError && (
-              <p className="state state-error" role="alert">
-                {t("automations.enableFailed")}
-              </p>
-            )}
-          </p>
-        )}
-      </form>
-
-      {automations.isPending && <p className="state">{t("automations.loading")}</p>}
+      {automations.isPending && (
+        <p className="text-sm text-muted-foreground">{t("automations.loading")}</p>
+      )}
       {automations.isError && (
-        <p className="state state-error" role="alert">
+        <p className="text-sm text-destructive" role="alert">
           {t("automations.error")}
         </p>
       )}
-      {automations.data && rows.length === 0 && <p className="state">{t("automations.empty")}</p>}
+      {automations.data && rows.length === 0 && (
+        <p className="text-sm text-muted-foreground">{t("automations.empty")}</p>
+      )}
 
       {rows.length > 0 && (
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t("automations.table.trigger")}</th>
-              <th>{t("automations.table.action")}</th>
-              <th>{t("automations.table.approval")}</th>
-              <th className="table-num">{t("automations.table.timeout")}</th>
-              <th>{t("automations.table.status")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((automation) => (
-              <tr key={automation.id}>
-                <td>
-                  <span className="row">
-                    <span className="pill pill-neutral">{automation.triggerLabel}</span>
+        <Card>
+          <CardContent>
+            <ul className="divide-y">
+              {rows.map((automation) => (
+                <li
+                  key={automation.id}
+                  className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="flex min-w-0 flex-wrap items-center gap-2">
+                    <Badge variant="secondary">{automation.triggerLabel}</Badge>
                     {automation.triggerState ? (
-                      <span className="pill pill-info">{automation.triggerState}</span>
+                      <Badge className="bg-info text-info-foreground">
+                        {automation.triggerState}
+                      </Badge>
                     ) : (
-                      <span className="empty-value">{t("automations.anyState")}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {t("automations.anyState")}
+                      </span>
                     )}
-                  </span>
-                </td>
-                <td>
-                  <span className="row">
-                    <span className="list-title">{automation.action}</span>
+                    <span className="truncate text-sm font-medium">{automation.action}</span>
                     {EXECUTABLE_ACTIONS.includes(automation.action) ? null : (
-                      <span className="pill pill-warn">{t("automations.actionNotExecutable")}</span>
+                      <Badge className="bg-warning text-warning-foreground">
+                        {t("automations.actionNotExecutable")}
+                      </Badge>
                     )}
-                  </span>
-                </td>
-                <td>
-                  <span
-                    className={automation.requiresApproval ? "pill pill-info" : "pill pill-neutral"}
-                  >
-                    {automation.requiresApproval
-                      ? t("automations.approvalRequired")
-                      : t("automations.approvalNone")}
-                  </span>
-                </td>
-                <td className="table-num">
-                  {automation.timeoutMinutes} {t("automations.minutes")}
-                </td>
-                <td>
-                  <span className="row">
+                    {automation.requiresApproval ? (
+                      <Badge className="bg-info text-info-foreground">
+                        {t("automations.approvalRequired")}
+                      </Badge>
+                    ) : null}
                     {automation.enabled ? null : (
-                      <span className="pill pill-neutral">{t("automations.disabled")}</span>
+                      <Badge variant="outline">{t("automations.disabled")}</Badge>
                     )}
-                    <button
-                      className="btn"
+                  </div>
+
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {automation.timeoutMinutes} {t("automations.minutes")}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       type="button"
                       disabled={setEnabled.isPending}
                       onClick={() =>
-                        setEnabled.mutate({
-                          id: automation.id,
-                          enabled: !automation.enabled,
-                        })
+                        setEnabled.mutate({ id: automation.id, enabled: !automation.enabled })
                       }
                     >
                       {automation.enabled ? t("automations.disable") : t("automations.enable")}
-                    </button>
-                    <button
-                      className="btn"
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
                       type="button"
                       disabled={remove.isPending}
                       onClick={() => remove.mutate(automation.id)}
                       title={t("automations.delete.hint")}
                     >
                       {t("automations.delete")}
-                    </button>
-                  </span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    </Button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
       )}
-    </section>
+    </div>
   );
 }

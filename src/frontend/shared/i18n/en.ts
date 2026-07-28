@@ -84,6 +84,8 @@ export const en = {
   "connector.save": "Configure connector",
   "connector.saving": "Verifying\u2026",
   "connector.saveFailed": "Could not save the Connector.",
+  "connector.edit": "Edit Connector",
+  "connector.cancel": "Cancel",
 
   "project.back": "All projects",
 
@@ -130,6 +132,8 @@ export const en = {
   "automations.error": "Could not load Automations.",
   "automations.empty": "No Automations yet. Add one to make a labelled Story trigger an Agent.",
   "automations.add": "Add Automation",
+  "automations.new": "New Automation",
+  "automations.new.close": "Close form",
   "automations.adding": "Saving\u2026",
   "automations.saveFailed": "Could not save the Automation.",
   "automations.trigger": "Trigger label",
@@ -171,6 +175,11 @@ export const en = {
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
   "project.title.fallback": "Project",
+  // The project page's tabs (dashboard-tabs): operating and configuring are different jobs.
+  "project.tab.operate": "Operate",
+  "project.tab.runs": "Runs",
+  "project.tab.automations": "Automations",
+  "project.tab.settings": "Settings",
 
   // Backlog stat cards — every value is computed from the live response, nothing else.
   "backlog.stats.total": "Stories",
