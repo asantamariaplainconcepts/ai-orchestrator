@@ -1213,3 +1213,21 @@ times in the project this framework came from.
   border a slightly different gray".
 - **Time invested:** not measured (source: **manual** — forty-sixth consecutive).
 - **ADR:** none new. DEC-051 carries the decision.
+
+## 2026-07-28 — project-pulse
+
+- **Worked:** the derived-never-stored shape (#94's) fit a second consumer without friction —
+  the pulse is one read slice and one Contracts addition (`VendorStoryIds`), zero schema. The
+  hand-derivable bar (D2) shaped the tests before the code: seeding runs through the domain
+  API with crafted timestamps made every expected value a sum a reviewer can check on paper.
+  D3 settled the strip-styling contradiction by rule, not taste: the day-old one-screen-one-
+  system spec outranked the issue body's "strip on shadcn" note, and restyling one strip twice
+  is cheaper than carving an exception into a fresh design contract.
+- **Didn't:** the design validator flagged `#108` in a JSX comment as a three-digit hex colour
+  — the comment-exclusion regex knows `//` and `*` but not `{/*`. Reworded the comment rather
+  than widening the regex mid-change; the validator owes JSX comments a pattern.
+- **Next time:** when a spec and an issue body disagree, say so in the design doc and let the
+  spec win explicitly — the sentence "the spec outranks the issue's note" cost one line and
+  pre-empted the review question.
+- **Time invested:** not measured (source: **manual** — forty-seventh consecutive).
+- **ADR:** none new.

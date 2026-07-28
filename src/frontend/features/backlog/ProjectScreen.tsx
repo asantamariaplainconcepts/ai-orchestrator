@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
+import { OperateStrip } from "@/features/runs/OperateStrip";
 import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { useRunNow } from "@/features/runs/useRunNow";
@@ -72,6 +73,10 @@ export function ProjectScreen() {
           connector={connector}
         />
 
+        {/* The pulse strip (issue 108) renders atop the current page until dashboard-tabs
+            gives it a permanent home. Anchors below are its audit-link targets (design D2). */}
+        {connector && <OperateStrip projectId={projectId} />}
+
         {/* Stat cards: every value computable from the current response, nothing else. */}
         {connector && (
           <div className="row">
@@ -115,13 +120,17 @@ export function ProjectScreen() {
           </div>
         )}
 
-        <AutomationsSection projectId={projectId} />
+        <div id="automations-section">
+          <AutomationsSection projectId={projectId} />
+        </div>
 
-        <RunsSection
-          projectId={projectId}
-          storyFilter={runsStoryFilter}
-          onClearFilter={() => setRunsStoryFilter(null)}
-        />
+        <div id="runs-section">
+          <RunsSection
+            projectId={projectId}
+            storyFilter={runsStoryFilter}
+            onClearFilter={() => setRunsStoryFilter(null)}
+          />
+        </div>
 
         <section className="card">
           <div className="card-header">

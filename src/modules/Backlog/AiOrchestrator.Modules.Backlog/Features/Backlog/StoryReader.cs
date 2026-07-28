@@ -27,4 +27,13 @@ sealed class StoryReader(BacklogDbContext database) : IStoryReader
                 story.Body
             ))
             .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<string>> VendorStoryIds(
+        Guid projectId,
+        CancellationToken cancellationToken = default
+    ) =>
+        await database
+            .Stories.Where(story => story.ProjectId == projectId)
+            .Select(story => story.VendorId)
+            .ToListAsync(cancellationToken);
 }
