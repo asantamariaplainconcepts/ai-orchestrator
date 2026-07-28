@@ -1,13 +1,115 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+// The self-host output (#99, DEC-049): `aspire publish` emits docker-compose from this same
+// composition, so run mode and the distributable can never describe two different systems.
+// Publish-only — in run mode this adds nothing.
+//
+// ConfigureComposeFile turns the publisher's image placeholders into build contexts: the
+// distribution story is clone + `docker compose up --build`, no registry anywhere (owner
+// decision on #99). The Dockerfiles are multi-stage with the SDK inside, so a Docker-only
+// machine builds everything.
+builder
+    .AddDockerComposeEnvironment("compose")
+    .ConfigureComposeFile(file =>
+    {
+        var builds = new Dictionary<string, string>
+        {
+            ["server"] = "src/root/AiOrchestrator.Server/Dockerfile",
+            ["migrations"] = "src/root/AiOrchestrator.MigrationService/Dockerfile",
+            ["dispatch"] = "src/root/AiOrchestrator.DispatchWorker/Dockerfile",
+        };
+
+        foreach (var service in file.Services)
+        {
+            if (builds.TryGetValue(service.Key, out var dockerfile))
+            {
+                service.Value.Image = null;
+                service.Value.Build = new Aspire.Hosting.Docker.Resources.ServiceNodes.Build
+                {
+                    // Relative to selfhost/, where the generated file is committed.
+                    Context = "..",
+                    Dockerfile = dockerfile,
+                };
+            }
+        }
+
+        // A fixed host mapping: the quickstart says "open localhost:$SERVER_PORT", which a
+        // random host port would turn into a scavenger hunt.
+        if (file.Services.TryGetValue("server", out var web))
+        {
+            web.Ports = ["${SERVER_PORT}:${SERVER_PORT}"];
+        }
+
+        // Two things `aspire run` does that raw compose does not, discovered by booting the
+        // output (#99): Aspire creates the AddDatabase database itself, and it health-gates
+        // startup. Without these, migrations raced postgres and then failed against a database
+        // that nothing had created.
+        if (file.Services.TryGetValue("postgres", out var db))
+        {
+            db.Environment["POSTGRES_DB"] = "aiorchestratordb";
+            db.Healthcheck = new Aspire.Hosting.Docker.Resources.ServiceNodes.Healthcheck
+            {
+                Test = ["CMD-SHELL", "pg_isready -U postgres -d aiorchestratordb"],
+                Interval = "2s",
+                Timeout = "5s",
+                Retries = 15,
+                StartPeriod = "5s",
+            };
+        }
+
+        foreach (var name in new[] { "migrations", "server", "dispatch" })
+        {
+            if (
+                file.Services.TryGetValue(name, out var dependent)
+                && dependent.DependsOn.TryGetValue("postgres", out var dependency)
+            )
+            {
+                dependency.Condition = "service_healthy";
+            }
+        }
+    });
+
 // PostgreSQL — one database, one schema per module.
-var database = builder.AddPostgres("postgres").WithDataVolume().AddDatabase("aiorchestratordb");
+// The volume is named so the generated compose is byte-stable across machines — the default
+// name embeds a path hash, which would make the drift check (#99) fail wherever the checkout
+// path differs.
+var database = builder
+    .AddPostgres("postgres")
+    .WithDataVolume("aio-postgres-data")
+    .AddDatabase("aiorchestratordb");
 
 // Azurite stands in for Azure Storage Queues, the Run dispatch substrate KEDA scales on
 // (DEC-013). It is here from day 0 so the queue contract is exercised locally, never mocked.
-var queues = builder.AddAzureStorage("storage").RunAsEmulator().AddQueues("queues");
+//
+// Two shapes for one stand-in: run mode uses the Aspire emulator resource; publish mode adds
+// Azurite as a plain container, because AddAzureStorage in publish emits Azure provisioning —
+// and the compose output must contact zero Azure (#99 AC4). The connection string below is
+// Azurite's PUBLISHED well-known dev credential, the same constant every Azurite quickstart
+// carries — a documented emulator constant, not a secret (BR-010 untouched).
+IResourceBuilder<Aspire.Hosting.Azure.AzureQueueStorageResource>? queues = null;
+if (builder.ExecutionContext.IsRunMode)
+{
+    queues = builder.AddAzureStorage("storage").RunAsEmulator().AddQueues("queues");
+}
 
-var frontend = builder.AddViteApp("frontend", "../../frontend").WithPnpm();
+const string AzuriteComposeConnection =
+    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
+    + "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
+    + "QueueEndpoint=http://storage:10001/devstoreaccount1;";
+
+if (builder.ExecutionContext.IsPublishMode)
+{
+    builder
+        .AddContainer("storage", "mcr.microsoft.com/azure-storage/azurite")
+        .WithArgs("azurite-queue", "--queueHost", "0.0.0.0")
+        .WithEndpoint(targetPort: 10001, name: "queue");
+}
+
+// The Vite dev server exists only in run mode: published/deployed, the SPA is a build artifact
+// served same-origin by the Server from wwwroot, so the compose output must not carry it (#99).
+var frontend = builder.ExecutionContext.IsRunMode
+    ? builder.AddViteApp("frontend", "../../frontend").WithPnpm()
+    : null;
 
 // Migrations are a bootstrap step in the composition graph, not a side effect of the Server
 // starting: this resource runs once against a healthy database and exits, and the Server waits
@@ -31,9 +133,20 @@ var dispatch = builder
     .AddProject<Projects.AiOrchestrator_DispatchWorker>("dispatch")
     .WithReference(database)
     .WaitFor(database)
-    .WithReference(queues)
-    .WaitFor(queues)
     .WaitForCompletion(migrations);
+
+if (queues is not null)
+{
+    dispatch.WithReference(queues).WaitFor(queues);
+}
+else
+{
+    dispatch
+        .WithEnvironment("ConnectionStrings__queues", AzuriteComposeConnection)
+        // No KEDA in compose: the worker is a long-lived drainer on a timer, the same divergence
+        // the local loop documents — WHAT starts a pass differs, the pass is identical.
+        .WithEnvironment("Dispatch__LocalPollSeconds", "5");
+}
 
 if (builder.ExecutionContext.IsRunMode)
 {
@@ -50,12 +163,23 @@ var server = builder
     .AddProject<Projects.AiOrchestrator_Server>("server")
     .WithReference(database)
     .WaitFor(database)
-    .WithReference(queues)
-    .WaitFor(queues)
     .WaitForCompletion(migrations)
-    // Same-origin in dev: the host proxies unmatched paths to the Vite dev server.
-    .WithReference(frontend)
     .WithExternalHttpEndpoints();
+
+if (queues is not null)
+{
+    server.WithReference(queues).WaitFor(queues);
+}
+else
+{
+    server.WithEnvironment("ConnectionStrings__queues", AzuriteComposeConnection);
+}
+
+if (frontend is not null)
+{
+    // Same-origin in dev: the host proxies unmatched paths to the Vite dev server.
+    server.WithReference(frontend);
+}
 
 // The AppHost owning the environment is the other half of that launchSettings decision — and the
 // half that was missing: with neither party setting it, the Server silently ran as Production

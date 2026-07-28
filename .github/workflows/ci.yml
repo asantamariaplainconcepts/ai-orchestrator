@@ -90,6 +90,12 @@ jobs:
     if: needs.changes.outputs.infra == 'true' || needs.changes.outputs.workflows == 'true'
     uses: ./.github/workflows/terraform.yml
 
+  # The self-host compose is generated from the AppHost; regenerate and fail on drift (#99).
+  compose-drift:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' || needs.changes.outputs.workflows == 'true'
+    uses: ./.github/workflows/compose-drift.yml
+
   # Spec-only PRs skip the heavy lanes, so the spec change is validated here instead.
   openspec-validate:
     needs: changes
