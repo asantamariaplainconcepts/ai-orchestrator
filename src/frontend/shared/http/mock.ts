@@ -48,6 +48,9 @@ const stories = [
   story("11", "Close OPN-002: verify Entra ID works", ["status:backlog"], "Verify both paths."),
   story("12", "Sign in via Entra ID", ["ai:grill"], "As a member I want to sign in."),
   story("13", "Admin assigns roles", [], null),
+  // No Run of its own: the only Story that can actually be moved on the board, since every
+  // other one is mid-Run and BR-001 refuses the gesture.
+  story("14", "Rotate the deploy credential", [], "Quarterly."),
 ];
 
 function story(vendorId: string, title: string, labels: string[], body: string | null) {
@@ -254,7 +257,33 @@ const routes: [string, RegExp, Handler][] = [
     /^\/api\/projects\/[^/]+\/runs\/[^/]+\/changes$/,
     () => ({ number: 41, url: "https://github.com/acme/portal/pull/41", files: [] }),
   ],
+  // The licensed write (UC-008), mutating the in-memory mirror so the board and the label pills
+  // actually move things in mock mode. A label whose name starts with "refuse" is rejected —
+  // the vendor's refusal is a state the UI must render, and it is the one this file cannot
+  // manufacture any other way.
+  ["PUT", /^\/api\/projects\/[^/]+\/backlog\/stories\/([^/]+)\/labels\/([^/]+)$/, labelWrite(true)],
+  [
+    "DELETE",
+    /^\/api\/projects\/[^/]+\/backlog\/stories\/([^/]+)\/labels\/([^/]+)$/,
+    labelWrite(false),
+  ],
 ];
+
+function labelWrite(apply: boolean): Handler {
+  return (match) => {
+    const vendorId = decodeURIComponent(match[1] ?? "");
+    const label = decodeURIComponent(match[2] ?? "");
+    if (label.startsWith("refuse")) throw new Error("The vendor rejected the label.");
+
+    const found = stories.find((candidate) => candidate.vendorId === vendorId);
+    if (found) {
+      found.labels = apply
+        ? [...new Set([...found.labels, label])]
+        : found.labels.filter((candidate) => candidate !== label);
+    }
+    return {};
+  };
+}
 
 /** Same contract as the real request(): resolves parsed JSON or throws. */
 export async function mockRequest<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {

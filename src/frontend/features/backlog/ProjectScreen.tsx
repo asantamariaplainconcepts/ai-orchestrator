@@ -23,11 +23,29 @@ import {
   useWriteStoryLabel,
 } from "./useBacklog";
 import { ApiError } from "@/shared/http/client";
+import { KanbanBoard } from "./KanbanBoard";
+import type { BoardAutomation } from "./KanbanBoard";
 import { BACKLOG_VENDORS } from "./types";
 import type { BacklogVendor, ConnectorView, StoryView } from "./types";
 
 const TABS = ["operate", "runs", "automations", "settings"] as const;
 type Tab = (typeof TABS)[number];
+
+type BacklogViewMode = "list" | "board";
+const VIEW_PREFERENCE = "aio:backlog-view";
+
+/**
+ * Unlike the landing tab (design D3), which is derived because the project's state decides it,
+ * list-or-board is a genuine preference: nothing about the project implies an answer. Read
+ * lazily so a blocked or absent localStorage degrades to the default rather than to a crash.
+ */
+function storedView(): BacklogViewMode {
+  try {
+    return window.localStorage.getItem(VIEW_PREFERENCE) === "board" ? "board" : "list";
+  } catch {
+    return "list";
+  }
+}
 
 /**
  * UC-004 + UC-007, separated: operating lives on its own tab, configuring on its own. The page
@@ -38,6 +56,7 @@ export function ProjectScreen() {
   const { projectId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [runsStoryFilter, setRunsStoryFilter] = useState<string | null>(null);
+  const [view, setView] = useState<BacklogViewMode>(storedView);
   const backlog = useBacklog(projectId);
   const projects = useProjects();
   const automations = useAutomations(projectId);
@@ -108,6 +127,15 @@ export function ProjectScreen() {
                 setRunsStoryFilter(vendorStoryId);
                 selectTab("runs");
               }}
+              view={view}
+              onViewChange={(next) => {
+                setView(next);
+                try {
+                  window.localStorage.setItem(VIEW_PREFERENCE, next);
+                } catch {
+                  // A refused write costs the preference, never the interaction.
+                }
+              }}
             />
           </TabsContent>
 
@@ -159,6 +187,8 @@ function BacklogPanel({
   hasResponse,
   automations,
   onViewRuns,
+  view,
+  onViewChange,
 }: {
   projectId: string;
   connector: ConnectorView | null;
@@ -166,8 +196,10 @@ function BacklogPanel({
   isPending: boolean;
   isError: boolean;
   hasResponse: boolean;
-  automations: { id: string; triggerLabel: string; enabled: boolean }[];
+  automations: BoardAutomation[];
   onViewRuns: (vendorStoryId: string) => void;
+  view: BacklogViewMode;
+  onViewChange: (next: BacklogViewMode) => void;
 }) {
   const refresh = useRefreshBacklog(projectId);
   const writeLabel = useWriteStoryLabel(projectId);
@@ -198,14 +230,26 @@ function BacklogPanel({
             <span className="text-xs text-muted-foreground">{t("backlog.neverSynced")}</span>
           ) : null}
         </div>
-        <Button
-          variant="outline"
-          type="button"
-          onClick={() => refresh.mutate()}
-          disabled={!connector || refresh.isPending}
-        >
-          {refresh.isPending ? t("backlog.refreshing") : t("backlog.refresh")}
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* A genuine preference, unlike the landing tab: nothing about the project derives it,
+              so this one is remembered (#110). */}
+          <Button
+            variant="outline"
+            type="button"
+            aria-pressed={view === "board"}
+            onClick={() => onViewChange(view === "board" ? "list" : "board")}
+          >
+            {view === "board" ? t("board.showList") : t("board.showBoard")}
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            onClick={() => refresh.mutate()}
+            disabled={!connector || refresh.isPending}
+          >
+            {refresh.isPending ? t("backlog.refreshing") : t("backlog.refresh")}
+          </Button>
+        </div>
       </div>
 
       {isPending && <p className="text-sm text-muted-foreground">{t("backlog.loading")}</p>}
@@ -244,7 +288,11 @@ function BacklogPanel({
         <p className="text-sm text-muted-foreground">{t("backlog.empty")}</p>
       )}
 
-      {stories.length > 0 && (
+      {stories.length > 0 && view === "board" && (
+        <KanbanBoard projectId={projectId} stories={stories} automations={automations} />
+      )}
+
+      {stories.length > 0 && view === "list" && (
         <Card>
           <CardContent>
             <ul className="divide-y">
