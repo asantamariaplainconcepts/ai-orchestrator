@@ -1072,3 +1072,25 @@ times in the project this framework came from.
 - **ADR:** none new. This is ADR-0004's third instance in a week (existence as a proxy for
   correctness) and ADR-0006's fourth (complete but unreachable). If either recurs again the rule
   needs a gate, not another retro line.
+
+## 2026-07-28 — deploy-the-dispatch-worker (spec-less, DEC-025)
+
+- **Worked:** comparing the running image tags found in one command what two rounds of log
+  reading had not. The portal was on today's commit, the worker on one from days earlier, and
+  the worker's silence — `Claimed` then `pass complete`, nothing between — is precisely the
+  behaviour of the build that predates `executor.Execute`. The deploy now ships the worker and,
+  more importantly, reads back what is *running* and refuses to claim success unless both images
+  carry the tag it just pushed.
+- **Didn't:** I diagnosed #90, found a genuinely missing env var, fixed it, and reported the
+  symptom as explained — **and it was not the cause**. I verified by comparing configuration
+  between workloads instead of watching a Run execute, which is the exact substitution ADR-0004
+  exists to forbid, made by the person who has cited that ADR four times this week. The owner
+  had to run a second Run to show me I was wrong.
+- **Next time:** when a fix is meant to change observable behaviour, the verification is the
+  observable behaviour. "The configuration now matches" is a reason to expect success, never
+  evidence of it. Had I dispatched a Run after #90 rather than reading env vars, this would have
+  been one investigation instead of two.
+- **Time invested:** not measured (source: **manual** — thirty-ninth consecutive).
+- **ADR:** none new, and that is now a deliberate call worth revisiting: ADR-0004 has been cited
+  in four retros this week and violated in this one. The next occurrence should add a gate rather
+  than a fifth retro line — the deploy's image read-back is the first such gate.

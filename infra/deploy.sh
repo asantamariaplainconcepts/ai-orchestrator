@@ -27,10 +27,12 @@ REGISTRY="$(tf registry_login_server)"
 REGISTRY_NAME="$(tf registry_name)"
 PORTAL_APP="$(tf portal_app_name)"
 MIGRATION_JOB="$(tf migration_job_name)"
+DISPATCH_JOB="$(tf dispatch_job_name)"
 PORTAL_URL="$(tf portal_url)"
 
 PORTAL_IMAGE="${REGISTRY}/portal:${TAG}"
 MIGRATION_IMAGE="${REGISTRY}/migrations:${TAG}"
+DISPATCH_IMAGE="${REGISTRY}/dispatch:${TAG}"
 
 echo "Tag        : ${TAG}"
 echo "Registry   : ${REGISTRY}"
@@ -49,10 +51,14 @@ docker build --platform linux/amd64 \
 docker build --platform linux/amd64 \
   -f "${REPO_ROOT}/src/root/AiOrchestrator.MigrationService/Dockerfile" \
   -t "${MIGRATION_IMAGE}" "${REPO_ROOT}"
+docker build --platform linux/amd64 \
+  -f "${REPO_ROOT}/src/root/AiOrchestrator.DispatchWorker/Dockerfile" \
+  -t "${DISPATCH_IMAGE}" "${REPO_ROOT}"
 
 echo "→ pushing"
 docker push "${PORTAL_IMAGE}"
 docker push "${MIGRATION_IMAGE}"
+docker push "${DISPATCH_IMAGE}"
 
 echo "→ pointing the migration job at ${TAG}"
 az containerapp job update \
@@ -98,12 +104,41 @@ if [ "${status:-}" != "Succeeded" ]; then
   exit 1
 fi
 
+# The worker moves before the app that feeds it. Both run the new code against the just-migrated
+# schema, and updating the job first means no window where a new portal enqueues work for a
+# worker built against an older schema. This step is the one #92 was missing entirely: the job
+# ran whatever image the first terraform apply set, for as long as nobody looked.
+echo "→ pointing the dispatch worker at ${TAG}"
+az containerapp job update \
+  --name "${DISPATCH_JOB}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --image "${DISPATCH_IMAGE}" \
+  --output none
+
 echo "→ updating the portal revision"
 az containerapp update \
   --name "${PORTAL_APP}" \
   --resource-group "${RESOURCE_GROUP}" \
   --image "${PORTAL_IMAGE}" \
   --output none
+
+# Assert what is RUNNING, not what was commanded. #92 shipped for days with a stale worker
+# because every command returned zero and nobody compared the result to the intent.
+echo "→ confirming the running images carry ${TAG}"
+running_portal="$(az containerapp show --name "${PORTAL_APP}" --resource-group "${RESOURCE_GROUP}" --query "properties.template.containers[0].image" -o tsv)"
+running_dispatch="$(az containerapp job show --name "${DISPATCH_JOB}" --resource-group "${RESOURCE_GROUP}" --query "properties.template.containers[0].image" -o tsv)"
+
+for pair in "portal:${running_portal}" "dispatch:${running_dispatch}"; do
+  name="${pair%%:*}"
+  image="${pair#*:}"
+  case "${image}" in
+    *":${TAG}") echo "  ✓ ${name} → ${image}" ;;
+    *)
+      echo "  ✗ ${name} is running ${image}, not tag ${TAG}" >&2
+      exit 1
+      ;;
+  esac
+done
 
 echo
 echo "Deployed. Verify with the artifact, not the exit code (ADR-0004):"
