@@ -52,7 +52,7 @@ echo "── stage 1: adherence ────────────────
 HEX=$(sources | xargs grep -nE '#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b' 2>/dev/null \
   | grep -vE ':\s*(//|\*|/\*)' \
   | grep -vE '#[0-9]{1,4}\b\s*(—|-|:)?\s*(issue|PR)' \
-  | grep -E '[:"'"'"'(]\s*#[0-9a-fA-F]{3,6}\b|#[0-9a-fA-F]*[a-fA-F][0-9a-fA-F]*\b' || true)
+  | grep -E '[:"'"'"']\s*#[0-9a-fA-F]{3,6}\b|#[0-9a-fA-F]*[a-fA-F][0-9a-fA-F]*\b' || true)
 if [ -n "$HEX" ]; then
   fail "raw hex colour — use a colour token (see DESIGN.md)"
   echo "$HEX" | sed 's/^/      /'
