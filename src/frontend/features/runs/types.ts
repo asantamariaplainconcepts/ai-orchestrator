@@ -21,6 +21,31 @@ export interface RunView {
   costUsd: number | null;
 }
 
+export interface PulseAutomation {
+  automationId: string;
+  triggerLabel: string;
+  action: string;
+  fired: number;
+  failed: number;
+}
+
+/** #108 — the 7-day window, exactly as the API reports it. Null means "no data", never zero. */
+export interface ProjectPulse {
+  runsStarted: number;
+  terminalRuns: number;
+  successRate: number | null;
+  knownCostUsd: number;
+  reportedRuns: number;
+  unknownCostRuns: number;
+  meanQueueWaitSeconds: number | null;
+  meanDurationSeconds: number | null;
+  automations: PulseAutomation[];
+  storiesTotal: number;
+  storiesNeverRun: number;
+  waiting: { approval: number; input: number; failure: number };
+  oldestOpenQuestionSeconds: number | null;
+}
+
 export interface ProjectCost {
   totalCostUsd: number;
   totalInputTokens: number;

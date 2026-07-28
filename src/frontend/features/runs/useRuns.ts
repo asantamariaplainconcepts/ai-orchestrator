@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
-import type { ProjectCost, RunView } from "./types";
+import type { ProjectCost, ProjectPulse, RunView } from "./types";
 
 const runsKey = (projectId: string, vendorStoryId: string | null) =>
   ["runs", projectId, vendorStoryId] as const;
@@ -67,6 +67,15 @@ export function useCancelRun(projectId: string) {
     mutationFn: (runId: string) =>
       api.post<unknown>(`/api/projects/${projectId}/runs/${runId}/cancel`, {}),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
+  });
+}
+
+/** #108 — same cadence as the runs list it summarises, so the two cannot visibly disagree. */
+export function usePulse(projectId: string) {
+  return useQuery({
+    queryKey: ["pulse", projectId] as const,
+    queryFn: () => api.get<ProjectPulse>(`/api/projects/${projectId}/pulse`),
+    refetchInterval: 10_000,
   });
 }
 

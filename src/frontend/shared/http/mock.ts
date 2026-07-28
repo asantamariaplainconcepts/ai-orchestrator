@@ -189,6 +189,47 @@ const routes: [string, RegExp, Handler][] = [
   ],
   [
     "GET",
+    /^\/api\/projects\/[^/]+\/pulse$/,
+    () => ({
+      runsStarted: 12,
+      terminalRuns: 10,
+      successRate: 0.8,
+      knownCostUsd: 0.37,
+      reportedRuns: 9,
+      unknownCostRuns: 3,
+      meanQueueWaitSeconds: 18,
+      meanDurationSeconds: 264,
+      automations: [
+        {
+          automationId: "a1",
+          triggerLabel: "ai:implement",
+          action: "ImplementToPullRequest",
+          fired: 7,
+          failed: 1,
+        },
+        {
+          automationId: "a2",
+          triggerLabel: "ai:grill",
+          action: "GrillToReady",
+          fired: 5,
+          failed: 1,
+        },
+        {
+          automationId: "a3",
+          triggerLabel: "ai:transition",
+          action: "TransitionState",
+          fired: 0,
+          failed: 0,
+        },
+      ],
+      storiesTotal: 9,
+      storiesNeverRun: 2,
+      waiting: { approval: 1, input: 1, failure: 1 },
+      oldestOpenQuestionSeconds: 5400,
+    }),
+  ],
+  [
+    "GET",
     /^\/api\/projects\/[^/]+\/stories\/([^/]+)$/,
     (match) => {
       const found = stories.find((s) => s.vendorId === match[1]);
