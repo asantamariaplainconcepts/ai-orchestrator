@@ -13,6 +13,16 @@ public interface IStoryReader
         string vendorStoryId,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// Every Story the mirror currently holds for the project, as vendor ids. Ids only: the
+    /// pulse's coverage figure (#108) needs set arithmetic, not snapshots, and a consumer that
+    /// needs more reads <see cref="Find"/> per id like the inbox does.
+    /// </summary>
+    Task<IReadOnlyList<string>> VendorStoryIds(
+        Guid projectId,
+        CancellationToken cancellationToken = default
+    );
 }
 
 /// <summary>Current truth at read time — labels and state in the vendor's own vocabulary.</summary>
