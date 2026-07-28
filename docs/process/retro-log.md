@@ -1173,3 +1173,22 @@ times in the project this framework came from.
   did (FlushInterval + the poll literal) — an inspectable budget beats a measured-once claim.
 - **Time invested:** not measured (source: **manual** — forty-fourth consecutive).
 - **ADR:** none new. DEC-050 carries the decision.
+
+## 2026-07-28 — self-host-distribution
+
+- **Worked:** ADR-0001 earned its keep six times in one change. Six defects between "the publish
+  pipeline succeeded" and "a stranger's machine runs this", every one found by exercising and
+  invisible to reading: the build-only validation, publish-mode bicep from the storage emulator,
+  the path-hashed volume name, image placeholders expecting a deploy step, the random host port,
+  and — findable only by an actual boot — the missing database and the missing health gate,
+  because Aspire quietly does both under `aspire run`. The final boot also proved #90's
+  refuse-to-start guard in a third habitat for free.
+- **Didn't:** I started implementing before writing the OpenSpec bundle and had to backfill it —
+  the propose/implement rhythm slipped in the excitement of exercising `aspire publish`. Nothing
+  was lost because the bundle preceded the PR, but the order exists so the design is argued
+  before it is sunk cost.
+- **Next time:** when adopting a generator (aspire publish, any scaffolder), boot its output
+  before trusting its success message — a generator's green means "I wrote a file", never "the
+  file works". Two of the six defects lived exactly in that gap.
+- **Time invested:** not measured (source: **manual** — forty-fifth consecutive).
+- **ADR:** none new. DEC-049 gains its first exercised artifact.
