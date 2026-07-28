@@ -28,7 +28,10 @@ export const en = {
   "backlog.empty": "No open Stories in this repository.",
   // Distinct from the above on purpose: nothing has been read yet, so "no Stories" would be a
   // claim we have not earned.
-  "backlog.noConnector": "Nothing to show yet. Configure a Connector above to read Stories.",
+  // "above" was true on the single-scroll page; the Connector now lives on Settings, and a
+  // direction that no longer holds is worse than no direction.
+  "backlog.noConnector":
+    "Nothing to show yet. Connect a backlog on the Settings tab to read Stories.",
   "backlog.stale": "Could not read the backlog. Showing the last Stories we saw.",
   "backlog.refresh": "Refresh backlog",
   "backlog.refreshing": "Refreshing\u2026",

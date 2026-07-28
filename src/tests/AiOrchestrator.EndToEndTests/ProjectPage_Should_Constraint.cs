@@ -33,12 +33,17 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         var heading = page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 });
         await heading.WaitForAsync(new() { Timeout = 30_000 });
 
-        // The backlog's absence is stated on the tab that would have shown it.
+        // Settings states the absence and what to do about it.
+        var settingsEmptyState = page.GetByText("No backlog connected", new() { Exact = false });
+        (await settingsEmptyState.IsVisibleAsync()).ShouldBeTrue();
+
+        // Operate states its own absence, and points at the tab that fixes it — each tab owns
+        // the message for what is missing from it.
         await page.GetByRole(AriaRole.Tab, new() { Name = "Operate" }).ClickAsync();
 
-        var emptyState = page.GetByText("No backlog connected", new() { Exact = false });
-        await emptyState.WaitForAsync(new() { Timeout = 15_000 });
-        (await emptyState.IsVisibleAsync()).ShouldBeTrue();
+        var operateEmptyState = page.GetByText("Nothing to show yet", new() { Exact = false });
+        await operateEmptyState.WaitForAsync(new() { Timeout = 15_000 });
+        (await operateEmptyState.IsVisibleAsync()).ShouldBeTrue();
 
         // Refresh is meaningless without a Connector, and an enabled button that always fails is
         // worse than one that is honestly unavailable.
