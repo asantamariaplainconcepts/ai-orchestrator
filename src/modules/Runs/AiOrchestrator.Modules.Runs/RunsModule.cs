@@ -21,6 +21,9 @@ public sealed class RunsModule : ModuleBase
     /// </summary>
     public const string ProjectConcurrencyCapKey = "Runs:ProjectConcurrencyCap";
     public const string ResumeCheckEnabledKey = "Runs:ResumeCheckEnabled";
+
+    /// <summary>Opt-out for the live window (#106): delivery only, never the record.</summary>
+    public const string LiveLogEnabledKey = "Runs:LiveLogEnabled";
     public const string ResumeCheckSecondsKey = "Runs:ResumeCheckSeconds";
 
     public override string Name => "Runs";
@@ -84,6 +87,16 @@ public sealed class RunsModule : ModuleBase
                     provider.GetRequiredService<Microsoft.Extensions.Logging.ILogger<Features.Conversation.ResumeChecker>>()
                 )
             );
+        }
+
+        // The live window (#106). The hub is delivery only — the durable record is the chunks
+        // table, and the page's poll reads it whether or not any of this works. Opt-out like the
+        // pollers above, because a functional test host has no viewers and no reason to hold a
+        // listening connection.
+        services.AddSignalR();
+        if (configuration.GetValue(LiveLogEnabledKey, defaultValue: true))
+        {
+            services.AddHostedService<Features.Observation.RunLogNotifier>();
         }
 
         // The first consumer of the event stream: matching reacts to story changes.
