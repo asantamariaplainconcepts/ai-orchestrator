@@ -109,6 +109,26 @@ type Handler = (match: RegExpMatchArray, body: unknown) => unknown;
 const routes: [string, RegExp, Handler][] = [
   ["GET", /^\/api\/projects$/, () => projects],
   [
+    "GET",
+    /^\/api\/connectors$/,
+    () => [
+      {
+        projectId: projectAlpha,
+        vendor: "GitHub",
+        lastSyncedAt: at(2),
+        lastFailure: null,
+        lastFailureAt: null,
+      },
+      {
+        projectId: projectBeta,
+        vendor: "GitHub",
+        lastSyncedAt: at(300),
+        lastFailure: "Credential rejected by the vendor.",
+        lastFailureAt: at(10),
+      },
+    ],
+  ],
+  [
     "POST",
     /^\/api\/projects$/,
     (_m, body) => {
