@@ -109,6 +109,7 @@ services:
       AIORCHESTRATORDB_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/aiorchestratordb"
       AIORCHESTRATORDB_DATABASENAME: "aiorchestratordb"
       ConnectionStrings__queues: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://storage:10001/devstoreaccount1;"
+      Identity__Mode: "LocalOwner"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "server"

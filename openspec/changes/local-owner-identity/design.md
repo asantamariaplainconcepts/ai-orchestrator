@@ -29,6 +29,13 @@ serves an implicit Admin to the internet, and a process that will not start is t
 nobody can miss. The precedent is the dispatch worker that refuses to start without a database
 connection (#92) — the same argument, a worse consequence.
 
+**What is deliberately not a signal, found while building it: the wildcard bind.** Listening on
+every interface looks like the definition of "publicly reachable", and it is what *every*
+container does — the self-host compose included. Using it would refuse to start in exactly the
+habitat DEC-049 exists to protect. What distinguishes a deployment from somebody's machine is the
+environment it declares, not how it listens, so the check is Production plus an explicitly
+non-loopback host.
+
 ## D3 — The temporary state gets a voice
 
 Today's Azure deployment authenticates nobody and says nothing about it. Once identity exists as
