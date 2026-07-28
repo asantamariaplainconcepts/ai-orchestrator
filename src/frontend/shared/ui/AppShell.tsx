@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { t } from "@/shared/i18n";
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
+import { useInbox } from "@/features/inbox/useInbox";
 
 export interface Crumb {
   label: string;
@@ -27,6 +28,9 @@ export function AppShell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const inbox = useInbox();
+  const waiting = inbox.data?.length ?? 0;
+
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -39,6 +43,14 @@ export function AppShell({
               route; the projects item stays active on project detail via the /projects path. */}
           <NavLink className="nav-item" to="/projects" end={false}>
             {t("shell.nav.projects")}
+          </NavLink>
+          <NavLink className="nav-item" to="/inbox">
+            <span className="row">
+              {t("shell.nav.inbox")}
+              {/* The ambient count (UC-026): same query as the page, so they cannot disagree.
+                  Zero renders nothing — an empty inbox needs no advertising. */}
+              {waiting > 0 ? <span className="badge badge-neutral">{waiting}</span> : null}
+            </span>
           </NavLink>
         </nav>
 

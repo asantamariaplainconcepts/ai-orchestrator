@@ -1109,3 +1109,20 @@ times in the project this framework came from.
   follow-up. It is one file; there is no excuse for the gap.
 - **Time invested:** not measured (source: **manual** — fortieth consecutive).
 - **ADR:** none new. DEC-049 is the artifact.
+
+## 2026-07-28 — waiting-inbox
+
+- **Worked:** the borrowed shape survived contact with our rules and got better for it. Orbion's
+  inbox is a list; ours had to answer "when does an entry LEAVE?", and BR-013/BR-014 forced the
+  interesting answer — a failure exits when a newer Run exists for its Story, derived by query
+  because both re-trigger paths would forget a flag. The six functional tests are mostly about
+  subtraction, which is the property that keeps inboxes alive.
+- **Didn't:** the typed i18n catalogue rejected a `Record<_, string>` lookup table — annotating
+  the record erased the literal types the catalogue exists to check. `as const satisfies` is
+  the pattern; one compile error, thirty seconds, but worth recording because every future
+  reason-vocabulary map will hit it.
+- **Next time:** when borrowing a UI shape from another product, ask what rule of OURS governs
+  its lifecycle before building it. The inbox's value turned out to live in the exit conditions,
+  which Orbion's version does not need and ours cannot skip.
+- **Time invested:** not measured (source: **manual** — forty-first consecutive).
+- **ADR:** none new.

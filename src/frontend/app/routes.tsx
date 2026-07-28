@@ -3,6 +3,7 @@ import { ProjectScreen } from "@/features/backlog/ProjectScreen";
 import { StoryScreen } from "@/features/backlog/StoryScreen";
 import { RunScreen } from "@/features/runs/RunScreen";
 import { ProjectsScreen } from "@/features/projects/ProjectsScreen";
+import { InboxScreen } from "@/features/inbox/InboxScreen";
 
 /** Thin route wiring only — screens and their data live in feature slices. */
 export function AppRoutes() {
@@ -12,6 +13,7 @@ export function AppRoutes() {
           active state wrong on one of them. */}
       <Route path="/" element={<Navigate to="/projects" replace />} />
       <Route path="/projects" element={<ProjectsScreen />} />
+      <Route path="/inbox" element={<InboxScreen />} />
       <Route path="/projects/:projectId" element={<ProjectScreen />} />
       <Route path="/projects/:projectId/stories/:vendorStoryId" element={<StoryScreen />} />
       <Route path="/projects/:projectId/runs/:runId" element={<RunScreen />} />

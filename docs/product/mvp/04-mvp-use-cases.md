@@ -90,3 +90,7 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
   same publishing pipeline as implementation. A Story with no body is refused (nothing to
   propose from), as is one whose linked change already exists. Chains from UC-024's ready label
   (#80; DEC-048).
+- **UC-026 — Member sees everything waiting on a human.** One inbox across projects lists every
+  Run awaiting an approval, an answer or a failure decision, newest wait first, with an ambient
+  count in the shell. A failure leaves once a newer Run exists for its Story — it waits on
+  nobody (#94; borrowed shape: Orbion's triage inbox).
