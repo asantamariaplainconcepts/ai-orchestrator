@@ -25,7 +25,7 @@
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--atlas-border);
   border-radius: var(--r-3);
   box-shadow: var(--sh-1);
   padding: var(--sp-6);
@@ -137,7 +137,7 @@
   justify-content: space-between;
   gap: var(--sp-3);
   padding: var(--sp-3) 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--atlas-border);
 }
 
 .list-row:last-child {
@@ -224,7 +224,7 @@
 .prose pre {
   padding: var(--sp-3);
   background: var(--bg-muted);
-  border: 1px solid var(--border);
+  border: 1px solid var(--atlas-border);
   border-radius: var(--r-2);
   overflow-x: auto;
 }
@@ -254,7 +254,7 @@
 .prose th,
 .prose td {
   padding: var(--sp-2);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--atlas-border);
   text-align: left;
 }
 
@@ -269,7 +269,7 @@
   margin: 0;
   padding: var(--sp-3);
   background: var(--bg-muted);
-  border: 1px solid var(--border);
+  border: 1px solid var(--atlas-border);
   border-radius: var(--r-2);
   overflow: auto;
   max-height: 60vh;
@@ -281,7 +281,7 @@
   font-family: var(--font-mono);
   font-size: var(--fs-12);
   line-height: var(--lh-tight);
-  border: 1px solid var(--border);
+  border: 1px solid var(--atlas-border);
   border-radius: var(--r-2);
   overflow-x: auto;
 }
@@ -315,7 +315,7 @@
   gap: var(--sp-2);
   padding: var(--sp-2);
   background: var(--bg-muted);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--atlas-border);
 }
 
 .diff-added-count {
@@ -344,7 +344,7 @@
 .badge-neutral {
   color: var(--fg-muted);
   background: var(--bg-muted);
-  border-color: var(--border);
+  border-color: var(--atlas-border);
 }
 
 /* ---- States ---------------------------------------------------------------------------- */
@@ -381,7 +381,7 @@
   gap: var(--sp-2);
   padding: var(--sp-5) var(--sp-4);
   background: var(--surface);
-  border-right: 1px solid var(--border);
+  border-right: 1px solid var(--atlas-border);
 }
 
 /* Text only — the product identity area carries no logo or imagery (DEC-021). */
@@ -442,7 +442,7 @@
   gap: var(--sp-1);
   padding: var(--sp-2) var(--sp-3);
   background: var(--bg-muted);
-  border: 1px solid var(--border);
+  border: 1px solid var(--atlas-border);
   border-radius: var(--r-3);
   font-size: var(--fs-13);
 }
@@ -454,7 +454,7 @@
   gap: var(--sp-5);
   padding: var(--sp-4) var(--sp-7);
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--atlas-border);
 }
 
 .breadcrumbs {
@@ -501,7 +501,7 @@
 
 .table td {
   padding: var(--sp-2) var(--sp-3);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--atlas-border);
   vertical-align: middle;
 }
 
@@ -539,7 +539,7 @@
 .pill-neutral {
   color: var(--fg-muted);
   background: var(--bg-muted);
-  border-color: var(--border);
+  border-color: var(--atlas-border);
 }
 
 .pill-ok {
@@ -561,7 +561,7 @@
 }
 
 .pill-info {
-  color: var(--info);
+  color: var(--atlas-info);
   background: var(--info-soft);
   border-color: var(--info-border);
 }
@@ -577,7 +577,7 @@
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-5);
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--atlas-border);
   border-left: var(--sp-1) solid var(--border-strong);
   border-radius: var(--r-3);
 }
@@ -618,7 +618,7 @@
 }
 
 .stat-card-info {
-  border-left-color: var(--info);
+  border-left-color: var(--atlas-info);
 }
 
 /* ---- Checkbox --------------------------------------------------------------------------- */
