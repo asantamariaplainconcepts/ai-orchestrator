@@ -35,6 +35,24 @@ builder.Services.AddModules(modules, builder.Configuration);
 using var host = builder.Build();
 
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DispatchWorker");
+
+// Refuse to start without the database. Claiming needs only the queue, so a worker missing its
+// connection string is worse than a broken one: it takes messages, cannot execute them, and
+// exits zero — Runs orphaned in Queued while the job reports success and BR-004 forbids any
+// retry (#90). A job that fails loudly on its first execution is recoverable; a silent shredder
+// is not.
+//
+// This asserts configuration, not reachability: a wrong password still fails later, at the first
+// query. It is the precondition that was actually missing, checked where it is cheap.
+if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("aiorchestratordb")))
+{
+    throw new InvalidOperationException(
+        "The dispatch worker has no 'aiorchestratordb' connection string. Executing a Run is "
+            + "database work, so the worker needs it exactly as the portal does — set "
+            + "ConnectionStrings__aiorchestratordbSecretName on the job."
+    );
+}
+
 var reader = host.Services.GetRequiredService<DispatchQueueReader>();
 
 // A "pass" drains the queue and returns. Draining rather than taking one message is
