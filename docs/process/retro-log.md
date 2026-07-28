@@ -1156,3 +1156,20 @@ times in the project this framework came from.
   reason to exist.
 - **Time invested:** not measured (source: **manual** — forty-third consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — live-run-following
+
+- **Worked:** the transport debate (four options, two conversations with the owner, SignalR
+  matured and then deliberately not chosen) paid off as a *smaller* implementation: Postgres
+  chunks meant BR-014 needed no reconciliation story, the crash test is one assertion, and
+  every habitat DEC-049 cares about works without a new resource. Deciding against the exciting
+  option, in writing, with the upgrade path recorded, is what let the boring option be chosen
+  guiltlessly. The stub runtime forwarding lines meant the tests drive the real writer.
+- **Didn't:** two formatting stumbles (IDE0055 needing csharpier before build; a Python edit
+  aimed at pre-format code). Trivial, but the second is a recurring shape: scripted edits
+  against files the formatter will rewrite should run AFTER formatting, or anchor on
+  formatting-stable text.
+- **Next time:** when a lag budget is promised, name its constants in code the way this change
+  did (FlushInterval + the poll literal) — an inspectable budget beats a measured-once claim.
+- **Time invested:** not measured (source: **manual** — forty-fourth consecutive).
+- **ADR:** none new. DEC-050 carries the decision.

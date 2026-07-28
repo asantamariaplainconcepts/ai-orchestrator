@@ -19,7 +19,13 @@ public sealed record AgentInstruction(
     string Action,
     TimeSpan Timeout,
     string WorkspacePath,
-    AgentCredentials Credentials
+    AgentCredentials Credentials,
+    /// <summary>
+    /// Called once per output line while the agent works (#96). Optional so every existing
+    /// caller is unchanged; runtimes that support it forward stdout as it arrives. Callbacks
+    /// fire on process threads — implementations must be thread-safe and must not block.
+    /// </summary>
+    Action<string>? OnOutput = null
 );
 
 /// <summary>Values, never names — the inverse of everything stored (BR-010).</summary>

@@ -3,7 +3,7 @@ import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
 import { RunChanges } from "./RunChanges";
-import { formatCost, useCancelRun, useDecideOnPlan, useRuns } from "./useRuns";
+import { formatCost, useCancelRun, useDecideOnPlan, useRuns, useRunLog } from "./useRuns";
 
 /**
  * UC-013's review surface — the page the use case always assumed and #20 did not build. The
@@ -19,6 +19,7 @@ export function RunScreen() {
   const cancel = useCancelRun(projectId);
 
   const run = runs.data?.find((candidate) => candidate.id === runId);
+  const log = useRunLog(projectId, runId);
   const awaiting = run?.state === "AwaitingApproval";
 
   // Only an unfinished Run can be cancelled; the API refuses the rest, so the control follows.
@@ -164,6 +165,33 @@ export function RunScreen() {
             ) : (
               <p className="state">{t("run.plan.none")}</p>
             )}
+          </section>
+        )}
+
+        {run && (
+          <section className="card">
+            <div className="card-header">
+              <div className="row">
+                <h2>{t("run.section.log")}</h2>
+                {/* Live while it runs (UC-027): the poll stops itself on terminal (D3). */}
+                {log.data && !log.data.complete ? (
+                  <span className="pill pill-neutral">{t("run.log.live")}</span>
+                ) : null}
+              </div>
+            </div>
+            {log.isError && (
+              <p className="state state-error" role="alert">
+                {t("run.log.error")}
+              </p>
+            )}
+            {log.data &&
+              (log.data.content.length > 0 ? (
+                <pre className="mono log-view">{log.data.content}</pre>
+              ) : (
+                <p className="state">
+                  {log.data.complete ? t("run.log.none") : t("run.log.waitingForOutput")}
+                </p>
+              ))}
           </section>
         )}
 
