@@ -1094,3 +1094,18 @@ times in the project this framework came from.
 - **ADR:** none new, and that is now a deliberate call worth revisiting: ADR-0004 has been cited
   in four retros this week and violated in this one. The next occurrence should add a gate rather
   than a fifth retro line — the deploy's image read-back is the first such gate.
+
+## 2026-07-28 — mit-license (spec-less, DEC-025)
+
+- **Worked:** the smallest change of the week carries the largest scope: one file makes the
+  ambition legal, and DEC-049's second half turns a conversation (Orbion, Dapr, self-host) into
+  an evaluation criterion the corpus can enforce. Locking "MIT" and "self-hostability is a goal"
+  as one decision was deliberate — the license without the goal is paperwork.
+- **Didn't:** the repository was public for a month without a license, which means a month of
+  "open source" that legally was not. Nobody noticed because nobody outside tried to use it —
+  the same silence that hid the stale worker image. Externally-visible claims need external
+  eyes or explicit checks; we keep relearning this with different nouns.
+- **Next time:** when a repo goes public, LICENSE is part of the going-public change, not a
+  follow-up. It is one file; there is no excuse for the gap.
+- **Time invested:** not measured (source: **manual** — fortieth consecutive).
+- **ADR:** none new. DEC-049 is the artifact.

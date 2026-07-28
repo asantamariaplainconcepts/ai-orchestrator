@@ -150,3 +150,12 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   settings (rubric path, ready label) default in code to the framework's conventions; the rubric
   is always the project's own document, read live, because a product-wide readiness bar would
   impose one team's standards on every repository it touches.
+
+- **DEC-049 — MIT, and self-hostability is a product goal.** The repository was public but
+  unlicensed, which legally meant all rights reserved: nobody could run or fork it, and the
+  owner's stated ambition — anyone can run this — was void before engineering began. Locked
+  together because the second half is the operative part: future infrastructure choices are
+  evaluated against "can a stranger with Docker still run it?". Concretely: a third backend
+  behind a seam (e.g. Dapr) is justified when a self-hoster needs a non-Azure component, and not
+  before; features must work under `aspire run` and the published-images path (#99), not only in
+  the owner's subscription. Decided 2026-07-28 during the Orbion exploration.

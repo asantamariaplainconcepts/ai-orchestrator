@@ -76,3 +76,10 @@ Spec-first: an idea is grilled to a Definition of Ready, proposed as a reviewabl
 PR **before any code**, implemented on that same PR, then squash-merged with its spec archived and
 a retro entry appended. Hotfixes and pure infra changes may use the lighter spec-less lane
 (DEC-025). The ceremonies and their commands land in bootstrap Phases 2–3.
+
+## License
+
+MIT — see [LICENSE](LICENSE). This product is open source on purpose: **anyone should be able to
+run it**, the same ambition its sibling control planes carry. Self-hostability is a recorded
+product goal (DEC-049), and design decisions — a third backend behind a seam, a managed service
+versus a container — are evaluated against it.
