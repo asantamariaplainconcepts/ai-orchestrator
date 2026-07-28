@@ -42,8 +42,17 @@ echo "── stage 1: adherence ────────────────
 
 # Raw hex colours. Six- and three-digit forms in a style or value position. Excludes comment
 # lines so an explanatory note mentioning a hex is not a violation.
+#
+# `#110` is a valid three-digit colour AND this repository's way of writing an issue number, and
+# the line-comment exclusion below never covered JSX comments — `{/* … */}` continuation lines
+# start with neither `//` nor `*`. That collision cost two changes (it was worked around in
+# #108's comment wording, then recurred here), so it is now handled rather than dodged: an
+# all-digit `#NNN` reference is not a colour. Any hex containing a-f still fails, and a genuine
+# digits-only colour would still be caught in a value position (`: "#110"`, `:#110`).
 HEX=$(sources | xargs grep -nE '#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b' 2>/dev/null \
-  | grep -vE ':\s*(//|\*|/\*)' | grep -vE '#[0-9]{1,4}\b\s*(—|-|:)?\s*(issue|PR)' || true)
+  | grep -vE ':\s*(//|\*|/\*)' \
+  | grep -vE '#[0-9]{1,4}\b\s*(—|-|:)?\s*(issue|PR)' \
+  | grep -E '[:"'"'"'(]\s*#[0-9a-fA-F]{3,6}\b|#[0-9a-fA-F]*[a-fA-F][0-9a-fA-F]*\b' || true)
 if [ -n "$HEX" ]; then
   fail "raw hex colour — use a colour token (see DESIGN.md)"
   echo "$HEX" | sed 's/^/      /'
