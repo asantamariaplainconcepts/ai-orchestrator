@@ -1312,3 +1312,22 @@ times in the project this framework came from.
   discovering the arrangement in code instead of on paper.
 - **Time invested:** not measured (source: **manual** — fifty-first consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — signalr-log-window
+
+- **Worked:** questioning the inherited design instead of implementing it. #106 arrived carrying
+  #96's shape — the pod pushes into the hub — whose own summary called its authentication "the
+  design wrinkle". Asking where else the same event could come from found Postgres already
+  announcing it: `NOTIFY` on commit, the portal listening, the worker untouched. The per-Run
+  vault credential was not solved, it stopped existing, and "the stream is a witness, never a
+  participant" went from a property maintained by care to one nobody can break. Measured 2ms
+  against a budget of 1000.
+- **Didn't:** the test needed a SignalR client the test project did not have, exactly as #115's
+  refusal case needed a vendor stub that could refuse. Twice in one day a branch was untestable
+  because the harness could not express the situation — cheap to fix both times, but it means
+  "is this assertable?" belongs in the propose, not in the implementation.
+- **Next time:** when an issue inherits a matured design, re-ask what problem each part solves
+  before building it. The wrinkle was labelled in the issue text and still nearly got built,
+  because inherited designs read as decided.
+- **Time invested:** not measured (source: **manual** — fifty-second consecutive).
+- **ADR:** none new. DEC-050's recorded upgrade is taken, by a different route than it named.

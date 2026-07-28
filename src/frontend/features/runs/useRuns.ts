@@ -1,4 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import type { HubConnection } from "@microsoft/signalr";
 import { api } from "@/shared/http/client";
 import type { ProjectCost, ProjectPulse, RunView } from "./types";
 
@@ -111,10 +113,68 @@ export interface RunLog {
  * UC-027: polls every 3 seconds while the Run is not done, then stops itself (design D3). The
  * flush interval server-side is 2s, so observed lag stays inside the stated ≤5s budget.
  */
+/**
+ * The Run's output, followed live. The poll is the guarantee (DEC-050) and the hub is speed on
+ * top (#106, design D3): both read the same table, so they cannot disagree, and a hub that never
+ * connects costs latency and nothing else.
+ */
 export function useRunLog(projectId: string, runId: string) {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const [live, setLive] = useState(false);
+
+  const query = useQuery({
     queryKey: ["run-log", projectId, runId],
     queryFn: () => api.get<RunLog>(`/api/projects/${projectId}/runs/${runId}/log`),
-    refetchInterval: (query) => (query.state.data?.complete ? false : 3_000),
+    // Still polls while the hub carries the lines, only slowly: it is the reconciliation that
+    // makes a dropped frame invisible, and it stops when the Run does.
+    refetchInterval: (q) => (q.state.data?.complete ? false : live ? 30_000 : 3_000),
   });
+
+  const complete = query.data?.complete ?? false;
+
+  useEffect(() => {
+    // Mock mode has no server to connect to, and a finished Run has nothing left to say.
+    if (import.meta.env.MODE === "mock" || complete) return;
+
+    let cancelled = false;
+    let connection: HubConnection | undefined;
+
+    void (async () => {
+      const { HubConnectionBuilder } = await import("@microsoft/signalr");
+      if (cancelled) return;
+
+      connection = new HubConnectionBuilder()
+        .withUrl("/hubs/run-log")
+        .withAutomaticReconnect()
+        .build();
+
+      connection.on("lines", (lines: string[]) => {
+        queryClient.setQueryData<RunLog>(["run-log", projectId, runId], (current) =>
+          current === undefined
+            ? current
+            : { ...current, content: [current.content, ...lines].join("\n") },
+        );
+      });
+
+      connection.onclose(() => setLive(false));
+      connection.onreconnected(() => void connection?.invoke("Watch", runId));
+
+      try {
+        await connection.start();
+        await connection.invoke("Watch", runId);
+        if (!cancelled) setLive(true);
+      } catch {
+        // The poll is already covering this; there is nothing for a reader to do about it.
+        setLive(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      setLive(false);
+      void connection?.stop();
+    };
+  }, [projectId, runId, complete, queryClient]);
+
+  return query;
 }

@@ -1,6 +1,7 @@
 using System.Threading.Channels;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -24,7 +25,20 @@ sealed partial class RunLogWriter : IAsyncDisposable
 {
     internal const int BatchSize = 50;
 
-    internal static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(2);
+    /// <summary>
+    /// The whole latency budget since #106: with the portal listening to Postgres rather than
+    /// polling, a line reaches a watcher at most one flush after the runtime emitted it. Not
+    /// lower, because a chatty half-hour Run already moves from ~900 commits to ~3,600 here and
+    /// 100ms would quadruple that for a difference nobody can perceive.
+    /// </summary>
+    internal static readonly TimeSpan FlushInterval = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// The channel every portal replica listens on. One channel for all Runs, with the Run id as
+    /// the payload: a listener that had to subscribe per Run would need to know which Runs exist,
+    /// which is exactly the coupling this avoids.
+    /// </summary>
+    internal const string NotificationChannel = "run_log_appended";
 
     readonly Guid _runId;
     readonly IServiceScopeFactory _scopes;
@@ -108,6 +122,15 @@ sealed partial class RunLogWriter : IAsyncDisposable
             }
 
             await database.SaveChangesAsync();
+
+            // Announce after the commit, so a listener that reacts instantly still finds the
+            // rows. Postgres delivers NOTIFY at commit anyway; sending it inside the same
+            // transaction would be a promise about rows that might yet roll back.
+            // pg_notify rather than NOTIFY: the statement form takes no parameters, so the
+            // channel and payload would have to be interpolated into SQL.
+            await database.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_notify({NotificationChannel}, {_runId.ToString()})"
+            );
         }
         catch (Exception exception)
         {
