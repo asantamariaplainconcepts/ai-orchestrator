@@ -62,7 +62,14 @@ public class DefaultLabels_Should_Constraint(BacklogApiFixture fixture) : IAsync
         result.LabelNote.ShouldBeNull();
         fixture
             .Vendor.RepositoryLabels.OrderBy(label => label)
-            .ShouldBe(["ai:estimate", "ai:implement", "ai:refine", "ai:transition"]);
+            .ShouldBe([
+                "ai:estimate",
+                "ai:grill",
+                "ai:implement",
+                "ai:refine",
+                "ai:transition",
+                "ready-for-proposal",
+            ]);
 
         // The point of the whole exercise: a Member can choose these at the vendor *before*
         // anybody has labelled anything, so no Story may have been modified to make them exist.
@@ -78,7 +85,7 @@ public class DefaultLabels_Should_Constraint(BacklogApiFixture fixture) : IAsync
 
         // Automations first, labels second (design D4): an outage cannot leave the project with
         // nothing, having skipped the part that needed no vendor at all.
-        result.Created.Count.ShouldBe(4);
+        result.Created.Count.ShouldBe(6);
         result.LabelNote.ShouldNotBeNull();
         result.LabelNote.ShouldContain("ai:implement");
         fixture.Vendor.RepositoryLabels.ShouldBeEmpty();
@@ -92,7 +99,7 @@ public class DefaultLabels_Should_Constraint(BacklogApiFixture fixture) : IAsync
         var again = await ApplyDefaults();
 
         again.LabelNote.ShouldBeNull();
-        fixture.Vendor.RepositoryLabels.Count.ShouldBe(4);
+        fixture.Vendor.RepositoryLabels.Count.ShouldBe(6);
     }
 
     sealed record ProjectResponse(Guid Id, string Name);

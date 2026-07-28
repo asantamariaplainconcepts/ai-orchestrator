@@ -159,8 +159,11 @@ resume time (BR-008).
 the same workspace pipeline implement uses — different prompt, different PR framing, no new
 publishing machinery. Its two refusals run before any workspace exists: a bodyless Story is
 "nothing to propose from", and a Story with a linked change is named rather than duplicated. The
-full loop is now three ordinary Automations wired by labels alone: `ai:grill` marks ready, ready
-triggers propose, and an Admin can send the proposal onward to implement.
+full loop is three ordinary Automations wired by labels alone, and **the one-click defaults seed
+exactly that pipeline**: `ai:grill` marks a Story `ready-for-proposal`, which is the seeded
+propose Automation's trigger, and the chain stops there so a human reads the proposal before
+labelling `ai:implement`. Because BR-003 makes a second press additive, the same button also
+carries a project seeded from an older catalogue forward to the current one.
 
 **The grill action is its first consumer (#79, UC-024).** Each pass reads the project's own
 readiness document live from the repository (default `docs/process/definition-of-ready.md`,
