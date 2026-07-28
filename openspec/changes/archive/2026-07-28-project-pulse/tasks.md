@@ -7,4 +7,4 @@
       linking to run pages, metric cards, automation mini-table with the unused row state —
       every figure a link (design D2).
 - [x] 3.1 Mock routes and i18n keys; mock mode intact.
-- [ ] 4.1 CI green; evidence on #108.
+- [x] 4.1 CI green; evidence on #108.
