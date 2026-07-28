@@ -90,6 +90,22 @@ export const en = {
   "connector.edit": "Edit Connector",
   "connector.cancel": "Cancel",
 
+  // Retiring a project (#121): stops its work, keeps its history.
+  "project.archive.heading": "Retire this project",
+  "project.archive.hint":
+    "Archiving stops its polling, its automations and any new run. Everything it already did stays readable, and you can restore it at any time.",
+  "project.archive.confirmLabel": "Type the project's name to confirm",
+  "project.archive.submit": "Archive project",
+  "project.archive.pending": "Archiving\u2026",
+  "project.archive.failed": "Could not archive the project.",
+  "project.archived.notice": "This project is archived. It starts no new work.",
+  "project.restore.submit": "Restore project",
+  "project.restore.pending": "Restoring\u2026",
+  "projects.archived.count": "archived",
+  "projects.archived.show": "Show archived",
+  "projects.archived.hide": "Hide archived",
+  "projects.archived.badge": "Archived",
+
   "project.back": "All projects",
 
   // Story detail (UC-022) — the description is where the requirement lives.

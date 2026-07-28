@@ -19,6 +19,7 @@ namespace AiOrchestrator.Modules.Runs.Features.Matching;
 sealed class RunCreator(
     RunsDbContext database,
     IRunDispatcher dispatcher,
+    IProjectCatalog projects,
     RunsOptions options,
     TimeProvider clock,
     ILogger<RunCreator> logger
@@ -31,6 +32,14 @@ sealed class RunCreator(
         CancellationToken cancellationToken
     )
     {
+        // An archived Project starts no work (#121). Checked here because this is the one
+        // creation path both matching and Run now share, so neither can forget it — and asked
+        // per creation rather than cached, since a Project is archived while this runs.
+        if (!await projects.AcceptsWork(projectId, cancellationToken))
+        {
+            return new RunCreation.ProjectArchived();
+        }
+
         // BR-001 pre-check keeps the common case quiet; the index owns the race below. The
         // state list is the SAME array the index filter is generated from — hand-copying it
         // is what let a terminal state hold a Story hostage twice.
@@ -112,6 +121,9 @@ abstract record RunCreation
 
     /// <summary>BR-001: the Story already has an active Run; nothing was written.</summary>
     public sealed record AlreadyActive : RunCreation;
+
+    /// <summary>The Project is retired: no new work, and the caller says so in its own voice.</summary>
+    public sealed record ProjectArchived : RunCreation;
 
     /// <summary>The Run exists but the enqueue failed — visible as Queued with no DispatchedAt.</summary>
     public sealed record DispatchFailed(Guid RunId) : RunCreation;

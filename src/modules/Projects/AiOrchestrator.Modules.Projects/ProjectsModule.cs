@@ -48,6 +48,11 @@ public sealed class ProjectsModule : ModuleBase
 
         // The Contracts read surface — the owner registers its own implementation.
         services.AddScoped<IAutomationCatalog, AutomationCatalog>();
+
+        // What other modules may ask about a Project's standing (#121): Backlog decides whether
+        // to poll, Runs decides whether to start work. Scoped and asked per decision — never a
+        // cached copy, which would keep polling a Project an Admin just retired.
+        services.AddScoped<Contracts.IProjectCatalog, Features.Projects.ProjectCatalog>();
         services.AddScoped<OverlapGuard>();
     }
 }

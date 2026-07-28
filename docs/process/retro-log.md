@@ -1350,3 +1350,23 @@ times in the project this framework came from.
   it.
 - **Time invested:** not measured (source: **manual** — fifty-third consecutive).
 - **ADR:** none new. OPN-002's half (b) is closed.
+
+## 2026-07-29 — archive-project
+
+- **Worked:** the single creation path paid off again. `RunCreator` already existed as the one
+  place matching and Run now both create, so "an archived project starts nothing" is one check
+  neither caller can skip — the same shape #115's hand-off used, and for the same reason. The
+  architecture test also earned its keep by refusing the first design: the refusal's wording went
+  into a Contracts assembly, which carries interfaces and data and never behaviour, and the test
+  said so before review did.
+- **Didn't:** three defects surfaced only by clicking through the app, all in the seam between a
+  changed read model and the screens that consume it. The worst: the detail page derives its
+  project from the list, so an archived project lost its own name and offered to archive itself
+  again. Also found, preexisting and older than this change: the mock never matched routes with
+  a query string, so the story-filtered runs list had been silently falling through since it
+  shipped.
+- **Next time:** when a read model gains a filter, list the screens that read it *before*
+  writing the filter, and ask which of them needs the unfiltered view. The compiler cannot see
+  "this page needs the row the list now hides" — it type-checks perfectly and renders a fallback.
+- **Time invested:** not measured (source: **manual** — fifty-fourth consecutive).
+- **ADR:** none new.

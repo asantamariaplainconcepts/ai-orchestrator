@@ -57,6 +57,17 @@ sealed partial class BacklogPoller(
         {
             // A fresh scope per project: one project's failure must not poison another's context.
             await using var projectScope = scopeFactory.CreateAsyncScope();
+
+            // An archived Project is not polled (#121). Asked per pass rather than filtered when
+            // the list was read: a Project archived mid-pass should stop being polled now, not
+            // on the next tick.
+            var projects =
+                projectScope.ServiceProvider.GetRequiredService<Projects.Contracts.IProjectCatalog>();
+            if (!await projects.AcceptsWork(projectId, cancellationToken))
+            {
+                continue;
+            }
+
             var synchroniser =
                 projectScope.ServiceProvider.GetRequiredService<BacklogSynchroniser>();
 

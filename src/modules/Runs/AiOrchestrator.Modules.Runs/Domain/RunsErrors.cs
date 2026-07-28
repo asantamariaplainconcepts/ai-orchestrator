@@ -30,6 +30,16 @@ static class RunsErrors
                 + "Wait for it to finish, or cancel it once cancellation exists."
         );
 
+    /// <summary>
+    /// #121. The rule belongs to Projects, but the sentence belongs here: a Contracts assembly
+    /// carries interfaces and data, never behaviour, and the architecture test says so.
+    /// </summary>
+    public static Error ProjectArchived(Guid projectId) =>
+        Error.Conflict(
+            "Runs.ProjectArchived",
+            $"Project '{projectId}' is archived and starts no new work. Restore it to run anything."
+        );
+
     /// <summary>Approve/reject only mean something while a Run is waiting for a decision.</summary>
     public static Error RunNotAwaitingApproval(Guid runId, string state) =>
         Error.Conflict(

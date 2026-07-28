@@ -32,5 +32,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
+    <!-- MOD002: another module is reachable only through its published contracts. -->
+    <ProjectReference Include="..\..\Projects\AiOrchestrator.Modules.Projects.Contracts\AiOrchestrator.Modules.Projects.Contracts.csproj" />
   </ItemGroup>
 </Project>

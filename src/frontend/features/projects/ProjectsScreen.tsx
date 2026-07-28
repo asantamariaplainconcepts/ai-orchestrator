@@ -19,7 +19,8 @@ import type { ConnectorHealth, HealthState } from "./useConnectorHealth";
  */
 export function ProjectsScreen() {
   const [name, setName] = useState("");
-  const projects = useProjects();
+  const [showArchived, setShowArchived] = useState(false);
+  const projects = useProjects(showArchived);
   const createProject = useCreateProject();
   const health = useConnectorHealth();
   const byProject = new Map<string, ConnectorHealth>(
@@ -39,8 +40,22 @@ export function ProjectsScreen() {
           <p className="text-sm text-muted-foreground">{t("projects.subtitle")}</p>
           {projects.data ? (
             <Badge variant="secondary">
-              {tCount(projects.data.length, "projects.count.one", "projects.count.other")}
+              {tCount(projects.data.projects.length, "projects.count.one", "projects.count.other")}
             </Badge>
+          ) : null}
+          {/* Stated rather than silently dropped: a list that hides rows without saying so
+              teaches its reader that things vanish (#121). */}
+          {projects.data && projects.data.archivedCount > 0 ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              aria-pressed={showArchived}
+              onClick={() => setShowArchived((shown) => !shown)}
+            >
+              {projects.data.archivedCount} {t("projects.archived.count")} ·{" "}
+              {showArchived ? t("projects.archived.hide") : t("projects.archived.show")}
+            </Button>
           ) : null}
         </div>
 
@@ -76,23 +91,28 @@ export function ProjectsScreen() {
                 {t("projects.error")}
               </p>
             )}
-            {projects.data?.length === 0 && (
+            {projects.data?.projects.length === 0 && (
               <p className="text-sm text-muted-foreground">{t("projects.empty")}</p>
             )}
 
-            {projects.data && projects.data.length > 0 && (
+            {projects.data && projects.data.projects.length > 0 && (
               <ul className="divide-y">
-                {projects.data.map((project) => (
+                {projects.data.projects.map((project) => (
                   <li
                     className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                     key={project.id}
                   >
-                    <Link
-                      className="min-w-0 truncate text-sm font-medium transition-colors hover:text-primary"
-                      to={`/projects/${project.id}`}
-                    >
-                      {project.name}
-                    </Link>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <Link
+                        className="min-w-0 truncate text-sm font-medium transition-colors hover:text-primary"
+                        to={`/projects/${project.id}`}
+                      >
+                        {project.name}
+                      </Link>
+                      {project.archivedAt ? (
+                        <Badge variant="outline">{t("projects.archived.badge")}</Badge>
+                      ) : null}
+                    </span>
                     <span className="flex shrink-0 items-center gap-2">
                       <HealthBadge connector={byProject.get(project.id)} />
                       <span className="hidden font-mono text-xs text-muted-foreground sm:inline">

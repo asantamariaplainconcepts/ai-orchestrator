@@ -6,7 +6,7 @@ import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { useRunNow } from "@/features/runs/useRunNow";
 import { formatCost, useProjectCost } from "@/features/runs/useRuns";
-import { useProjects } from "@/features/projects/useProjects";
+import { useArchiveProject, useProjects, useRestoreProject } from "@/features/projects/useProjects";
 import { t, tCount } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
 import { Badge } from "@/shared/ui/badge";
@@ -58,7 +58,10 @@ export function ProjectScreen() {
   const [runsStoryFilter, setRunsStoryFilter] = useState<string | null>(null);
   const [view, setView] = useState<BacklogViewMode>(storedView);
   const backlog = useBacklog(projectId);
-  const projects = useProjects();
+  // Including archived ones: this screen must find its project whatever its state, or an
+  // archived project loses its name, its notice and its restore button — reading stays open
+  // (#121 design D2), and the detail page is reading.
+  const projects = useProjects(true);
   const automations = useAutomations(projectId);
   const cost = useProjectCost(projectId);
 
@@ -66,7 +69,7 @@ export function ProjectScreen() {
   const stories = backlog.data?.stories ?? [];
 
   // The page title is a real fact from the live projects response — never invented.
-  const project = projects.data?.find((candidate) => candidate.id === projectId);
+  const project = projects.data?.projects.find((candidate) => candidate.id === projectId);
   const title = project?.name ?? t("project.title.fallback");
 
   // The landing tab is derived, never stored (design D3): configuring IS the job on day one,
@@ -151,11 +154,16 @@ export function ProjectScreen() {
             <AutomationsSection projectId={projectId} />
           </TabsContent>
 
-          <TabsContent value="settings">
+          <TabsContent value="settings" className="flex flex-col gap-6">
             <ConnectorPanel
               key={connector ? `${connector.owner}/${connector.repository}` : "unconfigured"}
               projectId={projectId}
               connector={connector}
+            />
+            <RetirementPanel
+              projectId={projectId}
+              projectName={project?.name ?? null}
+              archivedAt={project?.archivedAt ?? null}
             />
           </TabsContent>
         </div>
@@ -597,6 +605,84 @@ function ConnectorPanel({
             )}
           </form>
         ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+/**
+ * Retiring a project (#121). Archiving stops its work and keeps its history; typing the name is
+ * the guard, proportionate to an act that is reversible but easy to do by accident (design D4).
+ */
+function RetirementPanel({
+  projectId,
+  projectName,
+  archivedAt,
+}: {
+  projectId: string;
+  projectName: string | null;
+  archivedAt: string | null;
+}) {
+  const archive = useArchiveProject();
+  const restore = useRestoreProject();
+  const [confirmName, setConfirmName] = useState("");
+
+  if (archivedAt) {
+    return (
+      <Card>
+        <CardContent className="flex flex-wrap items-center justify-between gap-3">
+          <span className="flex flex-col gap-0.5">
+            <span className="text-sm font-medium">{t("project.archived.notice")}</span>
+            <span className="text-xs text-muted-foreground">{formatWhen(archivedAt)}</span>
+          </span>
+          <Button
+            variant="outline"
+            type="button"
+            disabled={restore.isPending}
+            onClick={() => restore.mutate(projectId)}
+          >
+            {restore.isPending ? t("project.restore.pending") : t("project.restore.submit")}
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-base font-semibold">{t("project.archive.heading")}</h2>
+          <p className="text-xs text-muted-foreground">{t("project.archive.hint")}</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="archive-confirm">{t("project.archive.confirmLabel")}</Label>
+          <Input
+            id="archive-confirm"
+            value={confirmName}
+            onChange={(event) => setConfirmName(event.target.value)}
+            placeholder={projectName ?? ""}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="destructive"
+            type="button"
+            // Enabled only on an exact match: the button itself teaches what the server checks.
+            disabled={archive.isPending || confirmName !== projectName}
+            onClick={() => archive.mutate({ projectId, confirmName })}
+          >
+            {archive.isPending ? t("project.archive.pending") : t("project.archive.submit")}
+          </Button>
+        </div>
+
+        {archive.isError && (
+          <p className="text-sm text-destructive" role="alert">
+            {t("project.archive.failed")}
+          </p>
+        )}
       </CardContent>
     </Card>
   );

@@ -50,11 +50,14 @@ public class CreateProjectEndpoint_Should_Constraint(ProjectsApiFixture fixture)
     {
         await _client.PostAsJsonAsync("/api/projects", new { name = "Listed" });
 
-        var projects = await _client.GetFromJsonAsync<ProjectResponse[]>("/api/projects");
+        var listed = await _client.GetFromJsonAsync<ProjectsResponse>("/api/projects");
 
-        projects.ShouldNotBeNull();
-        projects.ShouldContain(project => project.Name == "Listed");
+        listed.ShouldNotBeNull();
+        listed.Projects.ShouldContain(project => project.Name == "Listed");
     }
 
     sealed record ProjectResponse(Guid Id, string Name);
+
+    /// <summary>The list answers with its archived count beside the rows (#121).</summary>
+    sealed record ProjectsResponse(IReadOnlyList<ProjectResponse> Projects, int ArchivedCount);
 }
