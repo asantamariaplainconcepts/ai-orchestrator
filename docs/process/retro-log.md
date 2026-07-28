@@ -1253,3 +1253,25 @@ times in the project this framework came from.
   instructions that no compiler, linter or type checker can see.
 - **Time invested:** not measured (source: **manual** — forty-eighth consecutive).
 - **ADR:** none new. ADR-0006 earned a second citation.
+
+## 2026-07-28 — kanban-board
+
+- **Worked:** inverting the issue's own dependency note paid twice. #110 assumed a drag library;
+  acceptance criterion 6 already required a drag-free path for phones and keyboards, so once
+  that menu existed dnd-kit bought only touch dragging — which the issue itself excluded. Zero
+  new dependencies, and the drag-free path turned out to be the only one Playwright can drive,
+  so the criterion that looked like an accessibility chore is what made the chain assertion
+  testable at all. Extending the GitHub stub to accept label writes turned criterion 2 from a
+  mock's opinion into a fact: the label really lands at the far end and ordinary reconciliation
+  carries it back.
+- **Didn't:** the design validator read `#110` in a JSX comment as a three-digit colour for the
+  second time in one chain — worked around in #108 by rewording, which is precisely the dodge
+  that let it recur. Fixed properly this time (an all-digit reference outside a value position
+  is not a colour), and verified with a probe file asserting the three real colours still fail.
+  The graduation rule says the second occurrence is the fix; obeying it late still cost a CI
+  round trip.
+- **Next time:** when a test can only exercise one of two paths a feature offers, make that path
+  the primary one in the design rather than the fallback — the untestable gesture is then sugar
+  on top of something proven, not the other way round.
+- **Time invested:** not measured (source: **manual** — forty-ninth consecutive).
+- **ADR:** none new.
