@@ -1331,3 +1331,22 @@ times in the project this framework came from.
   because inherited designs read as decided.
 - **Time invested:** not measured (source: **manual** — fifty-second consecutive).
 - **ADR:** none new. DEC-050's recorded upgrade is taken, by a different route than it named.
+
+## 2026-07-28 — local-owner-identity
+
+- **Worked:** the guard was wrong and booting said so immediately. The propose gated the local
+  owner on "a Production environment", and the self-host compose sets no environment name — so
+  ASP.NET calls it Production and the container would not start. A second false positive was
+  waiting behind it: every container binds every interface, so the wildcard bind cannot be the
+  signal either. What actually distinguishes a deployment from somebody's machine is a managed
+  secret store, which only Terraform can configure. Both false positives now have a test named
+  for what they are.
+- **Didn't:** the propose asserted the signal without checking it against the habitats the repo
+  already runs in. Three habitats are documented in SELF-HOSTING.md with a table; a minute
+  reading that table would have caught "Production" before it was written into a design doc, a
+  spec and a task list, all of which then had to be corrected.
+- **Next time:** when a change branches on the environment, enumerate the habitats first and say
+  what each one looks like from inside the process. The table exists; the design did not consult
+  it.
+- **Time invested:** not measured (source: **manual** — fifty-third consecutive).
+- **ADR:** none new. OPN-002's half (b) is closed.
