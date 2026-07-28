@@ -52,7 +52,7 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
                 automation.RequiresApproval,
                 automation.Timeout,
                 automation.RubricPath,
-                automation.ReadyLabel
+                automation.OutputLabel
             );
     }
 }

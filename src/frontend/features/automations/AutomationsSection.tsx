@@ -37,9 +37,9 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [rubricPath, setRubricPath] = useState("");
-  const [readyLabel, setReadyLabel] = useState("");
+  const [outputLabel, setOutputLabel] = useState("");
 
-  // Only the grill converses with a rubric; the fields would be noise on every other action.
+  // Only the grill converses with a rubric; that field would be noise on every other action.
   const isGrill = action === "GrillToReady";
 
   function submit(event: React.FormEvent) {
@@ -56,7 +56,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         requiresApproval,
         timeoutMinutes: null,
         rubricPath: isGrill && rubricPath.trim() ? rubricPath.trim() : null,
-        readyLabel: isGrill && readyLabel.trim() ? readyLabel.trim() : null,
+        outputLabel: outputLabel.trim() ? outputLabel.trim() : null,
       },
       {
         onSuccess: () => {
@@ -184,28 +184,29 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                     ))}
                   </NativeSelect>
                 </div>
+                {/* Only the grill converses with a rubric; the field would be noise elsewhere.
+                    The output label is every action's, since #115 — chaining is a property of
+                    the model now, not of the grill. */}
                 {isGrill ? (
-                  <>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="rubric-path">{t("automations.rubricPath")}</Label>
-                      <Input
-                        id="rubric-path"
-                        value={rubricPath}
-                        onChange={(event) => setRubricPath(event.target.value)}
-                        placeholder={t("automations.rubricPathPlaceholder")}
-                      />
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <Label htmlFor="ready-label">{t("automations.readyLabel")}</Label>
-                      <Input
-                        id="ready-label"
-                        value={readyLabel}
-                        onChange={(event) => setReadyLabel(event.target.value)}
-                        placeholder={t("automations.readyLabelPlaceholder")}
-                      />
-                    </div>
-                  </>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="rubric-path">{t("automations.rubricPath")}</Label>
+                    <Input
+                      id="rubric-path"
+                      value={rubricPath}
+                      onChange={(event) => setRubricPath(event.target.value)}
+                      placeholder={t("automations.rubricPathPlaceholder")}
+                    />
+                  </div>
                 ) : null}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
+                  <Input
+                    id="output-label"
+                    value={outputLabel}
+                    onChange={(event) => setOutputLabel(event.target.value)}
+                    placeholder={t("automations.outputLabelPlaceholder")}
+                  />
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center justify-between gap-3">

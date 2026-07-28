@@ -50,7 +50,7 @@ export interface CreateAutomationRequest {
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
   rubricPath?: string | null;
   /** Grill only: the label applied when the bar is met. Null means the convention. */
-  readyLabel?: string | null;
+  outputLabel?: string | null;
 }
 
 /** What applying the framework defaults did — partial success is the normal shape (design D2). */

@@ -47,7 +47,7 @@ sealed class Automation : Aggregate
     public string? RubricPath { get; private set; }
 
     /// <summary>Grill only: the label applied when the bar is met. Null means the convention.</summary>
-    public string? ReadyLabel { get; private set; }
+    public string? OutputLabel { get; private set; }
 
     public AutomationAction Action { get; private set; }
 
@@ -74,12 +74,12 @@ sealed class Automation : Aggregate
         bool requiresApproval,
         TimeSpan timeout,
         string? rubricPath = null,
-        string? readyLabel = null
+        string? outputLabel = null
     ) =>
         new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
         {
             RubricPath = rubricPath,
-            ReadyLabel = readyLabel,
+            OutputLabel = outputLabel,
         };
 
     /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
@@ -91,7 +91,7 @@ sealed class Automation : Aggregate
         bool requiresApproval,
         TimeSpan timeout,
         string? rubricPath = null,
-        string? readyLabel = null
+        string? outputLabel = null
     )
     {
         TriggerLabel = triggerLabel;
@@ -101,7 +101,7 @@ sealed class Automation : Aggregate
         RequiresApproval = requiresApproval;
         Timeout = timeout;
         RubricPath = rubricPath;
-        ReadyLabel = readyLabel;
+        OutputLabel = outputLabel;
     }
 
     /// <summary>

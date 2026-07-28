@@ -112,8 +112,10 @@ export const en = {
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
   "automations.rubricPath": "Readiness document",
   "automations.rubricPathPlaceholder": "docs/process/definition-of-ready.md",
-  "automations.readyLabel": "Ready label",
-  "automations.readyLabelPlaceholder": "ready-for-proposal",
+  "automations.outputLabel": "Output label",
+  "automations.outputLabelPlaceholder": "the next step\u2019s trigger",
+  "automations.outputLabelHint":
+    "Applied to the Story when a Run of this Automation succeeds \u2014 leave empty to end here.",
   "automations.delete": "Delete",
   "automations.delete.hint":
     "Only possible while no run has used it. Once one has, disable it instead \u2014 runs keep their automation for the audit trail.",

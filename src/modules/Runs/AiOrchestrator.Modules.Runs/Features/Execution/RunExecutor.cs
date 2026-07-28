@@ -123,14 +123,29 @@ sealed class RunExecutor(
             }
             else if (result.Succeeded)
             {
-                run.Succeed(
-                    clock.GetUtcNow(),
-                    result.OutputLink,
-                    result.Usage?.InputTokens,
-                    result.Usage?.OutputTokens,
-                    result.Usage?.CostUsd
-                );
-                ExecutionLog.Succeeded(logger, runId, result.Usage is null);
+                // The one place work is handed on (#115, design D2): every action, not just the
+                // grill, and only here — a chain claims the previous step worked, and BR-004
+                // makes a failed Run terminal until a human intervenes.
+                var handOff = await HandOn(run, cancellationToken);
+                if (handOff is not null)
+                {
+                    // The label is the deliverable of a chaining Automation; if it did not land,
+                    // the Run did not do its job, and saying otherwise would strand the chain
+                    // silently.
+                    run.Fail(clock.GetUtcNow(), Truncate(handOff, FailureLimit));
+                    ExecutionLog.Failed(logger, runId);
+                }
+                else
+                {
+                    run.Succeed(
+                        clock.GetUtcNow(),
+                        result.OutputLink,
+                        result.Usage?.InputTokens,
+                        result.Usage?.OutputTokens,
+                        result.Usage?.CostUsd
+                    );
+                    ExecutionLog.Succeeded(logger, runId, result.Usage is null);
+                }
             }
             else
             {
@@ -166,6 +181,39 @@ sealed class RunExecutor(
             cancellationToken
         );
         return automation?.RequiresApproval ?? false;
+    }
+
+    /// <summary>
+    /// Hands work to the next Automation (#115): applies this Automation's output label through
+    /// UC-008's write, so it lands at the vendor, returns as an ordinary StoryChanged and is
+    /// matched like any other label — nothing here knows what happens next. Returns null when
+    /// there is nothing to hand on or the write succeeded, and the refusal sentence otherwise.
+    /// <para>
+    /// The grill keeps its documented default here rather than in data (grill design D5): a
+    /// product-wide default would silently chain every Automation an Admin created without
+    /// thinking about it.
+    /// </para>
+    /// </summary>
+    async Task<string?> HandOn(Run run, CancellationToken cancellationToken)
+    {
+        var automation = await automations.Detail(
+            run.ProjectId,
+            run.AutomationId,
+            cancellationToken
+        );
+
+        var label =
+            automation?.OutputLabel
+            ?? (automation?.Action == "GrillToReady" ? DefaultReadyLabel : null);
+
+        return string.IsNullOrWhiteSpace(label)
+            ? null
+            : await storyWriter.ApplyLabel(
+                run.ProjectId,
+                run.VendorStoryId,
+                label,
+                cancellationToken
+            );
     }
 
     async Task<Outcome> Invoke(
@@ -531,21 +579,10 @@ sealed class RunExecutor(
             return new Outcome(agentResult, Questions: answer);
         }
 
-        var readyLabel = automation.ReadyLabel ?? DefaultReadyLabel;
-
-        // The label rides UC-008's write path, so it lands at the vendor, returns as an
-        // ordinary StoryChanged, and can trigger the next Automation (grill D4).
-        var labelled = await storyWriter.ApplyLabel(
-            run.ProjectId,
-            run.VendorStoryId,
-            readyLabel,
-            cancellationToken
-        );
-        if (labelled is not null)
-        {
-            return new Outcome(agentResult with { Succeeded = false, Log = labelled });
-        }
-
+        // The ready label is no longer applied here. Since #115 every Automation hands work on
+        // from one place (HandOn, design D2) and the grill is simply the one action with a
+        // default — so what used to be the grill's private chaining is now the model's. The
+        // verdict comment stays, because only the grill has a verdict to leave.
         var verdict =
             answer.Length > "READY".Length
                 ? answer["READY".Length..].Trim()
