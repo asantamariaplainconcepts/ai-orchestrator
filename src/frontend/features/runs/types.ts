@@ -7,8 +7,18 @@ export interface RunView {
   id: string;
   vendorStoryId: string;
   automationId: string;
+  /** Mirrors the backend's RunState names. AwaitingInput (#78) was missing here, so the
+   *  compiler believed a state the API has been sending since the conversational actions
+   *  shipped could not occur. */
   state:
-    "Queued" | "Planning" | "AwaitingApproval" | "Executing" | "Succeeded" | "Failed" | "Cancelled";
+    | "Queued"
+    | "Planning"
+    | "AwaitingApproval"
+    | "Executing"
+    | "AwaitingInput"
+    | "Succeeded"
+    | "Failed"
+    | "Cancelled";
   createdAt: string;
   dispatchedAt: string | null;
   outputLink: string | null;

@@ -136,7 +136,64 @@ public sealed class GitHubStub : IAsyncDisposable
             return;
         }
 
+        // The licensed write (UC-008), as Octokit performs it:
+        //   POST   /issues/{number}/labels          — add-to-set
+        //   DELETE /issues/{number}/labels/{name}   — remove
+        // The stub applies it to its own issue list, so a labelled Story really is labelled at
+        // the far end and ordinary reconciliation carries it back — which is what makes the
+        // board's chain assertion (#110) a fact rather than a mock's opinion.
+        // Matched positionally: "issues" then the number then "labels", optionally followed by
+        // the label name on a DELETE. A second slice pattern is not allowed in one list pattern.
+        var labelsAt = Array.IndexOf(segments, "labels");
+        if (
+            labelsAt >= 2
+            && segments[labelsAt - 2] == "issues"
+            && int.TryParse(segments[labelsAt - 1], out var number)
+        )
+        {
+            var issue = Issues.FirstOrDefault(candidate => candidate.Number == number);
+            if (issue is null)
+            {
+                Write(context, HttpStatusCode.NotFound, """{"message":"Not Found"}""");
+                return;
+            }
+
+            if (context.Request.HttpMethod == "POST")
+            {
+                using var reader = new StreamReader(context.Request.InputStream);
+                var applied = JsonSerializer.Deserialize<string[]>(reader.ReadToEnd()) ?? [];
+                Replace(issue, [.. issue.Labels.Union(applied, StringComparer.Ordinal)]);
+                Write(context, HttpStatusCode.OK, "[]");
+                return;
+            }
+
+            if (context.Request.HttpMethod == "DELETE" && segments.Length > labelsAt + 1)
+            {
+                var removed = Uri.UnescapeDataString(segments[labelsAt + 1]);
+                Replace(issue, [.. issue.Labels.Where(label => label != removed)]);
+                Write(context, HttpStatusCode.OK, "[]");
+                return;
+            }
+        }
+
+        // GET /labels/{name}: the connector asks before creating (EnsureLabel).
+        if (segments is [.., "labels", _])
+        {
+            Write(context, HttpStatusCode.OK, """{"id":1,"name":"label","color":"ededed"}""");
+            return;
+        }
+
         Write(context, HttpStatusCode.NotFound, """{"message":"Not Found"}""");
+    }
+
+    /// <summary>StubIssue is a record; a label change replaces it in place, keeping order.</summary>
+    void Replace(StubIssue issue, string[] labels)
+    {
+        var index = Issues.IndexOf(issue);
+        if (index >= 0)
+        {
+            Issues[index] = issue with { Labels = labels };
+        }
     }
 
     string IssuesJson() =>
