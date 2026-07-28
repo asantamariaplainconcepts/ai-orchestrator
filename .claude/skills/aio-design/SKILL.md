@@ -11,10 +11,14 @@ values**: values live in the canonical layer, so this file can never drift from 
 1. **Read the contract.** Open `DESIGN.md` at the repository root. It carries the current token
    vocabulary and the rules. Do not proceed from memory of a previous session.
    - Done when: the tokens and rules for this change are in hand.
-2. **Find the component before writing one.** Look in `docs/design-system/ui-kit/` for a class
-   that already does this. If nothing fits, add it **there** and regenerate — never inline styles
-   in a screen, and never add a component ahead of a screen that needs it.
-   - Done when: every visual element the change renders maps to a kit class.
+2. **Find the component before writing one.** Since DEC-051 there are two systems and a screen
+   belongs to exactly one. On a migrated screen (Platform theme): use shadcn primitives from
+   `src/frontend/shared/ui/` unwrapped, adding missing ones via the shadcn CLI, and take every
+   value through a Tailwind utility backed by the theme's tokens. On a screen still on the kit:
+   look in `docs/design-system/ui-kit/` for a class that already does this, and if nothing fits
+   add it **there** and regenerate. Never inline styles in a screen, never mix the two systems
+   on one screen, and never add a component ahead of a screen that needs it.
+   - Done when: every visual element the change renders maps to its screen's system.
 3. **Resolve copy through the catalogue.** Every user-facing string comes from
    `src/frontend/shared/i18n/`, follows the content fundamentals in the canonical README (voice,
    sentence-case labels, verb-first buttons, the four state patterns), and uses the locked

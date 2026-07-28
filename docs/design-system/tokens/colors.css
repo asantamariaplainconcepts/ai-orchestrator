@@ -36,8 +36,10 @@
   --fg-muted: oklch(52% 0.015 258);
   --fg-subtle: oklch(65% 0.012 258);
 
-  /* Borders */
-  --border: oklch(91% 0.005 258);
+  /* Borders. `--atlas-border` (and `--atlas-info` below) carry an atlas- prefix because the
+     Platform theme (DEC-051) also declares `--border`/`--info` on :root; two unlayered
+     declarations of one name would silently repaint whichever system loads first. */
+  --atlas-border: oklch(91% 0.005 258);
   --border-strong: oklch(85% 0.008 258);
 
   /* Semantic — success */
@@ -57,7 +59,7 @@
   --danger-border: oklch(86% 0.07 25);
 
   /* Semantic — info */
-  --info: oklch(52% 0.13 230);
+  --atlas-info: oklch(52% 0.13 230);
   --info-soft: oklch(95% 0.04 230);
   --info-border: oklch(85% 0.05 230);
 
@@ -89,7 +91,7 @@
   --fg-muted: oklch(60% 0.012 258);
   --fg-subtle: oklch(47% 0.01 258);
 
-  --border: oklch(26% 0.01 258);
+  --atlas-border: oklch(26% 0.01 258);
   --border-strong: oklch(32% 0.012 258);
 
   --ok: oklch(65% 0.13 155);
@@ -105,7 +107,7 @@
   --danger-soft: oklch(18% 0.06 25);
   --danger-border: oklch(32% 0.1 25);
 
-  --info: oklch(65% 0.13 230);
+  --atlas-info: oklch(65% 0.13 230);
   --info-soft: oklch(18% 0.05 230);
   --info-border: oklch(30% 0.07 230);
 
@@ -137,7 +139,7 @@
     --fg-muted: oklch(60% 0.012 258);
     --fg-subtle: oklch(47% 0.01 258);
 
-    --border: oklch(26% 0.01 258);
+    --atlas-border: oklch(26% 0.01 258);
     --border-strong: oklch(32% 0.012 258);
 
     --ok: oklch(65% 0.13 155);
@@ -153,7 +155,7 @@
     --danger-soft: oklch(18% 0.06 25);
     --danger-border: oklch(32% 0.1 25);
 
-    --info: oklch(65% 0.13 230);
+    --atlas-info: oklch(65% 0.13 230);
     --info-soft: oklch(18% 0.05 230);
     --info-border: oklch(30% 0.07 230);
 

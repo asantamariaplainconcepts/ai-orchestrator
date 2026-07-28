@@ -169,3 +169,14 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   identically in every habitat DEC-049 cares about and needs no ingest-auth story while OPN-002
   is open; the hub remains the recorded latency upgrade, layering on the same writer with no
   schema change.
+
+- **DEC-051 — the visual source of truth is the Platform theme** *(revises DEC-021's aesthetic
+  half and DEC-009's styling half)*: the owner's organisation published Foundations
+  (`@plainconceptsplatform/ui-theme`: design tokens for shadcn/ui + Tailwind v4) and this
+  product follows it. What transfers is the foundation — the theme package, shadcn primitives
+  used unwrapped, Tailwind utilities — not the whole stack: Next.js is a delivery choice
+  DEC-009 already made differently, and the theme, deliberately tokens-only CSS, does not care
+  which bundler serves it. Vite, VSA slices and the typed i18n catalogue stand. Migration is by
+  replacement, one screen per change, both CSS systems coexisting until the last kit screen
+  falls; the design gate's job is unchanged — no visual decision outside the token source — the
+  source just moves. Decided 2026-07-27 when the owner pointed at Foundations mid-loop.

@@ -7,6 +7,12 @@
 #
 # Scoped deliberately: the canonical layer is *supposed* to contain values, and generated files
 # are derived from it, so both are excluded. Rules apply to application source only.
+#
+# Since DEC-051 there are two token sources: this kit (retiring, screen by screen) and the
+# Platform theme (@plainconceptsplatform/ui-theme, vendor code under node_modules and already
+# excluded). The job here never changes: no visual decision in app code outside a token source —
+# migrated screens take values through Tailwind utilities, unmigrated ones through kit classes,
+# and neither may carry a raw hex, a raw px, or an off-stack font.
 set -uo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)"

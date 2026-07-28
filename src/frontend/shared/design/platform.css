@@ -1,0 +1,16 @@
+/* The Platform theme entry (DEC-051): Tailwind v4 + the Foundations tokens, side by side with
+ * the legacy kit while screens migrate one per change. The kit's CSS is unlayered, so it wins
+ * every collision with Tailwind's layered preflight — an unmigrated screen renders exactly as
+ * before adoption. The two systems share no :root token names (the kit's colliding pair carries
+ * an atlas- prefix).
+ *
+ * Outfit is self-hosted (the theme package deliberately fetches no webfont). The static cuts
+ * register the family as "Outfit", which is the name the theme's font stack expects.
+ */
+
+@import "@fontsource/outfit/400.css";
+@import "@fontsource/outfit/500.css";
+@import "@fontsource/outfit/600.css";
+@import "@fontsource/outfit/700.css";
+
+@import "@plainconceptsplatform/ui-theme";

@@ -17,6 +17,8 @@ export const en = {
   "projects.count.one": "project",
   "projects.count.other": "projects",
   "theme.toggle": "Switch theme",
+  "ui.close": "Close",
+  "shell.nav.openMenu": "Open navigation",
 
   // Backlog — copy follows the content fundamentals: sentence case, verb-first buttons,
   // the documented empty/error patterns, and the locked vocabulary (Story, Connector).
