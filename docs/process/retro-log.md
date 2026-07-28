@@ -1142,3 +1142,17 @@ times in the project this framework came from.
   ignored `scripts/` from the start.
 - **Time invested:** not measured (source: **manual** — forty-second consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — connector-health
+
+- **Worked:** the narrowest-read principle produced the best assertion of the change: the
+  response excludes even the secret NAME, and the test greps for the field's absence. Also the
+  #7 lesson (materialise before ToString in EF projections) was applied at write time instead of
+  being re-learned from a failing ordinal test — the first time one of the numbered lessons
+  preempted its own recurrence.
+- **Didn't:** nothing failed. Smallest change of the set, exactly as sliced.
+- **Next time:** keep pairing a visual borrow (Orbion's dots) with a rule of ours (BR-008's
+  deliberate staleness) — the pairing is what turned a cosmetic pill into four states with a
+  reason to exist.
+- **Time invested:** not measured (source: **manual** — forty-third consecutive).
+- **ADR:** none new.
