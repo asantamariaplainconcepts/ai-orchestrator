@@ -410,6 +410,16 @@ sealed class FakeAgentRuntime : IAgentRuntime
     {
         _instructions.Enqueue(instruction);
 
+        // Forward the scripted transcript line by line, as the real wrappers do (#96) — the
+        // tests exercise the actual writer, not a parallel path.
+        if (instruction.OnOutput is { } sink)
+        {
+            foreach (var line in Result.Log.Split('\n'))
+            {
+                sink(line);
+            }
+        }
+
         if (OnExecute is { } during)
         {
             await during();

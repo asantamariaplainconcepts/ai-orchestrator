@@ -39,7 +39,8 @@ public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRun
             instruction.WorkspacePath,
             environment,
             instruction.Timeout,
-            cancellationToken
+            cancellationToken,
+            instruction.OnOutput
         );
 
         if (outcome.TimedOut)

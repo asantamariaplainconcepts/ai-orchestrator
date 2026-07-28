@@ -92,3 +92,20 @@ export function formatCost(cost: number | null): string | null {
         maximumFractionDigits: 4,
       }).format(cost);
 }
+
+export interface RunLog {
+  content: string;
+  complete: boolean;
+}
+
+/**
+ * UC-027: polls every 3 seconds while the Run is not done, then stops itself (design D3). The
+ * flush interval server-side is 2s, so observed lag stays inside the stated ≤5s budget.
+ */
+export function useRunLog(projectId: string, runId: string) {
+  return useQuery({
+    queryKey: ["run-log", projectId, runId],
+    queryFn: () => api.get<RunLog>(`/api/projects/${projectId}/runs/${runId}/log`),
+    refetchInterval: (query) => (query.state.data?.complete ? false : 3_000),
+  });
+}

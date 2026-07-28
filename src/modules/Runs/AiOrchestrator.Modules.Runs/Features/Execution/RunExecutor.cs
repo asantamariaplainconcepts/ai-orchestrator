@@ -27,6 +27,7 @@ sealed class RunExecutor(
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
+    Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopes,
     TimeProvider clock,
     ILogger<RunExecutor> logger
 ) : IRunExecutor
@@ -74,7 +75,14 @@ sealed class RunExecutor(
 
         try
         {
-            var outcome = await Invoke(run, planning, cancellationToken);
+            // The live window (#96): every runtime line becomes a committed chunk while the
+            // Run executes. Disposed after Invoke so the tail flushes before the terminal
+            // state is saved — a watcher never sees "Succeeded" with half a log.
+            Outcome outcome;
+            await using (var logWriter = new RunLogWriter(run.Id, scopes, logger))
+            {
+                outcome = await Invoke(run, planning, logWriter.Write, cancellationToken);
+            }
             var result = outcome.Result;
 
             // The human always wins the race (design D3): a cancellation that landed while the
@@ -160,7 +168,12 @@ sealed class RunExecutor(
         return automation?.RequiresApproval ?? false;
     }
 
-    async Task<Outcome> Invoke(Run run, bool planning, CancellationToken cancellationToken)
+    async Task<Outcome> Invoke(
+        Run run,
+        bool planning,
+        Action<string> onOutput,
+        CancellationToken cancellationToken
+    )
     {
         var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
         if (story is null)
@@ -252,6 +265,7 @@ sealed class RunExecutor(
                 selection,
                 vendorToken,
                 aiKey,
+                onOutput,
                 cancellationToken
             );
         }
@@ -296,6 +310,7 @@ sealed class RunExecutor(
                     selection,
                     vendorToken,
                     aiKey,
+                    onOutput,
                     cancellationToken
                 )
             );
@@ -342,7 +357,8 @@ sealed class RunExecutor(
                     automation.Action,
                     automation.Timeout,
                     prepared.Value.Path,
-                    new AgentCredentials(vendorToken, aiKey)
+                    new AgentCredentials(vendorToken, aiKey),
+                    onOutput
                 ),
                 cancellationToken
             );
@@ -428,6 +444,7 @@ sealed class RunExecutor(
         AgentRuntimeSelection selection,
         string vendorToken,
         string aiKey,
+        Action<string> onOutput,
         CancellationToken cancellationToken
     )
     {
@@ -485,7 +502,8 @@ sealed class RunExecutor(
                     automation.Action,
                     automation.Timeout,
                     workspacePath,
-                    new AgentCredentials(vendorToken, aiKey)
+                    new AgentCredentials(vendorToken, aiKey),
+                    onOutput
                 ),
                 cancellationToken
             );
@@ -562,6 +580,7 @@ sealed class RunExecutor(
         AgentRuntimeSelection selection,
         string vendorToken,
         string aiKey,
+        Action<string> onOutput,
         CancellationToken cancellationToken
     )
     {
@@ -598,7 +617,8 @@ sealed class RunExecutor(
                     automation.Action,
                     automation.Timeout,
                     workspacePath,
-                    new AgentCredentials(vendorToken, aiKey)
+                    new AgentCredentials(vendorToken, aiKey),
+                    onOutput
                 ),
                 cancellationToken
             );

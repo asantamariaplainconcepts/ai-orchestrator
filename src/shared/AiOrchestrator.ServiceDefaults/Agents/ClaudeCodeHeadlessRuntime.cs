@@ -47,7 +47,8 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
                 ["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken,
             },
             instruction.Timeout,
-            cancellationToken
+            cancellationToken,
+            instruction.OnOutput
         );
 
         if (outcome.TimedOut)

@@ -9,6 +9,8 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
 
     public DbSet<Run> Runs => Set<Run>();
 
+    public DbSet<RunLogChunk> LogChunks => Set<RunLogChunk>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -36,6 +38,15 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
 
             // BR-002 counts Planning/Executing per project; make that lookup cheap.
             run.HasIndex(entity => new { entity.ProjectId, entity.State });
+
+            modelBuilder.Entity<RunLogChunk>(chunk =>
+            {
+                chunk.ToTable("run_log_chunks");
+                chunk.HasKey(entity => entity.Id);
+                // Reads are always "the whole log for one Run, in order".
+                chunk.HasIndex(entity => new { entity.RunId, entity.Sequence });
+                chunk.Property(entity => entity.Content).HasMaxLength(8192);
+            });
         });
     }
 }

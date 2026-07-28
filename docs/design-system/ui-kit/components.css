@@ -263,6 +263,20 @@
 /* A unified patch from a vendor. Colour distinguishes added from removed and nothing else —
    syntax highlighting is deliberately out (run-file-changes D5). The block scrolls itself so a
    long line cannot widen the page. */
+/* A live or archived run transcript (#96): the .prose pre treatment plus vertical bounds,
+   because a transcript grows without limit and the page must not. Tokens only. */
+.log-view {
+  margin: 0;
+  padding: var(--sp-3);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-2);
+  overflow: auto;
+  max-height: 60vh;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .diff {
   font-family: var(--font-mono);
   font-size: var(--fs-12);

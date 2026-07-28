@@ -202,6 +202,14 @@ const routes: [string, RegExp, Handler][] = [
   ],
   [
     "GET",
+    /^\/api\/projects\/[^/]+\/runs\/[^/]+\/log$/,
+    () => ({
+      content: "cloning acme/portal\nreading the story\nplanning changes\nwriting src/feature.ts",
+      complete: false,
+    }),
+  ],
+  [
+    "GET",
     /^\/api\/projects\/[^/]+\/runs\/[^/]+\/changes$/,
     () => ({ number: 41, url: "https://github.com/acme/portal/pull/41", files: [] }),
   ],

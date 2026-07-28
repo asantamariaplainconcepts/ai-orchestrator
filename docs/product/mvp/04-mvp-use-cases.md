@@ -94,3 +94,6 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
   Run awaiting an approval, an answer or a failure decision, newest wait first, with an ambient
   count in the shell. A failure leaves once a newer Run exists for its Story — it waits on
   nobody (#94; borrowed shape: Orbion's triage inbox).
+- **UC-027 — Member watches a Run's output while it executes.** The Run page shows the log
+  growing with ≤5s lag, stops following on terminal states, and serves the same full transcript
+  afterwards. A crash preserves every line committed before it (#96; DEC-050 revising DEC-031).

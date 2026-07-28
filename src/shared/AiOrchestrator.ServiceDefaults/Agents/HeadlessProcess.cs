@@ -18,7 +18,8 @@ static class HeadlessProcess
         string workingDirectory,
         IReadOnlyDictionary<string, string> environment,
         TimeSpan timeout,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        Action<string>? onOutput = null
     )
     {
         using var process = new Process();
@@ -43,8 +44,24 @@ static class HeadlessProcess
 
         var stdout = new StringBuilder();
         var stderr = new StringBuilder();
-        process.OutputDataReceived += (_, e) => stdout.AppendLine(e.Data);
-        process.ErrorDataReceived += (_, e) => stderr.AppendLine(e.Data);
+        process.OutputDataReceived += (_, e) =>
+        {
+            stdout.AppendLine(e.Data);
+            // Forward the line as it arrives (#96). Null lines are the stream closing, not
+            // output; the watcher gets exactly what the transcript gets.
+            if (e.Data is not null)
+            {
+                onOutput?.Invoke(e.Data);
+            }
+        };
+        process.ErrorDataReceived += (_, e) =>
+        {
+            stderr.AppendLine(e.Data);
+            if (e.Data is not null)
+            {
+                onOutput?.Invoke(e.Data);
+            }
+        };
 
         using var limit = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         limit.CancelAfter(timeout);

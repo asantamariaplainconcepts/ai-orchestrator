@@ -159,3 +159,13 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   behind a seam (e.g. Dapr) is justified when a self-hoster needs a non-Azure component, and not
   before; features must work under `aspire run` and the published-images path (#99), not only in
   the owner's subscription. Decided 2026-07-28 during the Orbion exploration.
+
+- **DEC-050 — a Run's output is observable while it executes** *(revises DEC-031's
+  fetched-logs-only)*: DEC-031 predates the conversational actions and minutes-long implement
+  Runs; watching an agent work is the strongest trust surface an agent product has. The record
+  is Postgres chunks in the Runs schema — the durable store IS the stream, so BR-014 comes free
+  and a crash preserves everything committed — and the window is a 3-second poll, stated lag
+  ≤5s (2s flush + 3s poll). Chosen over the SignalR hub matured on #96 because it works
+  identically in every habitat DEC-049 cares about and needs no ingest-auth story while OPN-002
+  is open; the hub remains the recorded latency upgrade, layering on the same writer with no
+  schema change.
