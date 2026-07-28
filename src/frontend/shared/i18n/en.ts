@@ -85,6 +85,11 @@ export const en = {
   "automations.rubricPathPlaceholder": "docs/process/definition-of-ready.md",
   "automations.readyLabel": "Ready label",
   "automations.readyLabelPlaceholder": "ready-for-proposal",
+  "automations.delete": "Delete",
+  "automations.delete.hint":
+    "Only possible while no run has used it. Once one has, disable it instead \u2014 runs keep their automation for the audit trail.",
+  "automations.delete.refused":
+    "That automation has runs, so it cannot be deleted. Disable it instead: it stops triggering and its history stays intact.",
   "automations.defaults": "Set up defaults",
   "automations.defaults.hint":
     "Creates this framework's four Automations and makes sure their trigger labels exist in the connected repository. Safe to press twice \u2014 nothing is duplicated.",

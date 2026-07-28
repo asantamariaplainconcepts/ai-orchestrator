@@ -20,8 +20,10 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 - **UC-005 — Admin creates an Automation.** Trigger label/state + action
   ([DEC-026](10-locked-mvp-decisions.md)) + runtime + `requiresApproval` + timeout.
   Save fails on trigger overlap ([BR-003](05-business-rules.md)).
-- **UC-006 — Admin edits or disables an Automation.** Same validation; disabling stops
-  future matches, never touches active Runs.
+- **UC-006 — Admin edits, disables or deletes an Automation.** Same validation; disabling stops
+  future matches, never touches active Runs. Deletion is possible only while no Run has used it
+  — once one has, the Automation is kept and disabling is the answer, because every Run records
+  its Automation for the audit trail (BR-014, #84).
 
 ## Backlog (BC-002)
 

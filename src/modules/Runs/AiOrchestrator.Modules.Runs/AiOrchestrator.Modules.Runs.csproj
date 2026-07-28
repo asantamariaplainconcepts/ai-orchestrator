@@ -12,6 +12,7 @@
          deliberately NO reference to any implementation assembly and no infrastructure SDK —
          the boundary the guardrail suite pins. -->
     <ProjectReference Include="..\..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\AiOrchestrator.Modules.Runs.Contracts\AiOrchestrator.Modules.Runs.Contracts.csproj" />
     <ProjectReference Include="..\..\Backlog\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
     <ProjectReference Include="..\..\Projects\AiOrchestrator.Modules.Projects.Contracts\AiOrchestrator.Modules.Projects.Contracts.csproj" />
   </ItemGroup>

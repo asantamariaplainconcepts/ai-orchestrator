@@ -4,6 +4,7 @@
     <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog.Contracts/AiOrchestrator.Modules.Backlog.Contracts.csproj" />
     <Project Path="modules/Projects/AiOrchestrator.Modules.Projects.Contracts/AiOrchestrator.Modules.Projects.Contracts.csproj" />
     <Project Path="modules/Runs/AiOrchestrator.Modules.Runs/AiOrchestrator.Modules.Runs.csproj" />
+    <Project Path="modules/Runs/AiOrchestrator.Modules.Runs.Contracts/AiOrchestrator.Modules.Runs.Contracts.csproj" />
     <Project Path="modules/Backlog/AiOrchestrator.Modules.Backlog/AiOrchestrator.Modules.Backlog.csproj" />
   </Folder>
   <Folder Name="/modules/Projects/">

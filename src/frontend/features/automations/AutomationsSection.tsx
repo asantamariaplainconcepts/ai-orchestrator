@@ -6,6 +6,7 @@ import {
   useApplyAutomationDefaults,
   useAutomations,
   useCreateAutomation,
+  useDeleteAutomation,
   useSetAutomationEnabled,
 } from "./useAutomations";
 
@@ -19,6 +20,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const setEnabled = useSetAutomationEnabled(projectId);
   const create = useCreateAutomation(projectId);
   const defaults = useApplyAutomationDefaults(projectId);
+  const remove = useDeleteAutomation(projectId);
 
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
@@ -77,6 +79,12 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
 
       {/* Partial success is the normal outcome, so the result is reported rather than reduced
           to success or failure (design D2). */}
+      {/* The refusal carries the rule, so it gets its own line rather than a generic error. */}
+      {remove.isError && (
+        <p className="state state-error" role="alert">
+          {t("automations.delete.refused")}
+        </p>
+      )}
       {defaults.isError && (
         <p className="state state-error" role="alert">
           {t("automations.defaults.failed")}
@@ -288,6 +296,15 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                       }
                     >
                       {automation.enabled ? t("automations.disable") : t("automations.enable")}
+                    </button>
+                    <button
+                      className="btn"
+                      type="button"
+                      disabled={remove.isPending}
+                      onClick={() => remove.mutate(automation.id)}
+                      title={t("automations.delete.hint")}
+                    >
+                      {t("automations.delete")}
                     </button>
                   </span>
                 </td>

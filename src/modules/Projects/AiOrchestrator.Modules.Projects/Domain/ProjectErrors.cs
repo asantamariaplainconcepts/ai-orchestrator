@@ -25,6 +25,19 @@ static class ProjectErrors
             $"Automation '{automationId}' does not exist in this project."
         );
 
+    /// <summary>
+    /// The message teaches the rule rather than only enforcing it: it says how many Runs hold
+    /// the Automation, and names disabling as the thing the Admin actually wants (BR-014).
+    /// </summary>
+    public static Error AutomationInUse(string label, int runs) =>
+        Error.Conflict(
+            "Automation.InUse",
+            $"The automation on '{label}' cannot be deleted: {runs} "
+                + $"{(runs == 1 ? "run references" : "runs reference")} it, and runs keep their "
+                + "automation for the audit trail. Disable it instead — it will stop triggering "
+                + "and its history stays intact."
+        );
+
     public static Error TriggerOverlaps(string label, string? state, string conflictingTrigger) =>
         Error.Conflict(
             "Automation.TriggerOverlaps",
