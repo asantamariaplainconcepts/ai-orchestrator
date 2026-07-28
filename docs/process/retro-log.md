@@ -1006,3 +1006,22 @@ times in the project this framework came from.
   first. Three of this change's four decisions were already made; I only had to find them.
 - **Time invested:** not measured (source: **manual** — thirty-fifth consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — defaults-full-catalogue
+
+- **Worked:** the owner caught this, not the tests, and that is the finding. Every test of the
+  defaults button asserted four Automations — so growing the catalogue twice left the button
+  stale while the suite stayed green, because the tests encoded the number rather than the
+  relationship. The fix asserts one Automation *per catalogue action*, which fails the next time
+  someone adds a seventh and forgets. Also: seeding propose on the grill's output rather than on
+  its own name kept a single truth about the ready label, and turned six triggers into a
+  pipeline.
+- **Didn't:** #79's issue said "adding \`ai:grill\` to the defaults is a trivial follow-up once
+  this exists" — I wrote that, shipped #79 and #80, and never did it. An out-of-scope note is a
+  promise nobody tracks; it should have been an issue at the moment I wrote the sentence. Two
+  changes went by, and the shop-window feature advertised a catalogue the product had outgrown.
+- **Next time:** when a proposal's out-of-scope section says "trivial follow-up", open the issue
+  in the same breath. The cost is thirty seconds and it converts a sentence nobody re-reads into
+  something the backlog carries.
+- **Time invested:** not measured (source: **manual** — thirty-sixth consecutive).
+- **ADR:** none new.
