@@ -1,3 +1,4 @@
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
@@ -5,7 +6,7 @@ import { defineConfig } from "vite";
 // The build output lands in the host's wwwroot: the SPA is served same-origin in production,
 // exactly as the Aspire dev proxy serves it in development. No CORS, no absolute API base URL.
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   // Mirrors the "@/*" paths mapping in tsconfig.json — both resolvers must agree.
   resolve: {
     alias: { "@": fileURLToPath(new URL(".", import.meta.url)) },

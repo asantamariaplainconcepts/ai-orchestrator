@@ -1,11 +1,22 @@
 import { useState } from "react";
 import { Link } from "react-router";
 import { t, tCount } from "@/shared/i18n";
+import { cn } from "@/shared/lib/utils";
 import { AppShell } from "@/shared/ui/AppShell";
+import { Badge } from "@/shared/ui/badge";
+import { Button } from "@/shared/ui/button";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { useCreateProject, useProjects } from "./useProjects";
 import { healthOf, useConnectorHealth } from "./useConnectorHealth";
 import type { ConnectorHealth, HealthState } from "./useConnectorHealth";
 
+/**
+ * First screen on the Platform theme, and the migration recipe (design D2): unwrapped shadcn
+ * primitives, theme tokens only, not a kit class left. Screens that migrate after this one
+ * copy this diff's shape.
+ */
 export function ProjectsScreen() {
   const [name, setName] = useState("");
   const projects = useProjects();
@@ -23,62 +34,77 @@ export function ProjectsScreen() {
 
   return (
     <AppShell crumbs={[{ label: t("shell.crumb.projects") }]} title={t("projects.heading")}>
-      <div className="stack">
-        <div className="row">
-          <p className="card-hint">{t("projects.subtitle")}</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2">
+          <p className="text-sm text-muted-foreground">{t("projects.subtitle")}</p>
           {projects.data ? (
-            <span className="badge badge-neutral">
+            <Badge variant="secondary">
               {tCount(projects.data.length, "projects.count.one", "projects.count.other")}
-            </span>
+            </Badge>
           ) : null}
         </div>
 
-        <section className="card">
-          <form className="row" onSubmit={submit}>
-            <div className="field" style={{ flex: 1 }}>
-              <label className="label" htmlFor="project-name">
-                {t("projects.create.name")}
-              </label>
-              <input
-                id="project-name"
-                className="input"
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={t("projects.create.placeholder")}
-              />
-            </div>
-            <button className="btn btn-primary" type="submit" disabled={createProject.isPending}>
-              {createProject.isPending ? t("projects.create.pending") : t("projects.create.submit")}
-            </button>
-          </form>
-        </section>
+        <Card>
+          <CardContent>
+            <form className="flex flex-col gap-3 sm:flex-row sm:items-end" onSubmit={submit}>
+              <div className="flex flex-1 flex-col gap-2">
+                <Label htmlFor="project-name">{t("projects.create.name")}</Label>
+                <Input
+                  id="project-name"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  placeholder={t("projects.create.placeholder")}
+                />
+              </div>
+              <Button type="submit" disabled={createProject.isPending}>
+                {createProject.isPending
+                  ? t("projects.create.pending")
+                  : t("projects.create.submit")}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
 
-        <section className="card" aria-label={t("projects.heading")}>
-          {/* All four states, every time — the kit provides each one. */}
-          {projects.isPending && <p className="state">{t("projects.loading")}</p>}
-          {projects.isError && (
-            <p className="state state-error" role="alert">
-              {t("projects.error")}
-            </p>
-          )}
-          {projects.data?.length === 0 && <p className="state">{t("projects.empty")}</p>}
+        <Card aria-label={t("projects.heading")}>
+          <CardContent>
+            {/* All four states, every time. */}
+            {projects.isPending && (
+              <p className="text-sm text-muted-foreground">{t("projects.loading")}</p>
+            )}
+            {projects.isError && (
+              <p className="text-sm text-destructive" role="alert">
+                {t("projects.error")}
+              </p>
+            )}
+            {projects.data?.length === 0 && (
+              <p className="text-sm text-muted-foreground">{t("projects.empty")}</p>
+            )}
 
-          {projects.data && projects.data.length > 0 && (
-            <ul className="list">
-              {projects.data.map((project) => (
-                <li className="list-row" key={project.id}>
-                  <Link className="list-title" to={`/projects/${project.id}`}>
-                    {project.name}
-                  </Link>
-                  <span className="row">
-                    <HealthPill connector={byProject.get(project.id)} />
-                    <span className="mono">{project.id}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+            {projects.data && projects.data.length > 0 && (
+              <ul className="divide-y">
+                {projects.data.map((project) => (
+                  <li
+                    className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                    key={project.id}
+                  >
+                    <Link
+                      className="min-w-0 truncate text-sm font-medium transition-colors hover:text-primary"
+                      to={`/projects/${project.id}`}
+                    >
+                      {project.name}
+                    </Link>
+                    <span className="flex shrink-0 items-center gap-2">
+                      <HealthBadge connector={byProject.get(project.id)} />
+                      <span className="hidden font-mono text-xs text-muted-foreground sm:inline">
+                        {project.id}
+                      </span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </AppShell>
   );
@@ -106,21 +132,17 @@ const HEALTH_COPY = {
  * reason is one hover away without leaving the list. A healthy pill shows the sync age —
  * stale-but-not-failing is a state a Member should be able to notice (BR-008).
  */
-function HealthPill({ connector }: { connector: ConnectorHealth | undefined }) {
+function HealthBadge({ connector }: { connector: ConnectorHealth | undefined }) {
   const state = healthOf(connector);
-  const pillClass =
-    state === "healthy"
-      ? "pill pill-ok"
-      : state === "failing"
-        ? "pill pill-danger"
-        : "pill pill-neutral";
 
   return (
-    <span className={pillClass} title={connector?.lastFailure ?? undefined}>
+    <Badge
+      variant={state === "failing" ? "destructive" : "secondary"}
+      className={cn(state === "healthy" && "bg-success text-success-foreground")}
+      title={connector?.lastFailure ?? undefined}
+    >
       {t(HEALTH_COPY[state])}
-      {state === "healthy" && connector?.lastSyncedAt
-        ? ` \u00b7 ${age(connector.lastSyncedAt)}`
-        : ""}
-    </span>
+      {state === "healthy" && connector?.lastSyncedAt ? ` · ${age(connector.lastSyncedAt)}` : ""}
+    </Badge>
   );
 }
