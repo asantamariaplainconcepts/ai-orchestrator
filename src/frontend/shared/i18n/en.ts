@@ -138,6 +138,19 @@ export const en = {
   "automations.empty": "No Automations yet. Add one to make a labelled Story trigger an Agent.",
   "automations.add": "Add Automation",
   "automations.new": "New Automation",
+  // The canvas (#116): the pipeline as a shape, where an edge is one Automation's output label
+  // agreeing with another's trigger label.
+  "canvas.show": "Canvas view",
+  "canvas.showList": "List view",
+  "canvas.hint":
+    "Each Automation hands work to the next by writing its label. Where nobody does, a person must.",
+  "canvas.human": "A person continues",
+  "canvas.handsTo": "Hands work to\u2026",
+  "canvas.disconnect": "Require a person here",
+  "canvas.approval.on": "A person approves the plan",
+  "canvas.approval.off": "Runs without approval",
+  "canvas.dangling": "Writes a label nothing listens for:",
+  "canvas.changeRefused": "That change was refused. Nothing was saved.",
   "automations.new.close": "Close form",
   "automations.adding": "Saving\u2026",
   "automations.saveFailed": "Could not save the Automation.",

@@ -187,6 +187,45 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     }
 
     [Fact]
+    public async Task ClosingTheChain_Should_MakeTheHandOffAutonomous()
+    {
+        // #116's headline gesture, asserted where it is a fact rather than a rendering: the
+        // canvas removes a human requirement by setting the upstream output label through the
+        // ordinary update endpoint. Nothing here touches the canvas — it exercises what the
+        // canvas does, which is the part that can break.
+        var upstream = await Automation("ai:refine", "RefineOrComment", null);
+        await Automation("ai:estimate", "Estimate", null);
+
+        // Before: the chain stops, and a Run of the upstream Automation hands nothing on.
+        AgentSays(true, "A helpful comment.");
+        await Execute(await Dispatch(upstream));
+        LabelsAtVendor().ShouldBeEmpty();
+
+        // The gesture: connect upstream to downstream.
+        var connected = await _client.PutAsJsonAsync(
+            $"/api/projects/{_projectId}/automations/{upstream}",
+            new
+            {
+                triggerLabel = "ai:refine",
+                triggerState = (string?)null,
+                action = "RefineOrComment",
+                runtime = "ClaudeCodeHeadless",
+                requiresApproval = false,
+                timeoutMinutes = (int?)null,
+                rubricPath = (string?)null,
+                outputLabel = "ai:estimate",
+            }
+        );
+        connected.EnsureSuccessStatusCode();
+
+        // After: the same Run, on the same Automation, now hands work on with nobody acting.
+        AgentSays(true, "Another helpful comment.");
+        await Execute(await Dispatch(upstream));
+
+        LabelsAtVendor().ShouldContain("ai:estimate");
+    }
+
+    [Fact]
     public async Task AnAutomationFeedingItself_Should_BeRefusedAtSave()
     {
         var response = await CreateAutomation("ai:refine", "RefineOrComment", "ai:refine");
