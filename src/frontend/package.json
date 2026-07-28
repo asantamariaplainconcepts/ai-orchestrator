@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev:mock": "vite --mode mock",
+    "build": "tsc --noEmit && vite build && node scripts/assert-no-mock.mjs",
     "preview": "vite preview",
     "lint": "eslint . --max-warnings=0",
     "format:check": "prettier --check .",

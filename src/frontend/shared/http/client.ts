@@ -13,6 +13,14 @@ export class ApiError extends Error {
 }
 
 async function request<TResponse>(path: string, init?: RequestInit): Promise<TResponse> {
+  // `pnpm dev:mock` only. MODE is replaced at build time, so production builds dead-code
+  // eliminate the branch AND the dynamically imported module — and the build asserts that by
+  // grepping the emitted bundle (#95).
+  if (import.meta.env.MODE === "mock") {
+    const { mockRequest } = await import("./mock");
+    return mockRequest<TResponse>(path, init);
+  }
+
   const response = await fetch(path, {
     ...init,
     headers: { "Content-Type": "application/json", ...init?.headers },

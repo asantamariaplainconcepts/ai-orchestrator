@@ -1126,3 +1126,19 @@ times in the project this framework came from.
   which Orbion's version does not need and ours cannot skip.
 - **Time invested:** not measured (source: **manual** — forty-first consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — frontend-mock-mode (spec-less, DEC-025)
+
+- **Worked:** the exclusion is asserted at the artifact, both ways. The build greps the emitted
+  bundle for the marker and fails if present; the mutation check builds `--mode mock` and
+  verifies the marker IS there. Vite's build-time MODE replacement plus a dynamic import gives
+  dead-code elimination of the whole module — but the assertion is what makes that a property
+  instead of a belief (ADR-0004, applied for once *before* an incident).
+- **Didn't:** three small stumbles, all config-shaped: `noUncheckedIndexedAccess` on a fixture
+  array, eslint's browser globals rejecting a Node script, and prettier needing a pass over new
+  files. None interesting alone; together they are the tax of a strict frontend, which is the
+  point of having one.
+- **Next time:** when adding a Node-side script to a browser-linted package, put it under an
+  ignored `scripts/` from the start.
+- **Time invested:** not measured (source: **manual** — forty-second consecutive).
+- **ADR:** none new.
