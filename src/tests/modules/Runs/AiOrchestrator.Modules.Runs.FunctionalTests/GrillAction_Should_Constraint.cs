@@ -214,9 +214,19 @@ public class GrillAction_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
         // The label is at the vendor; the poll mirrors it and matching fires.
         await _client.PostAsync($"/api/projects/{_projectId}/backlog/refresh", null);
 
+        // Matching rides CAP's background dispatch — the matched Run lands shortly after the
+        // refresh returns, not within it. Same deadline-poll shape as DeliveryProbe.
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(15);
         var runs = await database.Runs.Where(run => run.ProjectId == _projectId).ToListAsync();
+
+        while (DateTime.UtcNow < deadline && runs.Count < 2)
+        {
+            await Task.Delay(100);
+            runs = await database.Runs.Where(run => run.ProjectId == _projectId).ToListAsync();
+        }
+
         runs.Count.ShouldBe(2);
     }
 
