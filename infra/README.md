@@ -42,8 +42,12 @@ partway through, which is a bad moment to find out.
 ./infra/deploy.sh          # TAG defaults to the short commit sha
 ```
 
-Pushes both images, runs the migration job, waits for it to succeed, then moves the portal
-revision. **A failed migration stops the deploy with the previous revision still serving.**
+Pushes all three images, runs the migration job, waits for it to succeed, then moves the dispatch
+worker and the portal revision. **A failed migration stops the deploy with the previous revision
+still serving.** It finishes by reading back the *running* image of the portal and the worker and
+refusing to report success unless both carry the tag just deployed — #92 shipped a worker three
+days stale precisely because every command returned zero and nothing compared the result to the
+intent.
 
 Verify a release by its artifact, not by the script's exit code (ADR-0004):
 
