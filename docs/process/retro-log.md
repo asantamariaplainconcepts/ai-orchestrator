@@ -1275,3 +1275,21 @@ times in the project this framework came from.
   on top of something proven, not the other way round.
 - **Time invested:** not measured (source: **manual** — forty-ninth consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — automation-output-label
+
+- **Worked:** widening the grill's private field instead of adding a second one beside it. The
+  rename forced every call site into view, and EF's `RenameColumn` made "a grill configured
+  before the change still works" true by construction rather than by a data fix-up. Moving the
+  write to one place also revealed that its most interesting branch — the vendor refusing the
+  label, which fails the Run rather than claiming success — had **never been exercised**,
+  because the vendor stub could only ever succeed. It has a test now.
+- **Didn't:** the API field rename (`readyLabel` → `outputLabel`) broke a functional test in the
+  worst way available: the payload field stopped binding, so the value was silently dropped and
+  the grill fell back to its default. The test caught it, but a request carrying an unknown
+  field deserves a louder answer than a default; nothing in the stack currently objects.
+- **Next time:** when a rename crosses the HTTP boundary, grep the *payload literals* in tests
+  and clients, not only the C# identifiers — the compiler cannot see a JSON property name, and
+  the failure mode is a silent fallback rather than an error.
+- **Time invested:** not measured (source: **manual** — fiftieth consecutive).
+- **ADR:** none new.
