@@ -39,6 +39,34 @@ builder
         {
             web.Ports = ["${SERVER_PORT}:${SERVER_PORT}"];
         }
+
+        // Two things `aspire run` does that raw compose does not, discovered by booting the
+        // output (#99): Aspire creates the AddDatabase database itself, and it health-gates
+        // startup. Without these, migrations raced postgres and then failed against a database
+        // that nothing had created.
+        if (file.Services.TryGetValue("postgres", out var db))
+        {
+            db.Environment["POSTGRES_DB"] = "aiorchestratordb";
+            db.Healthcheck = new Aspire.Hosting.Docker.Resources.ServiceNodes.Healthcheck
+            {
+                Test = ["CMD-SHELL", "pg_isready -U postgres -d aiorchestratordb"],
+                Interval = "2s",
+                Timeout = "5s",
+                Retries = 15,
+                StartPeriod = "5s",
+            };
+        }
+
+        foreach (var name in new[] { "migrations", "server", "dispatch" })
+        {
+            if (
+                file.Services.TryGetValue(name, out var dependent)
+                && dependent.DependsOn.TryGetValue("postgres", out var dependency)
+            )
+            {
+                dependency.Condition = "service_healthy";
+            }
+        }
     });
 
 // PostgreSQL — one database, one schema per module.

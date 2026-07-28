@@ -16,6 +16,7 @@ services:
       POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256 --auth-local=scram-sha-256"
       POSTGRES_USER: "postgres"
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "aiorchestratordb"
     expose:
       - "5432"
     volumes:
@@ -25,6 +26,14 @@ services:
         read_only: false
     networks:
       - "aspire"
+    healthcheck:
+      test:
+        - "CMD-SHELL"
+        - "pg_isready -U postgres -d aiorchestratordb"
+      interval: "2s"
+      timeout: "5s"
+      retries: 15
+      start_period: "5s"
   storage:
     image: "mcr.microsoft.com/azure-storage/azurite:latest"
     command:
@@ -54,7 +63,7 @@ services:
       OTEL_SERVICE_NAME: "migrations"
     depends_on:
       postgres:
-        condition: "service_started"
+        condition: "service_healthy"
     networks:
       - "aspire"
   dispatch:
@@ -78,7 +87,7 @@ services:
       OTEL_SERVICE_NAME: "dispatch"
     depends_on:
       postgres:
-        condition: "service_started"
+        condition: "service_healthy"
       migrations:
         condition: "service_completed_successfully"
     networks:
@@ -107,7 +116,7 @@ services:
       - "${SERVER_PORT}:${SERVER_PORT}"
     depends_on:
       postgres:
-        condition: "service_started"
+        condition: "service_healthy"
       migrations:
         condition: "service_completed_successfully"
     networks:
