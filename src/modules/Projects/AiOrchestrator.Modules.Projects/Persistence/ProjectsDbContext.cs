@@ -30,7 +30,7 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             automation.Property(entity => entity.TriggerLabel).HasMaxLength(200).IsRequired();
             automation.Property(entity => entity.TriggerState).HasMaxLength(100);
             automation.Property(entity => entity.RubricPath).HasMaxLength(300);
-            automation.Property(entity => entity.ReadyLabel).HasMaxLength(200);
+            automation.Property(entity => entity.OutputLabel).HasMaxLength(200);
 
             // Names, not ordinals. #7 shipped a projection where an enum read back as "0" because
             // EF translated ToString() to SQL; storing the name makes the column self-describing

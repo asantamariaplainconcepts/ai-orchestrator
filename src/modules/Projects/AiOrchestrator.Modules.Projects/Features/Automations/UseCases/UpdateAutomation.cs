@@ -43,7 +43,7 @@ sealed class UpdateAutomation : IUseCase
                             request.RequiresApproval,
                             request.TimeoutMinutes,
                             request.RubricPath,
-                            request.ReadyLabel
+                            request.OutputLabel
                         ),
                         cancellationToken
                     );
@@ -104,7 +104,7 @@ sealed class UpdateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? RubricPath = null,
-        string? ReadyLabel = null
+        string? OutputLabel = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>;
 
     internal sealed record SetEnabled(Guid ProjectId, Guid AutomationId, bool Enabled)
@@ -117,6 +117,25 @@ sealed class UpdateAutomation : IUseCase
         {
             RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
             RuleFor(command => command.TriggerState).MaximumLength(100);
+            // The length bounds were on create but not here, so an edit could store a value the
+            // column refuses. Same bounds, same place, both directions.
+            RuleFor(command => command.RubricPath).MaximumLength(300);
+            RuleFor(command => command.OutputLabel).MaximumLength(200);
+
+            // An Automation whose output label is its own trigger re-fires itself: the first Run
+            // succeeds, writes the label, and matching declines the second because BR-001 sees an
+            // active Run — leaving a labelled Story, no work, and nothing saying why. Refused
+            // here because it is a relation between two fields of this request, not a conflict
+            // with stored state (#115 design D3).
+            RuleFor(command => command.OutputLabel)
+                .Must(
+                    (command, output) =>
+                        !string.Equals(output, command.TriggerLabel, StringComparison.Ordinal)
+                )
+                .When(command => !string.IsNullOrWhiteSpace(command.OutputLabel))
+                .WithMessage(
+                    "An Automation cannot hand work to itself: its output label is its own trigger label."
+                );
 
             RuleFor(command => command.Action)
                 .Must(value => Enum.TryParse<AutomationAction>(value, out _))
@@ -165,7 +184,7 @@ sealed class UpdateAutomation : IUseCase
                     ? TimeSpan.FromMinutes(minutes)
                     : CreateAutomation.DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
-                string.IsNullOrWhiteSpace(command.ReadyLabel) ? null : command.ReadyLabel
+                string.IsNullOrWhiteSpace(command.OutputLabel) ? null : command.OutputLabel
             );
 
             // Excluding itself: an Automation must not be refused for colliding with the

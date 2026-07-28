@@ -45,7 +45,7 @@ sealed class CreateAutomation : IUseCase
                         request.RequiresApproval,
                         request.TimeoutMinutes,
                         request.RubricPath,
-                        request.ReadyLabel
+                        request.OutputLabel
                     );
 
                     var result = await sender.Send(command, cancellationToken);
@@ -71,7 +71,7 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? RubricPath = null,
-        string? ReadyLabel = null
+        string? OutputLabel = null
     );
 
     internal sealed record Response(
@@ -94,7 +94,7 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? RubricPath = null,
-        string? ReadyLabel = null
+        string? OutputLabel = null
     ) : ICommand<ErrorOr<Response>>;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -104,7 +104,22 @@ sealed class CreateAutomation : IUseCase
             RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
             RuleFor(command => command.TriggerState).MaximumLength(100);
             RuleFor(command => command.RubricPath).MaximumLength(300);
-            RuleFor(command => command.ReadyLabel).MaximumLength(200);
+            RuleFor(command => command.OutputLabel).MaximumLength(200);
+
+            // An Automation whose output label is its own trigger re-fires itself: the first Run
+            // succeeds, writes the label, and matching declines the second because BR-001 sees an
+            // active Run — leaving a labelled Story, no work, and nothing saying why. Refused
+            // here because it is a relation between two fields of this request, not a conflict
+            // with stored state (#115 design D3).
+            RuleFor(command => command.OutputLabel)
+                .Must(
+                    (command, output) =>
+                        !string.Equals(output, command.TriggerLabel, StringComparison.Ordinal)
+                )
+                .When(command => !string.IsNullOrWhiteSpace(command.OutputLabel))
+                .WithMessage(
+                    "An Automation cannot hand work to itself: its output label is its own trigger label."
+                );
 
             // Parseable-to-the-enum is input validation, not a domain rule: an unknown action is
             // a malformed request, never a business conflict.
@@ -155,7 +170,7 @@ sealed class CreateAutomation : IUseCase
                     ? TimeSpan.FromMinutes(minutes)
                     : DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
-                string.IsNullOrWhiteSpace(command.ReadyLabel) ? null : command.ReadyLabel
+                string.IsNullOrWhiteSpace(command.OutputLabel) ? null : command.OutputLabel
             );
 
             var overlap = await overlaps.Check(

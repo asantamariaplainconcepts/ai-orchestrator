@@ -114,6 +114,7 @@ sealed class StubBacklogConnector : IBacklogConnector
         Documents.Clear();
         RepositoryLabels.Clear();
         EnsureLabelError = null;
+        FailNextLabelWrite = null;
     }
 
     /// <summary>The change a Run's Story links to, when a test wants one.</summary>
@@ -181,6 +182,12 @@ sealed class StubBacklogConnector : IBacklogConnector
         CancellationToken cancellationToken
     ) => Task.FromResult<ErrorOr<BacklogSnapshot>>(new BacklogSnapshot([.. Stories]));
 
+    /// <summary>
+    /// Set to make the next label write refuse, then it clears itself. The stub could only ever
+    /// succeed before, so "the vendor said no" was a branch nothing exercised (#115).
+    /// </summary>
+    public string? FailNextLabelWrite { get; set; }
+
     public Task<ErrorOr<Success>> ApplyLabel(
         BacklogCoordinates coordinates,
         string vendorStoryId,
@@ -189,6 +196,12 @@ sealed class StubBacklogConnector : IBacklogConnector
         CancellationToken cancellationToken
     )
     {
+        if (FailNextLabelWrite is { } refusal)
+        {
+            FailNextLabelWrite = null;
+            return Task.FromResult<ErrorOr<Success>>(Error.Failure(description: refusal));
+        }
+
         var index = Stories.FindIndex(story => story.VendorId == vendorStoryId);
         if (index >= 0 && !Stories[index].Labels.Contains(label))
         {

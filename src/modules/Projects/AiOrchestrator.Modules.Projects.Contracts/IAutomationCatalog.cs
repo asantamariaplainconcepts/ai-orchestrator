@@ -38,7 +38,7 @@ public sealed record AutomationDetail(
     /// <summary>Grill only; null means the framework's convention (grill design D5).</summary>
     string? RubricPath = null,
     /// <summary>Grill only; null means the framework's convention.</summary>
-    string? ReadyLabel = null
+    string? OutputLabel = null
 );
 
 /// <summary>
