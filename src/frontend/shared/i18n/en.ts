@@ -28,7 +28,10 @@ export const en = {
   "backlog.empty": "No open Stories in this repository.",
   // Distinct from the above on purpose: nothing has been read yet, so "no Stories" would be a
   // claim we have not earned.
-  "backlog.noConnector": "Nothing to show yet. Configure a Connector above to read Stories.",
+  // "above" was true on the single-scroll page; the Connector now lives on Settings, and a
+  // direction that no longer holds is worse than no direction.
+  "backlog.noConnector":
+    "Nothing to show yet. Connect a backlog on the Settings tab to read Stories.",
   "backlog.stale": "Could not read the backlog. Showing the last Stories we saw.",
   "backlog.refresh": "Refresh backlog",
   "backlog.refreshing": "Refreshing\u2026",
@@ -84,6 +87,8 @@ export const en = {
   "connector.save": "Configure connector",
   "connector.saving": "Verifying\u2026",
   "connector.saveFailed": "Could not save the Connector.",
+  "connector.edit": "Edit Connector",
+  "connector.cancel": "Cancel",
 
   "project.back": "All projects",
 
@@ -130,6 +135,8 @@ export const en = {
   "automations.error": "Could not load Automations.",
   "automations.empty": "No Automations yet. Add one to make a labelled Story trigger an Agent.",
   "automations.add": "Add Automation",
+  "automations.new": "New Automation",
+  "automations.new.close": "Close form",
   "automations.adding": "Saving\u2026",
   "automations.saveFailed": "Could not save the Automation.",
   "automations.trigger": "Trigger label",
@@ -171,6 +178,11 @@ export const en = {
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
   "project.title.fallback": "Project",
+  // The project page's tabs (dashboard-tabs): operating and configuring are different jobs.
+  "project.tab.operate": "Operate",
+  "project.tab.runs": "Runs",
+  "project.tab.automations": "Automations",
+  "project.tab.settings": "Settings",
 
   // Backlog stat cards — every value is computed from the live response, nothing else.
   "backlog.stats.total": "Stories",
