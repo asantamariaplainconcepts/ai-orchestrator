@@ -1293,3 +1293,22 @@ times in the project this framework came from.
   the failure mode is a silent fallback rather than an error.
 - **Time invested:** not measured (source: **manual** — fiftieth consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — workflow-canvas
+
+- **Worked:** building the picture found two silent API traps that reading the code had not.
+  The automations response returned neither the output label — so the canvas could not derive a
+  single edge — nor the rubric path; and since the update endpoint replaces the whole
+  Automation, any caller editing from the list would have cleared the rubric path on every save,
+  with no error anywhere. A feature that needs to *read* what an endpoint lets you *write* is a
+  good way to discover the two disagree.
+- **Didn't:** the layout took three rounds with the owner (downward chains, then a slot for the
+  undecided step, then left-to-right with the rule as separator) because the propose described
+  the balloon's *meaning* carefully and its *placement* not at all. The design also asserted a
+  balloon "between two Automations" that cannot exist — an absence has no two ends — which only
+  became obvious with the component on screen.
+- **Next time:** when a change is mostly a picture, put a rough sketch in the propose, even in
+  ASCII. The three rounds were not disagreement about the product; they were the cost of
+  discovering the arrangement in code instead of on paper.
+- **Time invested:** not measured (source: **manual** — fifty-first consecutive).
+- **ADR:** none new.
