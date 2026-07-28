@@ -14,6 +14,14 @@ static class ProjectErrors
     public static Error NotFound(Guid id) =>
         Error.NotFound("Project.NotFound", $"Project '{id}' was not found.");
 
+    /// <summary>The deliberate-act guard (#121, design D4), naming what to type.</summary>
+    public static Error ArchiveNotConfirmed(string name) =>
+        Error.Validation(
+            "Project.ArchiveNotConfirmed",
+            $"Type the project's name — '{name}' — to archive it. Archiving stops its polling, "
+                + "its automations and any new run; everything it already did stays readable."
+        );
+
     /// <summary>
     /// BR-003. Names the Automation it collides with: "invalid" leaves an Admin guessing which of
     /// their rules is in the way, and the whole point of a config-time gate is that the fix is

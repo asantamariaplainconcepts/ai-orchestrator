@@ -17,9 +17,9 @@ const at = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOStri
 const projectAlpha = "00000000-0000-7000-8000-00000000000a";
 const projectBeta = "00000000-0000-7000-8000-00000000000b";
 
-const projects = [
-  { id: projectAlpha, name: "Alpha portal" },
-  { id: projectBeta, name: "Beta warehouse" },
+const projects: { id: string; name: string; archivedAt: string | null }[] = [
+  { id: projectAlpha, name: "Alpha portal", archivedAt: null },
+  { id: projectBeta, name: "Beta warehouse", archivedAt: null },
 ];
 
 const automations = [
@@ -116,11 +116,39 @@ const connector = {
   lastFailureAt: null,
 };
 
-type Handler = (match: RegExpMatchArray, body: unknown) => unknown;
+type Handler = (match: RegExpMatchArray, body: unknown, params: URLSearchParams) => unknown;
 
 const routes: [string, RegExp, Handler][] = [
   ["GET", /^\/api\/me$/, () => ({ id: "local-owner", displayName: "Local owner", role: "Admin" })],
-  ["GET", /^\/api\/projects$/, () => projects],
+  [
+    "GET",
+    /^\/api\/projects$/,
+    (_m, _b, params) => ({
+      projects:
+        params.get("includeArchived") === "true"
+          ? projects
+          : projects.filter((project) => !project.archivedAt),
+      archivedCount: projects.filter((project) => project.archivedAt).length,
+    }),
+  ],
+  [
+    "POST",
+    /^\/api\/projects\/([^/]+)\/archive$/,
+    (match) => {
+      const found = projects.find((p) => p.id === match[1]);
+      if (found) found.archivedAt = new Date().toISOString();
+      return {};
+    },
+  ],
+  [
+    "POST",
+    /^\/api\/projects\/([^/]+)\/restore$/,
+    (match) => {
+      const found = projects.find((p) => p.id === match[1]);
+      if (found) found.archivedAt = null;
+      return {};
+    },
+  ],
   [
     "GET",
     /^\/api\/connectors$/,
@@ -145,7 +173,11 @@ const routes: [string, RegExp, Handler][] = [
     "POST",
     /^\/api\/projects$/,
     (_m, body) => {
-      const created = { id: crypto.randomUUID(), name: (body as { name: string }).name };
+      const created = {
+        id: crypto.randomUUID(),
+        name: (body as { name: string }).name,
+        archivedAt: null,
+      };
       projects.push(created);
       return created;
     },
@@ -310,12 +342,18 @@ export async function mockRequest<TResponse>(path: string, init?: RequestInit): 
   const method = init?.method ?? "GET";
   const body = typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
 
+  // Routes match the path, never the query: they always did, but nothing had exercised it —
+  // the story-filtered runs list has been sending `?vendorStoryId=` past a pattern anchored
+  // with `$` since it shipped, and silently getting "no mock route" (#121).
+  const route = path.split("?")[0] ?? path;
+  const params = new URLSearchParams(path.slice(route.length));
+
   for (const [routeMethod, pattern, handler] of routes) {
-    const match = path.match(pattern);
+    const match = route.match(pattern);
     if (routeMethod === method && match) {
       // A visible beat keeps loading states honest while staying fast enough to forget.
       await new Promise((resolve) => setTimeout(resolve, 120));
-      return handler(match, body) as TResponse;
+      return handler(match, body, params) as TResponse;
     }
   }
 

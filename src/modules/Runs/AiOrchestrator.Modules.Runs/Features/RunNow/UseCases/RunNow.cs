@@ -128,6 +128,8 @@ sealed class RunNow : IUseCase
                     WaitingAtCap: false
                 ),
                 RunCreation.AlreadyActive => RunsErrors.StoryHasActiveRun(command.VendorStoryId),
+                // The human asked, so the human is told why (#121).
+                RunCreation.ProjectArchived => RunsErrors.ProjectArchived(command.ProjectId),
                 _ => Error.Unexpected(
                     "Runs.UnknownOutcome",
                     "Run creation returned an unknown outcome."
