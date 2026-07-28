@@ -113,16 +113,21 @@ Two lanes, deliberately separate:
 own identity — a run holding dev's credential cannot reach it, because the subject names the
 environment.
 
-**`dev` currently still has a required reviewer**, so every deploy waits for one click. DEC-047's
-position is that it need not: dev is disposable and `terraform destroy` recreates it. Removing it
-is Settings → Environments → `dev` → uncheck *Required reviewers*, and nothing in this repository
-changes when you do — which is the point of keeping reviewers out of version control.
+**`dev` has no required reviewer: merging to `main` deploys it, unattended.** That is DEC-047's
+position — dev is disposable, `terraform destroy` recreates it, and the owner deploys many times
+a day. `prod` will keep a reviewer.
 
-The consequence of removing it, stated rather than buried: anyone who can merge to `main` would
-then be able to change that resource group and read its secrets unattended. Terraform *manages*
-the vault's secrets, so it reads their values on every refresh; the deploy identity therefore
-holds *Key Vault Secrets Officer* and can see the database password. Fine for an environment
-`terraform destroy` recreates. Not fine for production data.
+The consequence, stated rather than buried: anyone who can merge to `main` can change that
+resource group and read its secrets. Terraform *manages* the vault's secrets, so it reads their
+values on every refresh; the deploy identity therefore holds *Key Vault Secrets Officer* and can
+see the database password. Fine for an environment `terraform destroy` recreates. Not fine for
+production data.
+
+> **This paragraph describes configuration no commit can verify.** Reviewers live on the GitHub
+> environment, deliberately outside version control so the gate can be tightened without a pull
+> request — which also means no diff ever forces this prose to keep up. It has now been wrong
+> twice. Check `gh api repos/{owner}/{repo}/environments/dev` before trusting it, and correct it
+> here when it drifts.
 
 ## Setting up the deploy credential
 

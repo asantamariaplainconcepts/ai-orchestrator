@@ -1025,3 +1025,23 @@ times in the project this framework came from.
   something the backlog carries.
 - **Time invested:** not measured (source: **manual** — thirty-sixth consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — dev-unattended (spec-less, DEC-025)
+
+- **Worked:** the change itself is one API call and one paragraph. What is worth keeping is the
+  diagnosis: this file has now carried a stale claim about the deploy setup three times (#74's
+  "never run", #75's reviewer sentence, this one), and it is not carelessness. The environment's
+  reviewers live outside version control **on purpose**, so the gate can be tightened without a
+  pull request — which means no diff ever forces the prose to keep up. The fix is not "be more
+  careful"; it is to mark the paragraph as unverifiable-by-commit and name the command that
+  checks it.
+- **Didn't:** I corrected this same sentence three days' worth of changes ago and did not think
+  to ask why it had gone stale in the first place. Fixing an instance twice before looking for
+  the mechanism is one time too many — the second occurrence is the signal, which is exactly the
+  graduation rule ADRs use.
+- **Next time:** when a document states something whose source of truth is outside the
+  repository, say so in the document and give the command that reads the real value. Prose that
+  cannot be checked by CI should at least tell the reader how to check it.
+- **Time invested:** not measured (source: **manual** — thirty-seventh consecutive).
+- **ADR:** none new — the note in the file is the mechanism, and a rule about one paragraph does
+  not need an ADR yet. If a third document develops the same problem, it does.
