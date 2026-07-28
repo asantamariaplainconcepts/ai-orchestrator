@@ -68,14 +68,17 @@ export function WorkflowCanvas({
 
       <p className="text-xs text-muted-foreground">{t("canvas.hint")}</p>
 
-      {/* Chains read downward, so a long pipeline costs scrolling the page rather than a
-          sideways scroll nobody finds on a phone. Chains sit beside each other where there is
-          room and stack where there is not. */}
-      <div className="flex flex-wrap items-start gap-6">
+      {/* A chain reads left to right, like the board's columns, and each step is separated from
+          the next by a vertical rule — solid where work flows on its own, dotted where a person
+          carries it. Chains stack, and a long one scrolls sideways exactly as the board does. */}
+      <div className="flex flex-col gap-6">
         {chains.map((chain) => (
-          <div key={chain[0]?.automation.id} className="flex w-full flex-col md:w-60">
+          <div
+            key={chain[0]?.automation.id}
+            className="flex items-stretch gap-0 overflow-x-auto pb-2"
+          >
             {chain.map((node) => (
-              <div key={node.automation.id} className="flex flex-col">
+              <div key={node.automation.id} className="flex shrink-0 items-stretch">
                 <AutomationNode
                   automation={node.automation}
                   onToggleApproval={() =>
@@ -182,58 +185,51 @@ function Connector({
   // answer it. Said plainly rather than drawn as a chain that does not exist.
   const dangling = !connected && Boolean(automation.outputLabel);
 
+  const rule = cn(
+    "w-0 flex-1 border-l-2",
+    connected ? "border-solid border-primary" : "border-dashed border-warning",
+  );
+
   return (
-    <div className="flex flex-col items-center gap-1.5 py-2">
-      {/* The arm hangs from the node above: solid when the chain continues, dotted where a
-          person has to carry it. Vertical so a chain reads downward and never scrolls sideways. */}
-      <div
-        aria-hidden="true"
-        className={cn(
-          "h-6 w-0 border-l-2",
-          connected ? "border-solid border-primary" : "border-dashed border-warning",
-        )}
-      />
+    <div className="flex w-48 shrink-0 flex-col items-center gap-2 self-stretch px-3 py-2">
+      {/* The rule stands between one step and the next, broken in the middle by what it means:
+          a way to require a person, or the person who is already required. */}
+      <div aria-hidden="true" className={rule} />
 
       {connected ? (
         <Button variant="ghost" size="sm" type="button" onClick={onDisconnect}>
           {t("canvas.disconnect")}
         </Button>
       ) : (
-        <>
-          <span className="flex items-center gap-1 text-xs font-medium text-warning">
-            <UserRound className="size-3.5" />
+        <div className="flex w-full flex-col items-center gap-1.5">
+          <span className="flex items-center gap-1 text-center text-xs font-medium text-warning">
+            <UserRound className="size-3.5 shrink-0" />
             {t("canvas.human")}
           </span>
-
-          <div aria-hidden="true" className="h-6 w-0 border-l-2 border-dashed border-warning" />
-
-          {/* The line runs between one step and another, so the undecided next step is drawn as
-              a step: an empty slot that names itself by being filled. Without it the dotted arm
-              would hang into nothing, which reads as a fault rather than as a choice. */}
-          <div className="flex w-full flex-col items-center gap-1.5 rounded-lg border-2 border-dashed border-warning/60 p-2">
-            {dangling ? (
-              <span className="text-center text-xs text-destructive">
-                {t("canvas.dangling")} <span className="font-mono">{automation.outputLabel}</span>
-              </span>
-            ) : null}
-            <NativeSelect
-              className="h-8 text-xs"
-              aria-label={t("canvas.handsTo")}
-              value=""
-              onChange={(event) => {
-                if (event.target.value) onConnect(event.target.value);
-              }}
-            >
-              <option value="">{t("canvas.handsTo")}</option>
-              {candidates.map((candidate) => (
-                <option key={candidate.id} value={candidate.triggerLabel}>
-                  {candidate.triggerLabel}
-                </option>
-              ))}
-            </NativeSelect>
-          </div>
-        </>
+          {dangling ? (
+            <span className="text-center text-xs text-destructive">
+              {t("canvas.dangling")} <span className="font-mono">{automation.outputLabel}</span>
+            </span>
+          ) : null}
+          <NativeSelect
+            className="h-8 text-xs"
+            aria-label={t("canvas.handsTo")}
+            value=""
+            onChange={(event) => {
+              if (event.target.value) onConnect(event.target.value);
+            }}
+          >
+            <option value="">{t("canvas.handsTo")}</option>
+            {candidates.map((candidate) => (
+              <option key={candidate.id} value={candidate.triggerLabel}>
+                {candidate.triggerLabel}
+              </option>
+            ))}
+          </NativeSelect>
+        </div>
       )}
+
+      <div aria-hidden="true" className={rule} />
     </div>
   );
 }

@@ -35,8 +35,10 @@ balloon therefore hangs off a node's output, and removing it is the act of choos
 destination — which is exactly the "hands work to…" control. The picture the issue described
 survives; what changed is that the gesture and the choice are one thing rather than two.
 
-Chains are drawn **downward**, with the arm as a vertical rule. A horizontal chain needs sideways
-scrolling, which on a phone hides the very connector that carries the meaning.
+Chains are drawn **left to right**, like the board's columns, and the connector between two
+steps is a **vertical rule** — the separator a reader already knows from a kanban. Solid where
+work flows on its own, dotted where a person carries it, broken in the middle by the control
+that changes which of the two it is. A long chain scrolls sideways exactly as the board does.
 
 ## D3 — Drag is sugar; the control is the feature
 
