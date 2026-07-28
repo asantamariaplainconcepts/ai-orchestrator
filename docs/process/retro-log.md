@@ -1045,3 +1045,30 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — thirty-seventh consecutive).
 - **ADR:** none new — the note in the file is the mechanism, and a rule about one paragraph does
   not need an ADR yet. If a third document develops the same problem, it does.
+
+## 2026-07-28 — dispatch-worker-database (spec-less, DEC-025)
+
+- **Worked:** the diagnosis, and only because the logs were shaped to allow it. Two lines —
+  `Claimed run X` then `pass complete: 1 claimed` with nothing between — narrowed the fault to
+  "the executor never reached its own guards" in one read, because every early return in
+  `Execute` logs. Comparing the three workloads' environment variables side by side then made
+  the cause a table rather than a theory: the portal and the migration job have the database,
+  the dispatch job does not.
+- **Didn't:** two things, and the second is worse. **One:** the deployed worker has been unable
+  to execute anything since it was deployed, and nothing noticed — the job reports *Succeeded*,
+  because claiming works and the failure is silent. Every dispatched Run in dev is orphaned in
+  `Queued` with its Story blocked, and BR-004 means nothing will retry. **Two:** I tried to close
+  the gap with an E2E assertion, wrote one, and it passed against a deliberately broken worker —
+  twice, for two different reasons. The second attempt rested on "the worker should not be
+  Exited", which is false: locally the worker legitimately exits after one pass unless run mode
+  sets a poll interval. I removed it rather than ship an assertion whose premise I could not
+  establish.
+- **Next time:** a test that cannot be made to fail on purpose is not evidence yet, and the
+  honest move when the mutation passes is to keep digging or delete the test — not to keep it
+  because it is green. The existing local-loop test carries a docstring claiming it proves the
+  worker "got past composition"; it proves the process reached Running, which a crashing process
+  also does. That claim needs revisiting with an assertion that can actually fail.
+- **Time invested:** not measured (source: **manual** — thirty-eighth consecutive).
+- **ADR:** none new. This is ADR-0004's third instance in a week (existence as a proxy for
+  correctness) and ADR-0006's fourth (complete but unreachable). If either recurs again the rule
+  needs a gate, not another retro line.

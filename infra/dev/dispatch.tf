@@ -166,6 +166,14 @@ resource "azurerm_container_app_job" "dispatch" {
         name  = "ConnectionStrings__queues"
         value = "https://${azurerm_storage_account.dispatch.name}.queue.core.windows.net/"
       }
+      # The worker needs the database as much as the portal does: claiming a Run reads the queue,
+      # but executing it is entirely database work. Without this the job claimed messages, failed
+      # to build its DbContext, and exited zero — Runs orphaned in Queued with the job reporting
+      # success (#90).
+      env {
+        name  = "ConnectionStrings__aiorchestratordbSecretName"
+        value = azurerm_key_vault_secret.database_connection_string.name
+      }
       env {
         name  = "Secrets__KeyVaultUri"
         value = azurerm_key_vault.main.vault_uri
