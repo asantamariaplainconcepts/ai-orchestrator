@@ -1231,3 +1231,25 @@ times in the project this framework came from.
   pre-empted the review question.
 - **Time invested:** not measured (source: **manual** — forty-seventh consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — dashboard-tabs
+
+- **Worked:** the E2E reachability suite paid for itself twice in one change. First it caught a
+  real product bug on its first run — with operate as "the unmarked default", clicking it
+  cleared the URL parameter and the derived landing bounced an unconfigured project back to
+  settings, so operate was unreachable; the absence of the parameter had come to mean two
+  things at once. Then, when it failed again in CI, instrumenting the test to dump the DOM
+  instead of theorising found the second defect in one line: the empty state still read
+  "Configure a Connector **above**", true on the single-scroll page and false the moment the
+  connector moved to its own tab. Also refused shadcn's Radix Select on purpose — it renders
+  divs, and the tests read `option` elements out of `#vendor`/`#runtime`, so adopting it would
+  have silently broken the very assertions whose job is to catch a relocated control.
+- **Didn't:** the failing test passed in the full suite and failed 3-of-3 in isolation — state
+  from other tests was making it pass. A test that only passes with company is not evidence;
+  running the single test in isolation is what turned "flaky in CI" into a five-minute
+  diagnosis.
+- **Next time:** when a change moves UI, grep the copy catalogue for directional words
+  ("above", "below", "on the left", "at the top"). Placement changes silently invalidate
+  instructions that no compiler, linter or type checker can see.
+- **Time invested:** not measured (source: **manual** — forty-eighth consecutive).
+- **ADR:** none new. ADR-0006 earned a second citation.
