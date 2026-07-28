@@ -4,6 +4,13 @@
 from it or reads it. If another file ever declares itself a source of design truth, that is a
 defect: delete it, or make it a generated artifact of this layer.
 
+> **Retiring (DEC-051).** The product is migrating to the Platform theme
+> (`@plainconceptsplatform/ui-theme`: shadcn/ui + Tailwind v4), one screen per change. During
+> the migration both systems load side by side and a screen is styled by exactly one of them —
+> new screens use the theme, and this kit keeps its authority over the screens still on it.
+> Two token names carry an `atlas-` prefix (`--atlas-border`, `--atlas-info`) because the theme
+> declares the bare names on `:root`. This directory is deleted when the last kit screen falls.
+
 ## The four layers, one direction
 
 ```
