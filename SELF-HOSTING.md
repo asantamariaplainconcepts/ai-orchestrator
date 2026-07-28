@@ -30,8 +30,11 @@ Then close the loop:
 
 ## What this is and is not
 
-- **Trusted networks only.** There is no authentication yet (OPN-002 is open) — same posture as
-  running loop-task daemons on your own machines. Do not expose the port to the internet.
+- **Trusted networks only.** You are the owner of this deployment: the compose sets
+  `Identity__Mode=LocalOwner`, so every action runs as an administrator with no sign-in — the
+  same posture as running loop-task daemons on your own machines. Do not expose the port to the
+  internet. Real sign-in arrives with OPN-002; the product refuses to start in that mode on
+  provisioned infrastructure, so this setting cannot travel to a shared deployment by accident.
 - **No KEDA.** The dispatch worker drains on a 5-second timer. What compose proves about the
   queue contract is exactly what production does; what it proves about scaling is nothing.
 - **`selfhost/docker-compose.yaml` is generated** from the same Aspire AppHost that `aspire run`

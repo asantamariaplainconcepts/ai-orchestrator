@@ -6,6 +6,7 @@ using AiOrchestrator.Server;
 using AiOrchestrator.ServiceDefaults;
 using AiOrchestrator.ServiceDefaults.Agents;
 using AiOrchestrator.ServiceDefaults.Dispatch;
+using AiOrchestrator.ServiceDefaults.Identity;
 using AiOrchestrator.ServiceDefaults.IntegrationEvents;
 using AiOrchestrator.ServiceDefaults.Secrets;
 using Scalar.AspNetCore;
@@ -33,6 +34,11 @@ builder.Services.AddVsaCqsArchitecture(modules.Assemblies());
 // is what Aspire's client integrations are (design D3). Key Vault when a vault URI is
 // configured, configuration otherwise; the swap #7 promised, costing one line and no call site.
 builder.AddSecretResolution();
+
+// Who the caller is, per habitat (#119): the machine's owner locally, nobody yet on the web.
+// Composed here for the same reason secrets are — a module receives only IServiceCollection and
+// IConfiguration, and this reads the environment and the addresses the host will bind.
+builder.AddIdentity();
 
 // Integration events: modules publish and subscribe through the BuildingBlocks seam; CAP and
 // its outbox live behind it. Composed here because a module structurally cannot (design D1).
@@ -63,6 +69,13 @@ var app = builder.Build();
 // environment silently defaulted to Production: fresh database, no schema, 500s that read as an
 // application bug. A gate that guesses from the environment name is the defect; owning the step
 // elsewhere removes the gate rather than tuning it.
+
+// Said once, at startup, when nobody is authenticated (#119, design D3): a temporary state
+// with no voice is how it becomes permanent.
+IdentityComposition.WarnIfUnauthenticated(
+    app.Services,
+    app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Identity")
+);
 
 app.UseExceptionHandler();
 

@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/shared/ui/sheet";
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { useInbox } from "@/features/inbox/useInbox";
+import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 
 export interface Crumb {
   label: string;
@@ -40,6 +41,7 @@ export function AppShell({
 }) {
   const inbox = useInbox();
   const waiting = inbox.data?.length ?? 0;
+  const me = useCurrentPrincipal();
   const [navOpen, setNavOpen] = useState(false);
 
   return (
@@ -50,8 +52,13 @@ export function AppShell({
           <NavItems waiting={waiting} />
         </div>
         <div className="flex flex-col gap-0.5 px-3">
-          <span className="text-sm font-medium">{t("shell.user.name")}</span>
-          <span className="text-xs text-muted-foreground">{t("shell.user.hint")}</span>
+          {/* What the server says, not what the page assumes (#119). */}
+          <span className="text-sm font-medium">
+            {me.data?.displayName ?? t("shell.user.name")}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {me.data ? me.data.role : t("shell.user.hint")}
+          </span>
         </div>
       </aside>
 

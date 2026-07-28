@@ -192,6 +192,19 @@ if (builder.ExecutionContext.IsRunMode)
     // The demo seeder runs only here (local-agent-loop design D3). No deployed template sets
     // this, and the seeder refuses without it — a property rather than a promise.
     server.WithEnvironment("LocalLoop:Seed", "true");
+
+    // `aspire run` is a machine somebody owns, so the person at the keyboard is the owner
+    // (#119). Set here rather than asked of the user: DEC-049's promise is that running this
+    // costs one command, and a required identity setting would be a second one.
+    server.WithEnvironment("Identity__Mode", "LocalOwner");
+}
+else
+{
+    // The self-host compose is also a machine somebody owns (#119): the operator who ran
+    // `docker compose up` is the owner, and asking them to configure an identity would be the
+    // second command DEC-049 promises they will not need. Azure gets neither branch — Terraform
+    // composes that deployment and never sets this.
+    server.WithEnvironment("Identity__Mode", "LocalOwner");
 }
 
 await builder.Build().RunAsync();

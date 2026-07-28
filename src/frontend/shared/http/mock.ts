@@ -119,6 +119,7 @@ const connector = {
 type Handler = (match: RegExpMatchArray, body: unknown) => unknown;
 
 const routes: [string, RegExp, Handler][] = [
+  ["GET", /^\/api\/me$/, () => ({ id: "local-owner", displayName: "Local owner", role: "Admin" })],
   ["GET", /^\/api\/projects$/, () => projects],
   [
     "GET",
