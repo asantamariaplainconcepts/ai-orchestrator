@@ -12,6 +12,10 @@
     <!-- Contracts only, never the implementation: the Projects module ensures trigger labels
          exist at the vendor without knowing which vendor that is (MOD002). -->
     <ProjectReference Include="..\..\Backlog\AiOrchestrator.Modules.Backlog.Contracts\AiOrchestrator.Modules.Backlog.Contracts.csproj" />
+    <!-- Contracts only: deleting an Automation asks the Runs module whether any Run used it
+         (MOD002). Runs consumes this module's contracts in turn — Contracts-to-Contracts is not
+         a cycle. -->
+    <ProjectReference Include="..\..\Runs\AiOrchestrator.Modules.Runs.Contracts\AiOrchestrator.Modules.Runs.Contracts.csproj" />
   </ItemGroup>
 
   <ItemGroup>

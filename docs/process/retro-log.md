@@ -988,3 +988,21 @@ times in the project this framework came from.
   to save something interesting for the end; the end is where fatigue lives.
 - **Time invested:** not measured (source: **manual** — thirty-fourth consecutive).
 - **ADR:** none new.
+
+## 2026-07-28 — delete-automation
+
+- **Worked:** the design came from reading history rather than deciding fresh. "Should deleting
+  be allowed?" was already half-answered by BR-014 (Runs record their Automation, forever) and
+  fully answered by #14's finding that the executor resolves the Automation *mid-Run* — the
+  reason `Detail` stopped filtering on `Enabled`. A hard delete is that bug with no undo, so the
+  refusal wrote itself. The test that proves it is the one that matters: after a refused
+  deletion, the in-flight Run still runs to Succeeded.
+- **Didn't:** nothing went wrong, but one thing was closer than it looked. The Runs module had
+  never published a contract — it was a pure leaf — and I nearly put the usage query in the
+  Projects schema as a counter to avoid creating the assembly. That would have been a second
+  source of truth for something one `COUNT(*)` answers exactly, invented purely to dodge a
+  five-line project file.
+- **Next time:** when a rule seems to need inventing, grep the retro log and the business rules
+  first. Three of this change's four decisions were already made; I only had to find them.
+- **Time invested:** not measured (source: **manual** — thirty-fifth consecutive).
+- **ADR:** none new.

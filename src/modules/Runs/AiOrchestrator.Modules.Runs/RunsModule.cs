@@ -66,6 +66,9 @@ public sealed class RunsModule : ModuleBase
         // The one creation path both matching and Run now share (BR-013).
         services.AddScoped<RunCreator>();
 
+        // The module's first published contract (#84): what other modules may ask about Runs.
+        services.AddScoped<Contracts.IRunUsage, Features.Observation.RunUsage>();
+
         // Conversations (#78): the primitives every conversational action shares, and the
         // checker that wakes waiting Runs. Opt-out like the backlog poller — production checks,
         // the test host drives one pass deterministically instead.

@@ -32,6 +32,16 @@ export function useApplyAutomationDefaults(projectId: string) {
   });
 }
 
+/** Refused when any Run used it — the message tells the Admin to disable instead (#84). */
+export function useDeleteAutomation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => api.delete<void>(`/api/projects/${projectId}/automations/${id}`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+  });
+}
+
 export function useUpdateAutomation(projectId: string) {
   const queryClient = useQueryClient();
 
