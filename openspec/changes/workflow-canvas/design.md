@@ -29,6 +29,15 @@ The asymmetry worth stating: a balloon on an edge between A and B can only be re
 trigger label to copy — which it always does, since a trigger label is mandatory. So the gesture
 never fails for structural reasons, only for the self-trigger rule (#115) or an overlap (BR-003).
 
+**Where the balloon actually hangs, discovered while building it.** An absence has no two ends:
+"no output label" does not name a destination, so there is no A→B gap to put a balloon *in*. The
+balloon therefore hangs off a node's output, and removing it is the act of choosing the
+destination — which is exactly the "hands work to…" control. The picture the issue described
+survives; what changed is that the gesture and the choice are one thing rather than two.
+
+Chains are drawn **downward**, with the arm as a vertical rule. A horizontal chain needs sideways
+scrolling, which on a phone hides the very connector that carries the meaning.
+
 ## D3 — Drag is sugar; the control is the feature
 
 Same conclusion as the board, for the same reasons and now with evidence: HTML5 drag cannot be

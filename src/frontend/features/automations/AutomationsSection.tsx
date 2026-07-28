@@ -7,6 +7,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
+import { WorkflowCanvas } from "./WorkflowCanvas";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, AutomationAction } from "./types";
 import {
@@ -16,6 +17,16 @@ import {
   useDeleteAutomation,
   useSetAutomationEnabled,
 } from "./useAutomations";
+
+const CANVAS_VIEW = "aio:automations-view";
+
+function storedCanvasView(): "list" | "canvas" {
+  try {
+    return window.localStorage.getItem(CANVAS_VIEW) === "canvas" ? "canvas" : "list";
+  } catch {
+    return "list";
+  }
+}
 
 /**
  * UC-005 on its own tab. Creation lives behind an explicit button (dashboard-tabs): a form that
@@ -31,6 +42,9 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const remove = useDeleteAutomation(projectId);
 
   const [creating, setCreating] = useState(false);
+  // A genuine preference like the board's, remembered the same way and for the same reason:
+  // nothing about the project decides whether a reader wants rows or a shape.
+  const [view, setView] = useState<"list" | "canvas">(storedCanvasView);
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
   const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
@@ -89,6 +103,22 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
             title={t("automations.defaults.hint")}
           >
             {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
+          </Button>
+          <Button
+            variant="outline"
+            type="button"
+            aria-pressed={view === "canvas"}
+            onClick={() => {
+              const next = view === "canvas" ? "list" : "canvas";
+              setView(next);
+              try {
+                window.localStorage.setItem(CANVAS_VIEW, next);
+              } catch {
+                // A refused write costs the preference, never the interaction.
+              }
+            }}
+          >
+            {view === "canvas" ? t("canvas.showList") : t("canvas.show")}
           </Button>
           <Button type="button" onClick={() => setCreating((open) => !open)}>
             {creating ? t("automations.new.close") : t("automations.new")}
@@ -247,7 +277,11 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         <p className="text-sm text-muted-foreground">{t("automations.empty")}</p>
       )}
 
-      {rows.length > 0 && (
+      {rows.length > 0 && view === "canvas" && (
+        <WorkflowCanvas projectId={projectId} automations={rows} />
+      )}
+
+      {rows.length > 0 && view === "list" && (
         <Card>
           <CardContent>
             <ul className="divide-y">

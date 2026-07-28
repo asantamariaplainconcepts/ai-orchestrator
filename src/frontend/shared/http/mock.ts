@@ -23,15 +23,22 @@ const projects = [
 ];
 
 const automations = [
-  auto("ai:grill", "GrillToReady", false),
-  auto("ready-for-proposal", "ProposeSpec", false),
-  auto("ai:implement", "ImplementToPullRequest", true),
-  auto("ai:refine", "RefineOrComment", false),
-  auto("ai:estimate", "Estimate", false),
-  auto("ai:transition", "TransitionState", false),
+  // The shipped pipeline: grill hands to propose, and propose deliberately hands to nobody —
+  // which is the gap the canvas draws as "a person continues" (#116).
+  auto("ai:grill", "GrillToReady", false, "ready-for-proposal"),
+  auto("ready-for-proposal", "ProposeSpec", false, null),
+  auto("ai:implement", "ImplementToPullRequest", true, null),
+  auto("ai:refine", "RefineOrComment", false, null),
+  auto("ai:estimate", "Estimate", false, null),
+  auto("ai:transition", "TransitionState", false, null),
 ];
 
-function auto(triggerLabel: string, action: string, requiresApproval: boolean) {
+function auto(
+  triggerLabel: string,
+  action: string,
+  requiresApproval: boolean,
+  outputLabel: string | null = null,
+) {
   return {
     id: crypto.randomUUID(),
     triggerLabel,
@@ -41,6 +48,8 @@ function auto(triggerLabel: string, action: string, requiresApproval: boolean) {
     requiresApproval,
     timeoutMinutes: 30,
     enabled: true,
+    outputLabel,
+    rubricPath: null,
   };
 }
 
@@ -171,6 +180,16 @@ const routes: [string, RegExp, Handler][] = [
       skipped: automations.map((a) => ({ triggerLabel: a.triggerLabel, reason: "exists" })),
       labelNote: null,
     }),
+  ],
+  [
+    "PUT",
+    /^\/api\/projects\/[^/]+\/automations\/([^/]+)$/,
+    (match, body) => {
+      const found = automations.find((candidate) => candidate.id === match[1]);
+      if (!found) throw new Error("No such Automation.");
+      Object.assign(found, body as Record<string, unknown>);
+      return found;
+    },
   ],
   [
     "POST",

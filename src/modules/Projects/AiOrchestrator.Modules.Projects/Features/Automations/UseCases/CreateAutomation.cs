@@ -82,7 +82,15 @@ sealed class CreateAutomation : IUseCase
         string Runtime,
         bool RequiresApproval,
         int TimeoutMinutes,
-        bool Enabled
+        bool Enabled,
+        /// <summary>What this Automation hands on when it succeeds (#115). The canvas derives
+        /// an edge wherever this equals another Automation's trigger label (#116), so it has to
+        /// be readable, not merely writable.</summary>
+        string? OutputLabel,
+        /// <summary>Grill only. Readable for the same reason: the update endpoint replaces the
+        /// whole Automation, so a caller that cannot read this field would silently clear it on
+        /// every edit.</summary>
+        string? RubricPath
     );
 
     internal sealed record Command(
@@ -200,6 +208,8 @@ sealed class CreateAutomation : IUseCase
             automation.Runtime.ToString(),
             automation.RequiresApproval,
             (int)automation.Timeout.TotalMinutes,
-            automation.Enabled
+            automation.Enabled,
+            automation.OutputLabel,
+            automation.RubricPath
         );
 }
