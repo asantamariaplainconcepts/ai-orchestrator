@@ -1601,6 +1601,14 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — sixty-fourth consecutive). Unchanged:
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
-- **ADR:** none new, but this is the second occurrence of a design claiming an existing behaviour it
-  did not verify — #146's requirement named a field without naming what set it. If a third appears,
-  "a claim about existing behaviour cites where that behaviour lives" is the shape that graduates.
+- **Also didn't:** the archive refused, for the second time in this session, because a MODIFIED
+  requirement dropped scenarios the current spec holds — four of them here, and the same shape as
+  `sync-action`'s refusal. Rewriting a requirement is not writing a new one: the delta replaces the
+  whole block, so every scenario has to be carried whether or not this change touches it. The tool
+  caught it both times, which is the only reason it cost minutes rather than a silent loss of four
+  assertions.
+- **ADR:** none new, but two shapes are now at their second occurrence. A design claiming an existing
+  behaviour it did not verify (#146's requirement named a field without naming what set it; this one
+  claimed the client deduped by sequence). And a MODIFIED requirement dropping scenarios. The first
+  would graduate as "a claim about existing behaviour cites where that behaviour lives"; the second is
+  already enforced by the archive, which is the better answer — a gate beats a rule.
