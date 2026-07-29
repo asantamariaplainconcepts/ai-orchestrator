@@ -44,6 +44,16 @@ sealed class Connector : Aggregate
 
     public string SecretName { get; private set; } = string.Empty;
 
+    /// <summary>
+    /// When this Connector's credential was last written by the product (#124). Null for a
+    /// Connector that names a secret somebody else manages — the product genuinely does not know
+    /// when that one was set, and saying "never" would be a lie rather than an absence.
+    /// </summary>
+    public DateTimeOffset? SecretSetAt { get; private set; }
+
+    /// <summary>Records that the product itself wrote the value under <see cref="SecretName"/>.</summary>
+    public void RecordSecretStored(DateTimeOffset at) => SecretSetAt = at;
+
     /// <summary>When the last poll succeeded. Null until one has.</summary>
     public DateTimeOffset? LastSyncedAt { get; private set; }
 
@@ -88,6 +98,13 @@ sealed class Connector : Aggregate
         string secretName
     )
     {
+        // A different secret is a different credential, so what the product remembered about
+        // when it wrote one no longer describes this Connector.
+        if (!string.Equals(SecretName, secretName, StringComparison.Ordinal))
+        {
+            SecretSetAt = null;
+        }
+
         Vendor = vendor;
         Owner = owner;
         Repository = repository;

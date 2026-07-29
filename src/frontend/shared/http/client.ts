@@ -6,9 +6,27 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    /**
+     * The `detail` from the API's problem response, when it sent one (#124). Carried because
+     * some refusals are the answer — "this deployment cannot store values, do X instead" is
+     * useless if the screen replaces it with "something went wrong".
+     */
+    readonly detail?: string,
   ) {
     super(message);
     this.name = "ApiError";
+  }
+}
+
+/** The API answers failures with RFC 7807; a body that is not one simply yields nothing. */
+async function problemDetail(response: Response): Promise<string | undefined> {
+  try {
+    const body: unknown = await response.clone().json();
+    const detail =
+      body && typeof body === "object" ? (body as { detail?: unknown }).detail : undefined;
+    return typeof detail === "string" && detail.length > 0 ? detail : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -27,7 +45,7 @@ async function request<TResponse>(path: string, init?: RequestInit): Promise<TRe
   });
 
   if (!response.ok) {
-    throw new ApiError(`Request to ${path} failed`, response.status);
+    throw new ApiError(`Request to ${path} failed`, response.status, await problemDetail(response));
   }
 
   return response.status === 204

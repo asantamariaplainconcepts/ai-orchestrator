@@ -464,6 +464,15 @@ function ConnectorPanel({
   const [secretName, setSecretName] = useState(connector?.secretName ?? "");
   const [codeRepository, setCodeRepository] = useState(connector?.codeRepository ?? "");
 
+  // Pasting is the default (#124), because the operator who already manages secrets knows to
+  // switch and the first-time user does not know a vault exists. A Connector whose secret this
+  // product never wrote opens on the naming path, which is the one it is actually using.
+  const [credentialMode, setCredentialMode] = useState<"paste" | "name">(
+    connector && !connector.secretSetAt ? "name" : "paste",
+  );
+  const [accessToken, setAccessToken] = useState("");
+  const pasting = credentialMode === "paste";
+
   // The two coordinates mean different things per vendor — organisation/project on Azure
   // DevOps, owner/repository on GitHub. Labelling both "Owner" would ask an Admin to translate.
   const coordinateLabels =
@@ -477,16 +486,27 @@ function ConnectorPanel({
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
-    if (!owner.trim() || !repository.trim() || !secretName.trim()) return;
+    if (!owner.trim() || !repository.trim()) return;
+    if (pasting ? !accessToken.trim() : !secretName.trim()) return;
     configure.mutate(
       {
         owner,
         repository,
-        secretName,
+        // Exactly one, as the API requires: sending both is a caller who believes two different
+        // things about where the credential lives.
+        secretName: pasting ? null : secretName,
+        accessToken: pasting ? accessToken : null,
         vendor,
         codeRepository: needsCodeRepository && codeRepository.trim() ? codeRepository : null,
       },
-      { onSuccess: () => setEditing(false) },
+      {
+        onSuccess: () => {
+          setEditing(false);
+          // Held only as long as the request needed it — the value does not survive the save,
+          // in the browser any more than on the server.
+          setAccessToken("");
+        },
+      },
     );
   }
 
@@ -508,6 +528,12 @@ function ConnectorPanel({
             <span className="flex flex-wrap items-center gap-2 text-sm">
               <span className="font-mono">
                 {connector.owner}/{connector.repository}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {/* The name and when the product wrote it — never the value (BR-010/DEC-052). */}
+                {connector.secretSetAt
+                  ? `${t("connector.secretSetAt")} ${formatWhen(connector.secretSetAt)}`
+                  : t("connector.secretManagedElsewhere")}
               </span>
               <span className="text-xs text-muted-foreground">
                 {connector.lastSyncedAt
@@ -561,14 +587,39 @@ function ConnectorPanel({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <Label htmlFor="secret-name">{t("connector.secretName")}</Label>
-                <Input
-                  id="secret-name"
-                  value={secretName}
-                  onChange={(event) => setSecretName(event.target.value)}
-                  placeholder={t("connector.secretNamePlaceholder")}
-                />
+                <Label htmlFor="credential-mode">{t("connector.credential")}</Label>
+                <NativeSelect
+                  id="credential-mode"
+                  value={credentialMode}
+                  onChange={(event) => setCredentialMode(event.target.value as "paste" | "name")}
+                >
+                  <option value="paste">{t("connector.credential.paste")}</option>
+                  <option value="name">{t("connector.credential.name")}</option>
+                </NativeSelect>
               </div>
+              {pasting ? (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="access-token">{t("connector.accessToken")}</Label>
+                  <Input
+                    id="access-token"
+                    type="password"
+                    autoComplete="off"
+                    value={accessToken}
+                    onChange={(event) => setAccessToken(event.target.value)}
+                    placeholder={t("connector.accessTokenPlaceholder")}
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="secret-name">{t("connector.secretName")}</Label>
+                  <Input
+                    id="secret-name"
+                    value={secretName}
+                    onChange={(event) => setSecretName(event.target.value)}
+                    placeholder={t("connector.secretNamePlaceholder")}
+                  />
+                </div>
+              )}
               {needsCodeRepository ? (
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="code-repository">{t("connector.codeRepository")}</Label>
@@ -593,14 +644,19 @@ function ConnectorPanel({
               ) : null}
             </div>
 
-            <p className="text-xs text-muted-foreground">{t("connector.secretHint")}</p>
+            <p className="text-xs text-muted-foreground">
+              {pasting ? t("connector.accessTokenHint") : t("connector.secretHint")}
+            </p>
             {needsCodeRepository ? (
               <p className="text-xs text-muted-foreground">{t("connector.codeRepositoryHint")}</p>
             ) : null}
 
             {configure.isError && (
               <p className="text-sm text-destructive" role="alert">
-                {t("connector.saveFailed")}
+                {/* The API's own reason when it gave one: a refusal that names the remedy is
+                    the answer, and replacing it with a generic line throws the answer away. */}
+                {(configure.error instanceof ApiError && configure.error.detail) ||
+                  t("connector.saveFailed")}
               </p>
             )}
           </form>

@@ -3,6 +3,11 @@ export interface ConnectorView {
   owner: string;
   repository: string;
   secretName: string;
+  /**
+   * When this product stored the token itself (#124). Null means the secret is managed outside
+   * the product — a different fact from "never", which is why it is not a boolean.
+   */
+  secretSetAt: string | null;
   /** Only Azure DevOps needs this: on GitHub the backlog and the code are the same repository. */
   codeRepository: string | null;
   lastSyncedAt: string | null;
@@ -31,7 +36,9 @@ export type BacklogVendor = (typeof BACKLOG_VENDORS)[number];
 export interface ConfigureConnectorRequest {
   owner: string;
   repository: string;
-  secretName: string;
+  /** Exactly one of these two: name a secret somebody else manages, or paste the token (#124). */
+  secretName: string | null;
+  accessToken: string | null;
   vendor: BacklogVendor;
   codeRepository: string | null;
 }

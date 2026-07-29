@@ -49,9 +49,20 @@ attempt overwrites it rather than accumulating.
 ## D4 — The self-host habitat encrypts, using the framework's own primitive
 
 Key Vault holds the value in the deployed habitat, unchanged. The self-host habitat has no vault,
-so its store is a table, and the value in that table is ciphertext produced by ASP.NET Core Data
-Protection with the key ring persisted to a mounted path — outside the database, so a stolen
-dump is not a stolen credential.
+so it keeps protected values of its own, produced by ASP.NET Core Data Protection with the key
+ring persisted separately — so a stolen dump is not a stolen credential.
+
+**Revised while implementing:** this said "a table", and files turned out to be both simpler and
+stronger. Stronger, because a leaked database dump then contains no credential at all rather than
+ciphertext. Simpler, because a table would have needed a `DbContext`, a schema and a migration
+belonging to no module — every module owns its own schema, and secrets belong to none of them —
+and module discovery only finds `AiOrchestrator.Modules.*`, so this one would have had to migrate
+itself from the composition root, diverging from how every other schema in the product is
+created. So: one file per secret in a configured directory, the key ring in a second one.
+
+The two paths are separate settings and the host **refuses to start** if only the values path is
+set. Defaulting the key ring beside the values would silently turn encryption into obfuscation,
+and a default that quietly removes the property it was chosen for is worse than a refusal.
 
 No hand-rolled cryptography, in the strict sense: no key derivation we invented, no cipher choice,
 no IV handling, no bespoke envelope format. This is not a stylistic preference. Every one of those

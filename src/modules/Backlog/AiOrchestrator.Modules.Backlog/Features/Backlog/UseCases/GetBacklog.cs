@@ -32,6 +32,8 @@ sealed class GetBacklog : IUseCase
         string Owner,
         string Repository,
         string SecretName,
+        /// <summary>When the product itself stored the token (#124); null when it did not.</summary>
+        DateTimeOffset? SecretSetAt,
         string? CodeRepository,
         DateTimeOffset? LastSyncedAt,
         string? LastFailure,
@@ -60,6 +62,7 @@ sealed class GetBacklog : IUseCase
                     entity.Owner,
                     entity.Repository,
                     entity.SecretName,
+                    entity.SecretSetAt,
                     entity.CodeRepository,
                     entity.LastSyncedAt,
                     entity.LastFailure,

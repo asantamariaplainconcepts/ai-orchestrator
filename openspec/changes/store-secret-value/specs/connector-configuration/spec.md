@@ -64,10 +64,11 @@ The stored Connector SHALL contain the **name** of the secret holding its access
 time that secret was last set. The token value SHALL NOT be written to the Connector's row, to
 logs, to telemetry, or to any API response (BR-010, as revised by DEC-052).
 
-Where the habitat's secret store keeps values in the product's own database rather than in a
-managed vault, those values SHALL be encrypted at rest with a key held outside that database, so
-possession of the database alone does not yield a usable credential. No API, page or log SHALL
-expose a stored value by any route — the store SHALL offer no operation that reads one back.
+Where the habitat has no managed vault, stored values SHALL be protected at rest with the
+framework's own data protection, held outside the application database, with the key material
+held apart from the values, so possession of any one of the three does not yield a usable
+credential. No API, page or log SHALL expose a stored value by any route — the store SHALL offer
+no operation that reads one back.
 
 #### Scenario: inspecting storage
 
@@ -80,10 +81,10 @@ expose a stored value by any route — the store SHALL offer no operation that r
 - **THEN** the response carries the coordinates, the secret name and when it was last set, never
   the token
 
-#### Scenario: a stolen database yields no credential
+#### Scenario: a stolen store yields no credential
 
-- **WHEN** a habitat stores values locally and its database is read without its encryption key
-- **THEN** the stored values are ciphertext and no token can be recovered from it
+- **WHEN** a habitat stores values locally and those values are read without its key material
+- **THEN** what is stored is not the token and no token can be recovered from it
 
 ### Requirement: secrets resolve through one seam
 

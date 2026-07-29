@@ -12,11 +12,12 @@ serves development and tests. Modules SHALL remain unaware of the backing store:
 references a cloud SDK, and no call site changes when the implementation swaps.
 
 The host SHALL compose the storing abstraction the same way and in the same place: Key Vault
-where a vault is configured, an encrypted local store where the habitat has none, and — where
-neither can accept a value — an implementation that refuses with a reason naming what to do
-instead. A habitat SHALL never be left with a store that appears to write and does not. The
-encrypted local store SHALL use the framework's own data-protection implementation, with its key
-material persisted outside the application database.
+where a vault is configured, a protected local store where the habitat is configured with one,
+and — where neither can accept a value — an implementation that refuses with a reason naming what
+to do instead. A habitat SHALL never be left with a store that appears to write and does not. The
+protected local store SHALL use the framework's own data-protection implementation, holding
+values outside the application database and key material apart from the values; the host SHALL
+refuse to start when configured with one of those two locations and not the other.
 
 #### Scenario: the same build runs in dev and in Azure
 
@@ -34,8 +35,14 @@ material persisted outside the application database.
 
 - **WHEN** the system starts with no `Secrets:KeyVaultUri` in a habitat configured to store
   locally
-- **THEN** values supplied through the product are written encrypted, with the key held outside
-  the application database
+- **THEN** values supplied through the product are written protected, with the key material held
+  apart from them and outside the application database
+
+#### Scenario: protected values without a separate key location
+
+- **WHEN** the system is configured to store values locally but given nowhere separate for the
+  key material
+- **THEN** it refuses to start, saying that one location holding both is not protection
 
 #### Scenario: a habitat that cannot store says so
 

@@ -2,6 +2,7 @@ using AiOrchestrator.BuildingBlocks.Secrets;
 using Aspire.Azure.Security.KeyVault;
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -31,7 +32,7 @@ public static class SecretResolution
 
         if (string.IsNullOrWhiteSpace(vaultUri))
         {
-            builder.Services.AddSingleton<ISecretResolver, ConfigurationSecretResolver>();
+            AddUnvaultedSecrets(builder);
             return builder;
         }
 
@@ -45,9 +46,79 @@ public static class SecretResolution
 
         builder.Services.AddSingleton<ISecretResolver, KeyVaultSecretResolver>();
 
+        // Storing is composed here, beside resolving, for the same reason and in the same place:
+        // a module structurally cannot call an IHostApplicationBuilder extension (design D3), so
+        // this is the only spot that can know which store the habitat has (#124, design D1).
+        builder.Services.AddSingleton<ISecretStore, KeyVaultSecretStore>();
+
         ResolveConnectionStrings(builder);
         return builder;
     }
+
+    /// <summary>
+    /// No vault: either the deployment mounts a directory for protected values (the self-host
+    /// habitat), or values arrive as configuration the product does not own (development and
+    /// tests) and storing is refused with the remedy in the refusal.
+    /// </summary>
+    static void AddUnvaultedSecrets(IHostApplicationBuilder builder)
+    {
+        var directory = builder.Configuration[ProtectedFileSecretStore.DirectoryKey];
+
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            builder.Services.AddSingleton<ISecretResolver, ConfigurationSecretResolver>();
+            builder.Services.AddSingleton<ISecretStore>(
+                new UnavailableSecretStore(
+                    $"Set {ProtectedFileSecretStore.DirectoryKey} to store values here, or add "
+                        + $"{ConfigurationSecretResolver.SectionName}__<name> to the environment "
+                        + "and configure the Connector with that name."
+                )
+            );
+            return;
+        }
+
+        // The key ring lives apart from the values on purpose: one directory holding both is
+        // obfuscation, not encryption (design D4). Defaulting it beside the store would quietly
+        // undo that, so an unset key-ring path is a refusal to start, not a default.
+        var keyRing = builder.Configuration[ProtectedFileSecretStore.KeyRingKey];
+        if (string.IsNullOrWhiteSpace(keyRing))
+        {
+            throw new InvalidOperationException(
+                $"{ProtectedFileSecretStore.DirectoryKey} is set without "
+                    + $"{ProtectedFileSecretStore.KeyRingKey}. Protected values and the key that "
+                    + "protects them must be persisted separately, or a single stolen volume "
+                    + "yields both. Mount a second location and name it."
+            );
+        }
+
+        builder
+            .Services.AddDataProtection()
+            .PersistKeysToFileSystem(new DirectoryInfo(keyRing))
+            .SetApplicationName(DataProtectionApplicationName);
+
+        builder.Services.AddSingleton<ISecretResolver>(provider => new ProtectedFileSecretResolver(
+            Protector(provider),
+            directory,
+            provider.GetRequiredService<IConfiguration>()
+        ));
+
+        builder.Services.AddSingleton<ISecretStore>(provider => new ProtectedFileSecretStore(
+            Protector(provider),
+            directory
+        ));
+    }
+
+    /// <summary>
+    /// Fixed, because Data Protection derives keys from it: letting it default to the entry
+    /// assembly's name would make the Server unable to read what the dispatch worker stored,
+    /// and the failure would look like a rejected credential rather than a naming mismatch.
+    /// </summary>
+    const string DataProtectionApplicationName = "ai-orchestrator";
+
+    const string ProtectorPurpose = "AiOrchestrator.Secrets.v1";
+
+    static IDataProtector Protector(IServiceProvider provider) =>
+        provider.GetRequiredService<IDataProtectionProvider>().CreateProtector(ProtectorPurpose);
 
     /// <summary>
     /// Turns <c>ConnectionStrings:&lt;name&gt;SecretName</c> into <c>ConnectionStrings:&lt;name&gt;</c>

@@ -54,9 +54,16 @@ where possible, a machine gate (validator, DB constraint, command refusal).
   permission; roles are permission bundles; MVP bundles are fixed: Admin = all,
   Member = observe + trigger (labels, Run now, approve, cancel)
   ([DEC-034](10-locked-mvp-decisions.md)).
-- **BR-010 — No secrets at rest outside Key Vault.** Connector PATs and AI provider
-  keys exist in Postgres and logs only as Key Vault *references*
-  ([DEC-014](10-locked-mvp-decisions.md), [DEC-030](10-locked-mvp-decisions.md)).
+- **BR-010 — No secrets in plaintext at rest outside the habitat's secret store.**
+  Connector PATs and AI provider keys exist in Postgres, logs, API responses and
+  telemetry only as *names* ([DEC-014](10-locked-mvp-decisions.md),
+  [DEC-030](10-locked-mvp-decisions.md)). Which store holds the value is the habitat's:
+  Key Vault where one is provisioned; where none is, a location outside the application
+  database, protected with the framework's data protection and a key ring held apart from
+  it ([DEC-052](10-locked-mvp-decisions.md), revising this rule's original wording, which
+  named Key Vault as the mechanism and so could not describe a self-hosted deployment).
+  The product may store a value it is handed, under a name it derives; nothing reads one
+  back.
 
 ## Cost
 

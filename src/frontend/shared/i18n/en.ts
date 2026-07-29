@@ -76,6 +76,17 @@ export const en = {
   "connector.repositoryPlaceholder": "portal",
   "connector.secretName": "Secret name",
   "connector.secretNamePlaceholder": "acme-github-pat",
+
+  // Pasting the token (#124). The product names and stores it; nobody has to visit a vault first.
+  "connector.credential": "Access token",
+  "connector.credential.paste": "Paste a token",
+  "connector.credential.name": "Name an existing secret",
+  "connector.accessToken": "Token",
+  "connector.accessTokenPlaceholder": "github_pat_…",
+  "connector.accessTokenHint":
+    "Pasted once and stored in this deployment's secret store under a name we choose. It is never shown again, never logged, and never returned by the API — paste a new one to rotate it.",
+  "connector.secretSetAt": "Token stored",
+  "connector.secretManagedElsewhere": "Token managed outside this product",
   "connector.codeRepository": "Code repository",
   "connector.codeRepositoryPlaceholder": "portal-web",
   "connector.codeRepositoryHint":

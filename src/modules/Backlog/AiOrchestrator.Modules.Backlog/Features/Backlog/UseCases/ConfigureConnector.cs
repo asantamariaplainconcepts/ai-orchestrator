@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Connectors;
@@ -42,7 +43,8 @@ sealed class ConfigureConnector : IUseCase
                         request.Repository,
                         request.SecretName,
                         request.Vendor,
-                        request.CodeRepository
+                        request.CodeRepository,
+                        request.AccessToken
                     );
                     var result = await sender.Send(command, cancellationToken);
 
@@ -55,31 +57,40 @@ sealed class ConfigureConnector : IUseCase
     // Vendor and CodeRepository are optional: omitting the vendor means GitHub, which is what
     // every Connector configured before Azure DevOps existed was, and GitHub has no separate code
     // repository to name.
+    //
+    // AccessToken is the second path (#124): supply the value and the product names and stores
+    // it. Exactly one of it and SecretName arrives; the Validator refuses neither and both.
     internal sealed record Request(
         string Owner,
         string Repository,
-        string SecretName,
+        string? SecretName = null,
         string? Vendor = null,
-        string? CodeRepository = null
+        string? CodeRepository = null,
+        string? AccessToken = null
     );
 
-    /// <summary>Note what is absent: no token. Only ever the name of one (BR-010).</summary>
+    /// <summary>
+    /// Note what is absent: no token. Only ever the name of one, and — when the product wrote it
+    /// — when that happened (BR-010 as revised by DEC-052).
+    /// </summary>
     internal sealed record Response(
         Guid ProjectId,
         string Vendor,
         string Owner,
         string Repository,
         string SecretName,
-        string? CodeRepository
+        string? CodeRepository,
+        DateTimeOffset? SecretSetAt
     );
 
     internal sealed record Command(
         Guid ProjectId,
         string Owner,
         string Repository,
-        string SecretName,
+        string? SecretName = null,
         string? Vendor = null,
-        string? CodeRepository = null
+        string? CodeRepository = null,
+        string? AccessToken = null
     ) : ICommand<ErrorOr<Response>>;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -88,7 +99,28 @@ sealed class ConfigureConnector : IUseCase
         {
             RuleFor(command => command.Owner).NotEmpty().MaximumLength(200);
             RuleFor(command => command.Repository).NotEmpty().MaximumLength(200);
-            RuleFor(command => command.SecretName).NotEmpty().MaximumLength(200);
+
+            // Exactly one credential input. Neither leaves nothing to verify against; both is a
+            // caller who believes two different things about where the credential lives, and
+            // picking one for them would silently ignore the other.
+            RuleFor(command => command)
+                .Must(command =>
+                    string.IsNullOrWhiteSpace(command.SecretName)
+                    != string.IsNullOrWhiteSpace(command.AccessToken)
+                )
+                .WithName("credential")
+                .WithMessage(
+                    "Supply either a token to store or the name of an existing secret, not both "
+                        + "and not neither."
+                );
+
+            RuleFor(command => command.SecretName!)
+                .MaximumLength(200)
+                .When(command => !string.IsNullOrWhiteSpace(command.SecretName));
+
+            RuleFor(command => command.AccessToken!)
+                .MaximumLength(500)
+                .When(command => !string.IsNullOrWhiteSpace(command.AccessToken));
 
             // Unspecified means GitHub, but *misspelled* must not: silently falling back would
             // verify an Azure DevOps organisation against github.com and store the wrong vendor.
@@ -108,7 +140,10 @@ sealed class ConfigureConnector : IUseCase
     internal sealed class Handler(
         BacklogDbContext database,
         IEnumerable<IBacklogConnector> connectors,
-        ISecretResolver secrets
+        ISecretResolver secrets,
+        ISecretStore store,
+        ICurrentPrincipal principal,
+        TimeProvider clock
     ) : IAppCommandHandler<Command, ErrorOr<Response>>
     {
         public async Task<ErrorOr<Response>> Handle(
@@ -128,20 +163,53 @@ sealed class ConfigureConnector : IUseCase
                 return BacklogErrors.VendorUnavailable($"no connector is registered for {vendor}");
             }
 
+            var supplied = !string.IsNullOrWhiteSpace(command.AccessToken);
+            var secretName = supplied
+                ? ConnectorSecret.NameFor(command.ProjectId, vendor)
+                : command.SecretName!;
+
+            if (supplied)
+            {
+                // #124's accepted risk expired when #119 landed: an endpoint that takes a
+                // credential asks who is holding it. The first role check in the product, and
+                // deliberately here rather than in a general authorisation sweep (design D6).
+                if (principal.Current.Role != PrincipalRole.Admin)
+                {
+                    return BacklogErrors.NotPermitted("store a credential");
+                }
+
+                try
+                {
+                    await store.Store(secretName, command.AccessToken!, cancellationToken);
+                }
+                catch (SecretStoreUnavailableException exception)
+                {
+                    return BacklogErrors.SecretStoreUnavailable(exception.Message);
+                }
+            }
+
+            // Resolved rather than reused, on both paths. On the supplied path that is the point:
+            // verifying with the value we just read back proves the round trip, so a store that
+            // truncated it or a habitat whose write did not take is caught here and not at the
+            // first poll (design D3).
             string token;
             try
             {
-                token = await secrets.Resolve(command.SecretName, cancellationToken);
+                token = await secrets.Resolve(secretName, cancellationToken);
             }
             catch (SecretNotFoundException)
             {
-                return BacklogErrors.SecretNotFound(command.SecretName);
+                return BacklogErrors.SecretNotFound(secretName);
             }
 
             var coordinates = new BacklogCoordinates(command.Owner, command.Repository);
             var access = await implementation.VerifyAccess(coordinates, token, cancellationToken);
             if (access.IsError)
             {
+                // A stored value with no Connector referencing it is inert, and the derived name
+                // means the next attempt overwrites it. A Connector pointing at a credential
+                // nobody verified is the failure UC-004 exists to prevent — this is the right
+                // way round.
                 return access.Errors;
             }
 
@@ -157,19 +225,19 @@ sealed class ConfigureConnector : IUseCase
                     vendor,
                     command.Owner,
                     command.Repository,
-                    command.SecretName
+                    secretName
                 );
                 database.Connectors.Add(connector);
             }
             else
             {
                 // At most one Connector per Project: reconfigure in place rather than add.
-                connector.Reconfigure(
-                    vendor,
-                    command.Owner,
-                    command.Repository,
-                    command.SecretName
-                );
+                connector.Reconfigure(vendor, command.Owner, command.Repository, secretName);
+            }
+
+            if (supplied)
+            {
+                connector.RecordSecretStored(clock.GetUtcNow());
             }
 
             // Set on both paths, so clearing the field on a reconfigure actually clears it.
@@ -185,7 +253,8 @@ sealed class ConfigureConnector : IUseCase
                 connector.Owner,
                 connector.Repository,
                 connector.SecretName,
-                connector.CodeRepository
+                connector.CodeRepository,
+                connector.SecretSetAt
             );
         }
     }
