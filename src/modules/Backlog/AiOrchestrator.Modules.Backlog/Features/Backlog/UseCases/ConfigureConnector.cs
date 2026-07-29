@@ -203,14 +203,22 @@ sealed class ConfigureConnector : IUseCase
             }
 
             var coordinates = new BacklogCoordinates(command.Owner, command.Repository);
-            var access = await implementation.VerifyAccess(coordinates, token, cancellationToken);
-            if (access.IsError)
+            var access = await implementation.VerifyAccess(
+                coordinates,
+                ConnectorProbe.DocumentPath,
+                token,
+                cancellationToken
+            );
+            if (!access.Satisfied)
             {
                 // A stored value with no Connector referencing it is inert, and the derived name
                 // means the next attempt overwrites it. A Connector pointing at a credential
                 // nobody verified is the failure UC-004 exists to prevent — this is the right
                 // way round.
-                return access.Errors;
+                // Named, not generic: the refusal says which read failed and repeats the
+                // vendor's own reason, because that is what tells the Admin what to grant
+                // (#132, design D2).
+                return access.FirstRefusal;
             }
 
             var connector = await database.Connectors.FirstOrDefaultAsync(

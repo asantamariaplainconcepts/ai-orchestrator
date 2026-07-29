@@ -1472,3 +1472,22 @@ times in the project this framework came from.
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
 - **ADR:** none new.
+
+## 2026-07-29 — verify-connector-permissions
+
+- **Worked:** the ordering of one `switch` was the whole fix, and getting it right needed knowing
+  that a rate limit is also a 403. `ForbiddenException` had to go after `RateLimitExceededException`
+  and before the generic `ApiException`, or the one 403 that is not about permissions would have
+  started reporting as a missing permission. A test names each of the four causes, so the ordering
+  cannot be rearranged by accident.
+- **Didn't:** changing a seam broke a stub in another module's test project, and I noticed only
+  because that suite printed no result rather than a failure. The loop that ran the suites grepped
+  for `Passed!|Failed!`, and a compile error produces neither — so a green-looking sweep had a
+  silent hole in it. The same shape as trusting an empty check rollup.
+- **Next time:** when a sweep over several test projects reports nothing for one of them, treat the
+  absence as a failure and read the output. A missing result is not a pass, and a grep that only
+  matches the two happy words cannot tell them apart.
+- **Time invested:** not measured (source: **manual** — fifty-ninth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new.

@@ -13,12 +13,23 @@ interface IBacklogConnector
     BacklogVendor Vendor { get; }
 
     /// <summary>
-    /// Confirms the credential can read the repository, before a Connector is stored.
-    /// Distinguishes "repository not found" from "credential rejected" — the two have different
-    /// fixes, so returning one generic failure would waste the operator's time.
+    /// Confirms the credential can perform the reads this product performs, before a Connector is
+    /// stored. Distinguishes "repository not found" from "credential rejected" — the two have
+    /// different fixes, so returning one generic failure would waste the operator's time.
+    /// <para>
+    /// A verdict per capability rather than a boolean (#132, design D2): a "no" that cannot say
+    /// which read failed cannot tell the operator what to grant, and naming the fix is the whole
+    /// value. The caller asks once and receives an answer, never a test plan — which also keeps
+    /// each vendor's permission model inside its own implementation.
+    /// </para>
+    /// <para>
+    /// Read-only, always. A probe that wrote would leave a label or a branch in somebody's
+    /// repository, which nobody consented to by pressing save.
+    /// </para>
     /// </summary>
-    Task<ErrorOr<Success>> VerifyAccess(
+    Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
+        string documentPath,
         string token,
         CancellationToken cancellationToken
     );

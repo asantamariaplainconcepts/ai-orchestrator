@@ -3,6 +3,7 @@ import { api } from "@/shared/http/client";
 import type {
   BacklogView,
   ConfigureConnectorRequest,
+  ConnectorTestView,
   StoryDetail,
   StoryDocumentContent,
   StoryDocuments,
@@ -62,6 +63,17 @@ export function useConfigureConnector(projectId: string) {
     mutationFn: (request: ConfigureConnectorRequest) =>
       api.put<unknown>(`/api/projects/${projectId}/connector`, request),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: backlogKey(projectId) }),
+  });
+}
+
+/**
+ * #132 — asks what the stored credential can do, on demand. Not a query with a key: it is a
+ * question the Admin asks at a moment of their choosing, and caching an answer about a permission
+ * that can be revoked at any time would be worse than not asking.
+ */
+export function useTestConnector(projectId: string) {
+  return useMutation({
+    mutationFn: () => api.get<ConnectorTestView>(`/api/projects/${projectId}/connector/test`),
   });
 }
 
