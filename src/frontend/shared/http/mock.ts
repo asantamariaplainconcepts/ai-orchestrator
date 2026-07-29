@@ -86,6 +86,7 @@ const run = (
   inputTokens: null,
   outputTokens: null,
   costUsd: null,
+  dismissedAt: null,
   ...extra,
 });
 
@@ -100,6 +101,7 @@ const runs = [
     inputTokens: 48_211,
     outputTokens: 9_102,
     costUsd: 0.0,
+    dismissedAt: null,
   }),
   run("Failed", "11", 480, { failureReason: "The readiness document could not be read." }),
   run("Cancelled", "12", 600),

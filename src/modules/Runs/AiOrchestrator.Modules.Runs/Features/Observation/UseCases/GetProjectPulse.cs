@@ -203,25 +203,17 @@ sealed class GetProjectPulse : IUseCase
             return storyIds.Except(everRun, StringComparer.Ordinal).Count();
         }
 
-        /// <summary>The inbox's predicate, scoped and counted — the two must never disagree.</summary>
+        /// <summary>
+        /// The inbox's predicate, scoped and counted. They cannot disagree any more: both call
+        /// <see cref="WaitingRuns.WaitingOnAHuman"/>, where a comment used to have to promise it.
+        /// </summary>
         async Task<Waiting> ProjectWaiting(Guid projectId, CancellationToken cancellationToken)
         {
+            // The inbox's predicate, not a copy of it (#145, design D5). Scoping after the shared
+            // filter is safe: the newer-Run test needs the whole set, and SQL reorders the rest.
             var waiting = await database
-                .Runs.Where(run =>
-                    run.ProjectId == projectId
-                    && (
-                        run.State == RunState.AwaitingApproval
-                        || run.State == RunState.AwaitingInput
-                        || (
-                            run.State == RunState.Failed
-                            && !database.Runs.Any(newer =>
-                                newer.ProjectId == run.ProjectId
-                                && newer.VendorStoryId == run.VendorStoryId
-                                && newer.CreatedAt > run.CreatedAt
-                            )
-                        )
-                    )
-                )
+                .Runs.WaitingOnAHuman()
+                .Where(run => run.ProjectId == projectId)
                 .GroupBy(run => run.State)
                 .Select(group => new { group.Key, Count = group.Count() })
                 .ToListAsync(cancellationToken);

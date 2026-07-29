@@ -50,7 +50,9 @@ sealed class ListRuns : IUseCase
         // a real value since #30's free models, and the two must never render alike.
         long? InputTokens,
         long? OutputTokens,
-        decimal? CostUsd
+        decimal? CostUsd,
+        /// <summary>When a human decided this failure needs no re-run (#145); null until they do.</summary>
+        DateTimeOffset? DismissedAt
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -91,7 +93,8 @@ sealed class ListRuns : IUseCase
                     run.FailureReason,
                     run.UsageInputTokens,
                     run.UsageOutputTokens,
-                    run.CostUsd
+                    run.CostUsd,
+                    run.DismissedAt
                 )),
             ];
         }

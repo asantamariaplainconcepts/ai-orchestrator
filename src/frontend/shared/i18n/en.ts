@@ -336,6 +336,16 @@ export const en = {
   "run.approve": "Approve and run",
   "run.cancel": "Cancel Run",
   "run.cancelling": "Cancelling\u2026",
+  // Deciding about a failure where the failure is (#145).
+  "run.again": "Run again",
+  "run.again.pending": "Starting\u2026",
+  "run.again.failed": "Could not start another Run.",
+  "run.dismiss": "Dismiss this failure",
+  "run.dismiss.pending": "Dismissing\u2026",
+  "run.dismiss.failed": "Could not dismiss the failure.",
+  "run.dismissed": "Dismissed",
+  "run.dismiss.hint":
+    "Says a person decided this needs no re-run. It leaves your inbox; the Run stays failed and nothing runs again.",
   "run.cancelFailed": "Could not cancel \u2014 this Run has already finished.",
   "run.reject": "Reject",
   "run.deciding": "Recording your decision\u2026",

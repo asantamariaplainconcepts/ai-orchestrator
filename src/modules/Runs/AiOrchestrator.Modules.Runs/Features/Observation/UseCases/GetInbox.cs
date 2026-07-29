@@ -18,7 +18,10 @@ namespace AiOrchestrator.Modules.Runs.Features.Observation.UseCases;
 /// <para>
 /// A Failed Run leaves the list when a newer Run exists for its Story — derived by query, never
 /// stored as a flag, because BR-013's two legitimate re-trigger paths (Run now, re-labelling)
-/// would both forget to update one (design D2).
+/// would both forget to update one (design D2). It also leaves when a human dismissed it, and
+/// <i>that</i> one is stored, because no query can tell "nobody decided yet" from "somebody decided
+/// not to act" (#145). The predicate itself lives in <see cref="WaitingRuns"/>, shared with the
+/// pulse's count so the two cannot drift.
 /// </para>
 /// </summary>
 sealed class GetInbox : IUseCase
@@ -56,21 +59,7 @@ sealed class GetInbox : IUseCase
             CancellationToken cancellationToken
         )
         {
-            var waiting = await database
-                .Runs.Where(run =>
-                    run.State == RunState.AwaitingApproval
-                    || run.State == RunState.AwaitingInput
-                    || (
-                        run.State == RunState.Failed
-                        // Waits on nobody once a newer Run exists for the same Story (D2).
-                        && !database.Runs.Any(newer =>
-                            newer.ProjectId == run.ProjectId
-                            && newer.VendorStoryId == run.VendorStoryId
-                            && newer.CreatedAt > run.CreatedAt
-                        )
-                    )
-                )
-                .ToListAsync(cancellationToken);
+            var waiting = await database.Runs.WaitingOnAHuman().ToListAsync(cancellationToken);
 
             var entries = new List<Entry>(waiting.Count);
 
