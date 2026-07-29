@@ -150,7 +150,12 @@ sealed class UpdateAutomation : IUseCase
                 );
 
             RuleFor(command => command.TimeoutMinutes)
-                .InclusiveBetween(1, 720)
+                .InclusiveBetween(1, CreateAutomation.MaximumTimeoutMinutes)
+                .WithMessage(
+                    $"A phase timeout must be between 1 and {CreateAutomation.MaximumTimeoutMinutes} "
+                        + "minutes. The ceiling exists so the platform budget that hosts a phase is "
+                        + "provably sufficient (DEC-054)."
+                )
                 .When(command => command.TimeoutMinutes.HasValue);
         }
     }

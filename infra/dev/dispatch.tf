@@ -93,9 +93,19 @@ resource "azurerm_container_app_job" "dispatch" {
   container_app_environment_id = azurerm_container_app_environment.main.id
   tags                         = local.tags
 
-  # A worker drains the queue and exits; ten minutes is generous for that and short enough that a
-  # wedged replica does not hold a slot all day.
-  replica_timeout_in_seconds = 600
+  # THREE SITES, ONE CONTRACT (#144, DEC-054). This must be at least the phase-timeout ceiling plus
+  # a drain margin. The other two are:
+  #   * CreateAutomation.MaximumTimeoutMinutes (60) — the ceiling an Admin cannot exceed
+  #   * BR-005 in docs/product/mvp/05-business-rules.md — the rule both serve
+  # No test can span a Terraform value, a C# constant and a written rule, so each names the others.
+  #
+  # 60 min ceiling + 5 min drain = 3900s. The drain margin is not padding: a worker needs time after
+  # a phase ends to write the outcome, flush the log and acknowledge the message, and a budget equal
+  # to the phase timeout kills it mid-write — which is the failure this whole change is about.
+  #
+  # Ten minutes was the previous value, and it silently overrode BR-005's 30-minute default: every
+  # implement Run over ten minutes was killed by the platform rather than by its own budget.
+  replica_timeout_in_seconds = 3900
 
   # Zero retries, deliberately. A retried replica would re-read the queue and could pick up a
   # *different* Run — and BR-004 forbids re-running the one it dropped anyway.

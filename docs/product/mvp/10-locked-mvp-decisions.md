@@ -165,7 +165,7 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   Runs; watching an agent work is the strongest trust surface an agent product has. The record
   is Postgres chunks in the Runs schema — the durable store IS the stream, so BR-014 comes free
   and a crash preserves everything committed — and the window is a 3-second poll, stated lag
-  ≤5s (2s flush + 3s poll). Chosen over the SignalR hub matured on #96 because it works
+  ≤5s (500ms flush + 3s poll — corrected from "2s flush" in #144, which the code never did). Chosen over the SignalR hub matured on #96 because it works
   identically in every habitat DEC-049 cares about and needs no ingest-auth story while OPN-002
   is open; the hub remains the recorded latency upgrade, layering on the same writer with no
   schema change.
@@ -209,3 +209,16 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   first draft of #136 repeated the confusion by describing the palette as "what can be placed" while
   creation lived elsewhere. Locking the vocabulary is the point: a distinction that exists only in
   one implementation's shape survives until the next refactor. Decided 2026-07-29 with #136.
+- **DEC-054 — the phase timeout is bounded at 60 minutes** *(amends BR-005's
+  "Admin-configurable")*: an Admin sets a phase timeout per Automation, default 30 minutes, and the
+  product refuses a value above 60. The bound is not a limitation, it is what makes the rule
+  keepable: a phase runs inside a platform execution budget, and with no ceiling there is no budget
+  value that is provably sufficient — "Admin-configurable" silently meant "configurable up to
+  whatever the infrastructure happens to allow". The provisioned budget is the ceiling plus a drain
+  margin, because a worker needs time after a phase to write its outcome and a budget equal to the
+  phase timeout kills it mid-write. **Three sites hold this and each names the other two** —
+  `PhaseBudget.MaximumMinutes`, `replica_timeout_in_seconds` in `infra/dev/dispatch.tf`, and BR-005 —
+  because no test can span a C# constant, a Terraform value and a written rule. Rationale: dev ran
+  with a 600-second replica timeout against BR-005's 30-minute promise, so every implement Run over
+  ten minutes was killed by the platform rather than by its own budget, and the Run that exposed it
+  read as "stuck" when it was a container already terminated. Decided 2026-07-29 with #144.

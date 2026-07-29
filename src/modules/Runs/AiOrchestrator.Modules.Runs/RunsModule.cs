@@ -70,8 +70,11 @@ public sealed class RunsModule : ModuleBase
                 ReapInterval = TimeSpan.FromSeconds(
                     configuration.GetValue(ReapIntervalSecondsKey, defaultValue: 60)
                 ),
+                // Five minutes (#144, design D3). Both 120 and 300 are guesses; the asymmetry
+                // decides. Too short races a worker about to finish and destroys real work; too
+                // long leaves a Story hostage a few minutes more. Only the second is recoverable.
                 ReapGrace = TimeSpan.FromSeconds(
-                    configuration.GetValue(ReapGraceSecondsKey, defaultValue: 120)
+                    configuration.GetValue(ReapGraceSecondsKey, defaultValue: 300)
                 ),
             }
         );

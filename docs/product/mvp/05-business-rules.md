@@ -12,9 +12,15 @@ where possible, a machine gate (validator, DB constraint, command refusal).
   per project: configurable by Admin, default **2**. Runs beyond the cap wait in `Queued`.
 - **BR-004 — No automatic retries.** A `Failed` Run is terminal; humans re-trigger via
   *Run now* or by re-applying the trigger label.
-- **BR-005 — Phase timeout.** Each Agent phase (Planning, Executing) has a timeout,
-  default **30 min**, Admin-configurable per Automation. On timeout the job is killed
-  and the Run marked `Failed`.
+- **BR-005 — Phase timeout.** Each Agent phase (Planning, Executing) has a timeout an
+  Admin configures per Automation: default **30 minutes**, ceiling **60 minutes**
+  ([DEC-054](10-locked-mvp-decisions.md)). The ceiling is what makes the rule keepable — a phase
+  runs inside a platform execution budget, and without an upper bound there is no budget that is
+  provably sufficient. **Three sites hold this contract and each names the other two**: the ceiling
+  in `PhaseBudget.MaximumMinutes`, the container job's `replica_timeout_in_seconds` in
+  `infra/dev/dispatch.tf` (at least the ceiling plus a drain margin), and this rule. Exceeding the
+  timeout ends the Run; the reason names the limit that fired. A worker whose remaining budget is
+  under one full phase does not claim more work (#144).
 - **BR-006 — Human waits are untimed.** `AwaitingApproval`, `AwaitingInput` and `Queued` do
   not count toward any timeout; a Run may wait on a human — an approval, or an answer to its
   questions (#78) — indefinitely. Waiting still blocks the Story (BR-001) and is always

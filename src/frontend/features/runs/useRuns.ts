@@ -107,6 +107,14 @@ export function formatCost(cost: number | null): string | null {
 export interface RunLog {
   content: string;
   complete: boolean;
+  /** Where the next chunk will be (#144). Used to drop a push that overlaps what the read returned. */
+  nextSequence: number;
+}
+
+/** A pushed frame, carrying where it starts so an overlap can be dropped rather than appended. */
+interface LogFrame {
+  from: number;
+  lines: string[];
 }
 
 /**
@@ -134,6 +142,10 @@ export function useRunLog(projectId: string, runId: string) {
 
   useEffect(() => {
     // Mock mode has no server to connect to, and a finished Run has nothing left to say.
+    //
+    // Deliberately not waiting for the first read (#144, design D5): the effect runs on mount, so
+    // the subscription is established while the read is in flight. Lines committed in that window
+    // arrive as pushes and the handler drops whatever the read also returned.
     if (import.meta.env.MODE === "mock" || complete) return;
 
     let cancelled = false;
@@ -148,12 +160,25 @@ export function useRunLog(projectId: string, runId: string) {
         .withAutomaticReconnect()
         .build();
 
-      connection.on("lines", (lines: string[]) => {
-        queryClient.setQueryData<RunLog>(["run-log", projectId, runId], (current) =>
-          current === undefined
-            ? current
-            : { ...current, content: [current.content, ...lines].join("\n") },
-        );
+      connection.on("lines", (frame: LogFrame) => {
+        queryClient.setQueryData<RunLog>(["run-log", projectId, runId], (current) => {
+          // No read has resolved yet: nothing to append to, and the read that follows will carry
+          // these lines anyway — this is the subscribe-before-read window (#144, design D5).
+          if (current === undefined) return current;
+
+          // Drop what the read already returned. Subscribing first closes the gap where lines
+          // committed during the handshake were only picked up by the slow reconciliation poll;
+          // the price is an overlap, and this is what pays it.
+          const skip = Math.max(0, current.nextSequence - frame.from);
+          const fresh = frame.lines.slice(skip);
+          if (fresh.length === 0) return current;
+
+          return {
+            ...current,
+            content: [current.content, ...fresh].join("\n"),
+            nextSequence: frame.from + frame.lines.length,
+          };
+        });
       });
 
       connection.onclose(() => setLive(false));

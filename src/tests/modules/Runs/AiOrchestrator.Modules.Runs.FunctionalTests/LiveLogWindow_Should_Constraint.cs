@@ -70,7 +70,11 @@ public class LiveLogWindow_Should_Constraint(RunsApiFixture fixture, ITestOutput
             )
             .Build();
 
-        connection.On<string[]>("lines", lines => received.TrySetResult(lines));
+        // The frame carries where it starts (#144, design D5) so a client that subscribed before
+        // its first read can drop the overlap. Binding to the shape asserts the contract, and the
+        // previous `string[]` binding silently received nothing when the shape changed — which is
+        // how these two tests caught it.
+        connection.On<LogFrame>("lines", frame => received.TrySetResult(frame.Lines));
 
         await connection.StartAsync();
         await connection.InvokeAsync("Watch", runId);
@@ -145,3 +149,6 @@ public class LiveLogWindow_Should_Constraint(RunsApiFixture fixture, ITestOutput
 
     sealed record RunLogResponse(string Content, bool Complete);
 }
+
+/// <summary>The pushed frame's shape, as the hub sends it.</summary>
+sealed record LogFrame(int From, string[] Lines);
