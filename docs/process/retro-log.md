@@ -1757,3 +1757,29 @@ times in the project this framework came from.
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
 - **ADR:** none new. The stale-bundle trap is a first occurrence; if it costs a second run it graduates.
+
+## 2026-07-29 — edit-connector-keeps-credential
+
+- **Worked:** the fix followed from *where* the rule lived rather than from what it said. The
+  exactly-one-credential rule sat in the request `Validator`, which FluentValidation runs before the
+  handler — so it was evaluated where the database is not, and "neither" was refused as a property of
+  the request when it is really a question about the world. Splitting it along that seam (not both stays,
+  not neither moves) made the rest fall out, including why reuse must still re-probe: an edit can change
+  what the credential is asked to read.
+- **Didn't:** the first version of the E2E passed and proved nothing. It set the Connector up by naming
+  a secret, and in that mode the form re-sends the Connector's own secret name — so it never sent
+  "neither" and never touched the path the test existed to cover. A green test shaped like coverage is
+  worse than no test. Caught by asking what the old code would have done with this exact page, then
+  confirmed by restoring the old submit guard and watching it go red.
+- **Also worth recording:** this defect was created by #150 earlier the same day. Shipping the prompts
+  directory gave Settings something worth editing and immediately made the form unusable for editing it.
+  Nothing in #150's own tests could have caught it — they exercised the API, and the block was a
+  client-side submit guard on a form #150 did not change.
+- **Next time:** for every new test, state what would make it fail. If the answer is "nothing I can
+  name", it is not a test yet. Reverting the fix to see red is cheap and settles it in one run.
+- **Time invested:** not measured (source: **manual** — seventy-first consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. "Verify a test can fail" is a second occurrence of the same instinct ADR-0001
+  records for infrastructure claims — exercise it rather than reason about it — so it belongs to that
+  ADR's family rather than to a new number. If it recurs as a *green* test again, it graduates.

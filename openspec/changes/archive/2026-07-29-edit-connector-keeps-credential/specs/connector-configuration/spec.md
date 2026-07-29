@@ -49,15 +49,11 @@ new one without a restart.
 - **WHEN** an Admin names an existing secret instead of supplying a token
 - **THEN** the Connector is configured exactly as it was before this capability existed
 
-#### Scenario: neither, on a project with no Connector
+#### Scenario: neither or both
 
-- **WHEN** a request for a project that has no Connector carries no token and no secret name
-- **THEN** it is refused with a message naming what is missing
-
-#### Scenario: both
-
-- **WHEN** a request carries a token and a secret name together
-- **THEN** it is refused with a message naming what conflicts
+- **WHEN** a request carries a token and a secret name together, or carries neither for a project that
+  has no Connector
+- **THEN** it is refused with a message naming what conflicts or what is missing
 
 #### Scenario: a habitat that cannot store
 
