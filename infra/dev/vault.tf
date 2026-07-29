@@ -71,3 +71,30 @@ resource "azurerm_key_vault_secret" "database_connection_string" {
 
   depends_on = [azurerm_role_assignment.terraform_operator_secrets]
 }
+
+# Writing a secret is a narrower act than managing secrets, and Azure's built-ins do not draw
+# that line: "Key Vault Secrets Officer" is the only built-in that can set a value, and it also
+# carries delete, purge, recover, backup and restore over every secret in the vault.
+#
+# That gap matters here specifically. OPN-002 is open, so the portal authenticates nobody and the
+# workload identity's blast radius is the URL's; this vault also sets purge_protection_enabled =
+# false, so purge genuinely destroys. Letting the product store a credential (#124) is the
+# feature. Letting it destroy every credential is not, and nothing requires the two to travel
+# together — the same judgement dispatch.tf already records about Storage Account Contributor.
+resource "azurerm_role_definition" "secret_writer" {
+  name        = "Secret Writer (${local.prefix})"
+  scope       = azurerm_key_vault.main.id
+  description = "Sets secret values and nothing else — no delete, purge, recover or restore."
+
+  permissions {
+    # Empty on purpose: this is a data-plane role only. Reading is a separate assignment, so
+    # neither half is granted by accident along with the other.
+    actions = []
+
+    data_actions = [
+      "Microsoft.KeyVault/vaults/secrets/setSecret/action",
+    ]
+  }
+
+  assignable_scopes = [azurerm_key_vault.main.id]
+}
