@@ -1370,3 +1370,34 @@ times in the project this framework came from.
   "this page needs the row the list now hides" — it type-checks perfectly and renders a fallback.
 - **Time invested:** not measured (source: **manual** — fifty-fourth consecutive).
 - **ADR:** none new.
+
+## 2026-07-29 — sync-action
+
+- **Worked:** the action refuses to know how to close a change. It reads the connected
+  repository's own close-out document and follows it, so this repository's retro-archive-sync-lint
+  ritual stayed in a markdown file instead of leaking into C# — the shape DEC-048 established when
+  the grill read a project's own definition of ready. The test that proves it is the one that
+  would fail the moment anybody hardcoded a step: a project pointing the setting at its own file
+  gets exactly that file's text in the prompt. Both refusals also landed before the workspace, as
+  #80 established, each asserted with `Workspace.Prepared.ShouldBeFalse()` rather than by reading
+  the code.
+- **Didn't:** a seventh entry in the seeded catalogue broke four suites that assert its size, and
+  repairing them made it worse. `Skipped.Count.ShouldBe(4)` was replaced with `5` across a file,
+  which hit `AProjectSeededBeforeTheSetGrew_Should_ReceiveOnlyTheAdditions` — a test that
+  pre-seeds exactly four Automations and whose `4` had nothing to do with the catalogue. One
+  honest failure became a more confusing one. Separately, the first pass at the sync branch was
+  written against remembered API names — `LinkedChange` for `ChangeFiles`, `RuntimeSelection` for
+  `AgentRuntimeSelection`, a `workspace.Discard` that does not exist — and cost a compile cycle
+  that reading the signatures would have avoided.
+- **Next time:** never replace a bare literal everywhere, especially a number in a test file.
+  Numbers in tests are coincidences more often than they are the same fact; anchor each edit to
+  the test's name and open every match. Graduated to **ADR-0007** — this is the second occurrence
+  of an edit applied by pattern rather than to a site somebody read (the first silently dropped
+  `outputLabel` from a payload and left the suite green).
+- **Time invested:** not measured (source: **manual** — fifty-fifth consecutive). Capture is still
+  broken, not absent: `node .config/otel/verify-telemetry.mjs` fails two checks — *exporter
+  enabled AND pointed here* (`OTEL_EXPORTER_OTLP_ENDPOINT` is unset, so exports go to the OTLP
+  default port rather than ours) and *usage.jsonl has data* (zero bytes, nothing ever captured).
+  Sessions are mapped correctly; only the metrics never arrive.
+- **ADR:** [ADR-0007](../adr/0007-an-edit-lands-on-a-site-that-was-read.md) — an edit lands on a
+  site that was read, never on a pattern.
