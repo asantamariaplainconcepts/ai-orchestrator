@@ -97,6 +97,10 @@ make a later, larger set applicable to a project seeded from an earlier one. A t
 overlaps an existing Automation SHALL be skipped rather than failing the whole operation, and the
 remaining defaults SHALL still be created.
 
+A default whose action is irreversible SHALL require approval (DEC-040). Opening a pull request
+and closing a change by merging are the two the catalogue holds today; every other default SHALL
+run unattended, so the gate marks what cannot be undone rather than becoming a habit.
+
 #### Scenario: an unconfigured project
 
 - **WHEN** an Admin applies the defaults to a project with no Automations
@@ -123,6 +127,12 @@ remaining defaults SHALL still be created.
 - **WHEN** a default's trigger label is already used by an Automation with a different action
 - **THEN** that one is reported as skipped, the others are created, and the existing Automation
   is left exactly as it was
+
+#### Scenario: only the irreversible defaults ask
+
+- **WHEN** an Admin inspects the seeded set
+- **THEN** exactly the default that opens a pull request and the default that closes a change
+  require approval, and every other default does not
 
 ### Requirement: the default trigger labels are ensured in the connected backlog
 

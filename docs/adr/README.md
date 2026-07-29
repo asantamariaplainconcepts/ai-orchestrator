@@ -29,3 +29,4 @@ A decision that names no check stays advice; the loop exists to turn advice into
 | [0004](0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md) | A verification asserts the observable artifact, not a proxy signal | Accepted |
 | [0005](0005-a-claim-that-depends-on-verification-is-written-as-a-hypothesis.md) | A claim that depends on verification is written as a hypothesis until verified | Accepted |
 | [0006](0006-a-capability-is-not-added-until-a-user-can-reach-it.md) | A capability is not added until a user can reach it | Accepted |
+| [0007](0007-an-edit-lands-on-a-site-that-was-read.md) | An edit lands on a site that was read, never on a pattern | Accepted |

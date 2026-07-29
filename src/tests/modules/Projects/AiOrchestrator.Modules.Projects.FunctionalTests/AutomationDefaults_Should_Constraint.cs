@@ -50,7 +50,7 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
     {
         var result = await ApplyDefaults();
 
-        result.Created.Count.ShouldBe(6);
+        result.Created.Count.ShouldBe(7);
         result.Skipped.ShouldBeEmpty();
 
         var automations = await Automations();
@@ -62,6 +62,7 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
                 "ai:grill",
                 "ai:implement",
                 "ai:refine",
+                "ai:sync",
                 "ai:transition",
                 "ready-for-proposal",
             ]);
@@ -76,22 +77,28 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
                 "ImplementToPullRequest",
                 "ProposeSpec",
                 "RefineOrComment",
+                "SyncChange",
                 "TransitionState",
             ]);
     }
 
     [Fact]
-    public async Task OnlyTheActionThatWritesCode_Should_RequireApproval()
+    public async Task OnlyTheIrreversibleActions_Should_RequireApproval()
     {
+        // Two of them since #123: implement writes code and opens a pull request, sync closes
+        // one. Everything else writes comments, labels and documentation, which a human can
+        // undo by reading and reverting.
+        string[] gated = ["ImplementToPullRequest", "SyncChange"];
+
         await ApplyDefaults();
 
         var automations = await Automations();
 
         automations
-            .Single(automation => automation.Action == "ImplementToPullRequest")
-            .RequiresApproval.ShouldBeTrue();
+            .Where(automation => gated.Contains(automation.Action))
+            .ShouldAllBe(automation => automation.RequiresApproval);
         automations
-            .Where(automation => automation.Action != "ImplementToPullRequest")
+            .Where(automation => !gated.Contains(automation.Action))
             .ShouldAllBe(automation => !automation.RequiresApproval);
     }
 
@@ -115,8 +122,8 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
         // Not a 409: the state the Admin wanted is the state that exists, and reporting that as
         // an error would make the action look broken the second time (design D2).
         again.Created.ShouldBeEmpty();
-        again.Skipped.Count.ShouldBe(6);
-        (await Automations()).Count.ShouldBe(6);
+        again.Skipped.Count.ShouldBe(7);
+        (await Automations()).Count.ShouldBe(7);
     }
 
     [Fact]
@@ -137,7 +144,7 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
 
         var result = await ApplyDefaults();
 
-        result.Created.Count.ShouldBe(5);
+        result.Created.Count.ShouldBe(6);
         result.Skipped.Single().TriggerLabel.ShouldBe("ai:refine");
 
         // And the Admin's own Automation is untouched — the defaults defer to what is already
@@ -154,7 +161,7 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
     {
         var result = await ApplyDefaults();
 
-        result.Created.Count.ShouldBe(6);
+        result.Created.Count.ShouldBe(7);
         // Nothing to ensure labels against, and the response says so rather than implying the
         // labels are ready to pick at a vendor that was never configured.
         result.LabelNote.ShouldNotBeNull();
@@ -163,7 +170,7 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
     [Fact]
     public async Task AProjectSeededBeforeTheSetGrew_Should_ReceiveOnlyTheAdditions()
     {
-        // The catalogue grew twice after the button shipped. A project seeded from the old set
+        // The catalogue has grown three times since the button shipped. A project seeded from the old set
         // must get the new actions from the same button — no migration, no version marker, just
         // BR-003 making a second press additive (design D3).
         foreach (
@@ -193,11 +200,11 @@ public class AutomationDefaults_Should_Constraint(ProjectsApiFixture fixture) : 
 
         var result = await ApplyDefaults();
 
-        result.Created.Count.ShouldBe(2);
+        result.Created.Count.ShouldBe(3);
         result
             .Created.Select(automation => automation.TriggerLabel)
             .OrderBy(label => label)
-            .ShouldBe(["ai:grill", "ready-for-proposal"]);
+            .ShouldBe(["ai:grill", "ai:sync", "ready-for-proposal"]);
         result.Skipped.Count.ShouldBe(4);
     }
 

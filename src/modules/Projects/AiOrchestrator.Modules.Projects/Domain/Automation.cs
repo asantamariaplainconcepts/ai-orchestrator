@@ -168,6 +168,13 @@ enum AutomationAction
     /// ready and implemented (#80, UC-025; DEC-048 licenses the growth).
     /// </summary>
     ProposeSpec = 6,
+
+    /// <summary>
+    /// Closes the Story's open change by following the connected repository's own close-out
+    /// procedure (#123, DEC-048). The product knows that a change closes, never how — that
+    /// document belongs to the project, exactly as the grill's readiness bar does.
+    /// </summary>
+    SyncChange = 7,
 }
 
 /// <summary>

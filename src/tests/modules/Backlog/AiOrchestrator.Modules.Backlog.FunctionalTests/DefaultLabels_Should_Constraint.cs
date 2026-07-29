@@ -67,6 +67,7 @@ public class DefaultLabels_Should_Constraint(BacklogApiFixture fixture) : IAsync
                 "ai:grill",
                 "ai:implement",
                 "ai:refine",
+                "ai:sync",
                 "ai:transition",
                 "ready-for-proposal",
             ]);
@@ -85,7 +86,7 @@ public class DefaultLabels_Should_Constraint(BacklogApiFixture fixture) : IAsync
 
         // Automations first, labels second (design D4): an outage cannot leave the project with
         // nothing, having skipped the part that needed no vendor at all.
-        result.Created.Count.ShouldBe(6);
+        result.Created.Count.ShouldBe(7);
         result.LabelNote.ShouldNotBeNull();
         result.LabelNote.ShouldContain("ai:implement");
         fixture.Vendor.RepositoryLabels.ShouldBeEmpty();
@@ -99,7 +100,7 @@ public class DefaultLabels_Should_Constraint(BacklogApiFixture fixture) : IAsync
         var again = await ApplyDefaults();
 
         again.LabelNote.ShouldBeNull();
-        fixture.Vendor.RepositoryLabels.Count.ShouldBe(6);
+        fixture.Vendor.RepositoryLabels.Count.ShouldBe(7);
     }
 
     sealed record ProjectResponse(Guid Id, string Name);
