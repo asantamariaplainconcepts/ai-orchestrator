@@ -104,18 +104,21 @@ sealed class ConfigureConnector : IUseCase
             RuleFor(command => command.Owner).NotEmpty().MaximumLength(200);
             RuleFor(command => command.Repository).NotEmpty().MaximumLength(200);
 
-            // Exactly one credential input. Neither leaves nothing to verify against; both is a
-            // caller who believes two different things about where the credential lives, and
-            // picking one for them would silently ignore the other.
+            // Not both — a caller who believes two different things about where the credential lives,
+            // and picking one for them would silently ignore the other.
+            //
+            // "Not neither" is deliberately NOT here (#160, design D1). Whether absent is acceptable
+            // depends on whether this project already has a Connector to reuse the credential of, and
+            // this validator runs before the handler — it is evaluated where the database is not. The
+            // handler decides that one.
             RuleFor(command => command)
                 .Must(command =>
                     string.IsNullOrWhiteSpace(command.SecretName)
-                    != string.IsNullOrWhiteSpace(command.AccessToken)
+                    || string.IsNullOrWhiteSpace(command.AccessToken)
                 )
                 .WithName("credential")
                 .WithMessage(
-                    "Supply either a token to store or the name of an existing secret, not both "
-                        + "and not neither."
+                    "Supply either a token to store or the name of an existing secret, not both."
                 );
 
             RuleFor(command => command.SecretName!)
@@ -167,15 +170,56 @@ sealed class ConfigureConnector : IUseCase
                 ? BacklogVendor.GitHub
                 : Enum.Parse<BacklogVendor>(command.Vendor);
 
+            // Loaded before the credential is chosen (design D3): reuse needs this Connector's own
+            // stored name, and that is not knowable from the request. This replaces the later lookup
+            // rather than adding one, and it leaves the store-then-verify ordering below untouched —
+            // that ordering is between storing and verifying, and this is a read before both.
+            var connector = await database.Connectors.FirstOrDefaultAsync(
+                entity => entity.ProjectId == command.ProjectId,
+                cancellationToken
+            );
+
+            var supplied = !string.IsNullOrWhiteSpace(command.AccessToken);
+            var named = !string.IsNullOrWhiteSpace(command.SecretName);
+            var reusing = !supplied && !named;
+
+            if (reusing)
+            {
+                // Nothing stored to fall back on: the refusal reads as it always did.
+                if (connector is null)
+                {
+                    return BacklogErrors.CredentialRequired();
+                }
+
+                // The derived name is a function of the vendor, so a switch has no credential to keep.
+                if (connector.Vendor != vendor)
+                {
+                    return BacklogErrors.CredentialRequiredForVendor(
+                        connector.Vendor.ToString(),
+                        vendor.ToString()
+                    );
+                }
+
+                // Reuse stores nothing, so #119's check would not fire — and configuration would become
+                // editable by a caller not allowed to paste a token, which inverts the point (design D5).
+                if (principal.Current.Role != PrincipalRole.Admin)
+                {
+                    return BacklogErrors.NotPermitted("change a Connector's configuration");
+                }
+            }
+
+            // After the reuse decision, deliberately: "this credential belongs to another vendor" is
+            // true whether or not the target vendor is wired up, and it is the more useful of the two
+            // refusals to receive.
             var implementation = connectors.FirstOrDefault(candidate => candidate.Vendor == vendor);
             if (implementation is null)
             {
                 return BacklogErrors.VendorUnavailable($"no connector is registered for {vendor}");
             }
 
-            var supplied = !string.IsNullOrWhiteSpace(command.AccessToken);
-            var secretName = supplied
-                ? ConnectorSecret.NameFor(command.ProjectId, vendor)
+            var secretName =
+                supplied ? ConnectorSecret.NameFor(command.ProjectId, vendor)
+                : reusing ? connector!.SecretName
                 : command.SecretName!;
 
             if (supplied)
@@ -230,11 +274,6 @@ sealed class ConfigureConnector : IUseCase
                 // (#132, design D2).
                 return access.FirstRefusal;
             }
-
-            var connector = await database.Connectors.FirstOrDefaultAsync(
-                entity => entity.ProjectId == command.ProjectId,
-                cancellationToken
-            );
 
             if (connector is null)
             {
