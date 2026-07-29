@@ -53,10 +53,13 @@ sealed class StoryChangedHandler(
     }
 
     static bool Matches(AutomationTrigger trigger, StorySnapshot story) =>
-        story.Labels.Contains(trigger.TriggerLabel, StringComparer.Ordinal)
+        // The same comparison the guard uses (#147, design D4). It was Ordinal on both sides, so a
+        // Story labelled `ai:implement` never fired an Automation triggered on `AI:Implement` — and
+        // it failed silently: no error, no Run, and a configuration that read correctly.
+        story.Labels.Contains(trigger.TriggerLabel, StringComparer.OrdinalIgnoreCase)
         && (
             trigger.TriggerState is null
-            || string.Equals(trigger.TriggerState, story.State, StringComparison.Ordinal)
+            || string.Equals(trigger.TriggerState, story.State, StringComparison.OrdinalIgnoreCase)
         );
 }
 

@@ -237,3 +237,16 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   authentication OPN-002 still blocks) and a presence-based hybrid (a liveness signal that can be
   wrong, which ADR-0008's design argument already rejected once). Decided 2026-07-29 with #149; the
   capability itself is a separate item.
+- **DEC-056 — a trigger's identity is the vendor's, and the schema enforces it** *(amends BR-003 and
+  DEC-033)*: two triggers are the same when the vendor would treat them as the same — labels and
+  states compare case-insensitively — and the identical comparison is used by the overlap guard and by
+  matching, so the two can never disagree about what "the same label" means. An exact duplicate is
+  refused regardless of `Enabled`, while subsumption stays enabled-only because a disabled Automation
+  matches nothing. Uniqueness is a unique index over the project, the lowercased label and the
+  lowercased state with an absent state coalesced to a value — not a handler convention. Rationale:
+  BR-003 was enforced only in memory, so two concurrent saves both passed the check and both inserted;
+  `Overlaps` carried the comment *"compare them the way the vendor does"* above an `Ordinal`
+  comparison; and matching used the same `Ordinal`, so `AI:Implement` never fired for a Story labelled
+  `ai:implement` — silently, with no error and no Run. The NULL trap is explicit in the index: Postgres
+  treats NULLs as distinct, so an index over the raw nullable state would have permitted exactly the
+  duplicate it exists to prevent. Decided 2026-07-29 with #147.

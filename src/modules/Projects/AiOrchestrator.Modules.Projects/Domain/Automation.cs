@@ -125,6 +125,34 @@ sealed class Automation : Aggregate
     /// time, and it is the behaviour an Admin will actually notice.
     /// </para>
     /// </summary>
+    /// <summary>
+    /// The same trigger, whatever either one's <see cref="Enabled"/> says (#147, design D3).
+    /// <para>
+    /// Distinct from <see cref="Overlaps"/> on purpose. Subsumption is about *matching*, and a
+    /// disabled Automation matches nothing, so it correctly ignores them. But two rows carrying one
+    /// trigger are one trigger either way, and allowing them means the conflict is discovered at
+    /// enable time by somebody who did not create it.
+    /// </para>
+    /// </summary>
+    public bool IsSameTriggerAs(Automation other) =>
+        SameLabel(TriggerLabel, other.TriggerLabel)
+        && (
+            (TriggerState is null && other.TriggerState is null)
+            || (
+                TriggerState is not null
+                && other.TriggerState is not null
+                && SameLabel(TriggerState, other.TriggerState)
+            )
+        );
+
+    /// <summary>
+    /// One comparison for labels and states, used by the guard and by matching (#147, design D4).
+    /// Two callers, one rule: the previous arrangement let the guard accept a differently-cased
+    /// trigger that the matcher would then never fire, which failed silently.
+    /// </summary>
+    public static bool SameLabel(string? left, string? right) =>
+        string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
+
     public bool Overlaps(Automation other)
     {
         // Disabled Automations are invisible to the rule — BR-003 says "existing enabled".
@@ -133,8 +161,10 @@ sealed class Automation : Aggregate
             return false;
         }
 
-        // Labels are the vendor's; compare them the way the vendor does.
-        if (!string.Equals(TriggerLabel, other.TriggerLabel, StringComparison.Ordinal))
+        // Labels are the vendor's; compare them the way the vendor does. That sentence was here
+        // before #147 with an Ordinal comparison under it — GitHub's label names are
+        // case-insensitive, so the comment was right and the code was not.
+        if (!SameLabel(TriggerLabel, other.TriggerLabel))
         {
             return false;
         }
@@ -145,7 +175,7 @@ sealed class Automation : Aggregate
             return true;
         }
 
-        return string.Equals(TriggerState, other.TriggerState, StringComparison.Ordinal);
+        return SameLabel(TriggerState, other.TriggerState);
     }
 }
 

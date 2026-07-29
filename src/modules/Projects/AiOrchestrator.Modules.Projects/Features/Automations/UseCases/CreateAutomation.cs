@@ -202,7 +202,17 @@ sealed class CreateAutomation : IUseCase
             }
 
             database.Automations.Add(candidate);
-            await database.SaveChangesAsync(cancellationToken);
+
+            try
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (OverlapGuard.IsDuplicateTrigger(exception))
+            {
+                // The guard said yes and the index said no, which means a concurrent save won
+                // (#147, design D2). Same refusal, discovered a moment later.
+                return OverlapGuard.RaceLost(candidate);
+            }
 
             return ToResponse(candidate);
         }

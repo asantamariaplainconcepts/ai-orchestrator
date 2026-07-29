@@ -207,7 +207,16 @@ sealed class UpdateAutomation : IUseCase
                 return overlap.Errors;
             }
 
-            await database.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (OverlapGuard.IsDuplicateTrigger(exception))
+            {
+                // A concurrent save took this trigger between the guard and the write (#147).
+                return OverlapGuard.RaceLost(automation);
+            }
+
             return CreateAutomation.ToResponse(automation);
         }
     }
@@ -249,7 +258,16 @@ sealed class UpdateAutomation : IUseCase
                 }
             }
 
-            await database.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await database.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (OverlapGuard.IsDuplicateTrigger(exception))
+            {
+                // A concurrent save took this trigger between the guard and the write (#147).
+                return OverlapGuard.RaceLost(automation);
+            }
+
             return CreateAutomation.ToResponse(automation);
         }
     }
