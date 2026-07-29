@@ -1678,3 +1678,31 @@ times in the project this framework came from.
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
 - **ADR:** none new.
+
+## 2026-07-29 — unique-automation-triggers
+
+- **Worked:** the fix removed a filter rather than adding one. `OverlapGuard` fetched candidates with
+  `TriggerLabel == candidate.TriggerLabel`, which Postgres evaluates case-sensitively, so a
+  differently-cased sibling was never fetched and the rule could not see the conflict it exists to
+  catch. The file's own comment already said it wanted the domain rule to decide in memory; the query
+  was quietly doing half the deciding. And the race test is the one that could not have passed before:
+  six concurrent identical saves now yield one Automation and five of the rule's own refusals.
+- **Didn't:** three more claims-without-checking here, and the seventh of the session was the sweep
+  itself — a hand-written list of test projects that missed
+  `AiOrchestrator.Modules.Projects.UnitTests`, so I reported green over a red suite and CI corrected
+  me. The others: `TriggerOverlaps` is `Error.Conflict` (409, not 400) and the routes are
+  `/enable`/`/disable`, not `/enabled` with a body.
+- **Worth keeping separately:** the repository had made the same mistake about a vendor. A unit test
+  asserted GitHub label names are case-sensitive because "folding case would invent a rule the vendor
+  does not have". Three `gh api` calls disprove it — `bug`, `BUG` and `Bug` all resolve to `bug` — so
+  the comment invented the absence of a rule that exists, and matching silently never fired for
+  differently-cased triggers for as long as it stood.
+- **Next time:** the rule is now an ADR rather than a note, because seven occurrences in one session is
+  a pattern and not a slip. Cite the file and symbol; exercise an external system instead of reasoning
+  about it; enumerate a set with a command.
+- **Time invested:** not measured (source: **manual** — sixty-eighth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** [ADR-0009](../adr/0009-a-claim-about-existing-behaviour-cites-where-it-lives.md) — a claim
+  about existing behaviour cites where that behaviour lives. Sibling to ADR-0007: that one governs the
+  edit, this one governs the sentence.
