@@ -33,6 +33,19 @@ export const BACKLOG_VENDORS = ["GitHub", "AzureDevOps"] as const;
 
 export type BacklogVendor = (typeof BACKLOG_VENDORS)[number];
 
+/** #132 — what the stored credential can actually do, one entry per capability. */
+export interface CapabilityView {
+  capability: string;
+  succeeded: boolean;
+  /** The vendor's own reason when it refused; null when it did not. */
+  reason: string | null;
+}
+
+export interface ConnectorTestView {
+  satisfied: boolean;
+  capabilities: CapabilityView[];
+}
+
 export interface ConfigureConnectorRequest {
   owner: string;
   repository: string;

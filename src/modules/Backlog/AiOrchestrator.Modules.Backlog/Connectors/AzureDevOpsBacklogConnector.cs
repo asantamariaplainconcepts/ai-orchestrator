@@ -44,28 +44,52 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
 
     public BacklogVendor Vendor => BacklogVendor.AzureDevOps;
 
-    public async Task<ErrorOr<Success>> VerifyAccess(
+    public async Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
+        string documentPath,
         string token,
         CancellationToken cancellationToken
     )
     {
-        var client = clientFactory.Create(coordinates.Owner, token);
-
-        return await Guarded<Success>(
-            coordinates,
-            async () =>
-            {
-                var response = await client.GetAsync(
-                    $"_apis/projects/{Uri.EscapeDataString(coordinates.Repository)}?api-version={ApiVersion}",
-                    cancellationToken
-                );
-
-                return Translate(response, coordinates) is { } failure
-                    ? failure
-                    : (ErrorOr<Success>)Result.Success;
-            }
+        // Same shape as the GitHub implementation and, deliberately, not the same calls: this
+        // vendor's permission model is its own, which is exactly what a verdict per capability
+        // keeps inside this file (#132, design D2).
+        var stories = await Probe(
+            Capabilities.Stories,
+            () => FetchStories(coordinates, token, cancellationToken)
         );
+
+        var documents = await Probe(
+            Capabilities.Documents,
+            () => ReadDocument(coordinates, documentPath, "HEAD", token, cancellationToken),
+            // Absence is not refusal (design D6). This connector reports a missing document as
+            // DocumentNotFound, so that code — and only that one — passes.
+            absent: BacklogErrors.DocumentNotFound(documentPath).Code
+        );
+
+        return CredentialVerdict.Of(stories, documents);
+    }
+
+    /// <summary>
+    /// One capability, attempted through the connector's own read so the probe and the real call
+    /// cannot diverge in how they authenticate or how they translate a refusal.
+    /// </summary>
+    static async Task<CapabilityResult> Probe<T>(
+        string capability,
+        Func<Task<ErrorOr<T>>> read,
+        string? absent = null
+    )
+    {
+        var result = await read();
+        if (!result.IsError)
+        {
+            return CapabilityResult.Passed(capability);
+        }
+
+        var failure = result.FirstError;
+        return absent is not null && failure.Code == absent
+            ? CapabilityResult.Passed(capability)
+            : CapabilityResult.Refused(capability, failure);
     }
 
     public async Task<ErrorOr<BacklogSnapshot>> FetchStories(

@@ -204,6 +204,23 @@ const routes: [string, RegExp, Handler][] = [
         })),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/backlog$/, () => ({ connector, stories })],
+  // #132 — one capability allowed and one refused, so the panel's two branches are both visible
+  // in mock mode rather than only the happy one.
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/connector\/test$/,
+    () => ({
+      satisfied: false,
+      capabilities: [
+        { capability: "reading the backlog's Stories", succeeded: true, reason: null },
+        {
+          capability: "reading the repository's files",
+          succeeded: false,
+          reason: "Resource not accessible by personal access token",
+        },
+      ],
+    }),
+  ],
   ["POST", /^\/api\/projects\/[^/]+\/backlog\/refresh$/, () => ({ changes: 0 })],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
   [

@@ -93,6 +93,15 @@ export const en = {
     "Azure DevOps keeps code in repositories inside the project. Name the one Agents should open pull requests against; leave it empty if no Automation touches code.",
   "connector.secretHint":
     "The name of the secret holding the access token. The token itself is never stored here.",
+  // Testing the stored credential (#132): what it can do, not merely whether it polls.
+  "connector.test": "Test credential",
+  "connector.testing": "Asking the vendor\u2026",
+  "connector.test.satisfied": "This credential can do everything the pipeline needs.",
+  "connector.test.refused": "This credential is missing something the pipeline needs.",
+  "connector.test.failed": "Could not test the credential.",
+  "connector.test.ok": "Allowed",
+  "connector.test.no": "Refused",
+
   "connector.healthy": "Connected",
   "connector.unhealthy": "Last poll failed",
   "connector.save": "Configure connector",
