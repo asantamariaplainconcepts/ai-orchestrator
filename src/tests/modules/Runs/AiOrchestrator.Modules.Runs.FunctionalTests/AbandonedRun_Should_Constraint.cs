@@ -172,6 +172,56 @@ public class AbandonedRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         failure.ShouldBeNull();
     }
 
+    /// <summary>
+    /// The state an approval-gated Run is in the moment a human says yes: planned long ago, waited,
+    /// and only now executing. <paramref name="plannedAgo"/> is deliberately far past the timeout.
+    /// </summary>
+    async Task<Guid> AnApprovedRun(TimeSpan plannedAgo, TimeSpan executingFor)
+    {
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
+
+        var run = Run.Create(_projectId, "8", _automationId, DateTimeOffset.UtcNow - plannedAgo);
+        run.MarkPlanning(DateTimeOffset.UtcNow - plannedAgo);
+        run.AwaitApproval(DateTimeOffset.UtcNow - plannedAgo, "A plan.");
+        run.Approve(DateTimeOffset.UtcNow - executingFor);
+        run.MarkExecuting(DateTimeOffset.UtcNow - executingFor);
+
+        database.Runs.Add(run);
+        await database.SaveChangesAsync();
+        return run.Id;
+    }
+
+    [Fact]
+    public async Task ARunApprovedAfterALongWait_Should_NotBeReapedForTheWait()
+    {
+        // Planned two days ago, approved a moment ago: BR-006 says the wait is untimed, so the only
+        // clock that counts is the executing phase's, which has barely started (#146).
+        var runId = await AnApprovedRun(
+            plannedAgo: TimeSpan.FromDays(2),
+            executingFor: TimeSpan.FromSeconds(5)
+        );
+
+        await Sweep();
+
+        (await Load(runId)).State.ShouldBe("Executing");
+    }
+
+    [Fact]
+    public async Task AnApprovedRunWhoseExecutionIsOverdue_Should_StillBeReaped()
+    {
+        // The same shape, but the executing phase itself is past its budget — which is exactly what
+        // #140 exists to end, and #146 must not have disabled.
+        var runId = await AnApprovedRun(
+            plannedAgo: TimeSpan.FromDays(2),
+            executingFor: TimeSpan.FromMinutes(45)
+        );
+
+        await Sweep();
+
+        (await Load(runId)).State.ShouldBe("Failed");
+    }
+
     [Fact]
     public async Task ATerminalRun_Should_NeverBeConsidered()
     {
