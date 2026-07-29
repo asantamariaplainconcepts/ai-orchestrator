@@ -1,53 +1,55 @@
 # Design: drag-the-human-step
 
-## D1 — The block is the flag, drawn where it acts
+## D1 — The block is a break in the chain, drawn where the person stands
 
-`requiresApproval` is a boolean on an Automation. The human step is that boolean, and the only
-honest way to draw it is at the place it takes effect: immediately before the step that will wait.
+An Automation hands work on by writing a label (#115). When it writes nothing, the chain stops and a
+person decides whether the work is good enough to continue — which is precisely what reviewing a
+proposal is. So the human step is not a new field: it is `outputLabel = null` on the step whose
+output is being reviewed.
 
-So the block is not a new entity with its own record. Dropping it between two steps sets the flag on
-the second; removing it clears it. There is nothing to persist about the block itself, and if the
-implementation reaches for a "human step" row or a position, the model has been misunderstood — the
-flag already says where it is.
+Dropping the block into the gap after a step clears that step's output label. One field, one
+Automation, one update. Nothing about the block is stored, and its position is not a fact of its own
+— the absent label is the fact.
 
-## D2 — Moving it is two updates, and both must happen
+This is deliberately **not** `requiresApproval`, which is the other human moment: BR-007's two-phase
+Run, approving what a step is about to do rather than what the previous one did. The two must stay
+distinguishable in the picture because they behave differently at run time, and the card already
+carries the second.
 
-Dragging the block from one gap to another means: clear approval on the step it used to precede, set
-it on the step it now precedes. Two Automations change.
+## D2 — Removing is not the reverse of placing, because an absence has no two ends
 
-They are two ordinary updates, not a transaction, because the API has no compound operation and
-inventing one for a UI gesture would put a use case in the wrong place. What that costs is a window
-where the first has applied and the second has not: approval briefly on neither step, or on both.
-Neither state is dangerous — an extra gate stops a Run, a missing gate lets one proceed as it did
-before the drag — and both are visible and correctable. The order is chosen so the risky half fails
-safe: **set the new gate first, then clear the old one**, so an interrupted move leaves an extra
-approval rather than none.
+Placing the block clears a label: one value, gone. Removing it has to *restore* a label, and a label
+names a destination — so the gesture cannot be a bare click unless the destination is unambiguous.
 
-## D3 — The refusal is the ordinary one
+Where the workflow already draws a step after the gap, that step's trigger label is the destination
+and removal can be a single action. Where nothing follows, there is nothing to reconnect to, and the
+control is the existing select that asks whom to hand work to. That asymmetry is not a wart; it is
+the shape of the data, and #116 recorded it before this item existed.
+
+## D3 — A move breaks before it reconnects
+
+Moving the block from one gap to another is two updates: clear the new step's output label, restore
+the old step's. The API has no compound operation, and inventing one for a drag gesture would put a
+use case in the wrong place.
+
+So there is a window where one has applied and the other has not, and the ordering decides which way
+it fails. **Break the new gap first, then reconnect the old**: an interrupted move leaves *two*
+places where a person is asked, never zero. An extra review costs somebody a click; a missing one
+lets work continue unreviewed, which is the thing the block exists to prevent.
+
+## D4 — The refusal is the ordinary one
 
 Every change goes through the Automation update, so BR-003's overlap check and #115's self-trigger
-refusal apply without this feature knowing they exist. A refused drop returns the canvas to what is
-stored and shows the reason the API gave.
+refusal apply without this feature knowing they exist. A refused change returns the workflow to what
+is stored and shows the reason the API gave. The canvas is a way of expressing an update, never a
+second way of writing — #116's rule, unchanged.
 
-This is the same discipline #116 recorded: the canvas is a way of expressing an update, never a
-second way of writing.
+## D5 — Dragging is sugar; the existing controls are the sentence
 
-## D4 — A drop that cannot land says so before the release
+The button that breaks a connection and the select that restores it both stay, and not as
+fallbacks — they say in words what the block says in position. A keyboard user, a touch screen and an
+Admin who prefers reading all use them.
 
-A drag whose invalid targets look identical to valid ones teaches the Admin by failure. The valid
-gaps are marked while the drag is in progress, and a gap that would be refused is visibly not a
-target.
-
-That is a property of the drag, not of the drop: the refusal in D3 still exists for what only the
-server can know, and this only removes the cases the client already knows are impossible.
-
-## D5 — Dragging is sugar, and the button is the sentence
-
-The approval button on the card stays, and not as a fallback — as the control that says in words
-what the block says in position. A keyboard user, a touch screen, and an Admin who prefers reading
-all use it, and #110 and #116 both already established that no gesture in this product is
-drag-only.
-
-Below the wide breakpoint the flow reads top to bottom and dragging is not offered at all. A drag
-gesture on a phone competes with the gesture that scrolls, and losing that fight silently is worse
-than not having the feature.
+Below the width at which the flow reads left to right, dragging is not offered at all. A drag on a
+phone competes with the gesture that scrolls, and losing that fight silently is worse than not
+having the feature.

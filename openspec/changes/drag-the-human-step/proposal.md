@@ -2,43 +2,52 @@
 
 ## Why
 
-Issue #137 (ACT-001 configures; UC-008, UC-013). The human gate exists and is set by a button on
-the preceding step's card. That is a correct control and a poor model: it asks an Admin to think
-"which step should require approval" when what they picture is "a person reviews *here*, between
-these two".
+Issue #137 (ACT-001 configures; UC-008, UC-013). A person reviewing the pipeline's work is a real
+step in it, and today it is expressed by a button that breaks a connection — correct, and not the
+thing an Admin pictures. They picture a person standing *between* two steps, reading what the first
+produced before the second may start. To call a proposal good, somebody has to approve it.
 
-The original ask was a thing you can pick up and put somewhere else in the flow. A button on a card
-is not a thing, and a rule with a caption is a drawing of the consequence rather than the cause.
 Now that #136 has made the catalogue and the workflow two separate places, the block has somewhere
-to come *from*, and the gesture becomes available.
+to come from, and the gesture becomes available.
 
-What makes this more than decoration is that the drop is not a new mechanism. It writes
-`requiresApproval` on the step after it — BR-007's flag, set by putting a person where the person
-goes. The picture and the configuration become the same act.
+## What the block means, and what it is not
+
+The product already has **two** human moments and keeps them apart. This item is about the first
+only.
+
+- **Reviewing what a step produced** — the step's `outputLabel` is cleared, so the chain stops there
+  and a person carries the work onward by applying the next label. This is what the block in a gap
+  means, and it is the one an Admin points at when they say "somebody has to approve the proposal".
+- **Approving what a step is about to do** — `requiresApproval` on that step, BR-007's two-phase
+  Run: the agent plans, waits, then acts. Drawn on the *card*, unchanged by this item.
+
+The first draft of this proposal said the drop sets `requiresApproval` on the following step. That
+was the second moment wearing the first's clothes, and it would have made the two indistinguishable
+in the picture while behaving differently at run time.
 
 ## What changes
 
-- **The human step becomes a draggable block** (design D1), dragged out of the catalogue and
-  dropped between two steps.
-- **Moving it moves the approval** (design D2): cleared on the step it left, set on the step it now
-  precedes. One update per side, in one gesture.
-- **A refused drop is refused visibly** (design D3), through the ordinary Automation update, so
-  BR-003's overlap check and #115's self-trigger refusal apply unchanged.
-- **Valid targets are visible before the drop** (design D4) — a drag that cannot land should say so
-  before the mouse is released, not after.
-- **Every gesture keeps its explicit control** (design D5). The existing approval button is that
-  control and stays; nothing here becomes drag-only, and on a phone dragging is not the path.
+- **The human block is draggable** from the catalogue into a gap (design D1). Dropping it clears the
+  preceding step's output label — one field, on one Automation.
+- **Removing it names a destination** (design D2), because an absence has no two ends: clearing was
+  one field, restoring has to say *to whom*.
+- **Moving it breaks before it reconnects** (design D3), so an interrupted move leaves an extra
+  review rather than none.
+- **Refusals are the ordinary update's** (design D4), so BR-003 and #115's self-trigger check apply
+  unchanged.
+- **Dragging stays sugar** (design D5): the existing controls remain at every width, and dragging is
+  not offered where the flow reads vertically.
 
 ## Impact
 
-- Specs: `automation-configuration` — the canvas requirement gains the drag gesture and what a drop
+- Specs: `automation-configuration` — the canvas requirement gains the gesture and what a drop
   means.
-- Code: a draggable block in the catalogue, drop targets in the workflow, and the two-sided update.
-  No API change and no schema change.
+- Code: a draggable block in the catalogue, drop targets in the gaps, and the move's two updates.
+  No API change and no schema change — `outputLabel` already exists and already means this.
 
 ## Out of scope
 
-- Dragging ordinary Automations into or out of the flow, and reordering steps by dragging. The order
-  is the chain, edited by the hand-off select; changing that is its own item.
-- Creating an Automation by dragging.
+- **`requiresApproval`.** It is the other human moment and it already has its control on the card.
+  This item must not make the two look like one thing.
+- Dragging ordinary Automations, and reordering steps by dragging.
 - The board's human column — #128, which follows the same meaning on the other surface.
