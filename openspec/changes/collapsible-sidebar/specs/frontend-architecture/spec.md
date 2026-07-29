@@ -19,8 +19,8 @@ breakpoint the control SHALL be absent, because the folded sheet already is the 
 A collapsed entry SHALL carry its name for assistive technology and on hover, since the label is no
 longer rendered.
 
-The widths SHALL be defined as design-system variables and consumed through the token adapter, so the
-adapter's bound names resolve to real values.
+Both widths SHALL come from the canonical design-system variables rather than from a value written into
+the shell, so that the rendered sidebar cannot disagree with the token that describes it.
 
 #### Scenario: a new screen is added
 
@@ -53,6 +53,11 @@ adapter's bound names resolve to real values.
 
 - **WHEN** the viewport is below the medium breakpoint
 - **THEN** no collapse control is offered and the folded bar behaves as it did before
+
+#### Scenario: the width is the token's
+
+- **WHEN** the shell renders its sidebar, expanded or collapsed
+- **THEN** the width comes from the canonical variable rather than from a literal in the shell
 
 #### Scenario: an icon still has a name
 

@@ -1,17 +1,20 @@
 # Design: collapsible-sidebar
 
-## D1 — The token has to become real before it can be used
+## D1 — The token was always real; the shell just never asked
 
-`tokens.ts` binds `sidebarWCollapsed` to `var(--sidebar-w-collapsed)` and nothing defines that variable.
-The design contract's own rule is that *the runtime adapter binds names, not copied values* — so a name
-bound to nothing is the adapter keeping its half of a bargain the CSS never kept.
+`docs/design-system/tokens/layout.css` defines `--sidebar-w-expanded: 280px` and
+`--sidebar-w-collapsed: 64px`, and has since the design system landed. So the collapsed width is not a
+decision this slice owns — it was decided, and it is 64px.
 
-So this change defines both variables in the design system's CSS, at 280px and 64px, and uses them for
-the shell's width. 64px because that is what the token entry was named for and it is the width an icon
-rail needs — a 40px icon with the shell's gutter either side.
+The interesting part is what went unnoticed: `AppShell` hard-codes `md:grid-cols-[16rem_1fr]`, and 16rem
+is **256px**. The rendered sidebar has therefore disagreed with its own canonical token by 24px the whole
+time, precisely because it never referenced it. A value nobody consumes cannot be wrong in any way that
+shows, which is what let the drift sit there.
 
-Choosing the value here rather than treating it as pre-decided matters for honesty: had the value
-existed, this slice would be "use it"; it does not, so this slice owns the decision and says so.
+So the shell's grid switches to `var(--sidebar-w-expanded)` and `var(--sidebar-w-collapsed)`. Two things
+follow, and both are the point rather than side effects: the collapse becomes a matter of choosing which
+variable the grid reads, and the expanded sidebar starts rendering the width the design system says it
+has. The second is a visible change this slice causes and does not hide — 280px, not 256px.
 
 ## D2 — Collapsed is a rail, and that is a rule rather than a taste
 

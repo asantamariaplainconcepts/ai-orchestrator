@@ -39,8 +39,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // because "the edit form mirrors create's rules" is a property two components satisfy the day they
   // are written and stop satisfying without anyone noticing.
   const [editing, setEditing] = useState<Automation | null>(null);
-  // A genuine preference like the board's, remembered the same way and for the same reason:
-  // nothing about the project decides whether a reader wants rows or a shape.
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
   const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");

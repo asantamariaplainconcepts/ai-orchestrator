@@ -7,11 +7,12 @@ and it costs most where space matters most: the board's columns, the canvas's ch
 
 **Three of the issue's premises did not survive being checked, and two of them change the work:**
 
-- **There is no 64px anywhere.** `tokens.ts` *references* `var(--sidebar-w-collapsed)` and
-  `var(--sidebar-w-expanded)`, but **no CSS file defines either variable**, and nothing consumes either
-  token entry. So this is not "using a value the design system already chose" — the collapsed width has
-  to be chosen and defined now, and the two dangling token entries have to start meaning something or
-  stop existing (design D1).
+- **The token is real, and the shell has never used it.** The issue is right that
+  `--sidebar-w-collapsed: 64px` has sat unused — it and `--sidebar-w-expanded: 280px` are defined in the
+  canonical layer, `docs/design-system/tokens/layout.css`. What no one had noticed is the consequence:
+  the shell hard-codes `md:grid-cols-[16rem_1fr]`, and **16rem is 256px**, so the rendered sidebar has
+  disagreed with its own canonical token by 24px for as long as both have existed. Wiring the shell to
+  the variable is what makes the collapse possible *and* closes that drift (design D1).
 - **The remembered-preference mechanism exists once, not twice.** `aio:backlog-view` in `ProjectScreen`
   is the only `localStorage` key in the app. The issue's plan to "extract it and move the existing two
   onto it" therefore has one call site to move, not two — the extraction is still right, for the
