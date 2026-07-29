@@ -321,7 +321,8 @@ const routes: [string, RegExp, Handler][] = [
     "GET",
     /^\/api\/projects\/[^/]+\/runs\/[^/]+\/log$/,
     () => ({
-      content: "cloning acme/portal\nreading the story\nplanning changes\nwriting src/feature.ts",
+      content:
+        '{"type":"system","subtype":"init","session_id":"s-1","cwd":"/work"}\n{"type":"assistant","message":{"id":"m-1","content":[{"type":"text","text":"Reading the story, then the two files it names.\\n\\n**Plan:** add the guard, then a test."}]},"usage":{"input_tokens":1840,"output_tokens":96}}\n{"type":"assistant","message":{"id":"m-2","content":[{"type":"tool_use","id":"t-1","name":"Read","input":{"file_path":"src/feature.ts"}}]}}\n{"type":"text","sessionID":"s-1","part":{"id":"p-9","type":"text","text":"The guard belongs before the write, not after."}}\n{"type":"step_finish","sessionID":"s-1","part":{"type":"step-finish","tokens":{"input":420,"output":37},"cost":0.0042}}\nwarning: could not read .git/config (permission denied)\n{"type":"result","subtype":"success","is_error":false,"result":"Added the guard and a regression test.","usage":{"input_tokens":2260,"output_tokens":133},"total_cost_usd":0.0118}',
       complete: false,
       // Four lines read, so the next chunk is 4 (#144): the mock has to carry the field the
       // contract carries, or it teaches the UI a shape the server does not send.

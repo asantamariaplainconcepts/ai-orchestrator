@@ -1,5 +1,6 @@
 import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
+import { RunTranscript } from "./RunTranscript";
 import { ApiError } from "@/shared/http/client";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
@@ -247,7 +248,7 @@ export function RunScreen() {
             )}
             {log.data &&
               (log.data.content.length > 0 ? (
-                <pre className="mono log-view">{log.data.content}</pre>
+                <RunTranscript log={log.data.content} />
               ) : (
                 <p className="state">
                   {log.data.complete ? t("run.log.none") : t("run.log.waitingForOutput")}
