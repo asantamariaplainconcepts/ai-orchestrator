@@ -196,3 +196,16 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   no read at all. Decided 2026-07-29 with #124, when asking a first-time user to pre-create a
   secret in a vault they do not have was the last thing standing between them and a connected
   backlog.
+- **DEC-053 — the catalogue and the workflow are two things** *(refines DEC-040's surface; closes
+  what #122 was reaching for)*: a project's Automations are an **inventory** — what it can do — and
+  the Automations that hand work to one another form a **workflow**, the path they make. An
+  Automation belongs to the workflow exactly when it has an edge: it hands work to another, or
+  another hands work to it. Membership is derived from the edges and never stored, so the picture
+  cannot claim a chain that would not fire. Everything else is a catalogue entry and its absence
+  from the workflow is not an omission — it is a trigger that acts on its own when somebody applies
+  its label. Rationale: the two shared a name and a list, and the cost showed up twice. #122 existed
+  to give the unchained Automations "their place after the ordered ones" — a position inside the
+  workflow for things that are not in it — and was closed as superseded rather than solved; the
+  first draft of #136 repeated the confusion by describing the palette as "what can be placed" while
+  creation lived elsewhere. Locking the vocabulary is the point: a distinction that exists only in
+  one implementation's shape survives until the next refactor. Decided 2026-07-29 with #136.

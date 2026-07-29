@@ -176,8 +176,6 @@ export const en = {
   "automations.new": "New Automation",
   // The canvas (#116): the pipeline as a shape, where an edge is one Automation's output label
   // agreeing with another's trigger label.
-  "canvas.show": "Canvas view",
-  "canvas.showList": "List view",
   "canvas.hint":
     "Each Automation hands work to the next by writing its label. Where nobody does, a person must.",
   "canvas.human": "A person continues",
@@ -186,6 +184,18 @@ export const en = {
   "canvas.approval.on": "A person approves the plan",
   "canvas.approval.off": "Runs without approval",
   "canvas.dangling": "Writes a label nothing listens for:",
+  // Two named things, not two views of one list (#136, DEC-053).
+  "automations.catalogue": "Catalogue",
+  "automations.catalogue.hint":
+    "Every Automation this project has. One that hands work to another, or receives it, also appears in the workflow.",
+  "automations.workflow": "Workflow",
+  "automations.workflow.empty":
+    "No Automation hands work to another yet. Give one an output label matching another's trigger and the flow appears here.",
+  "automations.workflow.steps.one": "step",
+  "automations.workflow.steps.other": "steps",
+  "automations.workflow.stops.one": "human review",
+  "automations.workflow.stops.other": "human reviews",
+
   "canvas.changeRefused": "That change was refused. Nothing was saved.",
   "automations.new.close": "Close form",
   "automations.adding": "Saving\u2026",

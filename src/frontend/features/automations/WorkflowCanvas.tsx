@@ -1,5 +1,5 @@
-import { UserRound } from "lucide-react";
-import { t } from "@/shared/i18n";
+import { UserRound, UserRoundPlus } from "lucide-react";
+import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -8,7 +8,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
 import { useSetAutomationEnabled, useUpdateAutomation } from "./useAutomations";
-import { buildChains } from "./workflowGraph";
+import { summarise, workflowChains } from "./workflowGraph";
 
 /**
  * The pipeline as a shape (#116). Edges are label agreements — nothing about the picture is
@@ -29,7 +29,10 @@ export function WorkflowCanvas({
 }) {
   const update = useUpdateAutomation(projectId);
   const setEnabled = useSetAutomationEnabled(projectId);
-  const chains = buildChains(automations);
+  // Only what is a workflow (#136, design D2): a chain of one is an Automation with no edge, which
+  // belongs to the catalogue and not here. That single filter is what removed #122's special case.
+  const chains = workflowChains(automations);
+  const summary = summarise(chains);
 
   /**
    * Every canvas change is an ordinary Automation update (design D4), so BR-003's overlap check
@@ -54,8 +57,10 @@ export function WorkflowCanvas({
     });
   }
 
-  if (automations.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t("automations.empty")}</p>;
+  // A project whose Automations all stand alone has a catalogue and no flow. That is a state, not
+  // an error and not a blank area, and it says what would make a flow exist.
+  if (chains.length === 0) {
+    return <p className="text-sm text-muted-foreground">{t("automations.workflow.empty")}</p>;
   }
 
   return (
@@ -66,6 +71,22 @@ export function WorkflowCanvas({
         </p>
       )}
 
+      {/* Steps and human stops, both derived (design D4): "6 Automations" is a fact about the
+          catalogue and says nothing about the pipeline. */}
+      <p className="text-xs text-muted-foreground">
+        {tCount(
+          summary.steps,
+          "automations.workflow.steps.one",
+          "automations.workflow.steps.other",
+        )}
+        {" \u00b7 "}
+        {tCount(
+          summary.humanStops,
+          "automations.workflow.stops.one",
+          "automations.workflow.stops.other",
+        )}
+      </p>
+
       <p className="text-xs text-muted-foreground">{t("canvas.hint")}</p>
 
       {/* A chain reads left to right, like the board's columns, and each step is separated from
@@ -75,7 +96,10 @@ export function WorkflowCanvas({
         {chains.map((chain) => (
           <div
             key={chain[0]?.automation.id}
-            className="flex items-stretch gap-0 overflow-x-auto pb-2"
+            // Inside its own container, deliberately: a row that lets the page scroll sideways
+            // breaks every other screen on a phone. flex-nowrap so a long chain scrolls rather
+            // than folding into a grid whose rows mean nothing (design D3).
+            className="flex flex-col items-stretch gap-0 xl:flex-row xl:flex-nowrap xl:overflow-x-auto xl:pb-2"
           >
             {chain.map((node) => (
               <div key={node.automation.id} className="flex shrink-0 items-stretch">
@@ -191,14 +215,35 @@ function Connector({
   );
 
   return (
-    <div className="flex w-48 shrink-0 flex-col items-center gap-2 self-stretch px-3 py-2">
+    // Two states, two widths, because they need different things. A connected step needs one
+    // control and appears between every pair, so its width is paid once per step and comes
+    // straight out of how much of the chain fits on screen (#136's density criterion) — it gets
+    // an icon and stays thin. An open gap has to offer a choice of destinations, and it appears
+    // at most where a person is required, so it can afford the room a select needs.
+    // Full width when the flow stacks vertically, where there is no chain to compete with.
+    <div
+      className={cn(
+        "flex w-full shrink-0 flex-col items-center gap-2 self-stretch py-2",
+        connected ? "px-2 xl:w-16" : "px-3 xl:w-48",
+      )}
+    >
       {/* The rule stands between one step and the next, broken in the middle by what it means:
           a way to require a person, or the person who is already required. */}
       <div aria-hidden="true" className={rule} />
 
       {connected ? (
-        <Button variant="ghost" size="sm" type="button" onClick={onDisconnect}>
-          {t("canvas.disconnect")}
+        // The sentence becomes the accessible name rather than a line of wrapped text: one
+        // action, and the icon carries it. Still an explicit control — the spec asks that no
+        // gesture be drag-only, not that every control spell itself out in prose.
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          onClick={onDisconnect}
+          aria-label={t("canvas.disconnect")}
+          title={t("canvas.disconnect")}
+        >
+          <UserRoundPlus className="size-4" aria-hidden="true" />
         </Button>
       ) : (
         <div className="flex w-full flex-col items-center gap-1.5">

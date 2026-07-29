@@ -1511,3 +1511,25 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. Whether "a rule enforced from inside its own subject" recurs is worth watching;
   one occurrence stays here.
+
+## 2026-07-29 — catalogue-and-workflow
+
+- **Worked:** the whole change was one sentence, and the sentence was already in the code. Membership
+  of the workflow is `buildChains(...).filter(chain => chain.length > 1)` — because that function
+  already walked a root plus everything reachable, a chain of one means nothing arrives and nothing
+  leaves. The distinction two issues had been reaching for was derivable from data that had been
+  there since #116; nobody had asked the question. Getting it stated as DEC-053 and in the glossary
+  matters more than the filter: the same confusion had already been re-merged twice.
+- **Didn't:** two mistakes of the same family, both caught outside the compiler. Extracting the list
+  markup into a value, I bounded the block by the first line that stripped to `)}` and cut it in the
+  middle of a ternary — the file stopped parsing, which was cheap. Then I wrote the plural keys as
+  `"{count} steps"`, inventing a placeholder this catalogue does not have, and it type-checked
+  perfectly and rendered "2 {count} steps" in the browser. Both were edits made against an assumed
+  shape rather than a read one, which is what ADR-0007 is about.
+- **Next time:** before using a formatting helper, read it. `tCount` already prefixes the number, so
+  its keys are bare nouns; two lines of source would have said so. The same applies to structural
+  edits: bound a JSX block by its indentation, never by the first line that looks like its end.
+- **Time invested:** not measured (source: **manual** — sixty-first consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new; the two slips are ADR-0007's territory and it already names the check.
