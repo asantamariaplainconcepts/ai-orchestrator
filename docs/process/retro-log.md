@@ -1659,3 +1659,22 @@ times in the project this framework came from.
 - **ADR:** [ADR-0008](../adr/0008-a-live-conversation-costs-a-pass-per-message.md) — a live
   conversation costs a pass per message, because an untimed wait cannot idle. Closes OPN-005 as
   DEC-055.
+
+## 2026-07-29 — human-step-column
+
+- **Worked:** rewriting the issue before proposing was the whole difference. Its first version carried
+  the same premise error #137's first draft had — the column tied to `requiresApproval` — and
+  proposing on it would have built a board that draws two different waits identically. Catching it at
+  the issue cost a rewrite; catching it at implementation would have cost the slice. The corrected
+  premise also made criterion 5 free: the column derives from an absent output label, so closing the
+  chain removes it with no code.
+- **Didn't:** `BoardAutomation` was a hand-written subset of four fields, and I widened the interface
+  field by field until the compiler had told me four times that the board now needs the whole record.
+  It writes an Automation as of this change, and the update resends everything — so the subset was
+  wrong the moment the board stopped being read-only, and the four errors were one fact repeated.
+- **Next time:** when a read-only view starts writing, replace its narrowed type rather than growing
+  it. The first missing field is the signal that the narrowing has expired, not a field to add.
+- **Time invested:** not measured (source: **manual** — sixty-seventh consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new.
