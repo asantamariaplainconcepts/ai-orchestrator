@@ -423,9 +423,13 @@ delivery path works.
 ### Requirement: every Run reaches a terminal state, even when its worker never reports
 
 A Run in a non-terminal executing state SHALL end whether or not the process executing it survives.
-The system SHALL periodically end any Run in `Planning` or `Executing` whose start, plus its
-Automation's timeout, plus a grace period, is in the past, marking it `Failed` with a reason stating
-that it exceeded its timeout without its worker reporting.
+The system SHALL periodically end any Run in `Planning` or `Executing` whose **current phase's
+start**, plus its Automation's timeout, plus a grace period, is in the past, marking it `Failed` with
+a reason stating that it exceeded its timeout without its worker reporting.
+
+The current phase's start SHALL be the moment that phase began, never a point before a human wait:
+time spent `AwaitingApproval` or `AwaitingInput` SHALL NOT count toward any deadline (BR-006), and
+each phase SHALL be measured against its own timeout (BR-005).
 
 That reason SHALL be distinguishable from a timeout the executor enforced itself, because an agent
 that was too slow and a worker that disappeared call for different responses.
@@ -443,10 +447,16 @@ while nothing was sweeping SHALL be ended on the next pass.
 
 #### Scenario: a worker that vanished
 
-- **WHEN** a Run has been executing for longer than its Automation's timeout plus the grace period,
-  and no worker has reported
+- **WHEN** a Run's current phase has been running for longer than its Automation's timeout plus the
+  grace period, and no worker has reported
 - **THEN** it is `Failed`, its reason says its worker never reported, its Story accepts a new Run,
   and the project's concurrency count no longer includes it
+
+#### Scenario: a long approval does not count against the work
+
+- **WHEN** a Run planned, waited for approval for longer than its timeout, and has just begun
+  executing
+- **THEN** it is left untouched, because the phase it is in has only just started
 
 #### Scenario: a slow Run inside its deadline
 

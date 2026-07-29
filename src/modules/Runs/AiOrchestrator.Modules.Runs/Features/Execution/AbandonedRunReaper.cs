@@ -98,7 +98,7 @@ sealed partial class RunReaping(
             // the honest fallback: refusing to reap would leave exactly the eternal Executing
             // this exists to end.
             var timeout = automation?.Timeout ?? DefaultTimeout;
-            var deadline = run.StartedAt!.Value + timeout + options.ReapGrace;
+            var deadline = PhaseStart(run) + timeout + options.ReapGrace;
 
             if (clock.GetUtcNow() < deadline)
             {
@@ -137,6 +137,17 @@ sealed partial class RunReaping(
             }
         }
     }
+
+    /// <summary>
+    /// When the phase this Run is currently in began (#146). BR-005 gives each <i>phase</i> a
+    /// timeout and BR-006 says human waits are untimed, so measuring from <c>StartedAt</c> — which
+    /// <c>MarkPlanning</c> sets, before the wait — timed the approval itself. A Run that planned on
+    /// Monday and was approved on Tuesday was past its deadline the instant it began executing.
+    /// </summary>
+    static DateTimeOffset PhaseStart(Run run) =>
+        run.State == RunState.Executing && run.ApprovedAt is { } approved
+            ? approved
+            : run.StartedAt!.Value;
 
     /// <summary>Only reachable when an Automation was deleted mid-Run; matches the seeded default.</summary>
     static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(30);

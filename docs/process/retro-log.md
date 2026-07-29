@@ -1556,3 +1556,26 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. If a second gesture turns out to be undrivable, "an untestable gesture must be
   sugar over a tested path" is the shape that would graduate.
+
+## 2026-07-29 — reap-from-the-phase
+
+- **Worked:** reading somebody else's grill of the same area found my own bug. #144 was filed against
+  the run-execution window and, working through its claims, `Run.StartedAt` stopped meaning what
+  #140's requirement assumed. The reaper timed the approval wait that BR-006 declares untimed. Also
+  worth keeping: the regression test was confirmed red before the fix — the expression reverted, the
+  failure watched, then restored — because a regression test nobody has seen fail proves nothing.
+- **Didn't:** the defect was in the requirement I wrote, not only in the code. *"Its start, plus its
+  Automation's timeout"* is readable, plausible and wrong, because `StartedAt` does not mean "the
+  start of what is currently running". The implementation followed the sentence faithfully and
+  inherited its error, and #140's suite was green throughout because the missing scenario — an
+  approved Run surviving a long wait — was missing from the spec too. A green suite over a wrong
+  requirement is the most expensive kind of green.
+- **Next time:** when a requirement names a timestamp, write down what that field is set by. Half a
+  line — "`StartedAt`, set by `MarkPlanning`" — would have made the sentence obviously wrong before
+  any code existed, because the next words were "plus the timeout" and the field predates a wait
+  that has no timeout.
+- **Time invested:** not measured (source: **manual** — sixty-third consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. If a second requirement turns out to be wrong in the same way — correct English
+  over a misread field — "a requirement that names a field names what sets it" is the shape.
