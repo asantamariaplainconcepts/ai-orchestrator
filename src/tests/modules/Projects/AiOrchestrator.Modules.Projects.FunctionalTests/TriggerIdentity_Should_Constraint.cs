@@ -36,7 +36,8 @@ public class TriggerIdentity_Should_Constraint(ProjectsApiFixture fixture) : IAs
             {
                 triggerLabel,
                 triggerState,
-                action = "RefineOrComment",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }

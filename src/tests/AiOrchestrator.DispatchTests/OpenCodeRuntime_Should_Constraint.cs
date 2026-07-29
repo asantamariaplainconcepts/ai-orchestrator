@@ -24,7 +24,7 @@ public class OpenCodeRuntime_Should_Constraint
     static AgentInstruction Instruction() =>
         new(
             "irrelevant",
-            "ImplementToPullRequest",
+            "RepositoryPrompt",
             TimeSpan.FromSeconds(30),
             Path.GetTempPath(),
             new AgentCredentials("token", string.Empty)

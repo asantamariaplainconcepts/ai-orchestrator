@@ -55,7 +55,8 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             {
                 triggerLabel = "ai:review",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = true,
             }

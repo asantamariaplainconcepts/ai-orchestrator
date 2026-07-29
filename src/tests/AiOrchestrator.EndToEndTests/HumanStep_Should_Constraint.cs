@@ -34,10 +34,10 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
             page,
             projectId,
             "ai:grill",
-            "GrillToReady",
+            "RepositoryPrompt",
             "ready-for-proposal"
         );
-        await CreateAutomation(page, projectId, "ready-for-proposal", "ProposeSpec", null);
+        await CreateAutomation(page, projectId, "ready-for-proposal", "RepositoryPrompt", null);
 
         await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}?tab=automations");
 

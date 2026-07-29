@@ -61,7 +61,8 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
             {
                 triggerLabel = label,
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime,
                 requiresApproval = false,
             }
@@ -105,7 +106,10 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
 
         // Only the PAT was resolved — no AI credential name reached the vault, and the fake
         // received an empty key.
-        fixture.SecretNames.All.ShouldBe(["acme-pat"]);
+        // Twice, and that is the change rather than a leak: since #162 every Run reads its prompt from
+        // the repository before the agent starts, and that read is itself a credentialled vendor call.
+        // BR-010 asks for resolution per read, so two reads resolve twice — the *names* are what matter.
+        fixture.SecretNames.All.ShouldBe(["acme-pat", "acme-pat"]);
         fixture.OpenCodeAgent.Instructions.Single().Credentials.AiApiKey.ShouldBe(string.Empty);
     }
 
@@ -117,7 +121,7 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
 
         await Execute(runId);
 
-        fixture.SecretNames.All.ShouldBe(["acme-pat", "anthropic-api-key"]);
+        fixture.SecretNames.All.ShouldBe(["acme-pat", "anthropic-api-key", "acme-pat"]);
         fixture.Agent.Instructions.Single().Credentials.AiApiKey.ShouldBe("stub-token");
     }
 

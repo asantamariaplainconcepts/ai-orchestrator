@@ -19,7 +19,7 @@ public class ClaudeStreamedResult_Should_Constraint
     static AgentInstruction Instruction() =>
         new(
             "irrelevant",
-            "RefineOrComment",
+            "RepositoryPrompt",
             TimeSpan.FromSeconds(30),
             Path.GetTempPath(),
             new AgentCredentials("token", "key")

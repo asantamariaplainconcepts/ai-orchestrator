@@ -52,7 +52,8 @@ public class ArchivedProject_Should_Constraint(RunsApiFixture fixture) : IAsyncL
             {
                 triggerLabel = "ai:refine",
                 triggerState = (string?)null,
-                action = "RefineOrComment",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }

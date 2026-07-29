@@ -33,7 +33,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
     Task<HttpResponseMessage> Create(
         string label,
         string? state = null,
-        string action = "ImplementToPullRequest"
+        string action = "RepositoryPrompt"
     ) =>
         _client.PostAsJsonAsync(
             $"/api/projects/{_projectId}/automations",
@@ -59,7 +59,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
         Guid id,
         string label,
         string? state = null,
-        string action = "ImplementToPullRequest"
+        string action = "RepositoryPrompt"
     ) =>
         _client.PutAsJsonAsync(
             $"/api/projects/{_projectId}/automations/{id}",
@@ -107,10 +107,10 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
         // Editing only the action leaves the trigger identical — refusing this as an overlap
         // would make every Automation uneditable after creation.
         (
-            await Update(id, "ai:implement", state: null, action: "Estimate")
+            await Update(id, "ai:implement", state: null, action: "RepositoryPrompt")
         ).EnsureSuccessStatusCode();
 
-        (await List()).Single().Action.ShouldBe("Estimate");
+        (await List()).Single().Action.ShouldBe("RepositoryPrompt");
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
         // #7 shipped a projection whose enum was translated to SQL and came back as "0". The
         // check is on the raw body: a typed deserialisation would hide it.
         var raw = await _client.GetStringAsync($"/api/projects/{_projectId}/automations");
-        raw.ShouldContain("ImplementToPullRequest");
+        raw.ShouldContain("RepositoryPrompt");
         raw.ShouldContain("ClaudeCodeHeadless");
     }
 
@@ -255,7 +255,8 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
             {
                 triggerLabel = "ai:implement",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,

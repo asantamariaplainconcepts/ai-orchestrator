@@ -34,7 +34,8 @@ public class KanbanBoard_Should_Constraint(AppHostFixture fixture)
                 {
                     triggerLabel = "ai:refine",
                     triggerState = (string?)null,
-                    action = "RefineOrComment",
+                    action = "RepositoryPrompt",
+                    rubricPath = "task.md",
                     runtime = "ClaudeCodeHeadless",
                     requiresApproval = false,
                 },

@@ -118,6 +118,9 @@ sealed class StubBacklogConnector : IBacklogConnector
         RepositoryLabels.Clear();
         EnsureLabelError = null;
         FailNextLabelWrite = null;
+        // Seeded last, after the clears: every Automation names a prompt since #162, so a Run with
+        // no document to read could never reach the agent at all.
+        Documents[$"ai/prompts/{DefaultPrompt}"] = "Do the work the story describes.";
     }
 
     /// <summary>The change a Run's Story links to, when a test wants one.</summary>
@@ -313,6 +316,12 @@ sealed class StubBacklogConnector : IBacklogConnector
 
     /// <summary>Repository documents by path; a path not present reads as the vendor's 404.</summary>
     public Dictionary<string, string> Documents { get; } = [];
+
+    /// <summary>
+    /// Every Automation names a prompt since #162 — there is no built-in behaviour left to fall back
+    /// on — so the fake serves one by default and a test only seeds its own when the content matters.
+    /// </summary>
+    internal const string DefaultPrompt = "task.md";
 
     public Task<ErrorOr<string>> ReadDocument(
         BacklogCoordinates coordinates,

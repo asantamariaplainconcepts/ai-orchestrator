@@ -45,12 +45,12 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             )
         ).EnsureSuccessStatusCode();
 
-        _refineId = await CreateAutomation(_projectId, "ai:refine", "RefineOrComment", false);
-        _grillId = await CreateAutomation(_projectId, "ai:grill", "GrillToReady", false);
+        _refineId = await CreateAutomation(_projectId, "ai:refine", "RepositoryPrompt", false);
+        _grillId = await CreateAutomation(_projectId, "ai:grill", "RepositoryPrompt", false);
         _approvalId = await CreateAutomation(
             _projectId,
             "ai:implement",
-            "ImplementToPullRequest",
+            "RepositoryPrompt",
             requiresApproval: true
         );
 

@@ -45,7 +45,8 @@ public class DismissedFailure_Should_Constraint(RunsApiFixture fixture) : IAsync
             {
                 triggerLabel = "ai:refine",
                 triggerState = (string?)null,
-                action = "RefineOrComment",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }

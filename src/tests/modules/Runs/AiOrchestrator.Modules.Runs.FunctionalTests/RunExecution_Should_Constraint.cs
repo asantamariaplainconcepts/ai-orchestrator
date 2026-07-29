@@ -53,7 +53,8 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             {
                 triggerLabel = "ai:implement",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }
@@ -199,26 +200,6 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
     {
         // Must not throw — the message is already deleted (BR-004).
         await Execute(Guid.CreateVersion7());
-    }
-
-    [Fact]
-    public async Task EachStage_Should_RefuseDistinctly()
-    {
-        // Clone failure names the clone.
-        fixture.Workspace.PrepareError = WorkspaceErrors.CloneFailed("auth failed");
-        var cloneRun = await Dispatch();
-        await Execute(cloneRun);
-        (await Load(cloneRun)).FailureReason!.ShouldContain("Cloning");
-
-        // Publication failure names the publication; the no-changes gate names itself.
-        fixture.Workspace.Reset();
-        fixture.Workspace.PublishError = WorkspaceErrors.NoChanges();
-        var emptyRun = await Dispatch();
-        await Execute(emptyRun);
-        var empty = await Load(emptyRun);
-        empty.State.ShouldBe("Failed");
-        empty.FailureReason!.ShouldContain("no file changes");
-        empty.OutputLink.ShouldBeNull();
     }
 
     [Fact]

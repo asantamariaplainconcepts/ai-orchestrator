@@ -51,7 +51,8 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             {
                 triggerLabel = "ai:implement",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }
@@ -145,7 +146,8 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             {
                 triggerLabel = "ai:review",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                rubricPath = "task.md",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = true,
             }
