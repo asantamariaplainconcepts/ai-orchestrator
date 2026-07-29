@@ -7,7 +7,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
-import { WorkflowCanvas } from "./WorkflowCanvas";
+import { HumanStepBlock, WorkflowCanvas } from "./WorkflowCanvas";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, AutomationAction } from "./types";
 import {
@@ -326,6 +326,12 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           <section className="flex min-w-0 flex-col gap-2">
             <h3 className="text-sm font-semibold">{t("automations.catalogue")}</h3>
             <p className="text-xs text-muted-foreground">{t("automations.catalogue.hint")}</p>
+            {/* The block the workflow's gaps accept (#137). It lives here because the catalogue is
+                what the flow is built out of — that is the whole point of DEC-053's separation. */}
+            <HumanStepBlock />
+            <p className="hidden text-xs text-muted-foreground xl:block">
+              {t("canvas.block.hint")}
+            </p>
             {catalogue}
           </section>
 

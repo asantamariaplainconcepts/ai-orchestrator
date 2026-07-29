@@ -1,4 +1,5 @@
-import { UserRound, UserRoundPlus } from "lucide-react";
+import { GripVertical, UserRound, UserRoundPlus } from "lucide-react";
+import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
@@ -9,6 +10,36 @@ import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
 import { useSetAutomationEnabled, useUpdateAutomation } from "./useAutomations";
 import { summarise, workflowChains } from "./workflowGraph";
+
+/**
+ * What a drag carries (#137). "new" is a block coming out of the catalogue; anything else is the id
+ * of the step whose output label is already cleared — the gap the block is being moved *from*.
+ */
+const HUMAN_BLOCK = "application/x-aio-human-step";
+
+/**
+ * The block an Admin drags into a gap (#137, design D1). Lives in the catalogue and is defined here
+ * so the meaning of the gesture stays in one file with the gaps that accept it.
+ *
+ * Hidden below the width at which the flow reads left to right: a drag on a phone competes with the
+ * gesture that scrolls, and losing that fight silently is worse than not offering it (design D5).
+ */
+export function HumanStepBlock() {
+  return (
+    <div
+      draggable
+      onDragStart={(event) => {
+        event.dataTransfer.setData(HUMAN_BLOCK, "new");
+        event.dataTransfer.effectAllowed = "move";
+      }}
+      className="hidden items-center gap-2 self-start rounded-md border border-dashed border-warning px-3 py-2 text-xs text-warning xl:flex"
+    >
+      <GripVertical className="size-3.5 shrink-0" aria-hidden="true" />
+      <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
+      {t("canvas.block")}
+    </div>
+  );
+}
 
 /**
  * The pipeline as a shape (#116). Edges are label agreements — nothing about the picture is
@@ -33,6 +64,7 @@ export function WorkflowCanvas({
   // belongs to the catalogue and not here. That single filter is what removed #122's special case.
   const chains = workflowChains(automations);
   const summary = summarise(chains);
+  const [dragging, setDragging] = useState(false);
 
   /**
    * Every canvas change is an ordinary Automation update (design D4), so BR-003's overlap check
@@ -59,6 +91,45 @@ export function WorkflowCanvas({
 
   // A project whose Automations all stand alone has a catalogue and no flow. That is a state, not
   // an error and not a blank area, and it says what would make a flow exist.
+  /**
+   * A block dropped into the gap after `preceding` (#137, design D1): clear that step's output
+   * label, so the chain stops and a person reviews what it produced. Never `requiresApproval` —
+   * that is the other wait and it belongs to the card.
+   *
+   * A move breaks the new gap **before** reconnecting the old (design D3), so an interruption leaves
+   * a review in both places and never in neither.
+   *
+   * The reconnect is attempted only when the destination is knowable. Once an output label is
+   * cleared, nothing records what used to follow — design D2's "an absence has no two ends" — so a
+   * move out of such a gap leaves it open, with its existing select as the way to close it. That is
+   * the fail-safe direction anyway: an extra review costs a click, a missing one lets work through.
+   */
+  function placeBlock(preceding: Automation, movedFrom: string | null) {
+    change(preceding, { outputLabel: null });
+
+    if (!movedFrom || movedFrom === preceding.id) {
+      return;
+    }
+
+    const source = automations.find((candidate) => candidate.id === movedFrom);
+    const destination = reconnectionFor(movedFrom);
+    if (source && destination) {
+      change(source, { outputLabel: destination });
+    }
+  }
+
+  /**
+   * Where the step at an open gap should hand work to, when that is derivable: the root of the chain
+   * drawn immediately after the one it ends. Undefined when nothing follows, which the caller reads
+   * as "leave the gap open and let the Admin name a destination".
+   */
+  function reconnectionFor(endingAutomationId: string): string | undefined {
+    const index = chains.findIndex(
+      (chain) => chain[chain.length - 1]?.automation.id === endingAutomationId,
+    );
+    return index >= 0 ? chains[index + 1]?.[0]?.automation.triggerLabel : undefined;
+  }
+
   if (chains.length === 0) {
     return <p className="text-sm text-muted-foreground">{t("automations.workflow.empty")}</p>;
   }
@@ -100,6 +171,12 @@ export function WorkflowCanvas({
             // breaks every other screen on a phone. flex-nowrap so a long chain scrolls rather
             // than folding into a grid whose rows mean nothing (design D3).
             className="flex flex-col items-stretch gap-0 xl:flex-row xl:flex-nowrap xl:overflow-x-auto xl:pb-2"
+            onDragOver={(event) => {
+              // Only our own block: any other drag passing over the flow is none of its business.
+              if (event.dataTransfer.types.includes(HUMAN_BLOCK)) setDragging(true);
+            }}
+            onDragLeave={() => setDragging(false)}
+            onDrop={() => setDragging(false)}
           >
             {chain.map((node) => (
               <div key={node.automation.id} className="flex shrink-0 items-stretch">
@@ -120,6 +197,11 @@ export function WorkflowCanvas({
                 <Connector
                   automation={node.automation}
                   connected={node.next !== null}
+                  dragging={dragging}
+                  onDropBlock={(movedFrom) => {
+                    setDragging(false);
+                    placeBlock(node.automation, movedFrom);
+                  }}
                   candidates={automations.filter(
                     (candidate) =>
                       candidate.id !== node.automation.id &&
@@ -128,7 +210,12 @@ export function WorkflowCanvas({
                   onConnect={(triggerLabel) =>
                     change(node.automation, { outputLabel: triggerLabel })
                   }
-                  onDisconnect={() => change(node.automation, { outputLabel: null })}
+                  // The button and the drop are one path with two callers, the discipline
+                  // RunCreator and HandOn already apply. It matters more than usual here:
+                  // Playwright cannot perform an HTML5 drag (#110 recorded this), so routing the
+                  // explicit control through the same function is what puts this logic under test
+                  // at all.
+                  onDisconnect={() => placeBlock(node.automation, null)}
                 />
               </div>
             ))}
@@ -196,14 +283,20 @@ function Connector({
   automation,
   connected,
   candidates,
+  dragging,
   onConnect,
   onDisconnect,
+  onDropBlock,
 }: {
   automation: Automation;
   connected: boolean;
   candidates: Automation[];
+  /** True while a human block is being dragged anywhere over the flow (#137). */
+  dragging: boolean;
   onConnect: (triggerLabel: string) => void;
   onDisconnect: () => void;
+  /** The gap the block came from, or null for one out of the catalogue. */
+  onDropBlock: (movedFrom: string | null) => void;
 }) {
   // An output label pointing at no Automation: the vendor will carry the label and nobody will
   // answer it. Said plainly rather than drawn as a chain that does not exist.
@@ -222,9 +315,24 @@ function Connector({
     // at most where a person is required, so it can afford the room a select needs.
     // Full width when the flow stacks vertically, where there is no chain to compete with.
     <div
+      // A connected gap can accept the block; an open one already has its review, so it never
+      // calls preventDefault and the cursor says no-drop. Marked while a drag is in flight so a
+      // valid target is visible before the pointer reaches it, not learned by failing.
+      onDragOver={(event) => {
+        if (connected && event.dataTransfer.types.includes(HUMAN_BLOCK)) event.preventDefault();
+      }}
+      onDrop={(event) => {
+        if (!connected) return;
+        event.preventDefault();
+        const payload = event.dataTransfer.getData(HUMAN_BLOCK);
+        onDropBlock(payload === "new" ? null : payload);
+      }}
       className={cn(
         "flex w-full shrink-0 flex-col items-center gap-2 self-stretch py-2",
         connected ? "px-2 xl:w-16" : "px-3 xl:w-48",
+        dragging &&
+          connected &&
+          "rounded-md bg-warning/10 outline-2 outline-dashed outline-warning",
       )}
     >
       {/* The rule stands between one step and the next, broken in the middle by what it means:
@@ -247,8 +355,16 @@ function Connector({
         </Button>
       ) : (
         <div className="flex w-full flex-col items-center gap-1.5">
-          <span className="flex items-center gap-1 text-center text-xs font-medium text-warning">
-            <UserRound className="size-3.5 shrink-0" />
+          <span
+            draggable
+            onDragStart={(event) => {
+              // Carries the id of the step whose label is cleared — the gap being moved from.
+              event.dataTransfer.setData(HUMAN_BLOCK, automation.id);
+              event.dataTransfer.effectAllowed = "move";
+            }}
+            className="flex cursor-grab items-center gap-1 text-center text-xs font-medium text-warning"
+          >
+            <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
             {t("canvas.human")}
           </span>
           {dangling ? (
