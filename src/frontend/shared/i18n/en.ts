@@ -89,6 +89,8 @@ export const en = {
   "connector.secretManagedElsewhere": "Token managed outside this product",
   "connector.codeRepository": "Code repository",
   "connector.codeRepositoryPlaceholder": "portal-web",
+  "connector.keepsStoredCredential":
+    "Leave the credential blank to keep the one already stored — it is re-checked against the vendor before saving.",
   "connector.promptDirectory": "Prompts directory",
   "connector.promptDirectoryPlaceholder": "ai/prompts",
   "connector.promptDirectoryHint":
