@@ -8,6 +8,9 @@ An Automation SHALL be able to name a markdown file in the connected repository 
 Run of that Automation SHALL use the file's content as the agent's instruction. The file SHALL be read
 live at execution time and SHALL NOT be mirrored or cached, so the repository remains the only copy.
 
+The Automation SHALL store the file's name and the project SHALL supply the directory it resolves
+against, as `connector-configuration` requires. Subfolders SHALL be allowed within that directory.
+
 Leading YAML frontmatter SHALL be stripped and ignored. That block is how another runner is told what
 to do with the file, while this product's wiring is the Automation itself — its runtime, timeout,
 approval gate and trigger. Ignoring it SHALL be deliberate: a declared model SHALL NOT choose what
@@ -17,8 +20,9 @@ The write surface SHALL be one comment on the Story and nothing else: no label, 
 workspace, and no pull request. A repository prompt SHALL NOT be able to widen its own surface by
 asking to.
 
-Both refusals SHALL precede the agent, each naming the path: a file that cannot be read, and a file
-whose body is empty once frontmatter is stripped. There SHALL be no fallback prompt and no substituted
+Both refusals SHALL precede the agent, each naming the **resolved** path — directory and name
+together, so a misconfigured directory gives itself away: a file that cannot be read, and a file whose
+body is empty once frontmatter is stripped. There SHALL be no fallback prompt and no substituted
 catalogue action — an Automation configured to run the repository's prompt SHALL either run it or stop.
 
 Usage, cost and streamed output SHALL behave as on any other Run.
@@ -41,8 +45,8 @@ Usage, cost and streamed output SHALL behave as on any other Run.
 
 #### Scenario: the file is not there
 
-- **WHEN** the named path cannot be read from the repository
-- **THEN** the Run fails naming the path, before any agent runs
+- **WHEN** the name does not resolve to a readable file in the project's prompts directory
+- **THEN** the Run fails naming the resolved path, before any agent runs
 
 #### Scenario: the file says nothing
 

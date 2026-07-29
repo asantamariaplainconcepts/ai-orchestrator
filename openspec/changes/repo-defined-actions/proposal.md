@@ -23,15 +23,20 @@ fixed set of things one team thought of.
 - **Refusals name the path** (design D4): a missing file, or a body empty after stripping frontmatter,
   fails before any agent runs. No fallback prompt and no silent catalogue substitute.
 - **Recorded as the next entry in DEC-048's lane** (design D5).
+- **Where prompts live is a project setting** (design D6), default `ai/prompts/` and editable on the
+  Settings tab beside the rest of the Connector (UC-004). An Automation stores only the file name, so
+  moving the prompts is one field rather than an edit per Automation — and it takes effect on the next
+  Run, because the file was never mirrored.
 
 ## Impact
 
-- Specs: `agent-execution` — one ADDED requirement.
+- Specs: `agent-execution` and `connector-configuration` — one ADDED requirement each.
 - Docs: DEC-057 recorded.
-- Code: one enum value, one branch in the executor's simple-action path, a frontmatter strip, and the
-  action offered in the portal with its path field.
-- No schema change: the path reuses `RubricPath`, which is already "the document this action reads"
-  and already flows through the API and the canvas — the same reuse `sync-action` made for its
+- Code: one enum value, one branch in the executor's simple-action path, a frontmatter strip, the
+  resolution behind `IDocumentReader`, and the action offered in the portal with its name field.
+- Schema: one nullable column on the Connector for the prompts directory, exactly as
+  `CodeRepository` was added. The Automation side needs no schema change — the name reuses
+  `RubricPath`, already "the document this action reads", the same reuse `sync-action` made for its
   close-out procedure.
 
 ## Out of scope

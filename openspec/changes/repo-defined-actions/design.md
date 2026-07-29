@@ -10,10 +10,11 @@ So the action reads a markdown file from the connected repository at execution t
 `IDocumentReader` the grill's rubric and sync's procedure use. Live, never mirrored — BR-008's spirit:
 the vendor holds the file and this product holds no copy that could be stale.
 
-The path reuses `RubricPath` rather than adding a field. That column already means "the document this
+The value reuses `RubricPath` rather than adding a field. That column already means "the document this
 action reads", it already flows through the API, the form and the canvas, and `sync-action` already
 reused it for its close-out procedure. A second path column would be a second thing to keep in step
-for no new meaning.
+for no new meaning. What it holds here is a **file name**, not a repository path — see D6 for why the
+directory is the project's business rather than each Automation's.
 
 ## D2 — The body is the prompt, and frontmatter is somebody else's wiring
 
@@ -56,3 +57,34 @@ sync-action's ordering (#123) and the grill's refusal (DEC-048) applied to a thi
 DEC-026 fixed the MVP action catalogue and DEC-048 opened the lane for it to grow with a stated
 reason each time. This is the next entry: what the action reads, that frontmatter is ignored, and
 that the write surface is one comment.
+
+## D6 — Where prompts live is the project's convention, not each Automation's
+
+An Automation stores a **name** — `estimate.md`, subfolders allowed — and the project says which
+directory names resolve against. Unset means `ai/prompts/`, the Platform's own `ai/` home, so a
+project that configures nothing still works.
+
+Storing the full path on each Automation was the obvious alternative, and it is wrong for a reason
+worth stating: a team that moves its prompts would have to edit every Automation, and each edit is a
+chance to leave one behind pointing at a file that no longer exists. With the directory held once,
+moving the prompts is one field, and every Automation follows on its next Run. Nothing needs
+migrating, because the file was never mirrored — the live read D1 already requires is what makes the
+change take effect.
+
+**The setting lives on the Connector**, beside `CodeRepository`. That field is already "where the code
+lives, when that is not where the backlog lives"; this is "where the prompts live inside it" — the
+same kind of fact, the same panel, the same use case (UC-004). It also gets the dependency right: no
+Connector means no repository, and no repository means there is no prompt to read.
+
+**Resolution happens in exactly one place** — inside the module that owns the Connector, behind
+`IDocumentReader`. The Runs module passes the stored name and never learns that a directory exists.
+Two reasons: the Backlog module owns Connector facts and this keeps them there, and one resolution
+site means one place that composes the path and therefore one place that can name it in a refusal.
+That is what makes D4's message trustworthy — the failure reports the **resolved** path, so a
+misconfigured directory gives itself away instead of looking like a missing file.
+
+**A name may not escape the directory.** A leading `/` or an upward `..` segment is refused, not
+normalized. The whole point of holding the directory once is that it bounds where prompts come from,
+and a boundary that can be stepped over is decoration. The issue put repo-absolute paths out of scope;
+this is that rule enforced rather than merely stated, because "one rule" only holds if the other path
+is closed.
