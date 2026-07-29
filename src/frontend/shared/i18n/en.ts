@@ -178,6 +178,8 @@ export const en = {
   // agreeing with another's trigger label.
   "canvas.hint":
     "Each Automation hands work to the next by writing its label. Where nobody does, a person must.",
+  "canvas.block": "Human review",
+  "canvas.block.hint": "Drag it into the flow to have a person review what a step produced.",
   "canvas.human": "A person continues",
   "canvas.handsTo": "Hands work to\u2026",
   "canvas.disconnect": "Require a person here",
