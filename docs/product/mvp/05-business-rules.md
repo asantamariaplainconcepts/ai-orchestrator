@@ -37,9 +37,16 @@ where possible, a machine gate (validator, DB constraint, command refusal).
 ## Automations & dispatch
 
 - **BR-003 — No overlapping triggers.** Within a project, saving an Automation whose
-  trigger condition intersects an existing enabled Automation's fails validation
-  ([DEC-033](10-locked-mvp-decisions.md)). At runtime, an event therefore matches at
-  most one Automation.
+  trigger could match a Story an existing **enabled** Automation could also match is
+  rejected, naming the conflict. **Two triggers are the same trigger when the vendor would
+  say so: labels and states compare case-insensitively**, and the *same* comparison is used
+  when a Story is matched, so a differently-cased Automation cannot be accepted and then
+  silently never fire ([DEC-056](10-locked-mvp-decisions.md)). An **exact** duplicate is
+  rejected whether or not either Automation is enabled — two rows carrying one trigger are
+  one trigger — while *subsumption* remains enabled-only, because a disabled Automation
+  matches nothing. Enforced by a unique index over the project, the normalised label and the
+  normalised state, not by a handler convention: two concurrent saves produce one row and
+  one refusal (the lesson BR-001 already learned).
 - **BR-007 — Approval routing.** `requiresApproval = true` → two-phase Run
   (Planning → AwaitingApproval → Executing). `requiresApproval = false` → single-phase
   (straight to Executing); no plan artifact is produced.

@@ -93,11 +93,39 @@ public class Automation_Should_Constraint
     }
 
     [Fact]
-    public void Triggers_Should_CompareLabelsExactly()
+    public void Triggers_Should_CompareLabelsTheWayTheVendorDoes()
     {
-        // Vendor labels are case-sensitive strings we mirror verbatim; folding case here would
-        // invent a rule the vendor does not have.
-        Trigger("AI:Implement", "open").Overlaps(Trigger("ai:implement", "open")).ShouldBeFalse();
+        // This asserted the opposite until #147, on the stated grounds that "vendor labels are
+        // case-sensitive strings we mirror verbatim; folding case here would invent a rule the
+        // vendor does not have". That was a claim about GitHub that nobody had checked, and it is
+        // false — exercised rather than argued:
+        //
+        //   gh api /repos/{owner}/{repo}/labels/bug  -> bug
+        //   gh api /repos/{owner}/{repo}/labels/BUG  -> bug
+        //   gh api /repos/{owner}/{repo}/labels/Bug  -> bug
+        //
+        // One label, three spellings. So the rule the vendor has is exactly the one this now
+        // enforces, and the old comment invented the *absence* of it (DEC-056).
+        Trigger("AI:Implement", "open")
+            .Overlaps(Trigger("ai:implement", "open"))
+            .ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AnExactDuplicate_Should_BeTheSameTriggerEvenWhenDisabled()
+    {
+        // Subsumption ignores disabled Automations because it is about matching (#147, design D3).
+        // Identity does not: two rows carrying one trigger are one trigger either way.
+        Trigger("ai:implement", "open", enabled: false)
+            .IsSameTriggerAs(Trigger("AI:IMPLEMENT", "OPEN"))
+            .ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ABroadTrigger_Should_NotBeTheSameAsANarrowOne()
+    {
+        // Identity is not subsumption: these two overlap, and they are not the same trigger.
+        Trigger("ai:implement").IsSameTriggerAs(Trigger("ai:implement", "open")).ShouldBeFalse();
     }
 
     [Fact]
