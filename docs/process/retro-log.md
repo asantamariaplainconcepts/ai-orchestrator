@@ -1612,3 +1612,28 @@ times in the project this framework came from.
   claimed the client deduped by sequence). And a MODIFIED requirement dropping scenarios. The first
   would graduate as "a claim about existing behaviour cites where that behaviour lives"; the second is
   already enforced by the archive, which is the better answer — a gate beats a rule.
+
+## 2026-07-29 — actionable-failure-inbox
+
+- **Worked:** the valuable part of this change was not either capability, it was noticing that the
+  inbox and the pulse each held a copy of "waits on a human" under a comment promising the two would
+  never disagree. Adding the dismissal to one copy and not the other would have shown a Member "1
+  waiting" above an empty page, and the comment could not have stopped it. Extracting the predicate
+  and asserting the list and the count *together* replaced a promise with a mechanism. Also kept: a
+  test asserting the read model's exact field set failed the moment `dismissedAt` appeared, which is
+  the whole reason it asserts a set rather than a subset.
+- **Didn't:** I wrote `entry.Reason` in a test and got a null back — the inbox's field is
+  `WaitingFor` and its value is `"failure"`. That is the **fourth** time in one session that I
+  asserted the shape of existing code without opening it: `TreatWarningsAsErrors` (assumed absent,
+  inherited), `tCount` (assumed a placeholder it lacks), "the client dedupes by sequence" (it
+  concatenated), and this. Every one cost a cycle, and every one was a file I could have read in
+  five seconds.
+- **Next time:** treat "I know what that returns" as the signal to open the file. Three of the four
+  were in code I had edited earlier in the same session, which is exactly when the belief feels
+  safest and the memory is stalest.
+- **Time invested:** not measured (source: **manual** — sixty-fifth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. The claim-without-reading shape is now at four occurrences in one session and is
+  worth graduating next time it appears — the check would be that a claim about existing behaviour
+  cites the file and line where that behaviour lives.
