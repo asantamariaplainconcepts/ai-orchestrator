@@ -1,8 +1,9 @@
-import { FolderKanban, Inbox, Menu } from "lucide-react";
+import { FolderKanban, Inbox, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { t } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
+import { useRememberedPreference } from "@/shared/lib/useRememberedPreference";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/shared/ui/sheet";
@@ -27,6 +28,12 @@ export interface Crumb {
  * The sidebar lists only routes that exist — a nav item for an unbuilt screen is speculative
  * surface. The brand area is text from the catalogue: no logo or imagery enters this
  * repository (DEC-021).
+ *
+ * From the medium breakpoint up the sidebar collapses to an icon rail (#126). Collapsed is a rail and
+ * not a hidden panel for the reason the design contract already gives at phone width: a person cannot
+ * navigate from, or be warned by, a panel that is not there. Both widths come from the canonical
+ * variables — the shell used to hard-code 16rem, which is 24px narrower than the token it was meant to
+ * be honouring.
  */
 export function AppShell({
   crumbs,
@@ -43,23 +50,65 @@ export function AppShell({
   const waiting = inbox.data?.length ?? 0;
   const me = useCurrentPrincipal();
   const [navOpen, setNavOpen] = useState(false);
+  const [sidebar, setSidebar] = useRememberedPreference<"expanded" | "collapsed">(
+    "aio:sidebar",
+    "expanded",
+    (value): value is "expanded" | "collapsed" => value === "expanded" || value === "collapsed",
+  );
+  const collapsed = sidebar === "collapsed";
 
   return (
-    <div className="min-h-dvh bg-background font-sans text-foreground antialiased md:grid md:grid-cols-[16rem_1fr]">
-      <aside className="sticky top-0 hidden h-dvh flex-col justify-between border-r bg-card p-4 md:flex">
+    <div
+      className={cn(
+        "min-h-dvh bg-background font-sans text-foreground antialiased md:grid",
+        collapsed
+          ? "md:grid-cols-[var(--sidebar-w-collapsed)_1fr]"
+          : "md:grid-cols-[var(--sidebar-w-expanded)_1fr]",
+      )}
+    >
+      <aside
+        className={cn(
+          "sticky top-0 hidden h-dvh flex-col justify-between border-r bg-card py-4 md:flex",
+          collapsed ? "px-2" : "px-4",
+        )}
+      >
         <div className="flex flex-col gap-6">
-          <div className="px-3 text-base font-bold">{t("app.title")}</div>
-          <NavItems waiting={waiting} />
+          <div className={cn("flex items-center", collapsed ? "justify-center" : "gap-2 px-3")}>
+            {collapsed ? null : (
+              <span className="min-w-0 flex-1 truncate text-base font-bold">{t("app.title")}</span>
+            )}
+            {/* The control the rail is reached by. Icon-only in both states, because a label here
+                would be the first thing the collapse was supposed to give back. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              type="button"
+              onClick={() => setSidebar(collapsed ? "expanded" : "collapsed")}
+              aria-label={collapsed ? t("shell.nav.expand") : t("shell.nav.collapse")}
+              title={collapsed ? t("shell.nav.expand") : t("shell.nav.collapse")}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-4" />
+              ) : (
+                <PanelLeftClose className="size-4" />
+              )}
+            </Button>
+          </div>
+          <NavItems waiting={waiting} collapsed={collapsed} />
         </div>
-        <div className="flex flex-col gap-0.5 px-3">
-          {/* What the server says, not what the page assumes (#119). */}
-          <span className="text-sm font-medium">
-            {me.data?.displayName ?? t("shell.user.name")}
-          </span>
-          <span className="text-xs text-muted-foreground">
-            {me.data ? me.data.role : t("shell.user.hint")}
-          </span>
-        </div>
+        {/* Identity is a label, and a label is what a rail has no room for — so it goes rather than
+            being truncated into something unreadable. Nothing is lost: it is not a destination. */}
+        {collapsed ? null : (
+          <div className="flex flex-col gap-0.5 px-3">
+            {/* What the server says, not what the page assumes (#119). */}
+            <span className="text-sm font-medium">
+              {me.data?.displayName ?? t("shell.user.name")}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {me.data ? me.data.role : t("shell.user.hint")}
+            </span>
+          </div>
+        )}
       </aside>
 
       <div className="flex min-w-0 flex-col">
@@ -127,14 +176,27 @@ export function AppShell({
   );
 }
 
-/** One nav, two containers: the desktop sidebar and the mobile sheet render the same items. */
-function NavItems({ waiting, onNavigate }: { waiting: number; onNavigate?: () => void }) {
+/**
+ * One nav, three containers now: the desktop sidebar expanded, that sidebar collapsed to a rail, and
+ * the mobile sheet. All three render the same items and the same destinations — the rail drops the
+ * label from the screen, never the entry (#126, design D2).
+ */
+function NavItems({
+  waiting,
+  collapsed = false,
+  onNavigate,
+}: {
+  waiting: number;
+  collapsed?: boolean;
+  onNavigate?: () => void;
+}) {
   // NavLink stamps aria-current="page" when active; the className callback styles exactly that,
   // so active state cannot drift from reality. `end={false}` keeps the projects item active on
   // project detail routes.
   const item = ({ isActive }: { isActive: boolean }) =>
     cn(
-      "flex items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors",
+      "flex items-center rounded-md py-2 text-sm font-medium transition-colors",
+      collapsed ? "justify-center px-2" : "justify-between px-3",
       isActive
         ? "bg-accent text-accent-foreground"
         : "text-muted-foreground hover:bg-muted hover:text-foreground",
@@ -142,23 +204,51 @@ function NavItems({ waiting, onNavigate }: { waiting: number; onNavigate?: () =>
 
   return (
     <nav aria-label={t("shell.nav.section")} className="flex flex-col gap-1">
-      <div className="px-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        {t("shell.nav.section")}
-      </div>
-      <NavLink className={item} to="/projects" end={false} onClick={onNavigate}>
+      {/* The section heading is a label with no destination, so the rail has nothing to keep. */}
+      {collapsed ? null : (
+        <div className="px-3 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("shell.nav.section")}
+        </div>
+      )}
+      <NavLink
+        className={item}
+        to="/projects"
+        end={false}
+        onClick={onNavigate}
+        // The name has to exist somewhere once it is off the screen (design D4): here for assistive
+        // technology, and as a title for a sighted reader who has not memorised the glyph.
+        aria-label={collapsed ? t("shell.nav.projects") : undefined}
+        title={collapsed ? t("shell.nav.projects") : undefined}
+      >
         <span className="flex items-center gap-2">
           <FolderKanban className="size-4" />
-          {t("shell.nav.projects")}
+          {collapsed ? null : t("shell.nav.projects")}
         </span>
       </NavLink>
-      <NavLink className={item} to="/inbox" onClick={onNavigate}>
-        <span className="flex items-center gap-2">
+      <NavLink
+        className={item}
+        to="/inbox"
+        onClick={onNavigate}
+        aria-label={collapsed ? t("shell.nav.inbox") : undefined}
+        title={collapsed ? t("shell.nav.inbox") : undefined}
+      >
+        <span className="relative flex items-center gap-2">
           <Inbox className="size-4" />
-          {t("shell.nav.inbox")}
+          {collapsed ? null : t("shell.nav.inbox")}
+          {/* UC-026's ambient count has to survive the collapse, which is the whole reason this is a
+              rail: on the icon when there is no room beside it. */}
+          {collapsed && waiting > 0 ? (
+            <span
+              aria-hidden="true"
+              className="absolute -top-1.5 -right-2 min-w-4 rounded-full bg-secondary px-1 text-center text-[10px] leading-4 font-semibold text-secondary-foreground"
+            >
+              {waiting}
+            </span>
+          ) : null}
         </span>
         {/* Same query as the page, so they cannot disagree. Zero renders nothing — an empty
             inbox needs no advertising. */}
-        {waiting > 0 ? <Badge variant="secondary">{waiting}</Badge> : null}
+        {!collapsed && waiting > 0 ? <Badge variant="secondary">{waiting}</Badge> : null}
       </NavLink>
     </nav>
   );

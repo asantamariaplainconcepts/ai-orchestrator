@@ -24,6 +24,7 @@ import {
   useWriteStoryLabel,
 } from "./useBacklog";
 import { ApiError } from "@/shared/http/client";
+import { useRememberedPreference } from "@/shared/lib/useRememberedPreference";
 import { KanbanBoard } from "./KanbanBoard";
 import type { BoardAutomation } from "./KanbanBoard";
 import { BACKLOG_VENDORS } from "./types";
@@ -37,15 +38,13 @@ const VIEW_PREFERENCE = "aio:backlog-view";
 
 /**
  * Unlike the landing tab (design D3), which is derived because the project's state decides it,
- * list-or-board is a genuine preference: nothing about the project implies an answer. Read
- * lazily so a blocked or absent localStorage degrades to the default rather than to a crash.
+ * list-or-board is a genuine preference: nothing about the project implies an answer.
+ *
+ * The lazy read and the guarded write moved into `useRememberedPreference` when the sidebar became the
+ * second of them (#126, design D3). Behaviour is unchanged — that hook is this code, extracted.
  */
-function storedView(): BacklogViewMode {
-  try {
-    return window.localStorage.getItem(VIEW_PREFERENCE) === "board" ? "board" : "list";
-  } catch {
-    return "list";
-  }
+function isViewMode(value: string): value is BacklogViewMode {
+  return value === "list" || value === "board";
 }
 
 /**
@@ -57,7 +56,11 @@ export function ProjectScreen() {
   const { projectId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [runsStoryFilter, setRunsStoryFilter] = useState<string | null>(null);
-  const [view, setView] = useState<BacklogViewMode>(storedView);
+  const [view, setView] = useRememberedPreference<BacklogViewMode>(
+    VIEW_PREFERENCE,
+    "list",
+    isViewMode,
+  );
   const backlog = useBacklog(projectId);
   // Including archived ones: this screen must find its project whatever its state, or an
   // archived project loses its name, its notice and its restore button — reading stays open
@@ -132,14 +135,7 @@ export function ProjectScreen() {
                 selectTab("runs");
               }}
               view={view}
-              onViewChange={(next) => {
-                setView(next);
-                try {
-                  window.localStorage.setItem(VIEW_PREFERENCE, next);
-                } catch {
-                  // A refused write costs the preference, never the interaction.
-                }
-              }}
+              onViewChange={setView}
             />
           </TabsContent>
 
