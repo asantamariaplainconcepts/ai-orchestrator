@@ -26,6 +26,13 @@ public sealed class RunsModule : ModuleBase
     public const string LiveLogEnabledKey = "Runs:LiveLogEnabled";
     public const string ResumeCheckSecondsKey = "Runs:ResumeCheckSeconds";
 
+    /// <summary>Set false in the test host, which drives the sweep deterministically (#140).</summary>
+    public const string ReapingEnabledKey = "Runs:ReapingEnabled";
+
+    public const string ReapIntervalSecondsKey = "Runs:ReapIntervalSeconds";
+
+    public const string ReapGraceSecondsKey = "Runs:ReapGraceSeconds";
+
     public override string Name => "Runs";
 
     public override async Task Migrate(
@@ -60,8 +67,26 @@ public sealed class RunsModule : ModuleBase
                     ProjectConcurrencyCapKey,
                     defaultValue: 2
                 ),
+                ReapInterval = TimeSpan.FromSeconds(
+                    configuration.GetValue(ReapIntervalSecondsKey, defaultValue: 60)
+                ),
+                ReapGrace = TimeSpan.FromSeconds(
+                    configuration.GetValue(ReapGraceSecondsKey, defaultValue: 120)
+                ),
             }
         );
+
+        // Opt-out rather than opt-in, and composed here so the long-lived host carries it: the
+        // dispatch worker scales to zero, and a sweep that only runs while workers run cannot
+        // notice that no worker is running (#140, design D4). The functional test host disables
+        // it and drives the sweep directly, because a timer firing mid-assertion is a flake
+        // generator — the same reason the backlog poller is switched off there.
+        services.AddScoped<RunReaping>();
+
+        if (configuration.GetValue(ReapingEnabledKey, defaultValue: true))
+        {
+            services.AddHostedService<AbandonedRunReaper>();
+        }
 
         // The worker-facing execution surface (agent-execution spec).
         services.AddScoped<IRunExecutor, RunExecutor>();
@@ -109,4 +134,13 @@ sealed class RunsOptions
 {
     /// <summary>BR-002: max concurrent Runs in Planning/Executing per Project. Default 2.</summary>
     public required int ProjectConcurrencyCap { get; init; }
+
+    /// <summary>How often abandoned Runs are swept for (#140). Never hardcoded at the call site.</summary>
+    public required TimeSpan ReapInterval { get; init; }
+
+    /// <summary>
+    /// Added to a Run's deadline before it is considered abandoned. Exists so a worker that is
+    /// finishing is never reaped mid-write; the conditional update is what actually guarantees it.
+    /// </summary>
+    public required TimeSpan ReapGrace { get; init; }
 }

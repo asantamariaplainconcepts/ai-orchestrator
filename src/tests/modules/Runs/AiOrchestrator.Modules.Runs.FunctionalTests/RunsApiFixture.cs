@@ -66,6 +66,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
         builder.UseSetting("Backlog:PollingEnabled", "false");
         builder.UseSetting("Runs:ResumeCheckEnabled", "false");
+        // #140 — the sweep is driven directly by the tests rather than by a timer, for the same
+        // reason the poller is off: a background tick firing mid-assertion is a flake generator.
+        builder.UseSetting("Runs:ReapingEnabled", "false");
 
         builder.ConfigureTestServices(services =>
         {

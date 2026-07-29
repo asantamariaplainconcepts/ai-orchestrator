@@ -1491,3 +1491,23 @@ times in the project this framework came from.
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
 - **ADR:** none new.
+
+## 2026-07-29 — reap-abandoned-runs
+
+- **Worked:** the bug was proved before it was fixed, and the proof was falsifiable rather than
+  suggestive. The Run was dispatched at a known time with a known 30-minute timeout; reading it back
+  at 40.7 minutes still `Executing` with no failure reason left exactly one explanation, because a
+  live process would have cancelled itself. That turned "maybe the token is wrong" — the first
+  hypothesis, and a reasonable one — into a measurement nobody has to argue with.
+- **Didn't:** the gap was foreseeable from the code and nothing had looked. The executor's own
+  comment says an eternal `Executing` would hold the Story hostage, so the risk was understood when
+  it was written; what was missed is that the `catch` protecting against it cannot run when the
+  process is gone. A `catch` is not a guarantee about processes, only about exceptions.
+- **Next time:** when a rule is enforced inside the thing it constrains, ask what enforces it when
+  that thing disappears. BR-005 lived in a `CancelAfter` inside the agent's own process, which is
+  the one place guaranteed to be missing in the case worth protecting against.
+- **Time invested:** not measured (source: **manual** — sixtieth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. Whether "a rule enforced from inside its own subject" recurs is worth watching;
+  one occurrence stays here.
