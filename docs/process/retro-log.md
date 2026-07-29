@@ -1452,3 +1452,23 @@ times in the project this framework came from.
   here* and *usage.jsonl has data*.
 - **ADR:** none new. This is the first occurrence of the code/IAM split being missed; a second
   would graduate it.
+
+## 2026-07-29 — parallel-ci-lanes
+
+- **Worked:** measuring first turned a two-option argument into a one-line change. The issue asked
+  whether to merge the lanes or parallelise them, and the step timings answered it without a
+  debate: merged is serial and therefore ~250s, artifact-shared is ~270s, side by side is ~200s.
+  Writing the numbers into the workflow's own comment means the next person to consider
+  re-serialising it has the evidence in front of them rather than the intuition that waiting saves
+  something.
+- **Didn't:** the issue asserted that the two lanes build differently — build-test with
+  warnings-as-errors, e2e with a plain `dotnet build` — and made a criterion out of fixing it.
+  `TreatWarningsAsErrors` is in `src/Directory.Build.props` and applies to both. The claim came
+  from reading the two workflow files against each other and not reading what they inherit, which
+  is the same shape of mistake as reading a form's markup without its consumers.
+- **Next time:** before asserting that two build invocations differ, check the props they inherit.
+  A flag absent from a command line is not a flag absent from the build.
+- **Time invested:** not measured (source: **manual** — fifty-eighth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new.
