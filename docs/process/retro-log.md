@@ -1401,3 +1401,33 @@ times in the project this framework came from.
   Sessions are mapped correctly; only the metrics never arrive.
 - **ADR:** [ADR-0007](../adr/0007-an-edit-lands-on-a-site-that-was-read.md) — an edit lands on a
   site that was read, never on a pattern.
+
+## 2026-07-29 — store-secret-value
+
+- **Worked:** the seam's shape did the arguing. `ISecretStore` has one method and no read at all —
+  not a read that throws, not one behind a flag — so "a stored value never comes back out" is a
+  property of the type rather than a rule somebody has to remember. Making it a sibling of
+  `ISecretResolver` instead of two more methods on it means the dependency list of every component
+  says out loud whether it can write a credential, and exactly one slice can. The round-trip
+  ordering paid off too: verifying with the value read back from the store, not the one in the
+  request, is what would catch a store that silently dropped the write.
+- **Didn't:** the E2E lane caught what nothing else could, and it caught it six minutes late. The
+  Connector form put the secret-name field behind a mode selector, and three E2E tests filled that
+  field directly — no compiler, no functional test and no design validator sees a Playwright
+  selector. Repairing it exposed a second defect underneath: the portal's HTTP client read the
+  problem body's `detail`, and `ApiResults` sends validation errors under `errors` with no detail
+  at all, so every refusal that names what to fix — a store that cannot write, a caller who is not
+  an Admin — was being replaced with "Could not save the Connector." A third gap only surfaced
+  from asking where this could be exercised: under `aspire run` no habitat had a writable store,
+  so pasting a token would have worked in Azure and nowhere the author could reach — ADR-0001's
+  failure, one layer out.
+- **Next time:** when a form field moves behind a condition, grep the E2E selectors for its label
+  before running anything. `GetByLabel("Secret name")` is as much a consumer of that markup as a
+  component is, and it is the only consumer nothing type-checks.
+- **Time invested:** not measured (source: **manual** — fifty-sixth consecutive). Capture is still
+  broken, not absent, and unchanged from the previous entry: `node .config/otel/verify-telemetry.mjs`
+  fails *exporter enabled AND pointed here* (`OTEL_EXPORTER_OTLP_ENDPOINT` unset) and
+  *usage.jsonl has data* (zero bytes).
+- **ADR:** none new. Design D4 was revised during implementation — files rather than a table — and
+  the reasoning is recorded in the change's own `design.md` rather than promoted, because it is one
+  decision inside one slice and nothing recurred.
