@@ -113,6 +113,7 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
 
         await page.GetByLabel("Owner").FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
+        await page.GetByLabel("Access token").SelectOptionAsync("name");
         await page.GetByLabel("Secret name").FillAsync("no-such-secret-in-this-environment");
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 
@@ -123,7 +124,9 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
 
         var message = await failure.TextContentAsync();
         message.ShouldNotBeNull();
-        message.ShouldContain("Could not save the Connector");
+        // The API's own reason, not a generic line (#124): a refusal that names what is wrong
+        // is the answer, and this one names the secret the environment does not have.
+        message.ShouldContain("no-such-secret-in-this-environment");
 
         // And nothing was stored: a Connector that exists is one that works (UC-004).
         var backlog = await page.APIRequest.GetAsync(
@@ -154,6 +157,9 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
 
         await page.GetByLabel("Owner").FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
+        // Pasting is the form's default (#124); this habitat has no writable store, so these
+        // tests take the path that names a secret the environment already supplies.
+        await page.GetByLabel("Access token").SelectOptionAsync("name");
         await page.GetByLabel("Secret name").FillAsync(AppHostFixture.SecretName);
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 
@@ -203,6 +209,9 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
             .WaitForAsync(new() { Timeout = 30_000 });
         await page.GetByLabel("Owner").FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
+        // Pasting is the form's default (#124); this habitat has no writable store, so these
+        // tests take the path that names a secret the environment already supplies.
+        await page.GetByLabel("Access token").SelectOptionAsync("name");
         await page.GetByLabel("Secret name").FillAsync(AppHostFixture.SecretName);
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 

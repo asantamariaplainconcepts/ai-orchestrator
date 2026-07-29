@@ -197,6 +197,26 @@ if (builder.ExecutionContext.IsRunMode)
     // (#119). Set here rather than asked of the user: DEC-049's promise is that running this
     // costs one command, and a required identity setting would be a second one.
     server.WithEnvironment("Identity__Mode", "LocalOwner");
+
+    // A machine somebody owns can also *store* a credential (#124), so pasting a token works
+    // under `aspire run` exactly as it does in a deployment. Without this the only habitat that
+    // could accept a pasted value would be Azure, which would leave the feature unexercisable
+    // by the person writing it — the failure ADR-0001 exists to prevent.
+    //
+    // Two paths, never one: values and the key that protects them together in one directory is
+    // obfuscation, and the host refuses to start that way.
+    var secrets = Path.Combine(Path.GetTempPath(), "ai-orchestrator", "secrets");
+    var values = Path.Combine(secrets, "values");
+    var keys = Path.Combine(secrets, "keys");
+
+    // Both processes, not just the one with the form: the worker resolves the same credential
+    // when it executes a Run, and a store only the Server can read would make a pasted token
+    // work in the portal and fail at the first dispatch.
+    foreach (var resource in new[] { server, dispatch })
+    {
+        resource.WithEnvironment("Secrets__LocalStorePath", values);
+        resource.WithEnvironment("Secrets__LocalKeyRingPath", keys);
+    }
 }
 else
 {

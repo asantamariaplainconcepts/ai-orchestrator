@@ -22,6 +22,21 @@ static class BacklogErrors
             $"The vendor rejected the credential in secret '{secretName}'."
         );
 
+    /// <summary>
+    /// This habitat cannot accept a pasted value (#124). Carries the store's own remedy, because
+    /// what to do instead differs per habitat and the caller cannot know which one they are in.
+    /// </summary>
+    public static Error SecretStoreUnavailable(string detail) =>
+        Error.Validation("Connector.SecretStoreUnavailable", detail);
+
+    /// <summary>Exactly one of "here is the token" and "here is its name" (#124).</summary>
+    public static Error CredentialInputAmbiguous(string detail) =>
+        Error.Validation("Connector.CredentialInputAmbiguous", detail);
+
+    /// <summary>Storing a credential is an Admin's act, and this caller is not one (#124, BR-009).</summary>
+    public static Error NotPermitted(string action) =>
+        Error.Forbidden("Connector.NotPermitted", $"Only an Admin can {action}.");
+
     public static Error SecretNotFound(string secretName) =>
         Error.Validation("Connector.SecretNotFound", $"No secret named '{secretName}' was found.");
 

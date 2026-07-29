@@ -180,3 +180,19 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   replacement, one screen per change, both CSS systems coexisting until the last kit screen
   falls; the design gate's job is unchanged — no visual decision outside the token source — the
   source just moves. Decided 2026-07-27 when the owner pointed at Foundations mid-loop.
+- **DEC-052 — a secret is protected by the habitat's own store, not by Key Vault specifically**
+  *(revises BR-010's mechanism, keeps its intent; extends DEC-014 and DEC-030)*: BR-010 said
+  Connector PATs exist in Postgres and logs "only as Key Vault references". That sentence names a
+  mechanism, and DEC-049 introduced a habitat — a self-hoster's machine — where the mechanism does
+  not exist, which made the rule false by construction rather than by anybody's choice. The rule
+  now states its intent: **no secret in plaintext at rest outside the habitat's secret store, and
+  names only in logs, API responses and telemetry.** Every existing guarantee survives that
+  wording — a Key Vault deployment is unchanged, nothing new is logged, no response gains a value
+  — while a deployment with no vault becomes expressible. Where the habitat has no managed store,
+  values are protected with ASP.NET Core Data Protection and held apart from both the application
+  database and the key ring; hand-rolled cryptography is forbidden, because every decision it
+  would involve has a wrong answer that passes tests. The product may also *write* a secret it was
+  handed, under a name it derives itself, and may never read one back — the storing seam exposes
+  no read at all. Decided 2026-07-29 with #124, when asking a first-time user to pre-create a
+  secret in a vault they do not have was the last thing standing between them and a connected
+  backlog.

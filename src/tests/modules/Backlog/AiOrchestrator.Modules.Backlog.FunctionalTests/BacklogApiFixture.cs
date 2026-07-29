@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Connectors;
@@ -35,6 +36,12 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
     /// <summary>Every StoryChanged the relay delivered — the observable artifact for event tests.</summary>
     internal RecordingStoryChangedHandler DeliveredEvents { get; } = new();
 
+    /// <summary>Reads and writes the same dictionary, so a stored value is one that resolves.</summary>
+    internal StubSecretVault Secrets { get; } = new();
+
+    /// <summary>Who the caller is, so the Admin-only path can be exercised from both sides.</summary>
+    internal StubPrincipal Caller { get; } = new();
+
     protected override string[] SchemasToReset => [BacklogDbContext.Schema];
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -55,7 +62,12 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
         {
             services.RemoveAll<IBacklogConnector>();
             services.AddSingleton<IBacklogConnector>(Vendor);
-            services.AddSingleton<ISecretResolver>(new StubSecretResolver());
+            services.RemoveAll<ISecretResolver>();
+            services.AddSingleton<ISecretResolver>(Secrets);
+            services.RemoveAll<ISecretStore>();
+            services.AddSingleton<ISecretStore>(Secrets);
+            services.RemoveAll<ICurrentPrincipal>();
+            services.AddSingleton<ICurrentPrincipal>(Caller);
         });
     }
 }
@@ -78,6 +90,7 @@ sealed class StubBacklogConnector : IBacklogConnector
         Stories.Clear();
         VerifyError = null;
         FetchError = null;
+        VerifiedToken = null;
         WriteError = null;
         Comments.Clear();
         WriteStateError = null;
@@ -138,14 +151,20 @@ sealed class StubBacklogConnector : IBacklogConnector
             ])
         );
 
+    /// <summary>The credential the last verification actually used (#124, design D3).</summary>
+    public string? VerifiedToken { get; private set; }
+
     public Task<ErrorOr<Success>> VerifyAccess(
         BacklogCoordinates coordinates,
         string token,
         CancellationToken cancellationToken
-    ) =>
-        Task.FromResult(
+    )
+    {
+        VerifiedToken = token;
+        return Task.FromResult(
             VerifyError is { } error ? ErrorOrFactory.From<Success>([error]) : Result.Success
         );
+    }
 
     public Task<ErrorOr<BacklogSnapshot>> FetchStories(
         BacklogCoordinates coordinates,
@@ -329,12 +348,62 @@ sealed class StubBacklogConnector : IBacklogConnector
     int _fetches;
 }
 
-sealed class StubSecretResolver : ISecretResolver
+/// <summary>
+/// One dictionary behind both seams, so what a test stores is what the handler resolves. That
+/// matters here: the paste path verifies with the value it reads back, and a stub that answered
+/// resolution from thin air would let a store that never wrote look like one that did.
+/// </summary>
+sealed class StubSecretVault : ISecretResolver, ISecretStore
 {
-    public Task<string> Resolve(string secretName, CancellationToken cancellationToken = default) =>
-        secretName == "missing-secret"
+    readonly ConcurrentDictionary<string, string> _values = new(StringComparer.Ordinal);
+
+    /// <summary>Set to simulate a habitat with nowhere to put a value.</summary>
+    public string? UnavailableRemedy { get; set; }
+
+    public IReadOnlyDictionary<string, string> Stored => _values;
+
+    public void Reset()
+    {
+        _values.Clear();
+        UnavailableRemedy = null;
+    }
+
+    public Task<string> Resolve(string secretName, CancellationToken cancellationToken = default)
+    {
+        if (_values.TryGetValue(secretName, out var stored))
+        {
+            return Task.FromResult(stored);
+        }
+
+        // The named path keeps working exactly as it did: an unknown name that is not the
+        // deliberately-missing one resolves to the same stub token these tests always used.
+        return secretName == "missing-secret"
             ? throw new SecretNotFoundException(secretName)
             : Task.FromResult("stub-token");
+    }
+
+    public Task Store(
+        string secretName,
+        string value,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (UnavailableRemedy is not null)
+        {
+            throw new SecretStoreUnavailableException(UnavailableRemedy);
+        }
+
+        _values[secretName] = value;
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>The caller the host would otherwise decide, so both sides of the role check run.</summary>
+sealed class StubPrincipal : ICurrentPrincipal
+{
+    public Principal Current { get; set; } = new("test-admin", "Test admin", PrincipalRole.Admin);
+
+    public void Reset() => Current = new("test-admin", "Test admin", PrincipalRole.Admin);
 }
 
 [CollectionDefinition(Name)]
