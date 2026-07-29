@@ -18,13 +18,29 @@ export class ApiError extends Error {
   }
 }
 
-/** The API answers failures with RFC 7807; a body that is not one simply yields nothing. */
+/**
+ * The API answers failures with RFC 7807; a body that is not one simply yields nothing.
+ *
+ * Two shapes, because the API emits two: a plain problem carries `detail`, while a validation
+ * problem carries no detail at all and puts the messages under `errors`, keyed by code. Reading
+ * only `detail` therefore threw away exactly the refusals that name what to fix.
+ */
 async function problemDetail(response: Response): Promise<string | undefined> {
   try {
     const body: unknown = await response.clone().json();
-    const detail =
-      body && typeof body === "object" ? (body as { detail?: unknown }).detail : undefined;
-    return typeof detail === "string" && detail.length > 0 ? detail : undefined;
+    if (!body || typeof body !== "object") return undefined;
+
+    const { detail, errors } = body as { detail?: unknown; errors?: unknown };
+    if (typeof detail === "string" && detail.length > 0) return detail;
+
+    if (errors && typeof errors === "object") {
+      const messages = Object.values(errors as Record<string, unknown>)
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
+        .filter((value): value is string => typeof value === "string" && value.length > 0);
+      if (messages.length > 0) return messages.join(" ");
+    }
+
+    return undefined;
   } catch {
     return undefined;
   }
