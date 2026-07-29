@@ -14,6 +14,15 @@ jobs:
         with:
           global-json-file: src/global.json
 
+      # Central package management means one file decides every version, so it is the whole key.
+      # setup-dotnet's own cache wants a packages.lock.json this repo does not keep; caching the
+      # global package folder directly needs no lock file and no restore-time behaviour change.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('src/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9

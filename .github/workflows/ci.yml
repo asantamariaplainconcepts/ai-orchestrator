@@ -78,9 +78,13 @@ jobs:
     if: needs.changes.outputs.code == 'true'
     uses: ./.github/workflows/build-test.yml
 
-  # Most expensive lane: only after a green build-test, only on runtime-affecting paths.
+  # Beside build-test, not behind it (#133). It used to wait, so that a broken build did not
+  # spend the expensive lane — sound where runners are metered, and this repository is public, so
+  # they are not. Measured, waiting cost about three minutes on every green PR and bought one
+  # fewer red check on the broken ones: build-test 158s then e2e 192s in series, against 192s
+  # side by side. The two share no artifact, so nothing but the ordering had to change.
   e2e:
-    needs: [changes, build-test]
+    needs: changes
     if: needs.changes.outputs.e2e == 'true' || needs.changes.outputs.workflows == 'true'
     uses: ./.github/workflows/e2e.yml
 
