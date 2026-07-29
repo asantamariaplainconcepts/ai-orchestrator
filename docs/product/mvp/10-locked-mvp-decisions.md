@@ -222,3 +222,18 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   with a 600-second replica timeout against BR-005's 30-minute promise, so every implement Run over
   ten minutes was killed by the platform rather than by its own budget, and the Run that exposed it
   read as "stuck" when it was a container already terminated. Decided 2026-07-29 with #144.
+- **DEC-055 — a live conversation costs a pass per message** *(closes OPN-005; analysed in
+  [ADR-0008](../../adr/0008-a-live-conversation-costs-a-pass-per-message.md))*: discussing a Story
+  with an agent from the portal is implemented over the existing `AwaitingInput` resume loop — the
+  portal writes a comment through the Connector, the resume path picks it up, the agent's next
+  questions arrive as they do today. **No process stays alive for a conversation.** BR-006 decides
+  it: a human wait is untimed, so a paid process waiting on a person has no cost bound, and the only
+  way to bound it is a session timeout that either contradicts BR-006 or adds a second timing rule
+  aimed at the human rather than the work. Weakening "a person is not a resource we hurry" to buy
+  latency is the worse trade. Accepted cost, stated rather than discovered: each message pays a full
+  pass and each pass re-reads the thread, so tokens grow with the conversation's length. The
+  prerequisite is the Connector's first comment **write** — the seam reads comments and writes labels
+  today. Rejected: a live session (contradicts DEC-013, unbounded under BR-006, and needs the ingest
+  authentication OPN-002 still blocks) and a presence-based hybrid (a liveness signal that can be
+  wrong, which ADR-0008's design argument already rejected once). Decided 2026-07-29 with #149; the
+  capability itself is a separate item.
