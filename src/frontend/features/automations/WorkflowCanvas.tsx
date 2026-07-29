@@ -1,5 +1,5 @@
 import { UserRound } from "lucide-react";
-import { t } from "@/shared/i18n";
+import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -8,7 +8,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
 import { useSetAutomationEnabled, useUpdateAutomation } from "./useAutomations";
-import { buildChains } from "./workflowGraph";
+import { summarise, workflowChains } from "./workflowGraph";
 
 /**
  * The pipeline as a shape (#116). Edges are label agreements — nothing about the picture is
@@ -29,7 +29,10 @@ export function WorkflowCanvas({
 }) {
   const update = useUpdateAutomation(projectId);
   const setEnabled = useSetAutomationEnabled(projectId);
-  const chains = buildChains(automations);
+  // Only what is a workflow (#136, design D2): a chain of one is an Automation with no edge, which
+  // belongs to the catalogue and not here. That single filter is what removed #122's special case.
+  const chains = workflowChains(automations);
+  const summary = summarise(chains);
 
   /**
    * Every canvas change is an ordinary Automation update (design D4), so BR-003's overlap check
@@ -54,8 +57,10 @@ export function WorkflowCanvas({
     });
   }
 
-  if (automations.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t("automations.empty")}</p>;
+  // A project whose Automations all stand alone has a catalogue and no flow. That is a state, not
+  // an error and not a blank area, and it says what would make a flow exist.
+  if (chains.length === 0) {
+    return <p className="text-sm text-muted-foreground">{t("automations.workflow.empty")}</p>;
   }
 
   return (
@@ -66,6 +71,22 @@ export function WorkflowCanvas({
         </p>
       )}
 
+      {/* Steps and human stops, both derived (design D4): "6 Automations" is a fact about the
+          catalogue and says nothing about the pipeline. */}
+      <p className="text-xs text-muted-foreground">
+        {tCount(
+          summary.steps,
+          "automations.workflow.steps.one",
+          "automations.workflow.steps.other",
+        )}
+        {" \u00b7 "}
+        {tCount(
+          summary.humanStops,
+          "automations.workflow.stops.one",
+          "automations.workflow.stops.other",
+        )}
+      </p>
+
       <p className="text-xs text-muted-foreground">{t("canvas.hint")}</p>
 
       {/* A chain reads left to right, like the board's columns, and each step is separated from
@@ -75,7 +96,10 @@ export function WorkflowCanvas({
         {chains.map((chain) => (
           <div
             key={chain[0]?.automation.id}
-            className="flex items-stretch gap-0 overflow-x-auto pb-2"
+            // Inside its own container, deliberately: a row that lets the page scroll sideways
+            // breaks every other screen on a phone. flex-nowrap so a long chain scrolls rather
+            // than folding into a grid whose rows mean nothing (design D3).
+            className="flex flex-col items-stretch gap-0 xl:flex-row xl:flex-nowrap xl:overflow-x-auto xl:pb-2"
           >
             {chain.map((node) => (
               <div key={node.automation.id} className="flex shrink-0 items-stretch">

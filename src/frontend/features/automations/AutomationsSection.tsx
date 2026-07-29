@@ -18,16 +18,6 @@ import {
   useSetAutomationEnabled,
 } from "./useAutomations";
 
-const CANVAS_VIEW = "aio:automations-view";
-
-function storedCanvasView(): "list" | "canvas" {
-  try {
-    return window.localStorage.getItem(CANVAS_VIEW) === "canvas" ? "canvas" : "list";
-  } catch {
-    return "list";
-  }
-}
-
 /**
  * UC-005 on its own tab. Creation lives behind an explicit button (dashboard-tabs): a form that
  * is always open tells the reader this page is for configuring, which is false on every day but
@@ -44,7 +34,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [creating, setCreating] = useState(false);
   // A genuine preference like the board's, remembered the same way and for the same reason:
   // nothing about the project decides whether a reader wants rows or a shape.
-  const [view, setView] = useState<"list" | "canvas">(storedCanvasView);
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
   const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
@@ -83,6 +72,74 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
 
   const rows = automations.data ?? [];
 
+  // The catalogue: every Automation the project has, chained or not (#136, design D2). Held in a
+  // value so the two sections below read as two things rather than as two branches of one
+  // conditional — which is what they were, and what made them feel like one list.
+  const catalogue = (
+    <Card>
+      <CardContent>
+        <ul className="divide-y">
+          {rows.map((automation) => (
+            <li
+              key={automation.id}
+              className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between"
+            >
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <Badge variant="secondary">{automation.triggerLabel}</Badge>
+                {automation.triggerState ? (
+                  <Badge className="bg-info text-info-foreground">{automation.triggerState}</Badge>
+                ) : (
+                  <span className="text-xs text-muted-foreground">{t("automations.anyState")}</span>
+                )}
+                <span className="truncate text-sm font-medium">{automation.action}</span>
+                {EXECUTABLE_ACTIONS.includes(automation.action) ? null : (
+                  <Badge className="bg-warning text-warning-foreground">
+                    {t("automations.actionNotExecutable")}
+                  </Badge>
+                )}
+                {automation.requiresApproval ? (
+                  <Badge className="bg-info text-info-foreground">
+                    {t("automations.approvalRequired")}
+                  </Badge>
+                ) : null}
+                {automation.enabled ? null : (
+                  <Badge variant="outline">{t("automations.disabled")}</Badge>
+                )}
+              </div>
+
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {automation.timeoutMinutes} {t("automations.minutes")}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={setEnabled.isPending}
+                  onClick={() =>
+                    setEnabled.mutate({ id: automation.id, enabled: !automation.enabled })
+                  }
+                >
+                  {automation.enabled ? t("automations.disable") : t("automations.enable")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  disabled={remove.isPending}
+                  onClick={() => remove.mutate(automation.id)}
+                  title={t("automations.delete.hint")}
+                >
+                  {t("automations.delete")}
+                </Button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -103,22 +160,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
             title={t("automations.defaults.hint")}
           >
             {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
-          </Button>
-          <Button
-            variant="outline"
-            type="button"
-            aria-pressed={view === "canvas"}
-            onClick={() => {
-              const next = view === "canvas" ? "list" : "canvas";
-              setView(next);
-              try {
-                window.localStorage.setItem(CANVAS_VIEW, next);
-              } catch {
-                // A refused write costs the preference, never the interaction.
-              }
-            }}
-          >
-            {view === "canvas" ? t("canvas.showList") : t("canvas.show")}
           </Button>
           <Button type="button" onClick={() => setCreating((open) => !open)}>
             {creating ? t("automations.new.close") : t("automations.new")}
@@ -277,77 +318,22 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         <p className="text-sm text-muted-foreground">{t("automations.empty")}</p>
       )}
 
-      {rows.length > 0 && view === "canvas" && (
-        <WorkflowCanvas projectId={projectId} automations={rows} />
-      )}
+      {/* Two sections, not two views of one list (design D1). They share a tab because the
+          relationship is the point — the workflow is built out of the catalogue, and a reader who
+          cannot see both at once cannot see that. Stacked below the wide breakpoint. */}
+      {rows.length > 0 && (
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
+          <section className="flex min-w-0 flex-col gap-2">
+            <h3 className="text-sm font-semibold">{t("automations.catalogue")}</h3>
+            <p className="text-xs text-muted-foreground">{t("automations.catalogue.hint")}</p>
+            {catalogue}
+          </section>
 
-      {rows.length > 0 && view === "list" && (
-        <Card>
-          <CardContent>
-            <ul className="divide-y">
-              {rows.map((automation) => (
-                <li
-                  key={automation.id}
-                  className="flex flex-col gap-2 py-3 first:pt-0 last:pb-0 md:flex-row md:items-center md:justify-between"
-                >
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Badge variant="secondary">{automation.triggerLabel}</Badge>
-                    {automation.triggerState ? (
-                      <Badge className="bg-info text-info-foreground">
-                        {automation.triggerState}
-                      </Badge>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">
-                        {t("automations.anyState")}
-                      </span>
-                    )}
-                    <span className="truncate text-sm font-medium">{automation.action}</span>
-                    {EXECUTABLE_ACTIONS.includes(automation.action) ? null : (
-                      <Badge className="bg-warning text-warning-foreground">
-                        {t("automations.actionNotExecutable")}
-                      </Badge>
-                    )}
-                    {automation.requiresApproval ? (
-                      <Badge className="bg-info text-info-foreground">
-                        {t("automations.approvalRequired")}
-                      </Badge>
-                    ) : null}
-                    {automation.enabled ? null : (
-                      <Badge variant="outline">{t("automations.disabled")}</Badge>
-                    )}
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <span className="text-xs text-muted-foreground">
-                      {automation.timeoutMinutes} {t("automations.minutes")}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      disabled={setEnabled.isPending}
-                      onClick={() =>
-                        setEnabled.mutate({ id: automation.id, enabled: !automation.enabled })
-                      }
-                    >
-                      {automation.enabled ? t("automations.disable") : t("automations.enable")}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      type="button"
-                      disabled={remove.isPending}
-                      onClick={() => remove.mutate(automation.id)}
-                      title={t("automations.delete.hint")}
-                    >
-                      {t("automations.delete")}
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+          <section className="flex min-w-0 flex-col gap-2">
+            <h3 className="text-sm font-semibold">{t("automations.workflow")}</h3>
+            <WorkflowCanvas projectId={projectId} automations={rows} />
+          </section>
+        </div>
       )}
     </div>
   );

@@ -70,3 +70,45 @@ export function buildChains(automations: Automation[]): WorkflowNode[][] {
     return chain;
   }
 }
+
+/**
+ * The chains that are actually a workflow (#136, design D2).
+ *
+ * Membership is one sentence: an Automation is in the workflow exactly when it has an edge — it
+ * hands work to another, or another hands to it. Expressed through the chains, that is simply a
+ * chain with more than one node, because `buildChains` walks a root plus everything reachable from
+ * it, so a length of one means nothing arrives and nothing leaves.
+ *
+ * This is what removes the special case #122 was reaching for. `estimate` is not at the end of the
+ * pipeline; it is not in the pipeline, and its absence is not an omission to explain.
+ *
+ * Deliberately derived, never stored: a flag saying "in the workflow" could disagree with the
+ * edges, and then the picture would claim a chain that would not fire.
+ */
+export function workflowChains(automations: Automation[]): WorkflowNode[][] {
+  return buildChains(automations).filter((chain) => chain.length > 1);
+}
+
+export interface WorkflowSummary {
+  /** Nodes across every chain — steps, not Automations, which is a different number. */
+  steps: number;
+  /** How many times the flow stops for a person: a gate on a step, or a chain that breaks. */
+  humanStops: number;
+}
+
+/**
+ * How big the flow is (design D4). "6 Automations" is a fact about the catalogue and says nothing
+ * about the pipeline; these two are what somebody wants before reading the diagram.
+ */
+export function summarise(chains: WorkflowNode[][]): WorkflowSummary {
+  const nodes = chains.flat();
+
+  return {
+    steps: nodes.length,
+    humanStops: nodes.filter(
+      // Two shapes of the same wait: a step that asks for approval, and a step that hands to
+      // nobody while sitting inside a chain — somebody has to carry the work onward.
+      (node) => node.automation.requiresApproval || node.next === null,
+    ).length,
+  };
+}
