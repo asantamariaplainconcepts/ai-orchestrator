@@ -1783,3 +1783,30 @@ times in the project this framework came from.
 - **ADR:** none new. "Verify a test can fail" is a second occurrence of the same instinct ADR-0001
   records for infrastructure claims — exercise it rather than reason about it — so it belongs to that
   ADR's family rather than to a new number. If it recurs as a *green* test again, it graduates.
+
+## 2026-07-29 — readable-run-output
+
+- **Worked:** reading the code before designing changed what the work was, twice. The default runtime's
+  silence looked like missing streaming infrastructure and was one flag — `HeadlessProcess` had always
+  raised `OutputDataReceived` per line. And the spec already *required* incremental output, so AC-1 was a
+  defect against an existing requirement rather than new scope, which is why the delta modified that
+  requirement instead of adding a rival one.
+- **Didn't — and this is the one worth keeping:** I designed the no-terminal-event case wrong and caught
+  it only because an existing test went red. My version trusted the exit code and reported success with
+  unknown usage, which reads as generous degradation until the consequence is traced: a simple action's
+  reply becomes a **comment on somebody's Story**, so a "success" whose reply is raw stream text would
+  publish noise into a customer's backlog. The pre-existing judgement — unreadable output is a broken
+  contract — was right, and the test defending it was the only thing that said so. I had also already
+  written the wrong rule into the spec delta, so the fix was two files, not one.
+- **Also:** two tasks in my own `tasks.md` named a tier this repository does not have. There is no
+  frontend unit runner — `testing-strategy`'s four tiers are all .NET — and the E2E tier cannot produce a
+  Run with stored log chunks. Both are recorded as not done with the reason, and the interpreter is
+  covered by browser observation instead. Writing tasks against an imagined test tier is the same
+  unchecked-claim habit ADR-0009 names, applied to the plan rather than to the code.
+- **Next time:** when a change loosens a failure into a success, trace what the success then *does*. The
+  question is not "is this input recoverable" but "what does the product write when it recovers".
+- **Time invested:** not measured (source: **manual** — seventy-second consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. Both findings belong to families already recorded — ADR-0009 for the imagined test
+  tier, and the existing-test-as-defence lesson is what ADR-0001's instinct protects.
