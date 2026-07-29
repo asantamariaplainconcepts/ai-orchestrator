@@ -20,4 +20,4 @@
 - [x] 8.2 Tests for the directory: an unset directory resolves against `ai/prompts/`; changing it moves
       an existing Automation's resolution with no Automation edited; an absolute or upward-traversing
       name is refused.
-- [ ] 9.1 CI green; evidence on #150.
+- [x] 9.1 CI green; evidence on #150.
