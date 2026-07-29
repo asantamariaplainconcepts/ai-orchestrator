@@ -1810,3 +1810,33 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. Both findings belong to families already recorded — ADR-0009 for the imagined test
   tier, and the existing-test-as-defence lesson is what ADR-0001's instinct protects.
+
+## 2026-07-29 — collapsible-sidebar
+
+- **Worked:** the change turned out to be smaller and more interesting than the issue described, and only
+  because its premises were checked. Wiring the shell to the canonical width variables is what makes
+  collapsing a one-line choice, and it closed a 24px drift nobody had seen: `AppShell` hard-coded
+  `16rem` (256px) while `--sidebar-w-expanded` said 280px. A value nothing consumes cannot be wrong in
+  any way that shows, which is exactly how that sat there. Reverting the wiring to prove the E2E width
+  assertions go red took one run and settled that they discriminate.
+- **Didn't — and it is the same mistake twice in one day:** I wrote into the proposal *and* the PR body
+  that neither sidebar variable was defined anywhere, and told the owner so. They were both defined, in
+  `docs/design-system/tokens/layout.css`, exactly as the issue said. I had grepped `src/frontend` for CSS
+  and concluded from its silence; the canonical layer lives under `docs/`. Earlier today the same shape
+  cost #150 a missing scope — a proxy read instead of the artefact — and here it cost a false claim
+  published to a PR before implementation caught it.
+- **Also:** a stale comment in `AutomationsSection.tsx` claimed a remembered preference that was removed
+  by #136, and that comment is where the issue's "the mechanism exists in two places" came from. A wrong
+  comment propagated into a grilled issue and out into a plan. It is deleted; the pattern graduated on
+  its genuine second occurrence.
+- **Next time:** when concluding *"X is not defined anywhere"*, the search has to cover everywhere X
+  could be — and for anything in the design system, that means the canonical layer under `docs/`, not
+  `src/`. A negative claim needs a search whose scope is stated; an absence found by looking in one place
+  is not an absence.
+- **Time invested:** not measured (source: **manual** — seventy-third consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new, but this is now the **third** occurrence of ADR-0009's shape today — a claim about
+  what exists, believed from an incomplete look. The ADR already covers it; what it does not yet say is
+  that a *negative* claim needs its search scope stated. If that recurs, amending ADR-0009 with that
+  sentence is the change to make.
