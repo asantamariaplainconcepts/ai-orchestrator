@@ -205,6 +205,15 @@ enum AutomationAction
     /// document belongs to the project, exactly as the grill's readiness bar does.
     /// </summary>
     SyncChange = 7,
+
+    /// <summary>
+    /// Runs a prompt the project itself wrote, named by <c>RubricPath</c> and resolved against the
+    /// project's prompts directory (#150, DEC-048's lane again). The body is the prompt; any
+    /// frontmatter is another runner's wiring and is ignored, because the Automation is already this
+    /// product's. The answer becomes one Story comment and nothing else — a prompt cannot widen its
+    /// own surface by asking to.
+    /// </summary>
+    RepositoryPrompt = 8,
 }
 
 /// <summary>

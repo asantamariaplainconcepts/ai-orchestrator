@@ -250,3 +250,21 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   `ai:implement` — silently, with no error and no Run. The NULL trap is explicit in the index: Postgres
   treats NULLs as distinct, so an index over the raw nullable state would have permitted exactly the
   duplicate it exists to prevent. Decided 2026-07-29 with #147.
+- **DEC-057 — an Automation may run a prompt the project wrote, and the project says where prompts
+  live** *(extends DEC-026's catalogue in DEC-048's lane)*: a new action names a markdown file in the
+  connected repository, read live at execution time; the file's **body is the prompt** and any leading
+  YAML frontmatter is stripped and ignored; the answer becomes exactly **one Story comment** — no
+  label, no state, no workspace, no pull request. The Automation stores only a file **name**, and the
+  prompts directory is a Connector setting (default `ai/prompts/`, editable on the Settings tab,
+  UC-004). Rationale: the frontmatter rule is a safety rule, not a shortcut — honouring a `model:` line
+  would let a file in somebody's repository choose what this product spends, and a `tools:` line would
+  let it grant itself powers the Automation withheld; ignoring it is also what makes an existing
+  agentic-workflow file reusable unchanged. The single-comment surface is the reason this can ship at
+  all: the prompt is untrusted text that can ask for anything, so what it may *do* is decided by this
+  product, not by the file. The directory is held once rather than per Automation because a team that
+  moved its prompts would otherwise edit every Automation, and each edit is a chance to leave one
+  pointing at a file that no longer exists; a name that is absolute or traverses upward is refused
+  rather than normalized, since a boundary that can be stepped over bounds nothing. Both refusals — an
+  unreadable file, and an empty body once frontmatter is removed — precede the agent and name the
+  **resolved** path, so a misconfigured directory gives itself away instead of looking like a missing
+  file. Decided 2026-07-29 with #150.

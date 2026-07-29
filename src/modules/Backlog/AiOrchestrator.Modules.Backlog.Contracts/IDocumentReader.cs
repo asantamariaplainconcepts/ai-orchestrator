@@ -29,4 +29,9 @@ public interface IDocumentReader
     );
 }
 
-public sealed record DocumentResult(string? Content, string? Failure);
+/// <summary>
+/// <paramref name="ResolvedPath"/> is where the document was actually looked for. Present so a
+/// caller that refuses on the *content* — an empty prompt (#150) — can name the same path the
+/// reader's own failures name, instead of naming the file name an Admin typed.
+/// </summary>
+public sealed record DocumentResult(string? Content, string? Failure, string? ResolvedPath = null);

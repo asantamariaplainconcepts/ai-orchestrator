@@ -114,6 +114,7 @@ const connector = {
   secretName: "connector-github-019f9f2bc28e75808f50673005c5232c",
   secretSetAt: at(2),
   codeRepository: null,
+  promptDirectory: null,
   lastSyncedAt: at(2),
   lastFailure: null,
   lastFailureAt: null,

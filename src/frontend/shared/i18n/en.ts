@@ -89,6 +89,10 @@ export const en = {
   "connector.secretManagedElsewhere": "Token managed outside this product",
   "connector.codeRepository": "Code repository",
   "connector.codeRepositoryPlaceholder": "portal-web",
+  "connector.promptDirectory": "Prompts directory",
+  "connector.promptDirectoryPlaceholder": "ai/prompts",
+  "connector.promptDirectoryHint":
+    "Where this project keeps the prompt files an Automation can name. Leave it blank for ai/prompts.",
   "connector.codeRepositoryHint":
     "Azure DevOps keeps code in repositories inside the project. Name the one Agents should open pull requests against; leave it empty if no Automation touches code.",
   "connector.secretHint":
@@ -148,6 +152,10 @@ export const en = {
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
   "automations.rubricPath": "Readiness document",
   "automations.rubricPathPlaceholder": "docs/process/definition-of-ready.md",
+  "automations.promptFile": "Prompt file",
+  "automations.promptFilePlaceholder": "estimate.md",
+  "automations.promptFileHint":
+    "A file name inside this project's prompts directory, which is set on the Settings tab.",
   "automations.outputLabel": "Output label",
   "automations.outputLabelPlaceholder": "the next step\u2019s trigger",
   "automations.outputLabelHint":

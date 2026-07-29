@@ -55,6 +55,8 @@ sealed class DocumentReader(ConnectorAccess access) : IDocumentReader
             path = resolved!;
         }
 
+        var resolvedPath = ResolvePath is null ? null : path;
+
         // HEAD names the default branch on the vendors this product speaks, so no caller has to
         // know what a project calls its main line.
         var content = await connector.ReadDocument(
@@ -66,7 +68,7 @@ sealed class DocumentReader(ConnectorAccess access) : IDocumentReader
         );
 
         return content.IsError
-            ? new DocumentResult(null, content.FirstError.Description)
-            : new DocumentResult(content.Value, Failure: null);
+            ? new DocumentResult(null, content.FirstError.Description, resolvedPath)
+            : new DocumentResult(content.Value, Failure: null, resolvedPath);
     }
 }
