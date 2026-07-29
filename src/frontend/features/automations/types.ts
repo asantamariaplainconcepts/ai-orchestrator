@@ -6,6 +6,7 @@ export const AUTOMATION_ACTIONS = [
   "Estimate",
   "GrillToReady",
   "ProposeSpec",
+  "SyncChange",
 ] as const;
 
 export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
@@ -22,6 +23,7 @@ export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = [
   "Estimate",
   "GrillToReady",
   "ProposeSpec",
+  "SyncChange",
 ];
 
 export const AGENT_RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;

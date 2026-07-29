@@ -319,6 +319,52 @@ sealed class RunExecutor(
         }
 
         var proposing = automation.Action == "ProposeSpec";
+        var syncing = automation.Action == "SyncChange";
+
+        if (syncing)
+        {
+            // Both refusals precede the workspace (design D4): cloning to discover what the
+            // caller already knew is spend for nothing.
+            var change = await changes.ForStory(
+                run.ProjectId,
+                run.VendorStoryId,
+                cancellationToken
+            );
+            if (change is null)
+            {
+                return new Outcome(
+                    Failure(
+                        "The story has no open change to close. Sync closes what implement "
+                            + "opened; there is nothing here yet."
+                    )
+                );
+            }
+
+            // The procedure belongs to the project, never to this product (design D1).
+            var procedurePath = automation.RubricPath ?? DefaultCloseOutPath;
+            var procedure = await documents.Read(run.ProjectId, procedurePath, cancellationToken);
+            if (procedure.Failure is not null)
+            {
+                return new Outcome(
+                    Failure($"The close-out procedure at '{procedurePath}' could not be read.")
+                );
+            }
+
+            return await RunSync(
+                run,
+                automation,
+                new CodeCoordinates(connector.Owner, connector.Repository),
+                change,
+                procedure.Content ?? string.Empty,
+                procedurePath,
+                context,
+                selection,
+                vendorToken,
+                aiKey,
+                onOutput,
+                cancellationToken
+            );
+        }
 
         if (proposing)
         {
@@ -347,7 +393,7 @@ sealed class RunExecutor(
         // Every other catalogue action is one shot. Only the two PR-producing actions touch a
         // repository, so only they prepare a workspace — the rest are one prompt and one
         // vendor write.
-        if (automation.Action != "ImplementToPullRequest" && !proposing)
+        if (automation.Action != "ImplementToPullRequest" && !proposing && !syncing)
         {
             return new Outcome(
                 await RunSimpleAction(
@@ -476,6 +522,13 @@ sealed class RunExecutor(
     /// <summary>The framework's conventions; an Automation may override both (grill D5).</summary>
     internal const string DefaultRubricPath = "docs/process/definition-of-ready.md";
 
+    /// <summary>
+    /// Where a project that adopted this framework documents how a change closes (#123). In code
+    /// rather than in data, for the grill's reason: a default that lived in the database would
+    /// be a product-wide procedure imposed on every repository this ever runs against.
+    /// </summary>
+    internal const string DefaultCloseOutPath = "docs/process/close-out.md";
+
     internal const string DefaultReadyLabel = "ready-for-proposal";
 
     /// <summary>
@@ -485,6 +538,59 @@ sealed class RunExecutor(
     /// or an honest failure. The rubric is read before anything is written (D2): a grill that
     /// cannot find its bar must not put that confusion on somebody's backlog.
     /// </summary>
+    /// <summary>
+    /// Closes the Story's change by following the project's own procedure (#123, design D1).
+    /// The agent holds the tools, so the prompt is where "follow it exactly, refuse rather than
+    /// improvise, and leave the pull request untouched if you stop" has to be said (design D5).
+    /// </summary>
+    async Task<Outcome> RunSync(
+        Run run,
+        AutomationDetail automation,
+        CodeCoordinates coordinates,
+        ChangeFiles change,
+        string procedure,
+        string procedurePath,
+        string context,
+        AgentRuntimeSelection selection,
+        string vendorToken,
+        string aiKey,
+        Action<string> onOutput,
+        CancellationToken cancellationToken
+    )
+    {
+        var prepared = await workspace.Prepare(coordinates, run.Id, vendorToken, cancellationToken);
+        if (prepared.IsError)
+        {
+            return new Outcome(Failure(prepared.FirstError.Description));
+        }
+
+        var prompt =
+            $"Close the change at {change.Url} for the following story, by following this "
+            + $"repository's own close-out procedure exactly as written.\n\n"
+            + $"--- {procedurePath} ---\n{procedure}\n--- end ---\n\n"
+            + "Follow that document and nothing else: it is this project's process, not a "
+            + "suggestion. If any step cannot be completed as written, stop and explain why "
+            + "— leave the pull request exactly as you found it rather than half-closing "
+            + "it, because a half-closed change is worse than an open one.\n\n"
+            + context;
+
+        var agentResult = await selection.Runtime.Execute(
+            new AgentInstruction(
+                prompt,
+                automation.Action,
+                automation.Timeout,
+                prepared.Value.Path,
+                new AgentCredentials(vendorToken, aiKey),
+                onOutput
+            ),
+            cancellationToken
+        );
+
+        // Nothing is published here: unlike implement and propose, the procedure the agent
+        // followed is what touched the change. The Run records where it acted.
+        return new Outcome(agentResult with { OutputLink = agentResult.OutputLink ?? change.Url });
+    }
+
     async Task<Outcome> RunGrill(
         Run run,
         AutomationDetail automation,

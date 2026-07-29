@@ -31,6 +31,11 @@ static class AutomationDefaults
         // code and opens a pull request, so it is the only default that waits for a human
         // (DEC-040) — the rest write comments, labels and documentation.
         new("ai:implement", AutomationAction.ImplementToPullRequest, RequiresApproval: true),
+        // The fourth step (#123). Gated for the same reason implement is, only more so: merging
+        // is the least reversible thing this pipeline does. Not chained from implement either —
+        // a human reads the pull request and labels this when convinced, which is the same
+        // deliberate gap propose leaves.
+        new("ai:sync", AutomationAction.SyncChange, RequiresApproval: true),
         new("ai:refine", AutomationAction.RefineOrComment, RequiresApproval: false),
         new("ai:estimate", AutomationAction.Estimate, RequiresApproval: false),
         new("ai:transition", AutomationAction.TransitionState, RequiresApproval: false),
