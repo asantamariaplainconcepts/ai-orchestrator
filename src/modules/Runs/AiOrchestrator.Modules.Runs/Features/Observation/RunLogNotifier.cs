@@ -1,3 +1,4 @@
+using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Features.Execution;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.AspNetCore.SignalR;
@@ -26,8 +27,62 @@ sealed partial class RunLogNotifier(
     ILogger<RunLogNotifier> logger
 ) : BackgroundService
 {
-    /// <summary>How far each Run has been pushed, so a notification sends only what is new.</summary>
+    /// <summary>
+    /// How far each Run has been pushed, so a notification sends only what is new.
+    /// <para>
+    /// Bounded by what is running (#144, design D4): an entry is removed once its Run reaches a
+    /// terminal state, because a terminal Run produces no further output. Without that the map grew
+    /// for the life of the process — slowly, invisibly, and forever.
+    /// </para>
+    /// </summary>
     readonly Dictionary<Guid, int> _sent = [];
+
+    /// <summary>
+    /// One gate per Run, so two notifications for the same Run cannot both read the cursor and push
+    /// overlapping frames. Per Run rather than global on purpose: a single lock would make every
+    /// Run's window wait behind every other, which is the opposite of what a live window is for.
+    /// </summary>
+    readonly Dictionary<Guid, SemaphoreSlim> _gates = [];
+
+    /// <summary>Guards the two dictionaries themselves, which are touched from concurrent handlers.</summary>
+    readonly SemaphoreSlim _bookkeeping = new(1, 1);
+
+    async Task<SemaphoreSlim> GateFor(Guid runId, CancellationToken cancellationToken)
+    {
+        await _bookkeeping.WaitAsync(cancellationToken);
+        try
+        {
+            if (!_gates.TryGetValue(runId, out var gate))
+            {
+                gate = new SemaphoreSlim(1, 1);
+                _gates[runId] = gate;
+            }
+
+            return gate;
+        }
+        finally
+        {
+            _bookkeeping.Release();
+        }
+    }
+
+    /// <summary>Releases a finished Run's bookkeeping. Idempotent — a Run may notify after ending.</summary>
+    async Task Forget(Guid runId, CancellationToken cancellationToken)
+    {
+        await _bookkeeping.WaitAsync(cancellationToken);
+        try
+        {
+            _sent.Remove(runId);
+            if (_gates.Remove(runId, out var gate))
+            {
+                gate.Dispose();
+            }
+        }
+        finally
+        {
+            _bookkeeping.Release();
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -88,6 +143,11 @@ sealed partial class RunLogNotifier(
 
     async Task Push(Guid runId, CancellationToken cancellationToken)
     {
+        // Serialised per Run (#144, design D4): two notifications arriving together used to both
+        // read the same cursor and push overlapping frames, so a watcher saw lines twice.
+        var gate = await GateFor(runId, cancellationToken);
+        await gate.WaitAsync(cancellationToken);
+
         try
         {
             var from = _sent.GetValueOrDefault(runId);
@@ -101,25 +161,62 @@ sealed partial class RunLogNotifier(
                 .Select(chunk => new { chunk.Sequence, chunk.Content })
                 .ToListAsync(cancellationToken);
 
+            // Read after the lines, and inside the gate: a Run that ended between the notification
+            // and this read is one whose bookkeeping can go, and the state must not be read before
+            // the lines or a final chunk would be dropped along with the cursor.
+            // Derived from BR-001's own list rather than a second one: RunStates carries a warning
+            // that hand-written copies of it have drifted twice, and an inverse copy would drift
+            // identically. Read as a state, then judged in memory, because the complement of a
+            // static array is not something to ask a query provider to translate.
+            var states = await database
+                .Runs.Where(run => run.Id == runId)
+                .Select(run => run.State)
+                .ToListAsync(cancellationToken);
+            var terminal = states.Count == 1 && RunStates.IsTerminal(states[0]);
+
             if (chunks.Count == 0)
             {
+                if (terminal)
+                {
+                    await Forget(runId, cancellationToken);
+                }
+
                 return;
             }
 
             _sent[runId] = chunks[^1].Sequence + 1;
 
+            // The frame carries where it starts (#144, design D5). Without it a client that
+            // subscribed before its first read cannot tell an overlap from new output, and
+            // "subscribe first" would trade a gap for duplicated text — which is what the first
+            // draft of that design assumed the client already handled, and it did not.
             await hub
                 .Clients.Group(RunLogHub.GroupFor(runId))
                 .SendAsync(
                     "lines",
-                    chunks.Select(chunk => chunk.Content),
+                    new
+                    {
+                        from = chunks[0].Sequence,
+                        lines = chunks.Select(chunk => chunk.Content),
+                    },
                     cancellationToken: cancellationToken
                 );
+
+            if (terminal)
+            {
+                await Forget(runId, cancellationToken);
+            }
         }
         catch (Exception exception)
         {
             // Same contract as the writer's: the witness never kills the witnessed.
             PushFailed(logger, exception, runId);
+        }
+        finally
+        {
+            // Released whatever happened. A gate left held would silence that Run's window for the
+            // life of the process, which is a worse failure than the one being handled above.
+            gate.Release();
         }
     }
 

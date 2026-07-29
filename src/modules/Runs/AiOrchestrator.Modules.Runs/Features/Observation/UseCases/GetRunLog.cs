@@ -40,17 +40,14 @@ sealed class GetRunLog : IUseCase
 
     internal sealed record Query(Guid ProjectId, Guid RunId) : IQuery<Response?>;
 
-    internal sealed record Response(string Content, bool Complete);
+    /// <summary>
+    /// <paramref name="NextSequence"/> is where the next chunk will be (#144, design D5): a client
+    /// that subscribed before this read uses it to drop the overlap instead of appending it twice.
+    /// </summary>
+    internal sealed record Response(string Content, bool Complete, int NextSequence);
 
     internal sealed class Handler(RunsDbContext database) : IAppQueryHandler<Query, Response?>
     {
-        static readonly RunState[] Terminal =
-        [
-            RunState.Succeeded,
-            RunState.Failed,
-            RunState.Cancelled,
-        ];
-
         public async Task<Response?> Handle(Query query, CancellationToken cancellationToken)
         {
             var run = await database
@@ -65,16 +62,23 @@ sealed class GetRunLog : IUseCase
                 return null;
             }
 
-            var lines = await database
+            var chunks = await database
                 .LogChunks.Where(chunk => chunk.RunId == query.RunId)
                 .OrderBy(chunk => chunk.Sequence)
-                .Select(chunk => chunk.Content)
+                .Select(chunk => new { chunk.Sequence, chunk.Content })
                 .ToListAsync(cancellationToken);
 
             // Waiting states are "not executing right now" but not done: the page keeps the
             // log visible and stops the fast poll on terminal only — a resumed pass appends to
             // the same log, and a watcher should see it continue.
-            return new Response(string.Join('\n', lines), Terminal.Contains(run.State));
+            // Terminal derived from BR-001's own list, not a third hand-written copy of it: the
+            // comment on RunStates records that such copies have drifted twice already, and this
+            // file held one that happened to still agree.
+            return new Response(
+                string.Join('\n', chunks.Select(chunk => chunk.Content)),
+                RunStates.IsTerminal(run.State),
+                chunks.Count == 0 ? 0 : chunks[^1].Sequence + 1
+            );
         }
     }
 }

@@ -1579,3 +1579,36 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. If a second requirement turns out to be wrong in the same way — correct English
   over a misread field — "a requirement that names a field names what sets it" is the shape.
+
+## 2026-07-29 — run-execution-resilience
+
+- **Worked:** the ceiling turned an unkeepable rule into a keepable one, and that reframing was the
+  whole change. BR-005 said "Admin-configurable" while the platform budget was ten minutes, so the
+  rule could not be honoured by any value of the Terraform setting — there was nothing to fix until
+  the timeout had an upper bound. Once it did, the three sites could be bound to each other by
+  comment, which is the only guard available when a contract spans a C# constant, a Terraform value
+  and a written rule. Also worth keeping: the two live-log tests failed the moment the hub's payload
+  changed shape, having been bound to `string[]`. They were the check that the contract moved.
+- **Didn't:** the proposal asserted that the client "already handles a redelivered push by sequence",
+  and it did not — the handler concatenated unconditionally, so subscribing before the first read
+  would have traded a missed line for duplicated text. Third time today a claim of mine about
+  existing behaviour was wrong: the others were `TreatWarningsAsErrors` (assumed absent, was
+  inherited) and `tCount` (assumed a placeholder it does not have). Every one came from reasoning
+  about code I had not opened at the point of writing the claim.
+- **Next time:** a design that depends on existing behaviour names the file and line where that
+  behaviour lives, before the design is written. "Resolved by sequence" should not have survived
+  contact with `useRuns.ts:151`, and it would not have if the sentence had been required to cite it.
+- **Time invested:** not measured (source: **manual** — sixty-fourth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **Also didn't:** the archive refused, for the second time in this session, because a MODIFIED
+  requirement dropped scenarios the current spec holds — four of them here, and the same shape as
+  `sync-action`'s refusal. Rewriting a requirement is not writing a new one: the delta replaces the
+  whole block, so every scenario has to be carried whether or not this change touches it. The tool
+  caught it both times, which is the only reason it cost minutes rather than a silent loss of four
+  assertions.
+- **ADR:** none new, but two shapes are now at their second occurrence. A design claiming an existing
+  behaviour it did not verify (#146's requirement named a field without naming what set it; this one
+  claimed the client deduped by sequence). And a MODIFIED requirement dropping scenarios. The first
+  would graduate as "a claim about existing behaviour cites where that behaviour lives"; the second is
+  already enforced by the archive, which is the better answer — a gate beats a rule.

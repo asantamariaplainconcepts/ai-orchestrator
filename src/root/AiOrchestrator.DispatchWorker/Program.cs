@@ -58,11 +58,28 @@ var reader = host.Services.GetRequiredService<DispatchQueueReader>();
 // A "pass" drains the queue and returns. Draining rather than taking one message is
 // deliberate: KEDA's scaler and the queue length are eventually consistent, so a job that
 // handled exactly one message would leave stragglers waiting for the next poll.
+// #144 design D2 — the only part of that change that prevents rather than recovers. A worker runs
+// inside a platform budget (replica_timeout_in_seconds); when what is left of it is less than one
+// full phase timeout, claiming another Run means starting work this process cannot finish. The
+// sweeper (#140) would then close that Run as abandoned, which is recovery from a choice rather
+// than from an accident.
+//
+// Leaving the message unclaimed is safe and is the point: the queue stays non-empty, KEDA sees it
+// and starts a fresh job with a full budget.
+var startedAt = DateTimeOffset.UtcNow;
+var replicaBudget = TimeSpan.FromSeconds(
+    builder.Configuration.GetValue("Dispatch:ReplicaBudgetSeconds", defaultValue: 3900)
+);
+var phaseCeiling = PhaseBudget.Maximum;
+
+bool HasBudgetForAnotherPhase() =>
+    replicaBudget - (DateTimeOffset.UtcNow - startedAt) >= phaseCeiling;
+
 async Task<int> DrainOnce()
 {
     var claimed = 0;
 
-    while (await reader.Claim() is { } runId)
+    while (HasBudgetForAnotherPhase() && await reader.Claim() is { } runId)
     {
         claimed++;
         WorkerLog.Claimed(logger, runId);
@@ -72,6 +89,11 @@ async Task<int> DrainOnce()
         await using var scope = host.Services.CreateAsyncScope();
         var executor = scope.ServiceProvider.GetRequiredService<IRunExecutor>();
         await executor.Execute(runId);
+    }
+
+    if (!HasBudgetForAnotherPhase())
+    {
+        WorkerLog.BudgetExhausted(logger, phaseCeiling.TotalMinutes);
     }
 
     return claimed;
@@ -113,6 +135,13 @@ static partial class WorkerLog
 {
     [LoggerMessage(EventId = 6001, Level = LogLevel.Information, Message = "Claimed run {RunId}")]
     public static partial void Claimed(ILogger logger, Guid runId);
+
+    [LoggerMessage(
+        EventId = 6004,
+        Level = LogLevel.Information,
+        Message = "Stopped claiming: less than one {PhaseCeilingMinutes} minute phase remains in this replica's budget. Unclaimed messages keep the queue non-empty, so KEDA starts a worker with a full budget"
+    )]
+    public static partial void BudgetExhausted(ILogger logger, double phaseCeilingMinutes);
 
     [LoggerMessage(
         EventId = 6002,

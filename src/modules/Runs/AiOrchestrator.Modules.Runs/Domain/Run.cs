@@ -219,6 +219,12 @@ static class RunStates
         RunState.AwaitingInput,
     ];
 
+    /// <summary>
+    /// Terminal is the complement, never a second list (#144). The comment above this class exists
+    /// because a hand-written copy drifted twice; a copy of the *inverse* would drift the same way.
+    /// </summary>
+    public static bool IsTerminal(RunState state) => !Active.Contains(state);
+
     /// <summary>The SQL the partial unique index filters on — same list, no second copy.</summary>
     public static string ActiveStateFilter() =>
         $"\"State\" IN ({string.Join(", ", Active.Select(state => $"'{state}'"))})";

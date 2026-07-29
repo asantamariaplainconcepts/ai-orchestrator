@@ -320,6 +320,9 @@ const routes: [string, RegExp, Handler][] = [
     () => ({
       content: "cloning acme/portal\nreading the story\nplanning changes\nwriting src/feature.ts",
       complete: false,
+      // Four lines read, so the next chunk is 4 (#144): the mock has to carry the field the
+      // contract carries, or it teaches the UI a shape the server does not send.
+      nextSequence: 4,
     }),
   ],
   [

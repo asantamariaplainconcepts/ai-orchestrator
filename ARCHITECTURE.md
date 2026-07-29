@@ -271,7 +271,10 @@ equivalent. The invocation finishes (bounded by BR-005) and its work is discarde
 **Stated limitations, on purpose.** Nothing promotes
 a `Queued` Run when capacity frees, because nothing can complete yet. And the Run insert and the
 queue enqueue cannot share a transaction: the Run commits first, so a crash between the two
-leaves a visible `Queued` Run with no message — logged loudly, recovered by *Run now* (BR-013)
+leaves a visible `Queued` Run with no message — logged loudly. *Run now* does **not** recover it:
+BR-001 holds the Story, so a second dispatch answers `AlreadyActive`. The sweeper (#140) ends the
+Run once its phase deadline plus grace has passed, which frees the Story, and a human re-triggers
+from there (BR-013). Nothing re-runs automatically (BR-004)
 when it lands.
 
 ## Agent execution

@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Modules;
@@ -22,8 +23,11 @@ namespace AiOrchestrator.Modules.Projects.Features.Automations.UseCases;
 /// </summary>
 sealed class CreateAutomation : IUseCase
 {
-    /// <summary>BR-005's default; an Admin may override per Automation.</summary>
-    public static readonly TimeSpan DefaultTimeout = TimeSpan.FromMinutes(30);
+    /// <summary>BR-005's default and ceiling, which live in the shared kernel because the
+    /// contract spans modules — the dispatch worker enforces the same ceiling (#144, DEC-054).</summary>
+    public static readonly TimeSpan DefaultTimeout = PhaseBudget.Default;
+
+    public const int MaximumTimeoutMinutes = PhaseBudget.MaximumMinutes;
 
     public static void AddRoutes(IEndpointRouteBuilder endpoints) =>
         endpoints
@@ -144,7 +148,12 @@ sealed class CreateAutomation : IUseCase
                 );
 
             RuleFor(command => command.TimeoutMinutes)
-                .InclusiveBetween(1, 720)
+                .InclusiveBetween(1, MaximumTimeoutMinutes)
+                .WithMessage(
+                    $"A phase timeout must be between 1 and {MaximumTimeoutMinutes} minutes. The "
+                        + "ceiling exists so the platform budget that hosts a phase is provably "
+                        + "sufficient (DEC-054)."
+                )
                 .When(command => command.TimeoutMinutes.HasValue);
         }
     }
