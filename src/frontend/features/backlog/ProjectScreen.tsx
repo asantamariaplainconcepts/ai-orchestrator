@@ -488,18 +488,24 @@ function ConnectorPanel({
   const needsCodeRepository = vendor === "AzureDevOps";
   const open = !connector || editing;
 
+  // With a Connector already configured, leaving the credential blank means "keep the one you have"
+  // (#160): the product holds it, verified, under this Connector's own name, and asking for it again to
+  // change a path is what trained people to keep PATs lying around.
+  const keepingStored = Boolean(connector) && (pasting ? !accessToken.trim() : !secretName.trim());
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!owner.trim() || !repository.trim()) return;
-    if (pasting ? !accessToken.trim() : !secretName.trim()) return;
+    // Only a first connect needs one: there is nothing stored to fall back on.
+    if (!connector && (pasting ? !accessToken.trim() : !secretName.trim())) return;
     configure.mutate(
       {
         owner,
         repository,
-        // Exactly one, as the API requires: sending both is a caller who believes two different
-        // things about where the credential lives.
-        secretName: pasting ? null : secretName,
-        accessToken: pasting ? accessToken : null,
+        // Never both, as the API requires; neither is the reuse path, and the API decides whether
+        // that is allowed — the form no longer refuses on its behalf.
+        secretName: keepingStored || pasting ? null : secretName,
+        accessToken: keepingStored || !pasting ? null : accessToken,
         vendor,
         codeRepository: needsCodeRepository && codeRepository.trim() ? codeRepository : null,
         promptDirectory: promptDirectory.trim() ? promptDirectory.trim() : null,
@@ -662,7 +668,11 @@ function ConnectorPanel({
             </div>
 
             <p className="text-xs text-muted-foreground">
-              {pasting ? t("connector.accessTokenHint") : t("connector.secretHint")}
+              {keepingStored
+                ? t("connector.keepsStoredCredential")
+                : pasting
+                  ? t("connector.accessTokenHint")
+                  : t("connector.secretHint")}
             </p>
             {needsCodeRepository ? (
               <p className="text-xs text-muted-foreground">{t("connector.codeRepositoryHint")}</p>

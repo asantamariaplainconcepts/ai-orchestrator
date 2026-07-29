@@ -141,10 +141,14 @@ public class PastedToken_Should_Constraint(BacklogApiFixture fixture) : IAsyncLi
     [Fact]
     public async Task NeitherCredential_Should_BeRefused()
     {
+        // Still refused, and #160 made the reason more specific: absent means "keep the stored one",
+        // which needs a Connector to keep it from. This project has none.
         var response = await Configure(new { owner = "acme", repository = "portal" });
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).ShouldContain("not both and not neither");
+        (await response.Content.ReadAsStringAsync()).ShouldContain(
+            "no Connector whose credential could be reused"
+        );
     }
 
     [Fact]

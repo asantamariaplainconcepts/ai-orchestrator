@@ -37,6 +37,26 @@ static class BacklogErrors
     public static Error NotPermitted(string action) =>
         Error.Forbidden("Connector.NotPermitted", $"Only an Admin can {action}.");
 
+    /// <summary>
+    /// #160 — reconfiguring with no credential is "keep the one you have", and a vendor switch has no
+    /// credential to keep: the derived secret name is a function of the vendor, so the stored value was
+    /// minted for the other one. Refused with the remedy rather than probed and left to fail.
+    /// </summary>
+    public static Error CredentialRequiredForVendor(string fromVendor, string toVendor) =>
+        Error.Validation(
+            "Connector.CredentialRequiredForVendor",
+            $"The stored credential belongs to {fromVendor}, so it cannot vouch for {toVendor}. "
+                + "Supply a token for the new vendor."
+        );
+
+    /// <summary>#160 — nothing stored to fall back on, so there is nothing to verify against.</summary>
+    public static Error CredentialRequired() =>
+        Error.Validation(
+            "Connector.CredentialRequired",
+            "Supply either a token to store or the name of an existing secret — this project has no "
+                + "Connector whose credential could be reused."
+        );
+
     public static Error SecretNotFound(string secretName) =>
         Error.Validation("Connector.SecretNotFound", $"No secret named '{secretName}' was found.");
 
