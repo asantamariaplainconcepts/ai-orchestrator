@@ -182,36 +182,15 @@ sealed class Automation : Aggregate
 /// <summary>The MVP action catalogue (DEC-026). All four configurable; only Implement→PR executes yet.</summary>
 enum AutomationAction
 {
-    ImplementToPullRequest = 1,
-    RefineOrComment = 2,
-    TransitionState = 3,
-    Estimate = 4,
-
     /// <summary>
-    /// Interrogates a Story to its project's readiness bar through the conversational wait
-    /// (#79, revising DEC-026's four-action catalogue as DEC-048).
-    /// </summary>
-    GrillToReady = 5,
-
-    /// <summary>
-    /// Turns a ready Story into a documentation pull request — the reviewable step between
-    /// ready and implemented (#80, UC-025; DEC-048 licenses the growth).
-    /// </summary>
-    ProposeSpec = 6,
-
-    /// <summary>
-    /// Closes the Story's open change by following the connected repository's own close-out
-    /// procedure (#123, DEC-048). The product knows that a change closes, never how — that
-    /// document belongs to the project, exactly as the grill's readiness bar does.
-    /// </summary>
-    SyncChange = 7,
-
-    /// <summary>
-    /// Runs a prompt the project itself wrote, named by <c>RubricPath</c> and resolved against the
-    /// project's prompts directory (#150, DEC-048's lane again). The body is the prompt; any
-    /// frontmatter is another runner's wiring and is ignored, because the Automation is already this
-    /// product's. The answer becomes one Story comment and nothing else — a prompt cannot widen its
-    /// own surface by asking to.
+    /// The only action (#162, revising DEC-026 and DEC-048). What a step does is the prompt the project
+    /// wrote, named by <c>RubricPath</c> and resolved against the project's prompts directory; the agent
+    /// holds the project credential and a workspace and finishes the job itself.
+    /// <para>
+    /// The value stays 8 rather than being renumbered to 1. The old members are gone from the code, but
+    /// they are still in rows this migration deletes and in Runs the audit trail keeps (BR-014) — and a
+    /// renumbered enum would silently reinterpret persisted integers as something else.
+    /// </para>
     /// </summary>
     RepositoryPrompt = 8,
 }

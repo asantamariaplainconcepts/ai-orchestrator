@@ -102,15 +102,17 @@ sealed class LocalLoopSeeder(IConfiguration configuration, ILogger<LocalLoopSeed
             """
             INSERT INTO projects.automations
                 ("Id", "ProjectId", "TriggerLabel", "TriggerState", "Action", "Runtime",
-                 "RequiresApproval", "Timeout", "Enabled")
-            VALUES (@id, @projectId, 'ai:implement', NULL, 'ImplementToPullRequest', 'OpenCode',
-                    false, @timeout, true)
+                 "RequiresApproval", "Timeout", "Enabled", "RubricPath")
+            VALUES (@id, @projectId, 'ai:implement', NULL, 'RepositoryPrompt', 'OpenCode',
+                    false, @timeout, true, 'implement.md')
             """,
             connection
         );
         command.Parameters.AddWithValue("id", Guid.CreateVersion7());
         command.Parameters.AddWithValue("projectId", projectId);
         command.Parameters.AddWithValue("timeout", TimeSpan.FromMinutes(30));
+        // The prompt file has to exist in this repository's own prompts directory for the local loop to
+        // run — there is no built-in behaviour to fall back on any more (#162).
         await command.ExecuteNonQueryAsync(cancellation);
     }
 

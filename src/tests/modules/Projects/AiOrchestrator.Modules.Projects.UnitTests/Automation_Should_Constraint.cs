@@ -19,7 +19,7 @@ public class Automation_Should_Constraint
             Guid.CreateVersion7(),
             label,
             state,
-            AutomationAction.ImplementToPullRequest,
+            AutomationAction.RepositoryPrompt,
             AgentRuntime.ClaudeCodeHeadless,
             requiresApproval: false,
             TimeSpan.FromMinutes(30)

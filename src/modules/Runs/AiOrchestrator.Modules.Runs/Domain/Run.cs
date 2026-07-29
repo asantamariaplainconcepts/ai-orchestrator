@@ -57,7 +57,11 @@ sealed class Run : Aggregate
     /// <summary>Why a Run failed, in one honest sentence. Null on success.</summary>
     public string? FailureReason { get; private set; }
 
-    /// <summary>Where the work landed — the PR URL for ImplementToPullRequest (BR-014).</summary>
+    /// <summary>
+    /// Where the work landed, when the runtime reports it (BR-014). Since #162 the orchestrator no
+    /// longer publishes anything itself, so this is filled only if the agent's own result names a
+    /// destination — an accepted consequence of the agent doing the publishing.
+    /// </summary>
     public string? OutputLink { get; private set; }
 
     /// <summary>The Agent's proposal, awaiting a human (UC-015). Null on the single-phase lane.</summary>
