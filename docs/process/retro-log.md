@@ -1431,3 +1431,24 @@ times in the project this framework came from.
 - **ADR:** none new. Design D4 was revised during implementation — files rather than a table — and
   the reasoning is recorded in the change's own `design.md` rather than promoted, because it is one
   decision inside one slice and nothing recurred.
+
+## 2026-07-29 — vault-write-for-workload
+
+- **Worked:** the product told us exactly what was wrong and what to do about it. #124's refusal
+  path — a store that throws with a remedy rather than failing opaquely — turned a deployment
+  misconfiguration into a screenshot that named the missing role. That is the whole argument for
+  putting the remedy inside the refusal rather than in a runbook, and it paid off within hours of
+  shipping.
+- **Didn't:** the permission gap was foreseeable at design time and nobody looked. #124 added the
+  ability to write to Key Vault and its task list never asked whether the deployed identity could.
+  The habitats were enumerated for *identity* in #119 and for *storing* in #124's design, but the
+  Terraform role assignments were not read in either.
+- **Next time:** when a change gives the product a new capability against a managed service, grep
+  `infra/` for the role assignments covering that service before writing the task list. The code
+  seam and the IAM grant are two halves of the same permission, and only one of them is visible to
+  the compiler.
+- **Time invested:** not measured (source: **manual** — fifty-seventh consecutive). Unchanged from
+  the previous entry: `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed
+  here* and *usage.jsonl has data*.
+- **ADR:** none new. This is the first occurrence of the code/IAM split being missed; a second
+  would graduate it.

@@ -28,3 +28,13 @@ resource "azurerm_role_assignment" "workload_vault_read" {
   role_definition_name = "Key Vault Secrets User"
   principal_id         = azurerm_user_assigned_identity.workload.principal_id
 }
+
+# Reading and writing are two assignments, mirroring the two seams the application depends on
+# (#124): ISecretResolver reads, ISecretStore writes, and nothing holds both by accident. Only
+# the Server gets this one — the dispatch identity resolves credentials and never stores one,
+# which is a property of its role assignments and not only of its code.
+resource "azurerm_role_assignment" "workload_vault_write" {
+  scope              = azurerm_key_vault.main.id
+  role_definition_id = azurerm_role_definition.secret_writer.role_definition_resource_id
+  principal_id       = azurerm_user_assigned_identity.workload.principal_id
+}
