@@ -152,6 +152,10 @@ export const en = {
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
   "automations.rubricPath": "Readiness document",
   "automations.rubricPathPlaceholder": "docs/process/definition-of-ready.md",
+  "automations.edit": "Edit",
+  "automations.save": "Save changes",
+  "automations.saving": "Saving…",
+  "automations.timeoutPlaceholder": "30",
   "automations.promptFile": "Prompt file",
   "automations.promptFilePlaceholder": "estimate.md",
   "automations.promptFileHint":

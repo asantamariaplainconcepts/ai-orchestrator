@@ -8,14 +8,16 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { HumanStepBlock, WorkflowCanvas } from "./WorkflowCanvas";
+import { ApiError } from "@/shared/http/client";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
-import type { AgentRuntime, AutomationAction } from "./types";
+import type { AgentRuntime, Automation, AutomationAction } from "./types";
 import {
   useApplyAutomationDefaults,
   useAutomations,
   useCreateAutomation,
   useDeleteAutomation,
   useSetAutomationEnabled,
+  useUpdateAutomation,
 } from "./useAutomations";
 
 /**
@@ -30,8 +32,13 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const create = useCreateAutomation(projectId);
   const defaults = useApplyAutomationDefaults(projectId);
   const remove = useDeleteAutomation(projectId);
+  const update = useUpdateAutomation(projectId);
 
   const [creating, setCreating] = useState(false);
+  // The form's mode (#151, design D1): null creates, an Automation edits. One form rather than two,
+  // because "the edit form mirrors create's rules" is a property two components satisfy the day they
+  // are written and stop satisfying without anyone noticing.
+  const [editing, setEditing] = useState<Automation | null>(null);
   // A genuine preference like the board's, remembered the same way and for the same reason:
   // nothing about the project decides whether a reader wants rows or a shape.
   const [triggerLabel, setTriggerLabel] = useState("");
@@ -41,6 +48,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [rubricPath, setRubricPath] = useState("");
   const [outputLabel, setOutputLabel] = useState("");
+  // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
+  const [timeoutMinutes, setTimeoutMinutes] = useState("");
 
   // Two actions read a document the project owns, and they read a different one: the grill its
   // readiness bar, the repository prompt its instruction. One field, relabelled — a second input
@@ -49,30 +58,72 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const isRepositoryPrompt = action === "RepositoryPrompt";
   const namesADocument = isGrill || isRepositoryPrompt;
 
+  /** Every field, blank, for a create that starts from nothing. */
+  function reset() {
+    setTriggerLabel("");
+    setTriggerState("");
+    setAction("ImplementToPullRequest");
+    setRuntime("ClaudeCodeHeadless");
+    setRequiresApproval(false);
+    setRubricPath("");
+    setOutputLabel("");
+    setTimeoutMinutes("");
+  }
+
+  /**
+   * Seeds the form from what is stored. Every field, including the timeout — the endpoint is a full
+   * replace, so a field this form did not carry would be replaced by the default for absent, and the
+   * timeout is the one create never carried (design D2).
+   */
+  function openEdit(automation: Automation) {
+    setEditing(automation);
+    setCreating(true);
+    setTriggerLabel(automation.triggerLabel);
+    setTriggerState(automation.triggerState ?? "");
+    setAction(automation.action);
+    setRuntime(automation.runtime);
+    setRequiresApproval(automation.requiresApproval);
+    setRubricPath(automation.rubricPath ?? "");
+    setOutputLabel(automation.outputLabel ?? "");
+    setTimeoutMinutes(String(automation.timeoutMinutes));
+  }
+
+  function closeForm() {
+    setCreating(false);
+    setEditing(null);
+    reset();
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!triggerLabel.trim()) return;
 
-    create.mutate(
-      {
-        triggerLabel: triggerLabel.trim(),
-        // Empty means "any state" — an unconstrained trigger, not an empty string to match.
-        triggerState: triggerState.trim() === "" ? null : triggerState.trim(),
-        action,
-        runtime,
-        requiresApproval,
-        timeoutMinutes: null,
-        rubricPath: namesADocument && rubricPath.trim() ? rubricPath.trim() : null,
-        outputLabel: outputLabel.trim() ? outputLabel.trim() : null,
-      },
-      {
-        onSuccess: () => {
-          setTriggerLabel("");
-          setCreating(false);
-        },
-      },
-    );
+    const request = {
+      triggerLabel: triggerLabel.trim(),
+      // Empty means "any state" — an unconstrained trigger, not an empty string to match.
+      triggerState: triggerState.trim() === "" ? null : triggerState.trim(),
+      action,
+      runtime,
+      requiresApproval,
+      // Blank is the default, not zero. Sending 0 would be a timeout of no time at all.
+      timeoutMinutes: timeoutMinutes.trim() === "" ? null : Number(timeoutMinutes),
+      // Cleared when the action reads no document: a value no visible control can reach is one the
+      // Admin cannot manage, and a replace would carry it forever unseen (design D3).
+      rubricPath: namesADocument && rubricPath.trim() ? rubricPath.trim() : null,
+      outputLabel: outputLabel.trim() ? outputLabel.trim() : null,
+    };
+
+    if (editing) {
+      update.mutate({ id: editing.id, request }, { onSuccess: closeForm });
+      return;
+    }
+
+    create.mutate(request, { onSuccess: closeForm });
   }
+
+  const saving = editing ? update.isPending : create.isPending;
+  const saveError = editing ? update.error : create.error;
+  const saveFailed = editing ? update.isError : create.isError;
 
   const rows = automations.data ?? [];
 
@@ -115,6 +166,14 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                 <span className="text-xs text-muted-foreground">
                   {automation.timeoutMinutes} {t("automations.minutes")}
                 </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  type="button"
+                  onClick={() => openEdit(automation)}
+                >
+                  {t("automations.edit")}
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"
@@ -165,7 +224,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           >
             {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
           </Button>
-          <Button type="button" onClick={() => setCreating((open) => !open)}>
+          <Button type="button" onClick={() => (creating ? closeForm() : setCreating(true))}>
             {creating ? t("automations.new.close") : t("automations.new")}
           </Button>
         </div>
@@ -287,6 +346,21 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                     ) : null}
                   </div>
                 ) : null}
+                {/* Visible in both modes (design D2): an edit resends this value, and a value
+                    resent on somebody's behalf is one they are entitled to see. Blank is BR-005's
+                    default, which is also why create never needed it until now. */}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="timeout-minutes">{t("automations.timeout")}</Label>
+                  <Input
+                    id="timeout-minutes"
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={timeoutMinutes}
+                    onChange={(event) => setTimeoutMinutes(event.target.value)}
+                    placeholder={t("automations.timeoutPlaceholder")}
+                  />
+                </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
                   <Input
@@ -307,16 +381,25 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                   />
                   <Label htmlFor="requires-approval">{t("automations.approval")}</Label>
                 </div>
-                <Button type="submit" disabled={create.isPending}>
-                  {create.isPending ? t("automations.adding") : t("automations.add")}
+                <Button type="submit" disabled={saving}>
+                  {saving
+                    ? editing
+                      ? t("automations.saving")
+                      : t("automations.adding")
+                    : editing
+                      ? t("automations.save")
+                      : t("automations.add")}
                 </Button>
               </div>
 
               <p className="text-xs text-muted-foreground">{t("automations.catalogueHint")}</p>
 
-              {create.isError && (
+              {saveFailed && (
                 <p className="text-sm text-destructive" role="alert">
-                  {t("automations.saveFailed")}
+                  {/* The API's own reason: an overlap refusal names the Automation collided with, and
+                      a generic line throws that away (design D4). */}
+                  {(saveError instanceof ApiError && saveError.detail) ||
+                    t("automations.saveFailed")}
                 </p>
               )}
             </form>

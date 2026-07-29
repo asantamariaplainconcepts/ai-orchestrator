@@ -1733,3 +1733,27 @@ times in the project this framework came from.
 - **ADR:** none new. This is [ADR-0009](../adr/0009-a-claim-about-existing-behaviour-cites-where-it-lives.md)'s
   rule reaching past code and vendors to the issue itself, not a second pattern. If a proxy is trusted
   over the artifact once more, it graduates on the next occurrence rather than this one.
+
+## 2026-07-29 — edit-automation-form
+
+- **Worked:** the change was shaped by one concrete trap found by reading the code rather than by a
+  general wish for an edit form. The update endpoint is a full replace and create's submit sent
+  `timeoutMinutes: null`, so the obvious implementation — reuse create's submit — would have reset every
+  Automation with a configured timeout to the default on every edit, silently, because the row would go
+  on rendering a number. The canvas already worked around it by passing the value explicitly, which is
+  what proved the trap real instead of theoretical. That turned a vague task into a specific decision:
+  make the timeout visible, because a value resent on somebody's behalf is one they should be able to
+  see. The E2E asserting a 45-minute timeout survives a label-only edit is the test that would have
+  caught the wrong version.
+- **Didn't:** the four new E2E tests failed on their first run, all four on "waiting for the Edit button
+  to be visible" — the E2E host serves the **built** SPA from `wwwroot`, and only the source had
+  changed. Two minutes to find out, and the failure looked exactly like a broken selector, which is the
+  expensive part: the first hypothesis was wrong about *my own code* rather than about the environment.
+  CI builds the frontend before its E2E step; nothing does locally.
+- **Next time:** `pnpm build` before running E2E locally, and read a whole-suite failure of *new* tests
+  as an environment claim before a code claim. Four failures with one identical message is a fact about
+  the setup, not four facts about the tests.
+- **Time invested:** not measured (source: **manual** — seventieth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. The stale-bundle trap is a first occurrence; if it costs a second run it graduates.
