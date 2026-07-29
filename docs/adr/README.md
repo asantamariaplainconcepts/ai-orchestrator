@@ -31,3 +31,4 @@ A decision that names no check stays advice; the loop exists to turn advice into
 | [0006](0006-a-capability-is-not-added-until-a-user-can-reach-it.md) | A capability is not added until a user can reach it | Accepted |
 | [0007](0007-an-edit-lands-on-a-site-that-was-read.md) | An edit lands on a site that was read, never on a pattern | Accepted |
 | [0008](0008-a-live-conversation-costs-a-pass-per-message.md) | A live conversation costs a pass per message, because an untimed wait cannot idle | Accepted |
+| [0009](0009-a-claim-about-existing-behaviour-cites-where-it-lives.md) | A claim about existing behaviour cites where that behaviour lives | Accepted |
