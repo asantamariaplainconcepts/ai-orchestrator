@@ -15,6 +15,24 @@ jobs:
         with:
           global-json-file: src/global.json
 
+      # Same key as the build-test lane on purpose: the two lanes now run side by side (#133), and
+      # a shared key means the first to finish warms the entry the other reads next time.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('src/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      # The browser binary, which changes only when the Playwright version does. Deliberately not
+      # claimed as the whole 31s that step costs: `--with-deps` also installs system packages with
+      # apt, and those live outside this path and cannot be cached here. The download half is what
+      # this saves, and the step below still runs unconditionally so a runner missing those
+      # packages is never left with a browser it cannot start.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('src/Directory.Packages.props') }}
+
       - uses: pnpm/action-setup@v4
         with:
           version: 9
@@ -32,8 +50,15 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm build
 
+      # Split like the build-test lane so both read the NuGet cache the same way and a slow
+      # restore is legible as a restore rather than hidden inside a build. Warnings are already
+      # errors for both: TreatWarningsAsErrors lives in src/Directory.Build.props, so the two
+      # lanes cannot disagree about what compiles.
+      - name: Restore
+        run: dotnet restore src/AiOrchestrator.slnx
+
       - name: Build
-        run: dotnet build src/AiOrchestrator.slnx --configuration Release
+        run: dotnet build src/AiOrchestrator.slnx --configuration Release --no-restore
 
       - name: Install Playwright browsers
         run: >-
