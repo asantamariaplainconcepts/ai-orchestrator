@@ -1,4 +1,4 @@
-import { UserRound } from "lucide-react";
+import { UserRound, UserRoundPlus } from "lucide-react";
 import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
@@ -215,14 +215,35 @@ function Connector({
   );
 
   return (
-    <div className="flex w-48 shrink-0 flex-col items-center gap-2 self-stretch px-3 py-2">
+    // Two states, two widths, because they need different things. A connected step needs one
+    // control and appears between every pair, so its width is paid once per step and comes
+    // straight out of how much of the chain fits on screen (#136's density criterion) — it gets
+    // an icon and stays thin. An open gap has to offer a choice of destinations, and it appears
+    // at most where a person is required, so it can afford the room a select needs.
+    // Full width when the flow stacks vertically, where there is no chain to compete with.
+    <div
+      className={cn(
+        "flex w-full shrink-0 flex-col items-center gap-2 self-stretch py-2",
+        connected ? "px-2 xl:w-16" : "px-3 xl:w-48",
+      )}
+    >
       {/* The rule stands between one step and the next, broken in the middle by what it means:
           a way to require a person, or the person who is already required. */}
       <div aria-hidden="true" className={rule} />
 
       {connected ? (
-        <Button variant="ghost" size="sm" type="button" onClick={onDisconnect}>
-          {t("canvas.disconnect")}
+        // The sentence becomes the accessible name rather than a line of wrapped text: one
+        // action, and the icon carries it. Still an explicit control — the spec asks that no
+        // gesture be drag-only, not that every control spell itself out in prose.
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          onClick={onDisconnect}
+          aria-label={t("canvas.disconnect")}
+          title={t("canvas.disconnect")}
+        >
+          <UserRoundPlus className="size-4" aria-hidden="true" />
         </Button>
       ) : (
         <div className="flex w-full flex-col items-center gap-1.5">
