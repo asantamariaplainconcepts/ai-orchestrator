@@ -1637,3 +1637,25 @@ times in the project this framework came from.
 - **ADR:** none new. The claim-without-reading shape is now at four occurrences in one session and is
   worth graduating next time it appears — the check would be that a claim about existing behaviour
   cites the file and line where that behaviour lives.
+
+## 2026-07-29 — live-conversation-decision
+
+- **Worked:** the decision fell out of rules already locked, so no spike was needed and the ADR could
+  say why. BR-006 says a human wait is untimed; DEC-013 says nothing idles; a paid process waiting on
+  an untimed wait has no cost bound. That is an argument, not a measurement, and recognising it saved
+  proposing an experiment whose result would not have changed the answer. Recording the rejected
+  options mattered as much as the choice — the hybrid is explicitly the option to revisit *if* (a)
+  proves slow and OPN-002 closes, which is a condition somebody can check rather than a door quietly
+  shut.
+- **Didn't:** the analysis nearly skipped the prerequisite. The decision reads as "no new
+  architecture", which is true and made it easy to miss that the Connector cannot post a comment
+  today — it reads comments and writes labels and state. A decision that looks free because it changes
+  no architecture can still owe a slice, and naming it is part of closing the question honestly.
+- **Next time:** when a decision claims "nothing new is needed", list the seams the chosen path
+  touches and check each one does what the path assumes. Here it was one method that does not exist.
+- **Time invested:** not measured (source: **manual** — sixty-sixth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** [ADR-0008](../adr/0008-a-live-conversation-costs-a-pass-per-message.md) — a live
+  conversation costs a pass per message, because an untimed wait cannot idle. Closes OPN-005 as
+  DEC-055.
