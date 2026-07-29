@@ -464,6 +464,9 @@ function ConnectorPanel({
   const [repository, setRepository] = useState(connector?.repository ?? "");
   const [secretName, setSecretName] = useState(connector?.secretName ?? "");
   const [codeRepository, setCodeRepository] = useState(connector?.codeRepository ?? "");
+  // Where this project keeps its prompt files (#150). Blank means the convention, so the
+  // placeholder shows the default rather than pre-filling a value nobody chose.
+  const [promptDirectory, setPromptDirectory] = useState(connector?.promptDirectory ?? "");
 
   // Pasting is the default (#124), because the operator who already manages secrets knows to
   // switch and the first-time user does not know a vault exists. A Connector whose secret this
@@ -499,6 +502,7 @@ function ConnectorPanel({
         accessToken: pasting ? accessToken : null,
         vendor,
         codeRepository: needsCodeRepository && codeRepository.trim() ? codeRepository : null,
+        promptDirectory: promptDirectory.trim() ? promptDirectory.trim() : null,
       },
       {
         onSuccess: () => {
@@ -634,6 +638,16 @@ function ConnectorPanel({
                   />
                 </div>
               ) : null}
+              {/* Every vendor has one: prompts live in the repository whatever hosts it. */}
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="prompt-directory">{t("connector.promptDirectory")}</Label>
+                <Input
+                  id="prompt-directory"
+                  value={promptDirectory}
+                  onChange={(event) => setPromptDirectory(event.target.value)}
+                  placeholder={t("connector.promptDirectoryPlaceholder")}
+                />
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -653,6 +667,7 @@ function ConnectorPanel({
             {needsCodeRepository ? (
               <p className="text-xs text-muted-foreground">{t("connector.codeRepositoryHint")}</p>
             ) : null}
+            <p className="text-xs text-muted-foreground">{t("connector.promptDirectoryHint")}</p>
 
             {configure.isError && (
               <p className="text-sm text-destructive" role="alert">

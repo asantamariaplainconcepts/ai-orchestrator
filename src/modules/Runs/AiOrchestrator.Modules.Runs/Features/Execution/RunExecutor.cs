@@ -705,6 +705,71 @@ sealed class RunExecutor(
             : new Outcome(agentResult);
     }
 
+    /// <summary>
+    /// The project's own prompt (#150): read live, frontmatter dropped, and refused before the agent
+    /// if there is nothing to send. Both refusals name the <b>resolved</b> path, so a misconfigured
+    /// prompts directory gives itself away instead of looking like a missing file (design D6).
+    /// </summary>
+    async Task<(string? Body, string? Failure)> RepositoryPrompt(
+        Guid projectId,
+        AutomationDetail automation,
+        CancellationToken cancellationToken
+    )
+    {
+        var document = await documents.ReadPrompt(
+            projectId,
+            automation.RubricPath ?? string.Empty,
+            cancellationToken
+        );
+
+        if (document.Failure is not null)
+        {
+            return (null, document.Failure);
+        }
+
+        var body = StripFrontmatter(document.Content ?? string.Empty);
+
+        // An empty prompt is a configuration mistake, not an instruction. Sending it would spend a
+        // pass to ask an agent nothing, and no fallback is substituted: an Automation told to run the
+        // repository's prompt either runs it or stops (design D4).
+        return body.Length == 0
+            ? (
+                null,
+                $"The prompt at '{document.ResolvedPath}' has no body once its frontmatter is removed."
+            )
+            : (body, null);
+    }
+
+    /// <summary>
+    /// Drops a leading YAML frontmatter block. That block is how <i>another</i> runner is told what to
+    /// do with the file, and this product's wiring is the Automation — so honouring a
+    /// <c>model:</c> line would let a file in somebody's repository choose what this product spends,
+    /// and a <c>tools:</c> line would let it grant itself powers the Automation withheld.
+    /// </summary>
+    internal static string StripFrontmatter(string content)
+    {
+        var lines = content.Replace("\r\n", "\n").Split('\n');
+        var opening = Array.FindIndex(lines, line => line.Trim().Length > 0);
+
+        if (opening < 0 || lines[opening].Trim() != "---")
+        {
+            return content.Trim();
+        }
+
+        for (var index = opening + 1; index < lines.Length; index++)
+        {
+            if (lines[index].Trim() is "---" or "...")
+            {
+                return string.Join('\n', lines.Skip(index + 1)).Trim();
+            }
+        }
+
+        // An opening delimiter that never closes is not frontmatter. Treating it as such would
+        // swallow the entire file and then refuse it as empty — a confusing lie about a file whose
+        // real problem is a missing '---'.
+        return content.Trim();
+    }
+
     static string StripMarker(string body)
     {
         var lines = body.Split('\n');
@@ -727,20 +792,41 @@ sealed class RunExecutor(
         CancellationToken cancellationToken
     )
     {
-        var instruction = automation.Action switch
+        // The repository prompt is read before the switch, because this instruction does not exist
+        // until a document has been fetched — and both of its refusals must land before any money is
+        // spent (design D4). Everything after this point is the path the catalogue actions take.
+        string? repositoryPrompt = null;
+        if (automation.Action == "RepositoryPrompt")
         {
-            "RefineOrComment" =>
-                "Analyse the following story and reply with refinement questions, analysis, or "
-                    + "a draft of its acceptance criteria. Your whole reply becomes a comment on "
-                    + $"the story, so write it for its readers.\n\n{context}",
-            "TransitionState" =>
-                "Decide what state the following story should be in and reply with ONLY that "
-                    + $"state as a single word.\n\n{context}",
-            "Estimate" =>
-                "Estimate the following story in story points and reply with the number first, "
-                    + $"then one short paragraph explaining it.\n\n{context}",
-            _ => string.Empty,
-        };
+            var (body, refusal) = await RepositoryPrompt(
+                run.ProjectId,
+                automation,
+                cancellationToken
+            );
+            if (refusal is not null)
+            {
+                return Failure(refusal);
+            }
+
+            repositoryPrompt = $"{body}\n\n{context}";
+        }
+
+        var instruction =
+            repositoryPrompt
+            ?? automation.Action switch
+            {
+                "RefineOrComment" =>
+                    "Analyse the following story and reply with refinement questions, analysis, or "
+                        + "a draft of its acceptance criteria. Your whole reply becomes a comment on "
+                        + $"the story, so write it for its readers.\n\n{context}",
+                "TransitionState" =>
+                    "Decide what state the following story should be in and reply with ONLY that "
+                        + $"state as a single word.\n\n{context}",
+                "Estimate" =>
+                    "Estimate the following story in story points and reply with the number first, "
+                        + $"then one short paragraph explaining it.\n\n{context}",
+                _ => string.Empty,
+            };
 
         if (instruction.Length == 0)
         {
@@ -797,6 +883,15 @@ sealed class RunExecutor(
                 cancellationToken
             ),
             "Estimate" => await Estimate(run, answer, cancellationToken),
+            // One comment, and that is the whole safety argument for running a prompt this product
+            // did not write: what it can ask for is unbounded, what it can do is decided here
+            // (design D3).
+            "RepositoryPrompt" => await storyWriter.AddComment(
+                run.ProjectId,
+                run.VendorStoryId,
+                answer,
+                cancellationToken
+            ),
             _ => "Unreachable.",
         };
 

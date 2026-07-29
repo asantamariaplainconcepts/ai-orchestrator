@@ -1706,3 +1706,30 @@ times in the project this framework came from.
 - **ADR:** [ADR-0009](../adr/0009-a-claim-about-existing-behaviour-cites-where-it-lives.md) — a claim
   about existing behaviour cites where that behaviour lives. Sibling to ADR-0007: that one governs the
   edit, this one governs the sentence.
+
+## 2026-07-29 — repo-defined-actions
+
+- **Worked:** the safety argument shaped the design instead of being bolted onto it. Frontmatter is
+  ignored because a `model:` line would let a file in somebody's repository choose what this product
+  spends and a `tools:` line would let it grant itself powers the Automation withheld; the write surface
+  is one comment because the prompt is untrusted text that may ask for anything. Both are stated in the
+  spec so a later reader cannot mistake them for omissions. ADR-0009 also paid for itself twice here:
+  the executor's action routing turned out to be an *exclusion* list, so the new action reached
+  `RunSimpleAction` without an edit — checked, not assumed — and asking what a `/`-only traversal check
+  would miss produced the backslash cases the tests now cover.
+- **Didn't:** asked whether the issue had changed, and answered from a proxy — comment count and
+  `updatedAt` — without reading the body. The body already specified the prompts directory, so the
+  proposal was validated, committed, pushed and reported as complete while missing scope its own issue
+  named. ADR-0009 was one day old and its exact failure mode, applied to an artifact instead of code.
+  Two smaller ones the same shape: an edit called a `RunAgent` method that does not exist (ADR-0007's
+  case), and a fourth positional parameter on `ConnectorContext` broke three `Deconstruct` sites that
+  have no use for a prompts directory — both caught by the compiler, which is the cheap end.
+- **Next time:** when the question is *"did this change?"*, read the thing, not its metadata. A comment
+  count, an `updatedAt`, an empty check rollup — each is a fact about the artifact that is not the
+  artifact, and each reads as reassurance.
+- **Time invested:** not measured (source: **manual** — sixty-ninth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. This is [ADR-0009](../adr/0009-a-claim-about-existing-behaviour-cites-where-it-lives.md)'s
+  rule reaching past code and vendors to the issue itself, not a second pattern. If a proxy is trusted
+  over the artifact once more, it graduates on the next occurrence rather than this one.

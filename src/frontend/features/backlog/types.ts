@@ -10,6 +10,7 @@ export interface ConnectorView {
   secretSetAt: string | null;
   /** Only Azure DevOps needs this: on GitHub the backlog and the code are the same repository. */
   codeRepository: string | null;
+  promptDirectory: string | null;
   lastSyncedAt: string | null;
   /** Non-null means the last poll failed — which is a different fact from "no Stories". */
   lastFailure: string | null;
@@ -54,6 +55,7 @@ export interface ConfigureConnectorRequest {
   accessToken: string | null;
   vendor: BacklogVendor;
   codeRepository: string | null;
+  promptDirectory: string | null;
 }
 
 /** UC-022's detail read — the body arrives verbatim and is sanitised at render (design D2). */

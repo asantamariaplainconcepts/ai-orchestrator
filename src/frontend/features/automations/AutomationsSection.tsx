@@ -42,8 +42,12 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [rubricPath, setRubricPath] = useState("");
   const [outputLabel, setOutputLabel] = useState("");
 
-  // Only the grill converses with a rubric; that field would be noise on every other action.
+  // Two actions read a document the project owns, and they read a different one: the grill its
+  // readiness bar, the repository prompt its instruction. One field, relabelled — a second input
+  // would suggest an Automation could carry both, and it cannot.
   const isGrill = action === "GrillToReady";
+  const isRepositoryPrompt = action === "RepositoryPrompt";
+  const namesADocument = isGrill || isRepositoryPrompt;
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -58,7 +62,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         runtime,
         requiresApproval,
         timeoutMinutes: null,
-        rubricPath: isGrill && rubricPath.trim() ? rubricPath.trim() : null,
+        rubricPath: namesADocument && rubricPath.trim() ? rubricPath.trim() : null,
         outputLabel: outputLabel.trim() ? outputLabel.trim() : null,
       },
       {
@@ -258,15 +262,29 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                 {/* Only the grill converses with a rubric; the field would be noise elsewhere.
                     The output label is every action's, since #115 — chaining is a property of
                     the model now, not of the grill. */}
-                {isGrill ? (
+                {namesADocument ? (
                   <div className="flex flex-col gap-2">
-                    <Label htmlFor="rubric-path">{t("automations.rubricPath")}</Label>
+                    <Label htmlFor="rubric-path">
+                      {isRepositoryPrompt
+                        ? t("automations.promptFile")
+                        : t("automations.rubricPath")}
+                    </Label>
                     <Input
                       id="rubric-path"
                       value={rubricPath}
                       onChange={(event) => setRubricPath(event.target.value)}
-                      placeholder={t("automations.rubricPathPlaceholder")}
+                      placeholder={
+                        isRepositoryPrompt
+                          ? t("automations.promptFilePlaceholder")
+                          : t("automations.rubricPathPlaceholder")
+                      }
                     />
+                    {/* A name, not a path: the directory is the project's, on the Settings tab. */}
+                    {isRepositoryPrompt ? (
+                      <p className="text-xs text-muted-foreground">
+                        {t("automations.promptFileHint")}
+                      </p>
+                    ) : null}
                   </div>
                 ) : null}
                 <div className="flex flex-col gap-2">

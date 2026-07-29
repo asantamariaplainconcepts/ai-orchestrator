@@ -51,7 +51,10 @@ sealed class ConnectorAccess(
                 implementation,
                 new BacklogCoordinates(connector.Owner, connector.Repository),
                 token
-            );
+            )
+            {
+                PromptDirectory = connector.PromptDirectory,
+            };
         }
         catch (SecretNotFoundException)
         {
@@ -65,4 +68,12 @@ sealed record ConnectorContext(
     IBacklogConnector Connector,
     BacklogCoordinates Coordinates,
     string Token
-);
+)
+{
+    /// <summary>
+    /// Where this project's prompts live, or null for the convention (#150). Deliberately not a
+    /// positional parameter: three call sites deconstruct this record, and widening the deconstruction
+    /// would have made every one of them mention a directory it has no use for.
+    /// </summary>
+    public string? PromptDirectory { get; init; }
+}
