@@ -1533,3 +1533,26 @@ times in the project this framework came from.
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
 - **ADR:** none new; the two slips are ADR-0007's territory and it already names the check.
+
+## 2026-07-29 — drag-the-human-step
+
+- **Worked:** the owner's correction landed before any code existed, and it was a correction of
+  meaning rather than of wording. The first proposal had the block write `requiresApproval` on the
+  following step; the block is actually the *previous* step's output label going away, because what
+  a person reviews is what a step produced — "to call a proposal good, somebody has to approve it".
+  Both waits already existed in the product and the canvas already drew them apart; the proposal
+  fused them. Catching it at propose cost a rewrite of three files instead of an implementation.
+- **Didn't:** two things I could not assert and one I nearly claimed anyway. Playwright cannot drive
+  an HTML5 drag and there is no frontend unit runner, so the gesture itself has no tier. The
+  temptation was to write a test that clicks something adjacent and call it covered. What actually
+  fixed it was routing the explicit control through the same function as the drop, so the assertable
+  path and the unassertable one are one path — but that only occurred to me after writing the test
+  and finding it proved nothing about `placeBlock`.
+- **Next time:** when a gesture cannot be driven by any tier this repository has, do not look for a
+  test that approximates it. Make the gesture a caller of something that can be driven, and say in
+  the evidence which part remains unasserted.
+- **Time invested:** not measured (source: **manual** — sixty-second consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. If a second gesture turns out to be undrivable, "an untestable gesture must be
+  sugar over a tested path" is the shape that would graduate.
