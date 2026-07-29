@@ -246,6 +246,13 @@ export const en = {
   // The board (#110): dropping a card into a column IS applying its trigger label (UC-008).
   "board.showBoard": "Board view",
   "board.showList": "List view",
+  // The wait given a place (#128): a step finished and nobody has carried the work on.
+  "board.human": "Waiting for a person",
+  "board.requirePerson": "Require a person after this step",
+  "board.human.empty": "Nothing waiting here.",
+  "board.human.hint":
+    "This step hands work to nobody, so a person decides whether it continues. Give it an output label on the Automations tab to close the chain.",
+  "board.waitedFor": "waiting",
   "board.untouched": "Untouched",
   "board.columnEmpty": "Nothing here.",
   "board.moveTo": "Move to\u2026",
