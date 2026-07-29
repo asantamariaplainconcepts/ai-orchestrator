@@ -16,9 +16,14 @@ emit its output as a single document at exit, because a log that arrives only wh
 not observable while the work happens, whatever the read endpoint does.
 
 Where a runtime emits a stream of events rather than one document, its result — success, the reply, and
-the usage — SHALL be read from the stream's terminal result event. A parser that reads the whole stream
-as one document SHALL NOT be relied on, because with a stream it fails, and a failure to parse output
-SHALL NOT be reported as a failure of the Run's work.
+the usage — SHALL be read from the stream's terminal result event, not by parsing the whole stream as
+one document.
+
+A stream carrying **no** terminal result event SHALL fail the Run with the raw streams as evidence,
+because the product cannot then say what the agent did, and the reply of a simple action becomes a
+comment on somebody's Story — a Run reported as successful whose reply is raw stream text would publish
+that. A missing **usage block inside** a result event SHALL remain unknown on an otherwise successful
+Run: only the absent result event is a broken contract.
 
 #### Scenario: the log grows during execution
 
@@ -51,7 +56,14 @@ SHALL NOT be reported as a failure of the Run's work.
 - **THEN** the reply and the usage come from the terminal result event, and the Run is recorded as
   succeeded
 
-#### Scenario: an unrecognised terminal event costs the usage, not the Run
+#### Scenario: no terminal event is a broken contract
 
-- **WHEN** no terminal result event can be read from a stream whose process exited successfully
-- **THEN** the Run's usage reads unknown and its outcome is still taken from the exit code
+- **WHEN** no terminal result event can be read from a stream, even though the process exited
+  successfully
+- **THEN** the Run fails with the raw streams as evidence, rather than being reported as succeeded with
+  stream text as its reply
+
+#### Scenario: a result event with no usage block
+
+- **WHEN** a terminal result event carries a reply but no readable usage
+- **THEN** the Run succeeds with that reply and its usage reads unknown

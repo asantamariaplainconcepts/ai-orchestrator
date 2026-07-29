@@ -37,7 +37,14 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
     {
         var outcome = await HeadlessProcess.Run(
             CommandPath,
-            ["-p", instruction.Prompt, "--output-format", "json"],
+            // stream-json rather than json (#130): `json` prints one document when the process exits,
+            // so the live window stayed empty for the whole Run and then filled with one unbroken
+            // line. `--verbose` is what makes the CLI emit the intermediate events at all.
+            //
+            // This flag and Parse below are ONE change. `json` bought a single well-formed document,
+            // and the parser was built on it — swapping the flag alone makes that parse throw, and the
+            // catch reports a perfectly good Run as a failure.
+            ["-p", instruction.Prompt, "--output-format", "stream-json", "--verbose"],
             instruction.WorkspacePath,
             new Dictionary<string, string>
             {
@@ -67,28 +74,19 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
 
     AgentResult Parse(int exitCode, string stdout, string stderr)
     {
-        try
-        {
-            using var document = JsonDocument.Parse(stdout);
-            var root = document.RootElement;
+        var terminal = TerminalResult(stdout);
 
-            var isError =
-                root.TryGetProperty("is_error", out var errorFlag) && errorFlag.GetBoolean();
-            var log = root.TryGetProperty("result", out var result)
-                ? (result.GetString() ?? string.Empty)
-                : stdout;
-
-            return new AgentResult(
-                Succeeded: exitCode == 0 && !isError,
-                Log: log,
-                OutputLink: null,
-                Usage: ParseUsage(root)
-            );
-        }
-        catch (JsonException)
+        if (terminal is null)
         {
-            // Unreadable output is a failed contract, and saying so beats guessing. The raw
-            // streams are the only evidence there is.
+            // A stream with no terminal result event means this parser cannot say what happened, and
+            // the pre-existing judgement stands: unreadable output is a failed contract, and saying so
+            // beats guessing. Trusting the exit code here would be worse than it looks — the Log of a
+            // simple action becomes a comment on somebody's Story, so a "success" carrying raw stream
+            // text would publish it. Failing loudly after a CLI change costs a Run; the alternative
+            // writes noise into a customer's backlog.
+            //
+            // Note what this is NOT: a miss on the usage *block* inside a result event still degrades
+            // to unknown (BR-011). Only a missing result event is fatal.
             RuntimeLog.UnparseableOutput(logger, exitCode);
             return new AgentResult(
                 Succeeded: false,
@@ -97,6 +95,62 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
                 Usage: null
             );
         }
+
+        using var document = terminal;
+        var root = document.RootElement;
+
+        var isError = root.TryGetProperty("is_error", out var errorFlag) && errorFlag.GetBoolean();
+        var log = root.TryGetProperty("result", out var result)
+            ? (result.GetString() ?? string.Empty)
+            : stdout;
+
+        return new AgentResult(
+            Succeeded: exitCode == 0 && !isError,
+            Log: log,
+            OutputLink: null,
+            Usage: ParseUsage(root)
+        );
+    }
+
+    /// <summary>
+    /// The stream's own summary: the last line that parses as an object carrying
+    /// <c>type: "result"</c>. Last rather than first, because the terminal one is the one whose usage
+    /// is the total. Returns null when there is none — every caller treats that as unknown, never as
+    /// a failure.
+    /// </summary>
+    static JsonDocument? TerminalResult(string stdout)
+    {
+        foreach (var line in stdout.Split('\n', StringSplitOptions.TrimEntries).Reverse())
+        {
+            if (line.Length == 0)
+            {
+                continue;
+            }
+
+            JsonDocument candidate;
+            try
+            {
+                candidate = JsonDocument.Parse(line);
+            }
+            catch (JsonException)
+            {
+                // A stream carries lines this parser has no opinion about; skipping one is normal.
+                continue;
+            }
+
+            if (
+                candidate.RootElement.ValueKind == JsonValueKind.Object
+                && candidate.RootElement.TryGetProperty("type", out var type)
+                && type.ValueEquals("result")
+            )
+            {
+                return candidate;
+            }
+
+            candidate.Dispose();
+        }
+
+        return null;
     }
 
     static AgentUsage? ParseUsage(JsonElement root)
