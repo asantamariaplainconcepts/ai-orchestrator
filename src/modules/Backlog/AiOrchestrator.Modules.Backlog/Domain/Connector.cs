@@ -82,6 +82,20 @@ sealed class Connector : Aggregate
 
     public void UseCodeRepository(string? repository) => CodeRepository = repository;
 
+    /// <summary>
+    /// Where the project's prompt files live inside the repository — the same kind of fact as
+    /// <see cref="CodeRepository"/>, one level in (#150, design D6). Null means the default, so a
+    /// project that configures nothing still resolves prompt names.
+    /// <para>
+    /// Held once here rather than on each Automation: a team that moves its prompts changes one
+    /// field, and every Automation follows on its next Run because the file is read live and no copy
+    /// was ever kept.
+    /// </para>
+    /// </summary>
+    public string? PromptDirectory { get; private set; }
+
+    public void UsePromptDirectory(string? directory) => PromptDirectory = directory;
+
     public static Connector Create(
         Guid projectId,
         BacklogVendor vendor,

@@ -44,7 +44,8 @@ sealed class ConfigureConnector : IUseCase
                         request.SecretName,
                         request.Vendor,
                         request.CodeRepository,
-                        request.AccessToken
+                        request.AccessToken,
+                        request.PromptDirectory
                     );
                     var result = await sender.Send(command, cancellationToken);
 
@@ -66,7 +67,8 @@ sealed class ConfigureConnector : IUseCase
         string? SecretName = null,
         string? Vendor = null,
         string? CodeRepository = null,
-        string? AccessToken = null
+        string? AccessToken = null,
+        string? PromptDirectory = null
     );
 
     /// <summary>
@@ -80,7 +82,8 @@ sealed class ConfigureConnector : IUseCase
         string Repository,
         string SecretName,
         string? CodeRepository,
-        DateTimeOffset? SecretSetAt
+        DateTimeOffset? SecretSetAt,
+        string? PromptDirectory
     );
 
     internal sealed record Command(
@@ -90,7 +93,8 @@ sealed class ConfigureConnector : IUseCase
         string? SecretName = null,
         string? Vendor = null,
         string? CodeRepository = null,
-        string? AccessToken = null
+        string? AccessToken = null,
+        string? PromptDirectory = null
     ) : ICommand<ErrorOr<Response>>;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -134,6 +138,12 @@ sealed class ConfigureConnector : IUseCase
             RuleFor(command => command.CodeRepository!)
                 .MaximumLength(200)
                 .When(command => command.CodeRepository is not null);
+
+            // The prompts directory is a repository path, not a name: length is all this can check,
+            // because whether it exists is only knowable at the moment a prompt is read (#150).
+            RuleFor(command => command.PromptDirectory!)
+                .MaximumLength(200)
+                .When(command => command.PromptDirectory is not null);
         }
     }
 
@@ -253,6 +263,14 @@ sealed class ConfigureConnector : IUseCase
                 string.IsNullOrWhiteSpace(command.CodeRepository) ? null : command.CodeRepository
             );
 
+            // Blank clears it back to the default rather than storing "", so one value means one
+            // thing: null is "wherever prompts live by convention" (design D6).
+            connector.UsePromptDirectory(
+                string.IsNullOrWhiteSpace(command.PromptDirectory)
+                    ? null
+                    : command.PromptDirectory.Trim().Trim('/')
+            );
+
             await database.SaveChangesAsync(cancellationToken);
 
             return new Response(
@@ -262,7 +280,8 @@ sealed class ConfigureConnector : IUseCase
                 connector.Repository,
                 connector.SecretName,
                 connector.CodeRepository,
-                connector.SecretSetAt
+                connector.SecretSetAt,
+                connector.PromptDirectory
             );
         }
     }

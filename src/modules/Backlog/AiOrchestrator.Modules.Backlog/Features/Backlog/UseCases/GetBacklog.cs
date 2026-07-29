@@ -35,6 +35,8 @@ sealed class GetBacklog : IUseCase
         /// <summary>When the product itself stored the token (#124); null when it did not.</summary>
         DateTimeOffset? SecretSetAt,
         string? CodeRepository,
+        /// <summary>Where prompts live, or null for the convention (#150).</summary>
+        string? PromptDirectory,
         DateTimeOffset? LastSyncedAt,
         string? LastFailure,
         DateTimeOffset? LastFailureAt
@@ -64,6 +66,7 @@ sealed class GetBacklog : IUseCase
                     entity.SecretName,
                     entity.SecretSetAt,
                     entity.CodeRepository,
+                    entity.PromptDirectory,
                     entity.LastSyncedAt,
                     entity.LastFailure,
                     entity.LastFailureAt

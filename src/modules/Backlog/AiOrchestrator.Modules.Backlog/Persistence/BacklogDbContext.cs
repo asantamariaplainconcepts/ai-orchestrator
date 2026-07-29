@@ -20,6 +20,7 @@ sealed class BacklogDbContext(DbContextOptions<BacklogDbContext> options) : DbCo
             connector.ToTable("connectors");
             connector.Property(entity => entity.WebhookSecretName).HasMaxLength(200);
             connector.Property(entity => entity.CodeRepository).HasMaxLength(200);
+            connector.Property(entity => entity.PromptDirectory).HasMaxLength(200);
             connector.HasKey(entity => entity.Id);
             // One Connector per Project — enforced by the database, not only by the handler.
             connector.HasIndex(entity => entity.ProjectId).IsUnique();
