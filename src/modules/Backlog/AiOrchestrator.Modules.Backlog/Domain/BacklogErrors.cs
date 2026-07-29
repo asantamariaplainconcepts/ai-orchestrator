@@ -40,6 +40,20 @@ static class BacklogErrors
     public static Error SecretNotFound(string secretName) =>
         Error.Validation("Connector.SecretNotFound", $"No secret named '{secretName}' was found.");
 
+    /// <summary>
+    /// The vendor answered, and the answer was "this credential may not do that" (#132, design
+    /// D3). Distinct from <see cref="VendorUnavailable"/>, which claims the vendor could not be
+    /// reached — false whenever it replied, and the sentence that made a missing Contents
+    /// permission take twenty minutes to diagnose. The vendor's own words travel with it because
+    /// GitHub says "Resource not accessible by personal access token" and no paraphrase improves
+    /// on that.
+    /// </summary>
+    public static Error PermissionRefused(string capability, string vendorReason) =>
+        Error.Validation(
+            "Connector.PermissionRefused",
+            $"The vendor refused this credential for {capability}: {vendorReason}"
+        );
+
     public static Error VendorUnavailable(string detail) =>
         Error.Failure("Connector.VendorUnavailable", $"The vendor could not be reached: {detail}");
 

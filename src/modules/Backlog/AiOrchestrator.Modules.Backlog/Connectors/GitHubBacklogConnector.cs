@@ -20,22 +20,77 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
     /// </summary>
     internal const string DefaultLabelColour = "ededed";
 
-    public async Task<ErrorOr<Success>> VerifyAccess(
+    public async Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
+        string documentPath,
         string token,
         CancellationToken cancellationToken
     )
     {
         var client = clientFactory.Create(token);
 
+        // The reads this product performs, made early (design D1). Repository.Get used to stand in
+        // for all of them and proved only that the coordinates resolve — it succeeds on the
+        // metadata permission every fine-grained token is created with, which is how a credential
+        // refused the repository's contents was stored as verified.
+        var stories = await Probe(
+            Capabilities.Stories,
+            coordinates,
+            () =>
+                client.Issue.GetAllForRepository(
+                    coordinates.Owner,
+                    coordinates.Repository,
+                    new RepositoryIssueRequest { State = ItemStateFilter.Open },
+                    new ApiOptions { PageSize = 1, PageCount = 1 }
+                )
+        );
+
+        var documents = await Probe(
+            Capabilities.Documents,
+            coordinates,
+            () =>
+                client.Repository.Content.GetAllContentsByRef(
+                    coordinates.Owner,
+                    coordinates.Repository,
+                    documentPath,
+                    "HEAD"
+                ),
+            // Absence is not refusal (design D6): a path that does not exist says this repository
+            // has not adopted the framework's layout, not that we may not look. Refusing those
+            // would refuse almost every repository this product is pointed at.
+            absenceIsSuccess: true
+        );
+
+        return CredentialVerdict.Of(stories, documents);
+    }
+
+    /// <summary>
+    /// One capability, attempted for real. Nothing is inferred from declared scopes — GitHub
+    /// exposes those unevenly between classic and fine-grained tokens, so a check built on them
+    /// would be reliable for one kind of credential and misleading for the other.
+    /// </summary>
+    async Task<CapabilityResult> Probe<T>(
+        string capability,
+        BacklogCoordinates coordinates,
+        Func<Task<T>> call,
+        bool absenceIsSuccess = false
+    )
+    {
         try
         {
-            await client.Repository.Get(coordinates.Owner, coordinates.Repository);
-            return Result.Success;
+            await call();
+            return CapabilityResult.Passed(capability);
+        }
+        catch (NotFoundException) when (absenceIsSuccess)
+        {
+            return CapabilityResult.Passed(capability);
         }
         catch (Exception exception)
         {
-            return Translate(exception, coordinates);
+            return CapabilityResult.Refused(
+                capability,
+                Translate(exception, coordinates, capability)
+            );
         }
     }
 
@@ -512,7 +567,11 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
     /// indistinguishable from one that does not exist — so that case is reported as coordinates,
     /// and the message says both possibilities out loud rather than guessing.
     /// </summary>
-    static Error Translate(Exception exception, BacklogCoordinates coordinates) =>
+    static Error Translate(
+        Exception exception,
+        BacklogCoordinates coordinates,
+        string capability = "this repository"
+    ) =>
         exception switch
         {
             AuthorizationException => BacklogErrors.CredentialRejected("(supplied credential)"),
@@ -520,14 +579,38 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
                 coordinates.Owner,
                 coordinates.Repository
             ),
+            // Before the generic ApiException arm, and that ordering is the fix: a rate limit is a
+            // 403 too, and it is the one 403 that is not about permissions.
             RateLimitExceededException => BacklogErrors.VendorUnavailable(
                 "the API rate limit was exceeded"
+            ),
+            // A vendor that answered is not a vendor that could not be reached (#132, design D3).
+            // Octokit's ForbiddenException lands here, and its message carries GitHub's own
+            // sentence — "Resource not accessible by personal access token" — which names the
+            // missing permission far better than a status code does.
+            ForbiddenException forbidden => BacklogErrors.PermissionRefused(
+                capability,
+                Reason(forbidden)
             ),
             ApiException api => BacklogErrors.VendorUnavailable(
                 $"the API returned {api.StatusCode}"
             ),
             _ => BacklogErrors.VendorUnavailable(exception.Message),
         };
+
+    /// <summary>
+    /// The vendor's own words, preferring the API's message over the exception's. An empty one
+    /// falls back to saying so rather than to an empty sentence.
+    /// </summary>
+    static string Reason(ApiException exception)
+    {
+        var message = exception.ApiError?.Message;
+        return string.IsNullOrWhiteSpace(message)
+            ? string.IsNullOrWhiteSpace(exception.Message)
+                ? "the vendor gave no reason"
+                : exception.Message
+            : message;
+    }
 }
 
 /// <summary>

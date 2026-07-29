@@ -170,11 +170,20 @@ sealed class StubBacklogConnector : IBacklogConnector
                 ])
             );
 
-    public Task<ErrorOr<Success>> VerifyAccess(
+    // These tests never configure a Connector through the API, so the verdict is uniformly a pass
+    // (#132). What they exercise is execution, and a credential question there would be noise.
+    public Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
+        string documentPath,
         string token,
         CancellationToken cancellationToken
-    ) => Task.FromResult<ErrorOr<Success>>(Result.Success);
+    ) =>
+        Task.FromResult(
+            CredentialVerdict.Of(
+                CapabilityResult.Passed(Capabilities.Stories),
+                CapabilityResult.Passed(Capabilities.Documents)
+            )
+        );
 
     public Task<ErrorOr<BacklogSnapshot>> FetchStories(
         BacklogCoordinates coordinates,

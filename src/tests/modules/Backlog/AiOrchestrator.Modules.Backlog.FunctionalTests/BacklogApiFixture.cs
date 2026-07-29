@@ -91,6 +91,9 @@ sealed class StubBacklogConnector : IBacklogConnector
         VerifyError = null;
         FetchError = null;
         VerifiedToken = null;
+        StoriesRefusal = null;
+        DocumentsRefusal = null;
+        ProbedDocumentPath = null;
         WriteError = null;
         Comments.Clear();
         WriteStateError = null;
@@ -154,15 +157,38 @@ sealed class StubBacklogConnector : IBacklogConnector
     /// <summary>The credential the last verification actually used (#124, design D3).</summary>
     public string? VerifiedToken { get; private set; }
 
-    public Task<ErrorOr<Success>> VerifyAccess(
+    /// <summary>Refuses the Stories capability when set (#132).</summary>
+    public Error? StoriesRefusal { get; set; }
+
+    /// <summary>Refuses the documents capability when set (#132).</summary>
+    public Error? DocumentsRefusal { get; set; }
+
+    /// <summary>The document path the last probe asked for, so tests can assert D6's shape.</summary>
+    public string? ProbedDocumentPath { get; private set; }
+
+    public Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
+        string documentPath,
         string token,
         CancellationToken cancellationToken
     )
     {
         VerifiedToken = token;
+        ProbedDocumentPath = documentPath;
+
+        // VerifyError stays meaningful: a whole-credential refusal is the Stories one, which is
+        // what every test written before capabilities existed was expressing.
+        var stories = StoriesRefusal ?? VerifyError;
+
         return Task.FromResult(
-            VerifyError is { } error ? ErrorOrFactory.From<Success>([error]) : Result.Success
+            CredentialVerdict.Of(
+                stories is { } first
+                    ? CapabilityResult.Refused(Capabilities.Stories, first)
+                    : CapabilityResult.Passed(Capabilities.Stories),
+                DocumentsRefusal is { } second
+                    ? CapabilityResult.Refused(Capabilities.Documents, second)
+                    : CapabilityResult.Passed(Capabilities.Documents)
+            )
         );
     }
 

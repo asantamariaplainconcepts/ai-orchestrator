@@ -20,6 +20,7 @@ import {
   useBacklog,
   useConfigureConnector,
   useRefreshBacklog,
+  useTestConnector,
   useWriteStoryLabel,
 } from "./useBacklog";
 import { ApiError } from "@/shared/http/client";
@@ -523,6 +524,8 @@ function ConnectorPanel({
           ) : null}
         </div>
 
+        {connector && !editing ? <CredentialTest projectId={projectId} /> : null}
+
         {connector && !editing ? (
           <div className="flex flex-wrap items-center justify-between gap-3">
             <span className="flex flex-wrap items-center gap-2 text-sm">
@@ -663,6 +666,61 @@ function ConnectorPanel({
         ) : null}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * #132 — what the stored credential can actually do, asked on demand. The same probe that gates
+ * saving, so the answer here and the answer at the gate cannot diverge.
+ *
+ * Deliberately not run on mount: it costs live vendor calls, and a permission that can be revoked
+ * at any time makes a cached reassurance worse than none. The Admin asks when they want to know.
+ */
+function CredentialTest({ projectId }: { projectId: string }) {
+  const test = useTestConnector(projectId);
+  const result = test.data ?? null;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Button
+          variant="secondary"
+          type="button"
+          disabled={test.isPending}
+          onClick={() => test.mutate()}
+        >
+          {test.isPending ? t("connector.testing") : t("connector.test")}
+        </Button>
+        {result ? (
+          <span className="text-sm">
+            {result.satisfied ? t("connector.test.satisfied") : t("connector.test.refused")}
+          </span>
+        ) : null}
+      </div>
+
+      {test.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          {(test.error instanceof ApiError && test.error.detail) || t("connector.test.failed")}
+        </p>
+      )}
+
+      {result ? (
+        <ul className="flex flex-col gap-1">
+          {result.capabilities.map((capability) => (
+            <li key={capability.capability} className="flex flex-wrap items-baseline gap-2 text-sm">
+              <Badge variant={capability.succeeded ? "secondary" : "destructive"}>
+                {capability.succeeded ? t("connector.test.ok") : t("connector.test.no")}
+              </Badge>
+              <span>{capability.capability}</span>
+              {/* The vendor's own sentence, which names the missing permission better than we can. */}
+              {capability.reason ? (
+                <span className="text-xs text-muted-foreground">{capability.reason}</span>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 
