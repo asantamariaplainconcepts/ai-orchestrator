@@ -126,6 +126,25 @@ interface LogFrame {
  * top (#106, design D3): both read the same table, so they cannot disagree, and a hub that never
  * connects costs latency and nothing else.
  */
+/**
+ * #145 — the decision UC-026 could not express. Stored rather than derived, because nothing in the
+ * data tells "nobody has decided yet" from "somebody decided not to re-run".
+ */
+export function useDismissFailure(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (runId: string) =>
+      api.post<unknown>(`/api/projects/${projectId}/runs/${runId}/dismiss`, {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["runs", projectId] });
+      // The inbox and its ambient count read the same condition, so both have to refetch.
+      void queryClient.invalidateQueries({ queryKey: ["inbox"] });
+      void queryClient.invalidateQueries({ queryKey: ["pulse", projectId] });
+    },
+  });
+}
+
 export function useRunLog(projectId: string, runId: string) {
   const queryClient = useQueryClient();
   const [live, setLive] = useState(false);

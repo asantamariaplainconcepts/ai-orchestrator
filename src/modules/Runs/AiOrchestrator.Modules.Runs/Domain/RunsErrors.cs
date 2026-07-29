@@ -56,4 +56,14 @@ static class RunsErrors
 
     public static Error RunNotFound(Guid runId) =>
         Error.NotFound("Runs.NotFound", $"Run '{runId}' does not exist.");
+
+    /// <summary>
+    /// Dismissal is a decision about a failure (#145); anything else is a caller who has
+    /// misunderstood, and hearing so beats a silent no-op.
+    /// </summary>
+    public static Error NotAFailure(Guid runId, string state) =>
+        Error.Validation(
+            "Run.NotAFailure",
+            $"Run '{runId}' is {state}, not Failed. Only a failure can be dismissed."
+        );
 }

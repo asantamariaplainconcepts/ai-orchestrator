@@ -1,9 +1,18 @@
 import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
+import { ApiError } from "@/shared/http/client";
 import { t } from "@/shared/i18n";
 import { AppShell } from "@/shared/ui/AppShell";
 import { RunChanges } from "./RunChanges";
-import { formatCost, useCancelRun, useDecideOnPlan, useRuns, useRunLog } from "./useRuns";
+import {
+  formatCost,
+  useCancelRun,
+  useDecideOnPlan,
+  useDismissFailure,
+  useRunLog,
+  useRuns,
+} from "./useRuns";
+import { useRunNow } from "./useRunNow";
 
 /**
  * UC-013's review surface — the page the use case always assumed and #20 did not build. The
@@ -17,6 +26,11 @@ export function RunScreen() {
   const runs = useRuns(projectId, null);
   const decide = useDecideOnPlan(projectId);
   const cancel = useCancelRun(projectId);
+  // #145 — both decisions a failure can carry, where the failure is. Run again goes through the
+  // Run-now path (design D1), so BR-001, BR-002 and the approval gate apply without this screen
+  // knowing they exist.
+  const runAgain = useRunNow(projectId);
+  const dismiss = useDismissFailure(projectId);
 
   const run = runs.data?.find((candidate) => candidate.id === runId);
   const log = useRunLog(projectId, runId);
@@ -54,6 +68,38 @@ export function RunScreen() {
                   {cancel.isPending ? t("run.cancelling") : t("run.cancel")}
                 </button>
               ) : null}
+              {run?.state === "Failed" ? (
+                <>
+                  <button
+                    className="btn btn-primary"
+                    type="button"
+                    disabled={runAgain.isPending}
+                    onClick={() =>
+                      runAgain.mutate({
+                        vendorStoryId: run.vendorStoryId,
+                        automationId: run.automationId,
+                      })
+                    }
+                  >
+                    {runAgain.isPending ? t("run.again.pending") : t("run.again")}
+                  </button>
+                  {run.dismissedAt ? (
+                    <span className="pill pill-neutral">
+                      {t("run.dismissed")} · {formatWhen(run.dismissedAt)}
+                    </span>
+                  ) : (
+                    <button
+                      className="btn"
+                      type="button"
+                      disabled={dismiss.isPending}
+                      title={t("run.dismiss.hint")}
+                      onClick={() => dismiss.mutate(runId)}
+                    >
+                      {dismiss.isPending ? t("run.dismiss.pending") : t("run.dismiss")}
+                    </button>
+                  )}
+                </>
+              ) : null}
               {run ? (
                 <Link className="btn" to={`/projects/${projectId}/stories/${run.vendorStoryId}`}>
                   {t("run.field.story")} #{run.vendorStoryId}
@@ -69,6 +115,21 @@ export function RunScreen() {
             </p>
           )}
           {runs.data && !run && <p className="state">{t("run.notFound")}</p>}
+
+          {/* The API's own reason: a re-run refused by BR-001 must say so in Run now's voice. */}
+          {runAgain.isError && (
+            <p className="state state-error" role="alert">
+              {(runAgain.error instanceof ApiError && runAgain.error.detail) ||
+                t("run.again.failed")}
+            </p>
+          )}
+
+          {dismiss.isError && (
+            <p className="state state-error" role="alert">
+              {(dismiss.error instanceof ApiError && dismiss.error.detail) ||
+                t("run.dismiss.failed")}
+            </p>
+          )}
 
           {cancel.isError && (
             <p className="state state-error" role="alert">

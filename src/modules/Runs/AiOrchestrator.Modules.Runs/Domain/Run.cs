@@ -69,6 +69,13 @@ sealed class Run : Aggregate
     /// </summary>
     public DateTimeOffset? ApprovedAt { get; private set; }
 
+    /// <summary>
+    /// When a human decided this failure needs no re-run (#145). Null means nobody has decided yet,
+    /// and those two are genuinely different states that no query could tell apart — which is why
+    /// this is stored while "a newer Run exists" stays derived (#94's design D2, extended).
+    /// </summary>
+    public DateTimeOffset? DismissedAt { get; private set; }
+
     /// <summary>Set while AwaitingInput; the resume check reads comments from this moment on.</summary>
     public DateTimeOffset? WaitingSince { get; private set; }
 
@@ -167,6 +174,21 @@ sealed class Run : Aggregate
 
     /// <summary>Phase 1 leaves StartedAt as the first phase's start; the wait is not work.</summary>
     void UpdatedNow(DateTimeOffset at) => StartedAt ??= at;
+
+    /// <summary>
+    /// Records that somebody looked and chose not to re-run. Idempotent, and deliberately does not
+    /// touch the state: a dismissal says what a person decided, never what happened (BR-014).
+    /// </summary>
+    public bool Dismiss(DateTimeOffset at)
+    {
+        if (State != RunState.Failed)
+        {
+            return false;
+        }
+
+        DismissedAt ??= at;
+        return true;
+    }
 
     public void Fail(DateTimeOffset at, string reason)
     {

@@ -29,6 +29,8 @@ export interface RunView {
   inputTokens: number | null;
   outputTokens: number | null;
   costUsd: number | null;
+  /** When a human decided this failure needs no re-run (#145); null until they do. */
+  dismissedAt: string | null;
 }
 
 export interface PulseAutomation {
