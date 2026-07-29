@@ -4,33 +4,11 @@
 
 ### Requirement: grill Automations carry their rubric path and ready label
 
-**Reason**: the grill action is retired (#162), and the output label it wrote is retired with `HandOn`.
+**Reason**: the grill action is retired (#162). This requirement is grill-specific — a rubric path and a
+ready label held for one built-in — and there is no built-in left to hold them.
 
-**Migration**: the path field survives as the repository prompt's file name; the ready label becomes
-something the prompt writes itself if it wants a hand-off.
-
-### Requirement: an Automation can hand work on by writing a label when it succeeds
-
-**Reason**: hand-off was the orchestrator writing to the vendor on the agent's behalf, which is exactly
-what #162 removes. A prompt that wants to hand work on writes the label itself.
-
-**Migration**: the `OutputLabel` column is dropped. Chained configurations stop chaining; the prompts
-that replace them carry the hand-off in their own text.
-
-### Requirement: an Admin shapes the pipeline on a canvas
-
-**Reason**: the canvas drew chains derived from output labels (#162 removes them), so it has nothing left
-to draw. A canvas that draws a pipeline the product cannot execute misinforms.
-
-**Migration**: the canvas is removed from the Automations tab; the catalogue remains.
-
-### Requirement: an Admin places the human review by dragging it where the person belongs
-
-**Reason**: the block's entire action was clearing a preceding step's output label (#137). With no output
-label there is no chain to break.
-
-**Migration**: removed with the canvas. A prompt that should wait for a person says so in its own text,
-and `requiresApproval` still gates a Run's second phase.
+**Migration**: the path field survives as the repository prompt's file name, and the ready label survives
+as the Automation's ordinary output label, which this change keeps (design D3).
 
 ### Requirement: a project can be given the framework's default Automations in one action
 
@@ -58,8 +36,11 @@ There SHALL be exactly one action. The locked catalogue of built-in actions is r
 DEC-026 and DEC-048): what an Automation does is decided by the prompt it names, in the project's own
 repository, and the orchestrator SHALL NOT write to the vendor on the agent's behalf.
 
-An Automation SHALL NOT carry an output label. Handing work on SHALL be something a prompt does, not
-something the row declares.
+An Automation SHALL still carry an optional output label, and the orchestrator SHALL still write it on
+success. That is the **workflow** — how steps connect — which DEC-053 separated from the catalogue and
+which this change does not retire. It is distinct from the writes being removed: those completed the
+agent's work, while the hand-off executes configuration the product itself declared and the prompt cannot
+ask for.
 
 #### Scenario: creating an Automation
 

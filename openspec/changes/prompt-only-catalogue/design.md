@@ -29,27 +29,26 @@ The shape after the change is one path: resolve the prompt, prepare a workspace,
 and the AI credential, take the outcome from its result. No branch on action, because there is no
 vocabulary left to branch on.
 
-## D3 — HandOn goes, and the pictures that depended on it go with it
+## D3 — Hand-off is the workflow, and the workflow is not what this retires
 
-`HandOn` writes the next trigger label when a Run succeeds. It is the orchestrator acting on the agent's
-behalf, which is the thing this change removes, so it goes.
+`HandOn` writes the next trigger label when a Run succeeds, and it is a vendor write the orchestrator
+performs itself. The literal reading of "no writes of its own" takes it out, and taking it out would have
+removed the workflow canvas, the human-review block and the board's chain ordering along with it.
 
-The honest consequence is that three surfaces merged today lose their subject:
+DEC-053 is what settles this. It separated the **catalogue** — what a single step does — from the
+**workflow** — how steps connect. #162 is a change to the catalogue: one action, decided by the
+repository. The workflow is a different axis, and nothing in the issue argues against it.
 
-- `workflowGraph.ts` builds chains by matching one Automation's `OutputLabel` to another's trigger. With
-  the column gone there is nothing to match, so the canvas has nothing to draw.
-- The human-review block (#137) exists to *clear* a preceding step's output label. With no output label
-  there is no chain to break.
-- The board's chain-ordered columns (#128) ordered by that same graph.
+The distinction that makes the rule coherent rather than bent: the writes being removed are the ones that
+**complete the agent's work** — publishing its branch as a pull request, posting its reply as a comment,
+turning its answer into a state or an estimate. Those existed because the product decided what the action
+meant, and it no longer does. The hand-off label is not that. It is the product executing its **own**
+declared configuration: this Automation, on success, hands to that trigger. The prompt did not ask for it
+and cannot ask for it, which is exactly why it survives a change about what prompts may ask for.
 
-Retiring them is not collateral damage to be minimised — it is the change being honest. A canvas that
-draws a pipeline the product cannot execute is worse than no canvas, because it tells a reader the
-product still chains work when it does not. The board keeps its columns and returns to the ordering it
-had before #128 derived one from the graph.
-
-`OutputLabel` leaves the schema rather than being kept "in case": a column nothing reads is a column that
-drifts, and the grants follow-up will reintroduce hand-off as something the prompt does, not something
-the row declares.
+So `OutputLabel` stays in the schema, `HandOn` stays in the executor, and the three surfaces that draw
+chains keep their subject. What follows is a smaller migration — no column dropped — and a smaller
+deletion in the portal.
 
 ## D4 — The migration deletes rather than translates
 

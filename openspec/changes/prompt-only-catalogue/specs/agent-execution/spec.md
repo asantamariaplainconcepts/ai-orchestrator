@@ -51,9 +51,13 @@ project's prompts directory, and execute the agent holding that credential and t
 agent SHALL be free to do whatever the prompt says — comment, label, transition, push, open or merge a
 pull request — exactly as the repository's own scripts would.
 
-The orchestrator SHALL perform **no** vendor or repository write of its own after the agent runs. Success,
-failure and the reply SHALL come from the agent's result; usage SHALL be reported as on any Run, and
-absent usage SHALL remain unknown.
+The orchestrator SHALL perform none of the action's own writes after the agent runs — no pull request
+published, no comment posted, no state set, no estimate applied. Success, failure and the reply SHALL come
+from the agent's result; usage SHALL be reported as on any Run, and absent usage SHALL remain unknown.
+
+The Automation's **output label** SHALL still be written on success. That is workflow wiring the product
+itself declared (DEC-053), not the completion of the agent's work, and the prompt SHALL NOT be able to
+request or suppress it.
 
 Leading YAML frontmatter SHALL still be stripped and ignored: it is another runner's wiring, and the
 Automation remains this product's. Both refusals SHALL still precede the agent, naming the resolved path:
@@ -89,7 +93,13 @@ expressible again.
 #### Scenario: the agent finishes the job itself
 
 - **WHEN** a prompt instructs the agent to write to the vendor or the repository
-- **THEN** the agent performs those writes, and the orchestrator performs none of its own afterwards
+- **THEN** the agent performs those writes, and the orchestrator publishes nothing on its behalf
+
+#### Scenario: the hand-off is still the product's
+
+- **WHEN** an Automation carrying an output label succeeds
+- **THEN** the orchestrator writes that label, because the workflow is configuration rather than something
+  the prompt asked for
 
 #### Scenario: the outcome is the agent's
 

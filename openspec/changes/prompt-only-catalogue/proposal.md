@@ -16,21 +16,21 @@ purpose and a future reader must not mistake this for drift.
 ## The scope question the issue did not settle, and its answer
 
 The issue says the orchestrator "performs **no** vendor or repository write of its own afterward". Taken
-literally that removes `HandOn` — the output-label write at `RunExecutor.cs:197` — which is not named in
-either of the issue's lists. The owner's decision: **it goes too.** The prompt writes its own hand-off
-label if it wants one.
+literally that removes `HandOn` — the output-label write at `RunExecutor.cs:197` — which is named in
+neither of the issue's lists.
 
-That decision has consequences the issue does not mention, and they land in this slice rather than later:
+**It stays**, and the reason is a separation this product already made. DEC-053 split the **catalogue**
+(what one step does) from the **workflow** (how steps connect). #162 retires the catalogue: what a step
+does becomes the repository's prompt, unbounded. It says nothing about retiring the workflow.
 
-- **The workflow canvas goes.** `workflowGraph.ts` derives chains from `OutputLabel`; with no output
-  label there are no chains to draw.
-- **The human-review block goes** (#137). Its entire action was clearing the preceding step's output
-  label.
-- **The board's chain ordering goes** (#128). Columns were ordered by the automation chain; the board
-  stays, ordered as it was before that change.
+So the rule reads as it was meant: the orchestrator stops performing the **action's ceremony** — publishing
+a pull request, setting a state, applying an estimate, posting the reply. When `HandOn` writes the next
+trigger label it is not finishing the agent's job; it is executing what the Automation — this product's own
+configuration, not the prompt's request — declared should happen on success.
 
-All three were merged today. Retiring them now is the honest reading of "no writes of its own" — leaving
-them would draw a pipeline the product no longer has.
+That line keeps the canvas, the human-review block (#137) and the board's chain ordering (#128) alive,
+which matters: all three were merged the same day, and deleting them here would have retired the workflow
+as a side effect of retiring the catalogue.
 
 ## What changes
 
@@ -39,7 +39,8 @@ them would draw a pipeline the product no longer has.
   switch, the grill's rubric conversation, the propose and sync procedures.
 - **The agent gets the workspace and the PAT and finishes the job.** Outcome, log and usage come from
   the agent's result; the orchestrator writes nothing to the vendor afterward.
-- **`OutputLabel` and `HandOn` go**, with the canvas, the human block and the board's chain ordering.
+- **`OutputLabel` and `HandOn` stay**, with the canvas, the human block and the board's chain ordering —
+  they are the workflow, and the workflow is not what this change retires.
 - **The seeded defaults go**, to return as prompt+grant bundles.
 - **The machinery that stays, stays whole:** triggers and matching (BR-003), one active Run and the cap
   (BR-001/BR-002), dispatch, timeouts (BR-005), cancellation's pre-start boundary, the live log (UC-027),
@@ -49,10 +50,10 @@ them would draw a pipeline the product no longer has.
 
 ## Impact
 
-- Specs: `agent-execution` (four REMOVED, two MODIFIED), `automation-configuration` (five REMOVED, one
-  MODIFIED), `backlog-mirror` (one MODIFIED).
+- Specs: `agent-execution` (five REMOVED, one MODIFIED), `automation-configuration` (three REMOVED, one
+  MODIFIED). `backlog-mirror` is untouched, because the board's chains survive.
 - Code: 41 files name a removed action, 31 of them tests. `RunExecutor` is 1035 lines and most of it
-  goes. One migration drops `OutputLabel` and deletes Automations naming a removed action.
+  goes. One migration deletes Automations naming a removed action; no column is dropped.
 - Docs: a new DEC, and ARCHITECTURE.md's action section rewritten.
 
 ## What is deliberately accepted, in the issue's own words
