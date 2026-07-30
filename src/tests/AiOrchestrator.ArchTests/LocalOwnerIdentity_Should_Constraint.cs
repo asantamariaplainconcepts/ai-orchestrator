@@ -27,7 +27,7 @@ public class LocalOwnerIdentity_Should_Constraint
     }
 
     [Fact]
-    public void ALocalHabitat_Should_HaveAnOwnerHoldingAdmin()
+    public void ALocalHabitat_Should_HaveAnOwner()
     {
         var builder = Builder((IdentityComposition.ModeKey, "LocalOwner"));
 
@@ -36,7 +36,10 @@ public class LocalOwnerIdentity_Should_Constraint
             .Services.BuildServiceProvider()
             .GetRequiredService<ICurrentPrincipal>();
 
-        principal.Current.Role.ShouldBe(PrincipalRole.Admin);
+        // No role asserted here any more (#13): the principal answers who, and what the owner may
+        // do is IProjectPermissions — which the Projects module composes, and which
+        // ProjectRoles_Should_Constraint covers.
+        principal.Current.Id.ShouldBe(Principal.LocalOwnerId);
         principal.Current.DisplayName.ShouldBe("Local owner");
     }
 

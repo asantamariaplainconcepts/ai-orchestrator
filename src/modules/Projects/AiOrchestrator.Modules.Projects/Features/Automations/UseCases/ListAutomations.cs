@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -21,7 +22,10 @@ sealed class ListAutomations : IUseCase
             .WithName(nameof(ListAutomations))
             .WithTags("Automations");
 
-    internal sealed record Query(Guid ProjectId) : IQuery<IReadOnlyList<CreateAutomation.Response>>;
+    [Requires(ProjectPermissions.ReadAutomations)]
+    internal sealed record Query(Guid ProjectId)
+        : IQuery<IReadOnlyList<CreateAutomation.Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(ProjectsDbContext database)
         : IAppQueryHandler<Query, IReadOnlyList<CreateAutomation.Response>>

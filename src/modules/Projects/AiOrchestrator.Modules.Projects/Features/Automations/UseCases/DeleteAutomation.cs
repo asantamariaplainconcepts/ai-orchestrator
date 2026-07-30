@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Domain;
 using AiOrchestrator.Modules.Projects.Persistence;
@@ -48,7 +49,10 @@ sealed class DeleteAutomation : IUseCase
             .WithName(nameof(DeleteAutomation))
             .WithTags("Automations");
 
-    internal sealed record Command(Guid ProjectId, Guid AutomationId) : ICommand<ErrorOr<Deleted>>;
+    [Requires(ProjectPermissions.ManageAutomations)]
+    internal sealed record Command(Guid ProjectId, Guid AutomationId)
+        : ICommand<ErrorOr<Deleted>>,
+            IScopedToProject;
 
     internal sealed class Handler(ProjectsDbContext database, IRunUsage runs)
         : IAppCommandHandler<Command, ErrorOr<Deleted>>

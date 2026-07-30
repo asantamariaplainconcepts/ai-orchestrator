@@ -1,6 +1,7 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
@@ -67,8 +68,10 @@ sealed class DecideOnPlan : IUseCase
 
     internal sealed record Response(Guid Id, string State);
 
+    [Requires(RunPermissions.Approve)]
     internal sealed record Command(Guid ProjectId, Guid RunId, bool Approve)
-        : ICommand<ErrorOr<Response>>;
+        : ICommand<ErrorOr<Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(
         RunsDbContext database,

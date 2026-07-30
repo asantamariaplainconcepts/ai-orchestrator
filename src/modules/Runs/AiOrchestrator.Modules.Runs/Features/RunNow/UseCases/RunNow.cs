@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Contracts;
@@ -59,8 +60,10 @@ sealed class RunNow : IUseCase
         bool WaitingAtCap
     );
 
+    [Requires(RunPermissions.Trigger)]
     internal sealed record Command(Guid ProjectId, string VendorStoryId, Guid AutomationId)
-        : ICommand<ErrorOr<Response>>;
+        : ICommand<ErrorOr<Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(
         IStoryReader stories,

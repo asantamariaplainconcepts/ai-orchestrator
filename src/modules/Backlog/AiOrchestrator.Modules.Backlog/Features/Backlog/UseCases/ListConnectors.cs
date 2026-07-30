@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -27,6 +28,7 @@ sealed class ListConnectors : IUseCase
             .WithName(nameof(ListConnectors))
             .WithTags("Backlog");
 
+    [Requires(Access.FiltersToCaller)]
     internal sealed record Query : IQuery<IReadOnlyList<Response>>;
 
     /// <summary>Note what is absent: no secret name even — the list needs health, not config.</summary>
@@ -38,7 +40,7 @@ sealed class ListConnectors : IUseCase
         DateTimeOffset? LastFailureAt
     );
 
-    internal sealed class Handler(BacklogDbContext database)
+    internal sealed class Handler(BacklogDbContext database, IProjectPermissions permissions)
         : IAppQueryHandler<Query, IReadOnlyList<Response>>
     {
         public async Task<IReadOnlyList<Response>> Handle(
@@ -46,10 +48,19 @@ sealed class ListConnectors : IUseCase
             CancellationToken cancellationToken
         )
         {
+            // Scoped to what the caller may see (#13): this row names a Project and says when its
+            // vendor last answered, which is more than the projects list itself would disclose.
+            var visible = await permissions.VisibleProjects(cancellationToken);
+            var mine = database.Connectors.AsQueryable();
+            if (visible is not null)
+            {
+                mine = mine.Where(entity => visible.Contains(entity.ProjectId));
+            }
+
             // Materialise then project (the #7 lesson): ToString() inside an EF projection
             // translates to SQL and names the vendor by its ordinal, which is exactly what the
             // existing read tests forbid.
-            var connectors = await database.Connectors.ToListAsync(cancellationToken);
+            var connectors = await mine.ToListAsync(cancellationToken);
 
             return
             [

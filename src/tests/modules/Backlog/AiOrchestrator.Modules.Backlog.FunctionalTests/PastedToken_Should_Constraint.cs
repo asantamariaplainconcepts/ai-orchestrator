@@ -26,6 +26,7 @@ public class PastedToken_Should_Constraint(BacklogApiFixture fixture) : IAsyncLi
         fixture.Vendor.Reset();
         fixture.Secrets.Reset();
         fixture.Caller.Reset();
+        fixture.Permissions.Reset();
         await fixture.ResetDatabase();
     }
 
@@ -195,7 +196,7 @@ public class PastedToken_Should_Constraint(BacklogApiFixture fixture) : IAsyncLi
     [Fact]
     public async Task ACallerWhoIsNotAnAdmin_Should_BeRefusedAndStoreNothing()
     {
-        fixture.Caller.Current = new("someone", "A member", PrincipalRole.Member);
+        fixture.Permissions.Role = ProjectRole.Member;
 
         var response = await Paste();
 

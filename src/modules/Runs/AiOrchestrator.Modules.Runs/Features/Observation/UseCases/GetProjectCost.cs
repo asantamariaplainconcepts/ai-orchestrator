@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -36,7 +37,8 @@ sealed class GetProjectCost : IUseCase
         int UnknownRuns
     );
 
-    internal sealed record Query(Guid ProjectId) : IQuery<Response>;
+    [Requires(RunPermissions.Read)]
+    internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     internal sealed class Handler(RunsDbContext database) : IAppQueryHandler<Query, Response>
     {

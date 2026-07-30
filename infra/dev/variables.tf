@@ -92,3 +92,21 @@ variable "entra_client_id" {
   type        = string
   default     = ""
 }
+
+variable "bootstrap_admins" {
+  description = <<-EOT
+    Provider object ids holding Admin on every project (#13, design D4). Comma-separated, because an
+    environment variable is what a container app env can carry and a repository variable is what
+    Terraform reads it from.
+
+    Empty is a real and honest state, not a safe default: nobody can configure anything, and the
+    portal says so at startup. It is set here because #13 retires the interim rule that every
+    signed-in user held Admin — deploying without naming somebody locks the owner out of their own
+    portal, and only a deploy can let them back in.
+
+    Not a secret. An object id identifies a person in a tenant; it authenticates nobody. It stays out
+    of git regardless, for the same reason the Entra ids do.
+  EOT
+  type        = string
+  default     = ""
+}

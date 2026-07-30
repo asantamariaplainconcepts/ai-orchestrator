@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Domain;
 using AiOrchestrator.Modules.Projects.Persistence;
@@ -63,9 +64,13 @@ sealed class ArchiveProject : IUseCase
 
     internal sealed record Request(string ConfirmName);
 
-    internal sealed record Command(Guid ProjectId, string ConfirmName) : ICommand<ErrorOr<Success>>;
+    [Requires(ProjectPermissions.Archive)]
+    internal sealed record Command(Guid ProjectId, string ConfirmName)
+        : ICommand<ErrorOr<Success>>,
+            IScopedToProject;
 
-    internal sealed record Restore(Guid ProjectId) : ICommand<ErrorOr<Success>>;
+    [Requires(ProjectPermissions.Archive)]
+    internal sealed record Restore(Guid ProjectId) : ICommand<ErrorOr<Success>>, IScopedToProject;
 
     internal const string RestoreProject = nameof(RestoreProject);
 

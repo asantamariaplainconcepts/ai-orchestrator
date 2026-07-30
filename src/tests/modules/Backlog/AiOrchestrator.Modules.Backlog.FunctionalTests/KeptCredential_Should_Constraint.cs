@@ -27,6 +27,7 @@ public class KeptCredential_Should_Constraint(BacklogApiFixture fixture) : IAsyn
         fixture.Vendor.Reset();
         fixture.Secrets.Reset();
         fixture.Caller.Reset();
+        fixture.Permissions.Reset();
         await fixture.ResetDatabase();
     }
 
@@ -184,7 +185,7 @@ public class KeptCredential_Should_Constraint(BacklogApiFixture fixture) : IAsyn
     public async Task ANonAdmin_Should_NotEditBehindAStoredCredential()
     {
         await Connect();
-        fixture.Caller.Current = new("someone", "A member", PrincipalRole.Member);
+        fixture.Permissions.Role = ProjectRole.Member;
 
         var response = await Configure(
             new

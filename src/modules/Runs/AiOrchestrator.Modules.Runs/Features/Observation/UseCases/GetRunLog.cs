@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
@@ -38,7 +39,8 @@ sealed class GetRunLog : IUseCase
             .WithName(nameof(GetRunLog))
             .WithTags("Runs");
 
-    internal sealed record Query(Guid ProjectId, Guid RunId) : IQuery<Response?>;
+    [Requires(RunPermissions.Read)]
+    internal sealed record Query(Guid ProjectId, Guid RunId) : IQuery<Response?>, IScopedToProject;
 
     /// <summary>
     /// <paramref name="NextSequence"/> is where the next chunk will be (#144, design D5): a client

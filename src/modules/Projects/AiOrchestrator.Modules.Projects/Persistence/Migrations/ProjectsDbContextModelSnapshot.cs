@@ -75,6 +75,36 @@ namespace AiOrchestrator.Modules.Projects.Persistence.Migrations
                     b.ToTable("automations", "projects");
                 });
 
+            modelBuilder.Entity("AiOrchestrator.Modules.Projects.Domain.Person", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("FirstSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdentityId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTimeOffset>("LastSeenAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdentityId")
+                        .IsUnique();
+
+                    b.ToTable("people", "projects");
+                });
+
             modelBuilder.Entity("AiOrchestrator.Modules.Projects.Domain.Project", b =>
                 {
                     b.Property<Guid>("Id")
@@ -95,6 +125,36 @@ namespace AiOrchestrator.Modules.Projects.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("projects", "projects");
+                });
+
+            modelBuilder.Entity("AiOrchestrator.Modules.Projects.Domain.ProjectRoleAssignment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("GrantedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("IdentityId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("ProjectId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProjectId", "IdentityId")
+                        .IsUnique();
+
+                    b.ToTable("project_roles", "projects");
                 });
 #pragma warning restore 612, 618
         }

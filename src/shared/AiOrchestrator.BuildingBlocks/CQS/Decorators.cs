@@ -1,11 +1,14 @@
+using System.Reflection;
+using AiOrchestrator.BuildingBlocks.Identity;
 using FluentValidation;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AiOrchestrator.BuildingBlocks.CQS;
 
 // The pipeline order is fixed by AddVsaCqsArchitecture and is not configurable per call site:
-// Logging -> Validation -> Caching -> Handler -> InvalidateCaching.
+// Logging -> Authorization -> Validation -> Caching -> Handler -> InvalidateCaching.
 
 sealed partial class LoggingCommandHandlerDecorator<TCommand, TResponse>(
     IAppCommandHandler<TCommand, TResponse> inner,
@@ -47,6 +50,107 @@ sealed partial class LoggingQueryHandlerDecorator<TQuery, TResponse>(
 
     [LoggerMessage(EventId = 1004, Level = LogLevel.Debug, Message = "Handled query {Query}")]
     static partial void LogHandled(ILogger logger, string query);
+}
+
+/// <summary>
+/// BR-009 made mechanical (#13, design D1): the request declares what it requires, this enforces it
+/// before the handler runs. Outside the caching decorator on purpose — inside it, a response cached
+/// for somebody allowed would be served to somebody who is not.
+/// </summary>
+sealed class AuthorizationCommandHandlerDecorator<TCommand, TResponse>(
+    IAppCommandHandler<TCommand, TResponse> inner,
+    IProjectPermissions permissions,
+    IOptions<PermissionGrants> grants
+) : IAppCommandHandler<TCommand, TResponse>
+    where TCommand : ICommand<TResponse>
+{
+    public async Task<TResponse> Handle(TCommand command, CancellationToken cancellationToken)
+    {
+        await AuthorizationPipeline.EnsurePermitted(
+            command,
+            permissions,
+            grants.Value,
+            cancellationToken
+        );
+        return await inner.Handle(command, cancellationToken);
+    }
+}
+
+sealed class AuthorizationQueryHandlerDecorator<TQuery, TResponse>(
+    IAppQueryHandler<TQuery, TResponse> inner,
+    IProjectPermissions permissions,
+    IOptions<PermissionGrants> grants
+) : IAppQueryHandler<TQuery, TResponse>
+    where TQuery : IQuery<TResponse>
+{
+    public async Task<TResponse> Handle(TQuery query, CancellationToken cancellationToken)
+    {
+        await AuthorizationPipeline.EnsurePermitted(
+            query,
+            permissions,
+            grants.Value,
+            cancellationToken
+        );
+        return await inner.Handle(query, cancellationToken);
+    }
+}
+
+static class AuthorizationPipeline
+{
+    public static async Task EnsurePermitted<TRequest>(
+        TRequest request,
+        IProjectPermissions permissions,
+        PermissionGrants grants,
+        CancellationToken cancellationToken
+    )
+    {
+        // The concrete request type, because Sender resolves the handler by it — so a declaration
+        // on the command is a declaration the pipeline actually reads.
+        var declared = typeof(TRequest).GetCustomAttribute<RequiresAttribute>();
+
+        // Default deny (design D1). An operation nobody declared anything for is refused, which is
+        // the whole reason this is a decorator and not a line inside each handler: forgetting has
+        // to fail closed.
+        if (declared is null)
+        {
+            throw new PermissionDeniedException(typeof(TRequest).FullName!);
+        }
+
+        // The two declarations that are not permissions. Whether anybody is asking at all is the
+        // pipeline's business, not this decorator's: /api is refused unauthenticated before a
+        // handler is ever resolved.
+        if (declared.Access is Access.AnyCaller or Access.FiltersToCaller)
+        {
+            return;
+        }
+
+        if (declared.Permission is not { } permission)
+        {
+            // An Access value added without a rule here, or an attribute in some third state. Refused
+            // rather than waved through, for the same reason omission is.
+            throw new PermissionDeniedException(typeof(TRequest).FullName!);
+        }
+
+        if (request is not IScopedToProject scoped)
+        {
+            // Not a refusal — a wiring mistake. Refusing would hide it behind a 403 that reads like
+            // an ordinary one; this says which type is wrong, and a test asserts the pairing so it
+            // cannot reach a deployment (task 5.3).
+            throw new InvalidOperationException(
+                $"{typeof(TRequest).Name} requires '{permission}' but does not implement "
+                    + $"{nameof(IScopedToProject)}, so there is no project to check it against."
+            );
+        }
+
+        // Two questions, in order, and neither collapses into the other: which bundle this caller
+        // holds *here*, then whether that bundle holds this permission.
+        var role = await permissions.RoleOn(scoped.ProjectId, cancellationToken);
+
+        if (role is null || !grants.Holds(role.Value, permission))
+        {
+            throw new PermissionDeniedException(typeof(TRequest).FullName!);
+        }
+    }
 }
 
 /// <summary>

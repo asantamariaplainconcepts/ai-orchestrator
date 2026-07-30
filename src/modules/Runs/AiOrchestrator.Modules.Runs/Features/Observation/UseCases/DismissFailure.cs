@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
@@ -56,7 +57,10 @@ sealed class DismissFailure : IUseCase
 
     internal sealed record Response(Guid RunId, DateTimeOffset DismissedAt);
 
-    internal sealed record Command(Guid ProjectId, Guid RunId) : ICommand<ErrorOr<Response>>;
+    [Requires(RunPermissions.DismissFailure)]
+    internal sealed record Command(Guid ProjectId, Guid RunId)
+        : ICommand<ErrorOr<Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(RunsDbContext database, TimeProvider clock)
         : IAppCommandHandler<Command, ErrorOr<Response>>

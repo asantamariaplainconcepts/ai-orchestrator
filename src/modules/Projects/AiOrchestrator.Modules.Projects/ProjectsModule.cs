@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Contracts;
 using AiOrchestrator.Modules.Projects.Features.Automations;
@@ -26,6 +27,13 @@ public sealed class ProjectsModule : ModuleBase
 
     public override void Add(IServiceCollection services, IConfiguration configuration)
     {
+        // ACT-002 may see what will act on this Project's Stories and nothing more: an Automation
+        // decides when an agent touches a repository, so creating or editing one is configuration,
+        // and so is retiring the Project or changing who may administer it.
+        services.AddPermissionGrants(
+            BuildingBlocks.Identity.ProjectRole.Member,
+            ProjectPermissions.ReadAutomations
+        );
         services.AddDbContext<ProjectsDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString(ConnectionStringName),
@@ -54,5 +62,39 @@ public sealed class ProjectsModule : ModuleBase
         // cached copy, which would keep polling a Project an Admin just retired.
         services.AddScoped<Contracts.IProjectCatalog, Features.Projects.ProjectCatalog>();
         services.AddScoped<OverlapGuard>();
+
+        // Who may do what, and where (#13). The rows live in this module's schema because a role is
+        // a fact about a person's relationship to a Project, so the module that owns Projects owns
+        // it — and the seam is in BuildingBlocks so the authorization decorator can read it without
+        // any module referencing another.
+        //
+        // Composed per habitat, exactly like the principal it sits beside, and from the same
+        // question: where nobody signs in there is one caller and the machine is theirs, so there is
+        // nothing to look up. Deciding this here rather than inside the implementation is what keeps
+        // "nobody is signed in yet" from being mistaken for "this person owns the place".
+        // Registered in every habitat, unlike the reader below: the last-administrator guard has to
+        // know whether anybody holds Admin without a row, and a guard that could not ask would have
+        // to refuse the safe case and say something untrue about why.
+        services.AddSingleton(Features.Identity.BootstrapAdministrators.From(configuration));
+
+        // One writer for "this deployment has met this person", used by both paths that create the
+        // obligation: signing in, and creating a Project (which grants its creator Admin).
+        services.AddScoped<Features.Identity.KnownPeople>();
+
+        if (BuildingBlocks.Identity.IdentityHabitat.CallersSignIn(configuration))
+        {
+            services.AddScoped<
+                BuildingBlocks.Identity.IProjectPermissions,
+                Features.Identity.StoredProjectRoles
+            >();
+            services.AddHostedService<Features.Identity.AdministrationAnnouncement>();
+        }
+        else
+        {
+            services.AddSingleton<
+                BuildingBlocks.Identity.IProjectPermissions,
+                Features.Identity.SoleOccupantPermissions
+            >();
+        }
     }
 }

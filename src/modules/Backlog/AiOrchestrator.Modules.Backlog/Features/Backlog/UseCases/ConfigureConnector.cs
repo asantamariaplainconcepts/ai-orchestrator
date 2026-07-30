@@ -86,6 +86,11 @@ sealed class ConfigureConnector : IUseCase
         string? PromptDirectory
     );
 
+    // Admin, declared rather than checked (#13, design D1). This use case is where the product's
+    // first two role checks lived — hand-copied, inside the handler, on two of its paths — and a
+    // third copy was what the next person needing one would have written. The declaration the
+    // pipeline enforces replaces both.
+    [Requires(BacklogPermissions.Configure)]
     internal sealed record Command(
         Guid ProjectId,
         string Owner,
@@ -95,7 +100,7 @@ sealed class ConfigureConnector : IUseCase
         string? CodeRepository = null,
         string? AccessToken = null,
         string? PromptDirectory = null
-    ) : ICommand<ErrorOr<Response>>;
+    ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
     {
@@ -155,7 +160,6 @@ sealed class ConfigureConnector : IUseCase
         IEnumerable<IBacklogConnector> connectors,
         ISecretResolver secrets,
         ISecretStore store,
-        ICurrentPrincipal principal,
         TimeProvider clock
     ) : IAppCommandHandler<Command, ErrorOr<Response>>
     {
@@ -199,13 +203,6 @@ sealed class ConfigureConnector : IUseCase
                         vendor.ToString()
                     );
                 }
-
-                // Reuse stores nothing, so #119's check would not fire — and configuration would become
-                // editable by a caller not allowed to paste a token, which inverts the point (design D5).
-                if (principal.Current.Role != PrincipalRole.Admin)
-                {
-                    return BacklogErrors.NotPermitted("change a Connector's configuration");
-                }
             }
 
             // After the reuse decision, deliberately: "this credential belongs to another vendor" is
@@ -224,14 +221,6 @@ sealed class ConfigureConnector : IUseCase
 
             if (supplied)
             {
-                // #124's accepted risk expired when #119 landed: an endpoint that takes a
-                // credential asks who is holding it. The first role check in the product, and
-                // deliberately here rather than in a general authorisation sweep (design D6).
-                if (principal.Current.Role != PrincipalRole.Admin)
-                {
-                    return BacklogErrors.NotPermitted("store a credential");
-                }
-
                 try
                 {
                     await store.Store(secretName, command.AccessToken!, cancellationToken);

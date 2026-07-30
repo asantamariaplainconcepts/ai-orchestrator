@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Domain;
 using AiOrchestrator.Modules.Backlog.Persistence;
@@ -48,7 +49,10 @@ sealed class GetStory : IUseCase
         DateTimeOffset LastSeenAt
     );
 
-    internal sealed record Query(Guid ProjectId, string VendorStoryId) : IQuery<ErrorOr<Response>>;
+    [Requires(BacklogPermissions.Read)]
+    internal sealed record Query(Guid ProjectId, string VendorStoryId)
+        : IQuery<ErrorOr<Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(BacklogDbContext database)
         : IAppQueryHandler<Query, ErrorOr<Response>>

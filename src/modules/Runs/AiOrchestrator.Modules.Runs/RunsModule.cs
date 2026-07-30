@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
@@ -47,6 +48,17 @@ public sealed class RunsModule : ModuleBase
 
     public override void Add(IServiceCollection services, IConfiguration configuration)
     {
+        // ACT-002's list, almost verbatim: view runs, logs and cost; trigger Run now (DEC-035);
+        // approve plans (UC-011); cancel runs (UC-019). Dismissing a failure is the one addition, and
+        // RunPermissions.DismissFailure says why.
+        services.AddPermissionGrants(
+            BuildingBlocks.Identity.ProjectRole.Member,
+            RunPermissions.Read,
+            RunPermissions.Trigger,
+            RunPermissions.Approve,
+            RunPermissions.Cancel,
+            RunPermissions.DismissFailure
+        );
         services.AddDbContext<RunsDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString(ConnectionStringName),

@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Connectors;
 using AiOrchestrator.Modules.Backlog.Domain;
@@ -72,10 +73,15 @@ sealed class GetStoryDocuments : IUseCase
 
     internal sealed record ContentResponse(string Path, string HeadRef, string Content);
 
-    internal sealed record Query(Guid ProjectId, string VendorStoryId) : IQuery<ErrorOr<Response>>;
+    [Requires(BacklogPermissions.Read)]
+    internal sealed record Query(Guid ProjectId, string VendorStoryId)
+        : IQuery<ErrorOr<Response>>,
+            IScopedToProject;
 
+    [Requires(BacklogPermissions.Read)]
     internal sealed record ContentQuery(Guid ProjectId, string VendorStoryId, string Path)
-        : IQuery<ErrorOr<ContentResponse>>;
+        : IQuery<ErrorOr<ContentResponse>>,
+            IScopedToProject;
 
     internal sealed class Handler(ConnectorAccess access)
         : IAppQueryHandler<Query, ErrorOr<Response>>

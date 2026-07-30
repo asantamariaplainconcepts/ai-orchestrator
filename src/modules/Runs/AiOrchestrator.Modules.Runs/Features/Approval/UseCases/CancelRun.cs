@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
@@ -40,7 +41,10 @@ sealed class CancelRun : IUseCase
 
     internal sealed record Response(Guid Id, string State);
 
-    internal sealed record Command(Guid ProjectId, Guid RunId) : ICommand<ErrorOr<Response>>;
+    [Requires(RunPermissions.Cancel)]
+    internal sealed record Command(Guid ProjectId, Guid RunId)
+        : ICommand<ErrorOr<Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(RunsDbContext database, TimeProvider clock)
         : IAppCommandHandler<Command, ErrorOr<Response>>

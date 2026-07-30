@@ -63,8 +63,31 @@ Requests travel a fixed decorator pipeline owned solely by
 [`AddVsaCqsArchitecture()`](src/shared/AiOrchestrator.BuildingBlocks/CQS/AddVsaCqsArchitecture.cs):
 
 ```
-Logging → Validation → Caching → Handler → InvalidateCaching
+Logging → Authorization → Validation → Caching → Handler → InvalidateCaching
 ```
+
+Authorization sits there and not elsewhere (#13, BR-009). Each request declares the **permission** it
+requires — `[Requires(BacklogPermissions.Configure)]` — and **an undeclared request is refused**, so a
+use case added without thought is locked rather than open. It is outside validation, so a caller with no
+role learns nothing about the payload's shape, and therefore outside caching, so an answer cached for
+somebody allowed cannot reach somebody who is not.
+
+A request names a permission, never a role. Roles are **bundles** over permissions
+([`PermissionGrants`](src/shared/AiOrchestrator.BuildingBlocks/Identity/PermissionGrants.cs)), each
+module contributing its own mapping beside the use cases that declare them — so DEC-034's post-MVP
+custom roles are a line in a table rather than a sweep over every declaration. Admin holds everything by
+rule, not by enumeration. Which bundle a caller holds is a function of the caller **and** the project:
+`ICurrentPrincipal` says who,
+[`IProjectPermissions`](src/shared/AiOrchestrator.BuildingBlocks/Identity/IProjectPermissions.cs) says
+which bundle, there.
+
+Three ArchTest sweeps police it: every request declares, every declared permission is one of the
+modules' constants, and every constant is declared by something. The last two are the compile error the
+strings gave up — a typo'd permission is held by nobody, so it would be refused for Member, allowed for
+Admin, and silent.
+
+A surface that dispatches nothing cannot be covered by a decorator over dispatch: the run-log hub checks
+the same permission for itself, and anything like it must do the same.
 
 Two error channels, deliberately distinct:
 

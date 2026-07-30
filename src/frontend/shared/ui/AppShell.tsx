@@ -1,7 +1,7 @@
 import { FolderKanban, Inbox, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
-import { t } from "@/shared/i18n";
+import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { useRememberedPreference } from "@/shared/lib/useRememberedPreference";
 import { Badge } from "@/shared/ui/badge";
@@ -193,8 +193,13 @@ function UserBlock({ me }: { me: ReturnType<typeof useCurrentPrincipal> }) {
           <span className="text-sm font-medium">
             {me.data?.displayName ?? t("shell.user.name")}
           </span>
+          {/* No role here any more (#13): roles are per project, so a single line in the shell
+              could only ever be one project's answer or an average of several. The count is the
+              honest ambient version — where you have standing, not what it is. */}
           <span className="text-xs text-muted-foreground">
-            {me.data ? me.data.role : t("shell.user.hint")}
+            {me.data
+              ? tCount(me.data.projects.length, "shell.user.project", "shell.user.projects")
+              : t("shell.user.hint")}
           </span>
           {/* Only a provider session can end; the local owner and the stopgap have nothing to
               sign out of, and their ids are the seam's two fixed sentinels. */}

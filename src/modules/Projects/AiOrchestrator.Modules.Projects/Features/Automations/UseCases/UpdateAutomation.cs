@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Domain;
 using AiOrchestrator.Modules.Projects.Persistence;
@@ -94,6 +95,7 @@ sealed class UpdateAutomation : IUseCase
             .WithTags("Automations");
     }
 
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record Command(
         Guid ProjectId,
         Guid AutomationId,
@@ -105,10 +107,12 @@ sealed class UpdateAutomation : IUseCase
         int? TimeoutMinutes,
         string? RubricPath = null,
         string? OutputLabel = null
-    ) : ICommand<ErrorOr<CreateAutomation.Response>>;
+    ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record SetEnabled(Guid ProjectId, Guid AutomationId, bool Enabled)
-        : ICommand<ErrorOr<CreateAutomation.Response>>;
+        : ICommand<ErrorOr<CreateAutomation.Response>>,
+            IScopedToProject;
 
     /// <summary>The same input rules as a create — an edit cannot be laxer than the thing it edits.</summary>
     internal sealed class Validator : AbstractValidator<Command>

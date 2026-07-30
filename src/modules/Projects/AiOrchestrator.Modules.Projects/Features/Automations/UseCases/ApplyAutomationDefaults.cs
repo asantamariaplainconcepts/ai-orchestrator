@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Domain;
@@ -55,7 +56,8 @@ sealed class ApplyAutomationDefaults : IUseCase
 
     internal sealed record SkippedDefault(string TriggerLabel, string Reason);
 
-    internal sealed record Command(Guid ProjectId) : ICommand<ErrorOr<Response>>;
+    [Requires(ProjectPermissions.ManageAutomations)]
+    internal sealed record Command(Guid ProjectId) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(
         ProjectsDbContext database,

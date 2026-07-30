@@ -24,6 +24,7 @@ public class CredentialCapabilities_Should_Constraint(BacklogApiFixture fixture)
         fixture.Vendor.Reset();
         fixture.Secrets.Reset();
         fixture.Caller.Reset();
+        fixture.Permissions.Reset();
         await fixture.ResetDatabase();
     }
 

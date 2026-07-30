@@ -114,6 +114,18 @@ resource "azurerm_container_app" "portal" {
           secret_name = "entra-client-secret"
         }
       }
+      # Who may administer anything at all (#13, design D4). Set unconditionally rather than behind
+      # the provider switch: an empty value is the state the Server announces at startup, and making
+      # the variable's absence look like the variable's emptiness would hide it.
+      #
+      # This is the setting that keeps #13 from locking the owner out. It retires the interim rule
+      # that every signed-in user held Admin, so from this deploy onward permission comes from rows
+      # and from this list — and with neither, the portal serves reads and refuses every
+      # configuration, including the one that would grant somebody the role to fix it.
+      env {
+        name  = "Auth__BootstrapAdmins"
+        value = var.bootstrap_admins
+      }
     }
   }
 

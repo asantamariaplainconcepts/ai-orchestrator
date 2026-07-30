@@ -95,6 +95,11 @@ jobs:
           # the switch, in Terraform and in the Server alike.
           TF_VAR_entra_tenant_id: ${{ vars.ENTRA_TENANT_ID }}
           TF_VAR_entra_client_id: ${{ vars.ENTRA_CLIENT_ID }}
+          # Who may configure anything after #13 retired "every signed-in user is Admin". Same kind
+          # of value and same reason it is a variable: an object id names a person in a tenant and
+          # authenticates nobody. Unset means nobody administers anything, which the portal says out
+          # loud at startup rather than leaving somebody to discover it button by button.
+          TF_VAR_bootstrap_admins: ${{ vars.BOOTSTRAP_ADMINS }}
         run: |
           set -euo pipefail
           terraform plan -input=false -no-color -out=tfplan | tee plan.txt
@@ -111,6 +116,7 @@ jobs:
           TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
           TF_VAR_entra_tenant_id: ${{ vars.ENTRA_TENANT_ID }}
           TF_VAR_entra_client_id: ${{ vars.ENTRA_CLIENT_ID }}
+          TF_VAR_bootstrap_admins: ${{ vars.BOOTSTRAP_ADMINS }}
         run: terraform apply -input=false -no-color tfplan
 
       # deploy.sh owns the release ordering — push, migrate, wait, then move the revision. CI

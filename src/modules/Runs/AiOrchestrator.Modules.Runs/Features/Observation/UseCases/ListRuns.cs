@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -32,8 +33,10 @@ sealed class ListRuns : IUseCase
             .WithName(nameof(ListRuns))
             .WithTags("Runs");
 
+    [Requires(RunPermissions.Read)]
     internal sealed record Query(Guid ProjectId, string? VendorStoryId)
-        : IQuery<IReadOnlyList<Response>>;
+        : IQuery<IReadOnlyList<Response>>,
+            IScopedToProject;
 
     internal sealed record Response(
         Guid Id,
