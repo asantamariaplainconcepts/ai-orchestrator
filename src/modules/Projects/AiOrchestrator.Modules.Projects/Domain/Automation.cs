@@ -46,8 +46,30 @@ sealed class Automation : Aggregate
     /// </summary>
     public string? RubricPath { get; private set; }
 
-    /// <summary>Grill only: the label applied when the bar is met. Null means the convention.</summary>
-    public string? OutputLabel { get; private set; }
+    /// <summary>
+    /// What this Automation applies to the Story when a Run of it succeeds (#165): the workflow's
+    /// outgoing edges, and any mark that goes with them. Empty means it ends silently.
+    /// <para>
+    /// A set rather than one label, because one hand-off was one edge and nothing else — no way to
+    /// also mark the Story, and no way to wire a second listener. Held in declaration order for
+    /// display; order is not a priority, because the labels come back as vendor deliveries and are
+    /// matched then (design D3).
+    /// </para>
+    /// <para>
+    /// For a grill, an empty set still means the documented default rather than silence — that
+    /// default lives in the executor, not here (grill design D5).
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> OutputLabels
+    {
+        get => _outputLabels;
+        private set => _outputLabels = Distinct(value);
+    }
+
+    // EF materialises into the backing field, so the property's dedupe cannot be relied on for
+    // reads out of the database — which is correct: what was stored was already deduped, and
+    // re-normalising on load would quietly rewrite history.
+    List<string> _outputLabels = [];
 
     public AutomationAction Action { get; private set; }
 
@@ -74,12 +96,12 @@ sealed class Automation : Aggregate
         bool requiresApproval,
         TimeSpan timeout,
         string? rubricPath = null,
-        string? outputLabel = null
+        IReadOnlyList<string>? outputLabels = null
     ) =>
         new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
         {
             RubricPath = rubricPath,
-            OutputLabel = outputLabel,
+            OutputLabels = outputLabels ?? [],
         };
 
     /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
@@ -91,7 +113,7 @@ sealed class Automation : Aggregate
         bool requiresApproval,
         TimeSpan timeout,
         string? rubricPath = null,
-        string? outputLabel = null
+        IReadOnlyList<string>? outputLabels = null
     )
     {
         TriggerLabel = triggerLabel;
@@ -101,7 +123,18 @@ sealed class Automation : Aggregate
         RequiresApproval = requiresApproval;
         Timeout = timeout;
         RubricPath = rubricPath;
-        OutputLabel = outputLabel;
+        OutputLabels = outputLabels ?? [];
+    }
+
+    /// <summary>
+    /// One label twice is one label. The vendor compares case-insensitively (DEC-056), so a set that
+    /// held both spellings would apply the same label twice and draw two edges to one node. The first
+    /// spelling wins, because it is the one the Admin typed.
+    /// </summary>
+    static List<string> Distinct(IReadOnlyList<string> labels)
+    {
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        return [.. labels.Where(label => seen.Add(label))];
     }
 
     /// <summary>

@@ -68,7 +68,8 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 action,
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
-                outputLabel,
+                // A set since #165; these tests still describe one hand-off, which is now a set of one.
+                outputLabels = outputLabel is null ? Array.Empty<string>() : [outputLabel],
             }
         );
 
@@ -213,7 +214,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
                 rubricPath = (string?)null,
-                outputLabel = "ai:estimate",
+                outputLabels = new[] { "ai:estimate" },
             }
         );
         connected.EnsureSuccessStatusCode();

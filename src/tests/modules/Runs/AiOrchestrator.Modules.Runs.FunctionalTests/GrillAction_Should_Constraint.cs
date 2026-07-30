@@ -245,7 +245,7 @@ public class GrillAction_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 rubricPath = "docs/our-own-bar.md",
                 // Since #115 the grill's ready label is the model's output label; the grill is
                 // just the action with a default for it.
-                outputLabel = "vetted",
+                outputLabels = new[] { "vetted" },
             }
         );
         custom.EnsureSuccessStatusCode();

@@ -44,7 +44,7 @@ sealed class UpdateAutomation : IUseCase
                             request.RequiresApproval,
                             request.TimeoutMinutes,
                             request.RubricPath,
-                            request.OutputLabel
+                            request.OutputLabels
                         ),
                         cancellationToken
                     );
@@ -106,7 +106,7 @@ sealed class UpdateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? RubricPath = null,
-        string? OutputLabel = null
+        IReadOnlyList<string>? OutputLabels = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -124,21 +124,43 @@ sealed class UpdateAutomation : IUseCase
             // The length bounds were on create but not here, so an edit could store a value the
             // column refuses. Same bounds, same place, both directions.
             RuleFor(command => command.RubricPath).MaximumLength(300);
-            RuleFor(command => command.OutputLabel).MaximumLength(200);
+            // Each member bounded exactly as the single label was, and the collection bounded too:
+            // a set is a field a caller controls the size of.
+            RuleForEach(command => command.OutputLabels!)
+                .NotEmpty()
+                .MaximumLength(200)
+                .When(command => command.OutputLabels is not null);
+            RuleFor(command => command.OutputLabels!)
+                .Must(labels => labels.Count <= 10)
+                .When(command => command.OutputLabels is not null)
+                .WithMessage("An Automation can hand on at most 10 labels.");
 
             // An Automation whose output label is its own trigger re-fires itself: the first Run
             // succeeds, writes the label, and matching declines the second because BR-001 sees an
             // active Run — leaving a labelled Story, no work, and nothing saying why. Refused
             // here because it is a relation between two fields of this request, not a conflict
             // with stored state (#115 design D3).
-            RuleFor(command => command.OutputLabel)
+            // Every member, not one (#165): the rule is about the relation between the set and the
+            // trigger, so a set of three with the trigger third is the same defect as a set of one.
+            //
+            // Case-insensitive, unlike the version this replaces. The vendor treats AI:Implement and
+            // ai:implement as one label (DEC-056) and BR-003's identity already does, so an ordinal
+            // comparison let a differently-cased self-trigger through — the exact loop the rule
+            // exists to prevent, spelled differently.
+            RuleFor(command => command.OutputLabels!)
                 .Must(
-                    (command, output) =>
-                        !string.Equals(output, command.TriggerLabel, StringComparison.Ordinal)
+                    (command, labels) =>
+                        !labels.Any(label =>
+                            string.Equals(
+                                label,
+                                command.TriggerLabel,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
                 )
-                .When(command => !string.IsNullOrWhiteSpace(command.OutputLabel))
+                .When(command => command.OutputLabels is not null)
                 .WithMessage(
-                    "An Automation cannot hand work to itself: its output label is its own trigger label."
+                    "An Automation cannot hand work to itself: one of its output labels is its own trigger label."
                 );
 
             RuleFor(command => command.Action)
@@ -193,7 +215,7 @@ sealed class UpdateAutomation : IUseCase
                     ? TimeSpan.FromMinutes(minutes)
                     : CreateAutomation.DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
-                string.IsNullOrWhiteSpace(command.OutputLabel) ? null : command.OutputLabel
+                command.OutputLabels is null ? [] : CreateAutomation.Clean(command.OutputLabels)
             );
 
             // Excluding itself: an Automation must not be refused for colliding with the

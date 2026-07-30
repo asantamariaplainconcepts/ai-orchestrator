@@ -184,14 +184,22 @@ sealed class RunExecutor(
     }
 
     /// <summary>
-    /// Hands work to the next Automation (#115): applies this Automation's output label through
-    /// UC-008's write, so it lands at the vendor, returns as an ordinary StoryChanged and is
-    /// matched like any other label — nothing here knows what happens next. Returns null when
-    /// there is nothing to hand on or the write succeeded, and the refusal sentence otherwise.
+    /// Hands work on (#115, a set since #165): applies every one of this Automation's output labels
+    /// through UC-008's write, so each lands at the vendor, returns as an ordinary StoryChanged and
+    /// is matched like any other label — nothing here knows what happens next. Returns null when
+    /// there was nothing to hand on or everything landed, and otherwise a sentence naming what did
+    /// not.
+    /// <para>
+    /// <b>Every label is attempted.</b> Stopping at the first refusal would apply an arbitrary prefix
+    /// of the set and report one problem when there might be three — and #165's criterion is that a
+    /// label the vendor could not ensure is *reported*, which a sentence about a different label is
+    /// not. The consequence is real and visible on the Story: a Run that fails here may already have
+    /// handed on through the labels that did land (design D2).
+    /// </para>
     /// <para>
     /// The grill keeps its documented default here rather than in data (grill design D5): a
     /// product-wide default would silently chain every Automation an Admin created without
-    /// thinking about it.
+    /// thinking about it. An empty set is what "named nothing" means now.
     /// </para>
     /// </summary>
     async Task<string?> HandOn(Run run, CancellationToken cancellationToken)
@@ -202,18 +210,31 @@ sealed class RunExecutor(
             cancellationToken
         );
 
-        var label =
-            automation?.OutputLabel
-            ?? (automation?.Action == "GrillToReady" ? DefaultReadyLabel : null);
+        var labels =
+            automation?.OutputLabels is { Count: > 0 } named ? named
+            : automation?.Action == "GrillToReady" ? [DefaultReadyLabel]
+            : (IReadOnlyList<string>)[];
 
-        return string.IsNullOrWhiteSpace(label)
-            ? null
-            : await storyWriter.ApplyLabel(
+        var refusals = new List<string>();
+
+        foreach (var label in labels)
+        {
+            var refusal = await storyWriter.ApplyLabel(
                 run.ProjectId,
                 run.VendorStoryId,
                 label,
                 cancellationToken
             );
+
+            if (refusal is not null)
+            {
+                // Named, not counted: which label failed is what tells the Admin whether the branch
+                // they care about is the one that broke.
+                refusals.Add($"'{label}': {refusal}");
+            }
+        }
+
+        return refusals.Count == 0 ? null : string.Join(" ", refusals);
     }
 
     async Task<Outcome> Invoke(
