@@ -257,9 +257,29 @@ export const en = {
   "shell.nav.section": "Workspace",
   "shell.nav.projects": "Projects",
   "shell.nav.inbox": "Inbox",
-  // Honest placeholder: authentication does not exist yet (#12); no identity is invented.
+  // Shown only while the answer has not arrived: sign-in exists now (#12), and what the block says
+  // once it has comes from the server, never from here.
   "shell.user.name": "Not signed in",
-  "shell.user.hint": "Sign-in arrives with Entra ID",
+  "shell.user.hint": "Checking who you are…",
+  // Where you have standing, not what it is (#13): roles are per project, so one line in the shell
+  // could only be one project's answer.
+  "shell.user.project": "project",
+  "shell.user.projects": "projects",
+  // Roles on a project (UC-002, #13). Never the two bundle names themselves — those come from the
+  // server's enum, so a third bundle cannot appear in the form and nowhere else.
+  "roles.title": "People",
+  "roles.explainer":
+    "Admins configure this project. Members watch it, apply trigger labels, start runs, approve plans and cancel them.",
+  "roles.nobody": "Nobody has been given a role here yet.",
+  "roles.noCandidates":
+    "Everybody this deployment has seen already has a role here. Someone new appears once they have signed in.",
+  "roles.person": "Person",
+  "roles.choosePerson": "Choose someone…",
+  "roles.bundle": "Role",
+  "roles.grant": "Give role",
+  "roles.remove": "Remove",
+  "roles.changeFor": "Change role",
+  "roles.failed": "Could not change roles.",
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
   "project.title.fallback": "Project",

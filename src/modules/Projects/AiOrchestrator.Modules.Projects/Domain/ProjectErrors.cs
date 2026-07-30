@@ -46,6 +46,35 @@ static class ProjectErrors
                 + "and its history stays intact."
         );
 
+    /// <summary>
+    /// Design D6's limitation with a voice (#13). A role attaches to a provider identity, and that
+    /// identity does not exist here until they sign in once — so this is a refusal rather than a
+    /// stored row keyed on a name, which would follow whoever inherits the mailbox (design D3).
+    /// </summary>
+    public static Error PersonUnknown() =>
+        Error.Validation(
+            "ProjectRole.PersonUnknown",
+            "That person has not signed in to this deployment yet, so there is no identity to give "
+                + "a role to. Ask them to sign in once; they will appear in the list afterwards."
+        );
+
+    /// <summary>
+    /// The unrecoverable state this refuses to create: a Project whose last administrator removed
+    /// or demoted themselves, which nobody can undo from inside the product.
+    /// </summary>
+    public static Error LastAdministrator() =>
+        Error.Conflict(
+            "ProjectRole.LastAdministrator",
+            "This is the project's only administrator, and a project with none cannot be "
+                + "configured by anyone again. Give somebody else the Admin role first."
+        );
+
+    public static Error RoleNotGranted() =>
+        Error.NotFound(
+            "ProjectRole.NotGranted",
+            "That person holds no role on this project, so there is nothing to remove."
+        );
+
     public static Error TriggerOverlaps(string label, string? state, string conflictingTrigger) =>
         Error.Conflict(
             "Automation.TriggerOverlaps",

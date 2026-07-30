@@ -64,9 +64,13 @@ public sealed class ProjectsModule : ModuleBase
         // question: where nobody signs in there is one caller and the machine is theirs, so there is
         // nothing to look up. Deciding this here rather than inside the implementation is what keeps
         // "nobody is signed in yet" from being mistaken for "this person owns the place".
+        // Registered in every habitat, unlike the reader below: the last-administrator guard has to
+        // know whether anybody holds Admin without a row, and a guard that could not ask would have
+        // to refuse the safe case and say something untrue about why.
+        services.AddSingleton(Features.Identity.BootstrapAdministrators.From(configuration));
+
         if (BuildingBlocks.Identity.IdentityHabitat.CallersSignIn(configuration))
         {
-            services.AddSingleton(Features.Identity.BootstrapAdministrators.From(configuration));
             services.AddScoped<
                 BuildingBlocks.Identity.IProjectPermissions,
                 Features.Identity.StoredProjectRoles

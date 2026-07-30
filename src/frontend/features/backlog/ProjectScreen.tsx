@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
+import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
 import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
@@ -25,6 +26,7 @@ import {
 } from "./useBacklog";
 import { ApiError } from "@/shared/http/client";
 import { useRememberedPreference } from "@/shared/lib/useRememberedPreference";
+import { useProjectRole } from "@/shared/identity/useCurrentPrincipal";
 import { KanbanBoard } from "./KanbanBoard";
 import type { BoardAutomation } from "./KanbanBoard";
 import { BACKLOG_VENDORS } from "./types";
@@ -68,6 +70,9 @@ export function ProjectScreen() {
   const projects = useProjects(true);
   const automations = useAutomations(projectId);
   const cost = useProjectCost(projectId);
+  // What this caller may do *here* (#13): asked per project, because that is the only scope in
+  // which the question has an answer.
+  const role = useProjectRole(projectId);
 
   const connector = backlog.data?.connector ?? null;
   const stories = backlog.data?.stories ?? [];
@@ -157,6 +162,9 @@ export function ProjectScreen() {
               projectId={projectId}
               connector={connector}
             />
+            {/* Who may do what here (#13, UC-002). Admin-only, and the server refuses the read
+                too — this decides what is worth showing, never what is allowed. */}
+            <RolesPanel projectId={projectId} canManage={role === "Admin"} />
             <RetirementPanel
               projectId={projectId}
               projectName={project?.name ?? null}
