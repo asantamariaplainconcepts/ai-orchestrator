@@ -42,8 +42,10 @@ tenant_domain="$(az rest --method GET \
   --url "https://graph.microsoft.com/v1.0/organization?\$select=verifiedDomains" \
   --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv 2>/dev/null || echo "unknown")"
 
-redirects="${LOCAL_ORIGIN}/signin-oidc"
-[ -n "${DEPLOYED_ORIGIN}" ] && redirects="${redirects} ${DEPLOYED_ORIGIN}/signin-oidc"
+# /signin-oidc receives the code; /signed-out is where sign-out lands, and it is in this list
+# because Entra validates post-logout redirect URIs against the registered redirect URIs.
+redirects="${LOCAL_ORIGIN}/signin-oidc ${LOCAL_ORIGIN}/signed-out"
+[ -n "${DEPLOYED_ORIGIN}" ] && redirects="${redirects} ${DEPLOYED_ORIGIN}/signin-oidc ${DEPLOYED_ORIGIN}/signed-out"
 
 # No subscription guard, unlike ci-identity.sh: an app registration is tenant-scoped and the
 # subscription is irrelevant to it. The tenant is what must be right, so the tenant is what gets
@@ -79,6 +81,18 @@ else
 fi
 
 object_id="$(az ad app show --id "${app_id}" --query id -o tsv)"
+
+# Declarative, every run: the create above only fires the first time, and a bootstrap whose
+# re-run cannot add the deployed origin is one that silently strands the first environment it
+# was run without. The desired list simply overwrites — running twice converges, which is what
+# the first real run proved this script previously did not do (#12: the deployed redirect was
+# missing because the owner ran it before DEPLOYED_ORIGIN existed).
+uris_json="$(printf '"%s",' ${redirects} | sed 's/,$//')"
+az rest --method PATCH \
+  --url "https://graph.microsoft.com/v1.0/applications/${object_id}" \
+  --headers "Content-Type=application/json" \
+  --body "{\"web\":{\"redirectUris\":[${uris_json}]}}"
+echo "✓ redirect URIs set (declaratively, ${redirects})"
 
 # Front-channel logout, so signing out of Entra also drops the local cookie session.
 front_channel="${DEPLOYED_ORIGIN:-${LOCAL_ORIGIN}}/signout-oidc"

@@ -76,3 +76,19 @@ variable "migration_image" {
   type        = string
   default     = "mcr.microsoft.com/k8se/quickstart:latest"
 }
+
+variable "entra_tenant_id" {
+  description = <<-EOT
+    Tenant of the sign-in app registration (#12). Empty means sign-in stays off and the portal
+    keeps the warned unauthenticated stopgap — presence is the switch, matching the Server's own
+    composition rule (DEC-058). Not a secret: it identifies the app, it does not authenticate it.
+  EOT
+  type        = string
+  default     = ""
+}
+
+variable "entra_client_id" {
+  description = "Client id of the sign-in app registration. Same presence rule and same non-secrecy as entra_tenant_id."
+  type        = string
+  default     = ""
+}
