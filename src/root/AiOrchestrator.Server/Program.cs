@@ -79,6 +79,10 @@ IdentityComposition.WarnIfUnauthenticated(
 
 app.UseExceptionHandler();
 
+// The provider mode (#12): middleware, the surface split and the auth endpoints, extracted to
+// SignInPipeline because a host file that inlines its auth is a host file nobody can scan.
+var signInConfigured = app.UseSignIn();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -112,7 +116,15 @@ else
 {
     app.UseDefaultFiles();
     app.UseStaticFiles();
-    app.MapFallbackToFile("index.html");
+
+    // With sign-in configured, a navigation without a session is challenged (design D4): that is
+    // what signing in *is*. Static assets stay anonymous — UseStaticFiles runs before the auth
+    // gate and the bundle is public by nature; it is the data behind /api that needs a session.
+    var fallback = app.MapFallbackToFile("index.html");
+    if (signInConfigured)
+    {
+        fallback.RequireAuthorization();
+    }
 }
 
 await app.RunAsync();

@@ -8,6 +8,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/shared/ui/sheet";
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
+import { ApiError } from "@/shared/http/client";
 import { useInbox } from "@/features/inbox/useInbox";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 
@@ -100,13 +101,35 @@ export function AppShell({
             being truncated into something unreadable. Nothing is lost: it is not a destination. */}
         {collapsed ? null : (
           <div className="flex flex-col gap-0.5 px-3">
-            {/* What the server says, not what the page assumes (#119). */}
-            <span className="text-sm font-medium">
-              {me.data?.displayName ?? t("shell.user.name")}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {me.data ? me.data.role : t("shell.user.hint")}
-            </span>
+            {/* A 401 here is a session that ended mid-use (#12): the initial navigation was
+                challenged before the SPA ever loaded, so this state only appears when the cookie
+                expired under an open tab. Sign-in is offered, not forced — plain anchors, because
+                both destinations are server navigations, not SPA routes. */}
+            {me.error instanceof ApiError && me.error.status === 401 ? (
+              <a className="text-sm font-medium underline" href="/auth/signin">
+                {t("shell.auth.signIn")}
+              </a>
+            ) : (
+              <>
+                {/* What the server says, not what the page assumes (#119). */}
+                <span className="text-sm font-medium">
+                  {me.data?.displayName ?? t("shell.user.name")}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {me.data ? me.data.role : t("shell.user.hint")}
+                </span>
+                {/* Only a provider session can end; the local owner and the stopgap have nothing
+                    to sign out of, and their ids are the seam's two fixed sentinels. */}
+                {me.data && me.data.id !== "local-owner" && me.data.id !== "anonymous" ? (
+                  <a
+                    className="text-xs text-muted-foreground underline hover:text-foreground"
+                    href="/auth/signout"
+                  >
+                    {t("shell.auth.signOut")}
+                  </a>
+                ) : null}
+              </>
+            )}
           </div>
         )}
       </aside>

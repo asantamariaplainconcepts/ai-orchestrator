@@ -181,6 +181,19 @@ every request carrying it is same-origin. The OIDC handshake cookies are not: th
 from `login.microsoftonline.com`, which is cross-site, so `Strict` would drop them and sign-in would
 fail in a way that looks like nothing happened at all. Leave those at the library's default.
 
+**Configuring the Server** (what the script prints, wired):
+
+```
+AzureAd__TenantId   = <tenant id>          # identifies, does not authenticate
+AzureAd__ClientId   = <app client id>      # same
+AzureAd__ClientSecret = <from Key Vault>   # the vaulted 'entra-client-secret' — arrives as a
+                                           # container secret reference, never a committed value
+```
+
+Presence of `AzureAd__ClientId` is what turns sign-in on (#12): no configuration, no provider —
+`aspire run` and the self-host compose keep behaving exactly as before, which is the two-mode
+contract DEC-058 records.
+
 This answers [OPN-002](../docs/product/mvp/07-open-decisions.md)'s first half. Its second half — a
 local-dev and functional-test strategy, given that Entra cannot be containerized — the BFF shape
 answers cheaply: the server owns the session, so the test tiers keep injecting `ICurrentPrincipal`
