@@ -1840,3 +1840,27 @@ times in the project this framework came from.
   what exists, believed from an incomplete look. The ADR already covers it; what it does not yet say is
   that a *negative* claim needs its search scope stated. If that recurs, amending ADR-0009 with that
   sentence is the change to make.
+
+## 2026-07-30 — entra-app-script (spec-less, #167)
+
+- **Worked:** the owner's two questions reshaped the artifact before it ran, and both times the spec
+  already held the answer. "It uses a BFF, no?" — the same-origin requirement (wwwroot, relative calls,
+  no CORS) means the first version's public SPA client was the wrong shape, and the correction to a
+  confidential client with a vaulted secret is in the history rather than squashed away. And the local
+  redirect URI was read from launchSettings (http://localhost:5080) after the first draft invented
+  https://localhost:7443 — a redirect URI that does not match to the character fails sign-in with no
+  message at all.
+- **Didn't:** I predicted the cross-tenant run would break at the vault step, and it did not — the
+  owner's login reached both the personal tenant and the infra subscription, and the secret landed in
+  kv-aio-dev on the first try. A prediction stated as a warning cost nothing this time, but it was
+  reasoning about `az`'s context model instead of exercising it (ADR-0001's line, again). I also spent
+  words on the personal-versus-corporate tenant distinction after the owner had already scoped the
+  question to "is this viable" — the limit belonged in DEC-058's scope note, once, not in the
+  conversation three times.
+- **Next time:** when a bootstrap's environment differs from the assumed one, run the smallest probe
+  first (`az account show`) instead of predicting which step fails.
+- **Time invested:** not measured (source: **manual** — seventy-fourth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. The wrong-shape-first finding is ADR-0009's family (a claim believed over the
+  spec that was one file away); the prediction-versus-probe finding is ADR-0001's.

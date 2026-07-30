@@ -52,8 +52,9 @@ Locked decisions (`DEC-*`) are binding. An item that depends on a **still-open**
 a blocking decision-closure item instead. Proposing on a guessed answer is the failure this gate
 exists to prevent.
 
-*Currently open and blocking:* `OPN-002` (Entra ID verification — blocks the auth slice and
-UC-001). `OPN-003` closed with the Azure DevOps connector (DEC-045).
+*Currently open and blocking:* none — `OPN-002` closed with DEC-058 (Entra viable, BFF shape),
+which unblocks the auth slice and UC-001. `OPN-003` closed with the Azure DevOps connector
+(DEC-045).
 
 ## Process gate
 

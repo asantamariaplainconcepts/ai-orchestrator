@@ -133,6 +133,59 @@ production data.
 > twice. Check `gh api repos/{owner}/{repo}/environments/dev` before trusting it, and correct it
 > here when it drifts.
 
+## Registering the sign-in app
+
+```bash
+./infra/entra-app.sh
+```
+
+Once per tenant, by a human with `az login`. Idempotent. Creates the Entra ID app registration the
+portal signs users in with, its service principal, and a client secret written straight into Key
+Vault without being printed.
+
+A script rather than Terraform for the same reason `ci-identity.sh` is one: this is a **directory**
+object, not a subscription resource. Managing it in Terraform would mean granting the CI deploy
+identity Graph permissions with admin consent — widening what a pipeline can do inside the tenant,
+which is a bigger blast radius than the resource group it manages today.
+
+**Why a confidential web client and not a SPA.** The portal is a same-origin single web app: the Vite
+build is served from the Server's `wwwroot` with an `index.html` fallback, API calls are relative, and
+there is no CORS configuration anywhere. That shape is already a backend-for-frontend, so the session
+belongs in an `HttpOnly` cookie on the server and no access token ever needs to reach the browser. A
+public-client SPA flow would put tokens in JavaScript to solve a cross-origin problem this product
+does not have.
+
+| Where | What | Why this shape |
+|---|---|---|
+| Entra | app registration, this tenant only, **web** platform | the code is redeemed on the server; `/signin-oidc` is Microsoft.Identity.Web's default |
+| Entra | front-channel logout URL | signing out of Entra should drop the local cookie session too |
+| Entra | service principal | so the app appears as an enterprise application and users can be assigned |
+| Entra | one client secret, 1 year | a confidential client needs a credential to redeem the code |
+| Key Vault | the secret's **value** | piped from `az` into `az keyvault secret set` and never printed — this repository is public and so are its Actions logs |
+| — | **no** implicit flow | the code flow redeems server-side, so no `id_token` issuance is needed |
+
+The tenant id and client id are printed: they *identify* the app, they do not *authenticate* it. What
+authenticates it is in the vault, and what reaches configuration is that secret's **name** (BR-010).
+
+Rotation is deliberate: if the secret already exists the script leaves it alone rather than quietly
+minting a second one.
+
+The local redirect URI is the Server's own dev profile — `http://localhost:5080`, from
+`launchSettings.json` rather than guessed, because a redirect URI that does not match to the character
+fails sign-in with no useful message. Plain `http` is fine there only because Entra exempts
+`localhost`; anywhere else it is rejected.
+
+**Cookies, for whoever wires this up.** A cookie marked `Secure` is not sent over plain `http`, so the
+local profile needs that relaxed in development or the session never arrives at all. `SameSite=Strict` is right for the *application session* —
+every request carrying it is same-origin. The OIDC handshake cookies are not: the response arrives
+from `login.microsoftonline.com`, which is cross-site, so `Strict` would drop them and sign-in would
+fail in a way that looks like nothing happened at all. Leave those at the library's default.
+
+This answers [OPN-002](../docs/product/mvp/07-open-decisions.md)'s first half. Its second half — a
+local-dev and functional-test strategy, given that Entra cannot be containerized — the BFF shape
+answers cheaply: the server owns the session, so the test tiers keep injecting `ICurrentPrincipal`
+and Entra is composed only in the real host. Issue #11 records both outcomes.
+
 ## Setting up the deploy credential
 
 ```bash

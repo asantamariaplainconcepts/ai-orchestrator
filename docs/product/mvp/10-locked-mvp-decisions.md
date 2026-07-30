@@ -268,3 +268,20 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   unreadable file, and an empty body once frontmatter is removed — precede the agent and name the
   **resolved** path, so a misconfigured directory gives itself away instead of looking like a missing
   file. Decided 2026-07-29 with #150.
+- **DEC-058 — Entra ID is viable, and the portal authenticates as a BFF** *(closes OPN-002; confirms
+  DEC-024 without its reopen trigger firing)*: both of OPN-002's unverified claims were exercised for
+  real on 2026-07-30. (a) `infra/entra-app.sh` created the app registration, its service principal and
+  a vaulted client secret in the owner's test tenant on the first run — a **directory** bootstrap
+  scripted beside `ci-identity.sh` rather than Terraformed, because managing directory objects from CI
+  would mean granting the deploy identity Graph permissions with admin consent (#167). (b) needed no
+  new mechanism at all, and the shape is the decision: the portal is a same-origin single web app, so
+  it authenticates as a **backend-for-frontend** — a confidential web client whose session is an
+  `HttpOnly` cookie on the server, no token ever reaching the browser. The test tiers therefore keep
+  injecting `ICurrentPrincipal` (#119) and Entra is composed only in the real host, which dissolves
+  "Entra cannot be containerized" instead of solving it. Two silent traps are recorded where the
+  wiring will happen: `SameSite=Strict` is right for the session cookie and wrong for the OIDC
+  handshake cookies (the response arrives cross-site from `login.microsoftonline.com`), and a `Secure`
+  cookie never arrives over the local profile's plain-http origin. Scope, stated: the verification ran
+  against a **test tenant** — it answers *is this viable*, which is what OPN-002 asked; pointing the
+  registration at any particular organisation's tenant is configuration, not a new decision. Decided
+  2026-07-30 with #11 and #167.
