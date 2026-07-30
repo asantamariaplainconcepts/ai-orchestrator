@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
-# Creates the Entra ID app registration the portal signs users in with, and its service principal.
+# Creates the Entra ID app registration the portal signs users in with, as a CONFIDENTIAL web
+# client, and puts its secret in Key Vault without printing it.
 #
 # A script rather than Terraform, for the reason ci-identity.sh is one (DEC-046): this creates a
 # **directory** object, not a subscription resource. Terraform-managing it would mean granting the
 # CI deploy identity Graph permissions with admin consent — widening what a pipeline can do inside
-# the tenant, which is a larger blast radius than the resource group it manages today. Directory
-# objects are bootstrapped by a human; subscription resources are Terraform's.
+# the tenant, a larger blast radius than the resource group it manages today.
 #
-# Idempotent: every step checks before it creates, so running it twice changes nothing.
+# **Why a web client and not a SPA.** The portal is a same-origin single web app: the Vite build is
+# served from the Server's wwwroot with an index.html fallback, API calls are relative, and there is
+# no CORS configuration anywhere (frontend-architecture spec). That shape is already a
+# backend-for-frontend, so the session belongs in an HttpOnly cookie on the server and no access
+# token ever needs to reach the browser. A public-client SPA flow would put tokens in JavaScript to
+# solve a cross-origin problem this product does not have.
 #
-# Deliberately minimal. It answers OPN-002's first half — *can an app registration be created in
-# this tenant* — and stops there. How the SPA and the API actually authenticate (scopes, audience,
-# token validation) is the auth slice's decision (#12, UC-001), not this script's.
+# Idempotent: every step checks before it creates.
+#
+# Answers OPN-002's first half — can an app registration be created in this tenant — and stops
+# there. Token validation, scopes and role mapping are the auth slice's decisions (#12, #13).
 set -euo pipefail
 
 APP_NAME="${APP_NAME:-ai-orchestrator-dev}"
-# Where the portal runs. Both, because a SPA that only works deployed cannot be developed.
-REDIRECT_LOCAL="${REDIRECT_LOCAL:-http://localhost:5173}"
-REDIRECT_DEPLOYED="${REDIRECT_DEPLOYED:-}"
-REPO="${REPO:-asantamariaplainconcepts/ai-orchestrator}"
+RESOURCE_GROUP="${RESOURCE_GROUP:-rg-aio-dev}"
+# Microsoft.Identity.Web's defaults. Both origins, because auth that only works deployed cannot be
+# developed against.
+LOCAL_ORIGIN="${LOCAL_ORIGIN:-https://localhost:7443}"
+DEPLOYED_ORIGIN="${DEPLOYED_ORIGIN:-}"
+SECRET_NAME="${SECRET_NAME:-entra-client-secret}"
 
 need() { command -v "$1" >/dev/null || { echo "Missing required tool: $1" >&2; exit 1; }; }
 need az
@@ -30,19 +38,22 @@ tenant_domain="$(az rest --method GET \
   --url "https://graph.microsoft.com/v1.0/organization?\$select=verifiedDomains" \
   --query "value[0].verifiedDomains[?isDefault].name | [0]" -o tsv 2>/dev/null || echo "unknown")"
 
-# No subscription hash guard here, unlike ci-identity.sh: an app registration is tenant-scoped, and
-# the subscription is irrelevant to it. The tenant is what must be right, so the tenant is what gets
+redirects="${LOCAL_ORIGIN}/signin-oidc"
+[ -n "${DEPLOYED_ORIGIN}" ] && redirects="${redirects} ${DEPLOYED_ORIGIN}/signin-oidc"
+
+# No subscription guard, unlike ci-identity.sh: an app registration is tenant-scoped and the
+# subscription is irrelevant to it. The tenant is what must be right, so the tenant is what gets
 # confirmed — by eye, because there is no expected value to compare against yet.
 cat <<EOF
 Tenant     : ${tenant_domain}
-App        : ${APP_NAME}
-Redirects  : ${REDIRECT_LOCAL}${REDIRECT_DEPLOYED:+ , ${REDIRECT_DEPLOYED}}
+App        : ${APP_NAME} (confidential web client)
+Redirects  : ${redirects}
 Audience   : this tenant only (AzureADMyOrg)
+Secret     : created and written to Key Vault as '${SECRET_NAME}', never printed
 
-This creates a directory object in the tenant above. It grants nobody anything yet:
-an app registration with no API permissions and no client secret can sign a user in
-and nothing else. Implicit flow stays off — auth code with PKCE needs no id_token
-issuance, and leaving it off is one fewer flow to have to reason about later.
+The portal is served same-origin by its own server, so this is a backend-for-frontend:
+the browser gets an HttpOnly session cookie and never sees a token. That is why this is
+a web client with a secret rather than a public SPA client without one.
 EOF
 
 read -r -p "Create/verify the app registration? [y/N] " reply
@@ -52,30 +63,30 @@ app_id="$(az ad app list --display-name "${APP_NAME}" --query "[0].appId" -o tsv
 if [ -n "${app_id}" ]; then
   echo "✓ app registration ${APP_NAME} already exists"
 else
+  # Implicit flow stays off: the code flow redeems on the server, so no id_token issuance is
+  # needed and leaving it off is one fewer flow to reason about.
+  # shellcheck disable=SC2086
   app_id="$(az ad app create \
     --display-name "${APP_NAME}" \
     --sign-in-audience AzureADMyOrg \
+    --web-redirect-uris ${redirects} \
     --query appId -o tsv)"
   echo "✓ created app registration ${APP_NAME}"
 fi
 
 object_id="$(az ad app show --id "${app_id}" --query id -o tsv)"
 
-# `az ad app create` has --web-redirect-uris and --public-client-redirect-uris, and no SPA flag —
-# checked against az 2.82, not assumed. A SPA's redirect URIs live under `spa.redirectUris`, which
-# only Graph will set, so this is a PATCH rather than a CLI argument.
-uris="\"${REDIRECT_LOCAL}\""
-[ -n "${REDIRECT_DEPLOYED}" ] && uris="${uris},\"${REDIRECT_DEPLOYED}\""
-
-current="$(az ad app show --id "${app_id}" --query "spa.redirectUris" -o json)"
-if [ "$(printf '%s' "${current}" | tr -d ' \n')" = "[${uris}]" ]; then
-  echo "✓ SPA redirect URIs already set"
+# Front-channel logout, so signing out of Entra also drops the local cookie session.
+front_channel="${DEPLOYED_ORIGIN:-${LOCAL_ORIGIN}}/signout-oidc"
+current_logout="$(az ad app show --id "${app_id}" --query "web.logoutUrl" -o tsv)"
+if [ "${current_logout}" = "${front_channel}" ]; then
+  echo "✓ logout URL already set"
 else
   az rest --method PATCH \
     --url "https://graph.microsoft.com/v1.0/applications/${object_id}" \
     --headers "Content-Type=application/json" \
-    --body "{\"spa\":{\"redirectUris\":[${uris}]}}"
-  echo "✓ set SPA redirect URIs"
+    --body "{\"web\":{\"logoutUrl\":\"${front_channel}\"}}"
+  echo "✓ set front-channel logout URL"
 fi
 
 if az ad sp show --id "${app_id}" --output none 2>/dev/null; then
@@ -85,20 +96,50 @@ else
   echo "✓ created service principal"
 fi
 
-# Printed, not piped into a secret: a SPA's client id and tenant id are delivered to every browser
-# that loads the app. Treating them as secrets would be theatre, and would make them harder to
-# configure than they deserve. The subscription id — which this script never touches — is the one
-# that stays out of a public repository.
+# --- the client secret ------------------------------------------------------------------------
+#
+# A confidential client needs a credential to redeem the authorization code. The value goes from
+# `az ad app credential reset` straight into the vault through a pipe and is never printed, never
+# written to a file, and never held in a shell variable that gets echoed — the same discipline
+# ci-identity.sh applies to the subscription id, for the same reason: this repository is public and
+# so are its Actions logs.
+#
+# BR-010 is satisfied by construction: what reaches configuration is the secret's NAME.
+vault="${VAULT_NAME:-$(az keyvault list --resource-group "${RESOURCE_GROUP}" --query "[0].name" -o tsv 2>/dev/null || true)}"
+if [ -z "${vault}" ]; then
+  echo "No Key Vault found in ${RESOURCE_GROUP}. Set VAULT_NAME, or run bootstrap.sh first." >&2
+  exit 1
+fi
+
+if az keyvault secret show --vault-name "${vault}" --name "${SECRET_NAME}" --output none 2>/dev/null; then
+  echo "✓ ${SECRET_NAME} already in ${vault} — not rotated (rotation is a deliberate act)"
+else
+  az ad app credential reset --id "${app_id}" --append \
+    --display-name "portal-bff" --years 1 --query password -o tsv \
+    | az keyvault secret set --vault-name "${vault}" --name "${SECRET_NAME}" \
+        --file /dev/stdin --output none
+  echo "✓ created a client secret and stored it as ${SECRET_NAME} in ${vault}"
+fi
+
 cat <<EOF
 
-Done. Configure the portal with:
+Done. Configure the Server with:
 
-  AZURE_CLIENT_ID = ${app_id}
-  AZURE_TENANT_ID = ${tenant_id}
+  AzureAd__TenantId              = ${tenant_id}
+  AzureAd__ClientId              = ${app_id}
+  AzureAd__ClientCredentials__0  = the vault reference to '${SECRET_NAME}'
 
-Both are public by nature — they ship inside the browser bundle of any SPA that uses them.
+The tenant and client ids are not secrets — they identify the app, they do not authenticate it.
+The secret is in the vault and was never printed here.
 
-OPN-002's first half is now answered for real: the registration exists. Its second half — a
-local-dev and functional-test strategy, since Entra cannot be containerized — is still open,
-and #11 is where the outcome of both gets recorded.
+Session cookie, for whoever wires Microsoft.Identity.Web: SameSite=Strict is correct for the
+application session, because every request that carries it is same-origin. The OIDC handshake
+cookies (correlation, nonce) are a different matter — the response arrives from
+login.microsoftonline.com, which is cross-site, so Strict would drop them and sign-in would fail
+in a way that looks like nothing happened. Leave those at the library's default.
+
+OPN-002's first half is now answered for real. Its second half — a local-dev and functional-test
+strategy, since Entra cannot be containerized — the BFF shape answers cheaply: the server owns the
+session, so tests keep injecting ICurrentPrincipal and Entra is composed only in the real host.
+Record both outcomes on #11.
 EOF
