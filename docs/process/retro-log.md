@@ -2020,3 +2020,30 @@ times in the project this framework came from.
 - **ADR:** none new, but the habitat-contract family is now large enough to be worth an ADR of its
   own once #13 lands: six gaps in one slice, every one at a boundary between the app and something
   it does not run.
+
+## 2026-07-30 — strict-with-landing (hotfix, #182)
+
+- **Worked:** the owner said "we need SameSite Strict" and pointed at ds-connect, and reading that
+  codebase replaced a worse design of mine before it was written. I was about to build an interstitial
+  landing hop to smuggle a Strict cookie past the callback redirect. ds-connect's ADR-0001 needs no
+  hop: challenge with Bearer so protected calls answer 401, serve the SPA shell **anonymously**, and
+  let the SPA navigate to sign-in itself. Then the only cross-site-initiated navigation needs no
+  cookie, and Strict costs nothing.
+- **Didn't — and it is the same mistake twice, one layer apart:** #176's loop was caused by
+  `RequireAuthorization` on the SPA fallback, and I diagnosed it as "Strict is wrong here" and relaxed
+  the cookie. I treated the symptom and wrote the wrong rationale into DEC-059. The cause was my own
+  earlier decision to gate the shell — a decision I had made without asking what the shell actually
+  needs, since a public bundle needs nothing. Two DEC entries now exist to walk that back.
+- **Also:** the deploy had been broken since #180's apply failed — creating a Key Vault key needs
+  Crypto Officer, which neither CI nor the operator holds. Shipping persistence unwrapped with the
+  residual risk written into the Terraform and its own follow-up (#183) is the honest trade; silently
+  dropping the wrapping argument I had made an hour earlier would not have been.
+- **Next time:** when a security setting appears to break a flow, ask what the flow legitimately needs
+  before loosening the setting. "Strict breaks login" was false — "requiring a session for a public
+  bundle breaks login" was true, and only one of those sentences points at the fix.
+- **Time invested:** not measured (source: **manual** — eighty-second consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. Worth noting for the habitat-contract ADR that #12 keeps earning: two of the
+  seven gaps were fixed by reading another repository rather than the docs, which is an argument for
+  looking at a working implementation before designing an auth flow from primitives.

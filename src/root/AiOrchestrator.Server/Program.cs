@@ -86,7 +86,7 @@ app.UseExceptionHandler();
 
 // The provider mode (#12): middleware, the surface split and the auth endpoints, extracted to
 // SignInPipeline because a host file that inlines its auth is a host file nobody can scan.
-var signInConfigured = app.UseSignIn();
+app.UseSignIn();
 
 if (app.Environment.IsDevelopment())
 {
@@ -122,14 +122,12 @@ else
     app.UseDefaultFiles();
     app.UseStaticFiles();
 
-    // With sign-in configured, a navigation without a session is challenged (design D4): that is
-    // what signing in *is*. Static assets stay anonymous — UseStaticFiles runs before the auth
-    // gate and the bundle is public by nature; it is the data behind /api that needs a session.
-    var fallback = app.MapFallbackToFile("index.html");
-    if (signInConfigured)
-    {
-        fallback.RequireAuthorization();
-    }
+    // The shell is served to anyone, deliberately (#182): it is a public bundle, and requiring a
+    // session for it is what forced the cookie down to Lax. With the shell anonymous, the only
+    // cross-site-initiated navigation is the callback's return — which needs no cookie — so the
+    // session cookie can be Strict. The data behind /api still answers 401, and the SPA offers
+    // sign-in when it sees one.
+    app.MapFallbackToFile("index.html");
 }
 
 await app.RunAsync();

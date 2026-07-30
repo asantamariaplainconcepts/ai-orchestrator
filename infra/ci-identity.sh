@@ -54,7 +54,7 @@ Environment  : ${ENVIRONMENT}
 App          : ${APP_NAME}
 Grants       : Contributor + User Access Administrator on ${RESOURCE_GROUP}
                Storage Blob Data Contributor on ${STATE_STORAGE}
-               Key Vault Secrets Officer on the vault in ${RESOURCE_GROUP}
+               Key Vault Secrets Officer + Crypto User on the vault in ${RESOURCE_GROUP}
 
 This lets a GitHub Actions run change that resource group and read its secrets,
 including the database password — Terraform manages those secrets, so it reads
@@ -170,6 +170,10 @@ grant "Storage Blob Data Contributor" "${state_scope}"
 # the environment gate is worth keeping wherever the data is not disposable.
 if [ -n "${vault_scope}" ]; then
   grant "Key Vault Secrets Officer" "${vault_scope}"
+  # Crypto USER, not Officer (#180): Terraform reads the key that wraps the session key ring, and
+  # reading plus unwrapping is all it needs. Officer would let a pipeline delete that key and with
+  # it every session — a blast radius this identity has never had.
+  grant "Key Vault Crypto User" "${vault_scope}"
 else
   echo "! no key vault found in ${RESOURCE_GROUP} — skipping the secrets grant"
   echo "  (expected before the first terraform apply; re-run this script afterwards)"

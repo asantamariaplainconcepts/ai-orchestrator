@@ -80,11 +80,27 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
     }
 
     [Fact]
-    public async Task ANavigationWithoutASession_Should_BeChallengedToTheProvider()
+    public async Task TheShell_Should_BeServedToAnyone()
     {
         using var client = Client();
 
+        // This is what makes the Strict cookie possible (#182): the callback's return to "/" is
+        // the one cross-site-initiated navigation in the flow, and a Strict cookie is withheld
+        // from it — so "/" must not need one. It is a public bundle. Requiring a session here is
+        // what produced #176's infinite loop.
         var response = await client.GetAsync("/");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task TheExplicitSignInEndpoint_Should_ChallengeTheProvider()
+    {
+        using var client = Client();
+
+        // The SPA navigates here itself after a 401 — an explicit challenge, initiated by our own
+        // document, which is the BFF pattern ds-connect proved.
+        var response = await client.GetAsync("/auth/signin");
 
         response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
         response.Headers.Location!.AbsoluteUri.ShouldStartWith(
@@ -99,8 +115,9 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
 
         // What the TLS-terminating ingress actually sends (#174): the request arrives over http
         // with X-Forwarded-Proto=https. Without forwarded-header processing the challenge asked
-        // Entra for an http redirect the registration cannot carry (AADSTS50011).
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/");
+        // Entra for an http redirect the registration cannot carry (AADSTS50011). Driven through
+        // /auth/signin since the shell stopped challenging (#182).
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/auth/signin");
         request.Headers.Add("X-Forwarded-Proto", "https");
 
         var response = await client.SendAsync(request);
@@ -168,13 +185,13 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
     }
 
     [Fact]
-    public void TheSessionCookie_Should_BeLaxBecauseStrictIsTheLoop()
+    public void TheSessionCookie_Should_BeStrictBecauseTheShellNeedsNoSession()
     {
-        // No tier can reproduce SameSite semantics — HttpClient ignores the attribute, and the
-        // loop needs a real browser against a live provider. What CAN be pinned is the
-        // configuration: Strict here is the infinite sign-in loop the owner hit (#176), because
-        // the post-login redirect is initiated from the provider's cross-site form post and a
-        // Strict cookie does not ride it.
+        // No tier can reproduce SameSite semantics — HttpClient ignores the attribute. What CAN be
+        // pinned is the configuration, and Strict is now correct BECAUSE the shell is anonymous
+        // (#182): nothing that needs the cookie is reached by a cross-site-initiated navigation.
+        // The pair is load-bearing — Strict plus a session-requiring shell is #176's loop, so the
+        // anonymous-shell test above is the other half of this assertion.
         using var factory = fixture.WithWebHostBuilder(builder =>
         {
             builder.UseSetting("AzureAd:TenantId", "00000000-0000-0000-0000-000000000001");
@@ -186,7 +203,7 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
             .Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
             .Get(CookieAuthenticationDefaults.AuthenticationScheme);
 
-        cookie.Cookie.SameSite.ShouldBe(Microsoft.AspNetCore.Http.SameSiteMode.Lax);
+        cookie.Cookie.SameSite.ShouldBe(Microsoft.AspNetCore.Http.SameSiteMode.Strict);
         cookie.Cookie.HttpOnly.ShouldBeTrue();
     }
 

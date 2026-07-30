@@ -176,10 +176,12 @@ fails sign-in with no useful message. Plain `http` is fine there only because En
 `localhost`; anywhere else it is rejected.
 
 **Cookies, for whoever wires this up.** A cookie marked `Secure` is not sent over plain `http`, so the
-local profile needs that relaxed in development or the session never arrives at all. And the session
-cookie must be `Lax`, not `Strict`: the post-login redirect is initiated from the provider's
-cross-site form post, and a `Strict` cookie is not attached to it — the observed result is an
-infinite sign-in loop (#176), not an error. `SameSite=Strict` is right for the *application session* —
+local profile needs that relaxed in development or the session never arrives at all. And the session cookie is
+`Strict`, which only works because **the SPA shell is served anonymously**: the callback's return to
+`/` is the one cross-site-initiated navigation in the flow, and it needs no cookie. Requiring a
+session for the shell is what produced an infinite sign-in loop (#176) and got the cookie wrongly
+relaxed to `Lax` before the real cause was found (#182, DEC-060). The handshake cookies stay at the
+library's defaults — that response really does arrive cross-site. `SameSite=Strict` is right for the *application session* —
 every request carrying it is same-origin. The OIDC handshake cookies are not: the response arrives
 from `login.microsoftonline.com`, which is cross-site, so `Strict` would drop them and sign-in would
 fail in a way that looks like nothing happened at all. Leave those at the library's default.

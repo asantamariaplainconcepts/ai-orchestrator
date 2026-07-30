@@ -228,17 +228,15 @@ resource "azurerm_storage_container" "keyring" {
   container_access_type = "private"
 }
 
-# Wrapped, not written in the clear: an unwrapped ring readable from blob storage is forgeable
-# session cookies for anyone who can read that blob. Authentication material, not cache.
-resource "azurerm_key_vault_key" "keyring" {
-  name         = "dataprotection-wrapping"
-  key_vault_id = azurerm_key_vault.main.id
-  key_type     = "RSA"
-  key_size     = 2048
-  key_opts     = ["unwrapKey", "wrapKey"]
-
-  depends_on = [azurerm_role_assignment.terraform_operator_secrets]
-}
+# NOT wrapped with a Key Vault key yet, and that is a stated gap rather than an oversight (#183).
+# Wrapping would need a key, creating a key needs Crypto Officer, and neither the deploy identity nor
+# the operator running the bootstrap holds it — granting CI that role would also let a pipeline delete
+# the key that wraps every session. So the ring rides Azure Storage's own encryption at rest, in a
+# private container reachable only by the workload identity.
+#
+# The residual risk, plainly: a principal who can read this container can forge session cookies. Today
+# that is the workload identity alone. The code already reads a wrapping key when configured, so
+# closing #183 is configuration plus one role grant, not a rewrite.
 
 resource "azurerm_role_assignment" "portal_keyring_blob" {
   scope                = azurerm_storage_account.dispatch.id

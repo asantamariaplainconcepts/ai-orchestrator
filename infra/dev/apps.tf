@@ -94,10 +94,6 @@ resource "azurerm_container_app" "portal" {
         name  = "DataProtection__KeyRingBlobUri"
         value = "https://${azurerm_storage_account.dispatch.name}.blob.core.windows.net/${azurerm_storage_container.keyring.name}/portal-keys.xml"
       }
-      env {
-        name  = "DataProtection__WrappingKeyId"
-        value = azurerm_key_vault_key.keyring.versionless_id
-      }
       # Sign-in (#12): present only when the registration is named, because presence of
       # AzureAd__ClientId is exactly what turns the provider mode on in the Server. Ids are
       # plain values — they identify the app, they do not authenticate it (DEC-058).
