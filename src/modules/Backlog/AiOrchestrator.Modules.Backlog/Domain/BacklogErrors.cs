@@ -34,8 +34,10 @@ static class BacklogErrors
         Error.Validation("Connector.CredentialInputAmbiguous", detail);
 
     /// <summary>Storing a credential is an Admin's act, and this caller is not one (#124, BR-009).</summary>
-    public static Error NotPermitted(string action) =>
-        Error.Forbidden("Connector.NotPermitted", $"Only an Admin can {action}.");
+    // NotPermitted is gone (#13): the two callers that used it were hand-written Admin checks
+    // inside ConfigureConnector's handler, and the pipeline enforces the declaration now. A
+    // per-module permission error would let each module word its own refusal differently, which is
+    // how a refusal starts disclosing what varies between them.
 
     /// <summary>
     /// #160 — reconfiguring with no credential is "keep the one you have", and a vendor switch has no

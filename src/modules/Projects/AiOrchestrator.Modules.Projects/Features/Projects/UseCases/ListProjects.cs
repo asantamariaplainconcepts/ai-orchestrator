@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -40,19 +41,36 @@ sealed class ListProjects : IUseCase
     /// <summary><paramref name="ArchivedCount"/> is stated even when the rows are excluded.</summary>
     internal sealed record Response(IReadOnlyList<Item> Projects, int ArchivedCount);
 
+    [Requires(Access.FiltersToCaller)]
     internal sealed record Query(bool IncludeArchived) : IQuery<Response>;
 
-    internal sealed class Handler(ProjectsDbContext database) : IAppQueryHandler<Query, Response>
+    internal sealed class Handler(ProjectsDbContext database, IProjectPermissions permissions)
+        : IAppQueryHandler<Query, Response>
     {
         public async Task<Response> Handle(Query query, CancellationToken cancellationToken)
         {
-            var projects = await database
-                .Projects.Where(project => query.IncludeArchived || project.ArchivedAt == null)
+            // What FiltersToCaller commits to (#13, design D7). Without it a signed-in person
+            // holding no role saw every Project's name while every operation on them was refused —
+            // which contradicts the refusals themselves, since those are worded so as not to
+            // disclose that a Project exists.
+            var visible = await permissions.VisibleProjects(cancellationToken);
+
+            var mine = database.Projects.AsQueryable();
+            if (visible is not null)
+            {
+                mine = mine.Where(project => visible.Contains(project.Id));
+            }
+
+            var projects = await mine.Where(project =>
+                    query.IncludeArchived || project.ArchivedAt == null
+                )
                 .OrderBy(project => project.Name)
                 .Select(project => new Item(project.Id, project.Name, project.ArchivedAt))
                 .ToListAsync(cancellationToken);
 
-            var archived = await database.Projects.CountAsync(
+            // Counted over the same filtered set: a count of Projects they cannot see would be the
+            // disclosure the filter just prevented, in one number.
+            var archived = await mine.CountAsync(
                 project => project.ArchivedAt != null,
                 cancellationToken
             );

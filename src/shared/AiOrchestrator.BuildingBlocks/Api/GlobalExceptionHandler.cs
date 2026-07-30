@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Identity;
 using FluentValidation;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
@@ -37,6 +38,23 @@ public sealed partial class GlobalExceptionHandler(
             return true;
         }
 
+        // A refusal is an answer, not a fault (#13, task 2.4): 403 with one fixed sentence. The
+        // body never varies — not by whether the project exists, not by what role was needed — so
+        // it cannot be read as a directory. The log gets the operation name; the caller does not.
+        if (exception is PermissionDeniedException denied)
+        {
+            LogRefused(logger, denied.Operation);
+            await Results
+                .Problem(
+                    statusCode: StatusCodes.Status403Forbidden,
+                    title: "Forbidden",
+                    detail: denied.Message,
+                    extensions: new Dictionary<string, object?> { ["code"] = "Permission.Denied" }
+                )
+                .ExecuteAsync(httpContext);
+            return true;
+        }
+
         LogUnhandled(logger, exception);
 
         // Outside production the body names the exception — dev and E2E failures must explain
@@ -57,4 +75,11 @@ public sealed partial class GlobalExceptionHandler(
 
     [LoggerMessage(EventId = 1100, Level = LogLevel.Error, Message = "Unhandled exception")]
     static partial void LogUnhandled(ILogger logger, Exception exception);
+
+    [LoggerMessage(
+        EventId = 1101,
+        Level = LogLevel.Information,
+        Message = "Refused {Operation}: the caller holds no sufficient role on the project"
+    )]
+    static partial void LogRefused(ILogger logger, string operation);
 }

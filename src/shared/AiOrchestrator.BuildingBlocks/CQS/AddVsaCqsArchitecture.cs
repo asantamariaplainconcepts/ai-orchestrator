@@ -8,7 +8,7 @@ public static class CqsServiceCollectionExtensions
 {
     /// <summary>
     /// Registers the CQS pipeline with its fixed decorator order:
-    /// Logging -> Validation -> Caching -> Handler -> InvalidateCaching.
+    /// Logging -> Authorization -> Validation -> Caching -> Handler -> InvalidateCaching.
     /// The order is owned here and is not configurable per module or call site.
     /// </summary>
     public static IServiceCollection AddVsaCqsArchitecture(
@@ -50,10 +50,22 @@ public static class CqsServiceCollectionExtensions
             typeof(IAppCommandHandler<,>),
             typeof(ValidationCommandHandlerDecorator<,>)
         );
+        // Outside validation, and therefore outside caching too (#13, design D1): a caller with no
+        // role learns nothing about the payload's shape, and a cached answer cannot leak to them.
+        // Registered here rather than offered as an option — an authorization step a call site can
+        // move is one a call site can move out of the way.
+        services.Decorate(
+            typeof(IAppCommandHandler<,>),
+            typeof(AuthorizationCommandHandlerDecorator<,>)
+        );
         services.Decorate(typeof(IAppCommandHandler<,>), typeof(LoggingCommandHandlerDecorator<,>));
 
         services.Decorate(typeof(IAppQueryHandler<,>), typeof(CachingQueryHandlerDecorator<,>));
         services.Decorate(typeof(IAppQueryHandler<,>), typeof(ValidationQueryHandlerDecorator<,>));
+        services.Decorate(
+            typeof(IAppQueryHandler<,>),
+            typeof(AuthorizationQueryHandlerDecorator<,>)
+        );
         services.Decorate(typeof(IAppQueryHandler<,>), typeof(LoggingQueryHandlerDecorator<,>));
 
         return services;

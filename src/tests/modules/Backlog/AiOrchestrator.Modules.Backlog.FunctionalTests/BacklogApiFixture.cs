@@ -39,8 +39,11 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
     /// <summary>Reads and writes the same dictionary, so a stored value is one that resolves.</summary>
     internal StubSecretVault Secrets { get; } = new();
 
-    /// <summary>Who the caller is, so the Admin-only path can be exercised from both sides.</summary>
+    /// <summary>Who the caller is.</summary>
     internal StubPrincipal Caller { get; } = new();
+
+    /// <summary>What they may do, so the Admin-only path can be exercised from both sides.</summary>
+    internal StubPermissions Permissions { get; } = new();
 
     protected override string[] SchemasToReset => [BacklogDbContext.Schema];
 
@@ -68,6 +71,8 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
             services.AddSingleton<ISecretStore>(Secrets);
             services.RemoveAll<ICurrentPrincipal>();
             services.AddSingleton<ICurrentPrincipal>(Caller);
+            services.RemoveAll<IProjectPermissions>();
+            services.AddSingleton<IProjectPermissions>(Permissions);
         });
     }
 }
@@ -424,12 +429,31 @@ sealed class StubSecretVault : ISecretResolver, ISecretStore
     }
 }
 
-/// <summary>The caller the host would otherwise decide, so both sides of the role check run.</summary>
+/// <summary>The caller the host would otherwise decide.</summary>
 sealed class StubPrincipal : ICurrentPrincipal
 {
-    public Principal Current { get; set; } = new("test-admin", "Test admin", PrincipalRole.Admin);
+    public Principal Current { get; set; } = new("test-admin", "Test admin");
 
-    public void Reset() => Current = new("test-admin", "Test admin", PrincipalRole.Admin);
+    public void Reset() => Current = new("test-admin", "Test admin");
+}
+
+/// <summary>
+/// What the caller may do, so both sides of the pipeline's check run (#13). A separate stub from
+/// the principal because that is now the separation being tested: who they are and what they may do
+/// on a given project are two answers, and a test that could only set one could not describe a
+/// Member.
+/// </summary>
+sealed class StubPermissions : IProjectPermissions
+{
+    public ProjectRole? Role { get; set; } = ProjectRole.Admin;
+
+    public Task<ProjectRole?> RoleOn(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult(Role);
+
+    public Task<IReadOnlySet<Guid>?> VisibleProjects(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlySet<Guid>?>(null);
+
+    public void Reset() => Role = ProjectRole.Admin;
 }
 
 [CollectionDefinition(Name)]

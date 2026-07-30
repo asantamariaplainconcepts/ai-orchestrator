@@ -54,5 +54,31 @@ public sealed class ProjectsModule : ModuleBase
         // cached copy, which would keep polling a Project an Admin just retired.
         services.AddScoped<Contracts.IProjectCatalog, Features.Projects.ProjectCatalog>();
         services.AddScoped<OverlapGuard>();
+
+        // Who may do what, and where (#13). The rows live in this module's schema because a role is
+        // a fact about a person's relationship to a Project, so the module that owns Projects owns
+        // it — and the seam is in BuildingBlocks so the authorization decorator can read it without
+        // any module referencing another.
+        //
+        // Composed per habitat, exactly like the principal it sits beside, and from the same
+        // question: where nobody signs in there is one caller and the machine is theirs, so there is
+        // nothing to look up. Deciding this here rather than inside the implementation is what keeps
+        // "nobody is signed in yet" from being mistaken for "this person owns the place".
+        if (BuildingBlocks.Identity.IdentityHabitat.CallersSignIn(configuration))
+        {
+            services.AddSingleton(Features.Identity.BootstrapAdministrators.From(configuration));
+            services.AddScoped<
+                BuildingBlocks.Identity.IProjectPermissions,
+                Features.Identity.StoredProjectRoles
+            >();
+            services.AddHostedService<Features.Identity.AdministrationAnnouncement>();
+        }
+        else
+        {
+            services.AddSingleton<
+                BuildingBlocks.Identity.IProjectPermissions,
+                Features.Identity.SoleOccupantPermissions
+            >();
+        }
     }
 }

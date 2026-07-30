@@ -9,8 +9,9 @@ namespace AiOrchestrator.BuildingBlocks.Identity;
 /// decision, exactly as it is for <c>ISecretResolver</c>.
 /// </para>
 /// <para>
-/// The shape is chosen for the implementation that does not exist yet: when an identity provider
-/// arrives it replaces one implementation of this seam and touches nothing above it.
+/// It answers <i>who</i> and nothing else. What they may do is <see cref="IProjectPermissions"/>,
+/// because BR-009's roles are per project and "this caller's role" has no answer without naming
+/// one (#13, design D2).
 /// </para>
 /// </summary>
 public interface ICurrentPrincipal
@@ -23,15 +24,21 @@ public interface ICurrentPrincipal
 /// A caller. <paramref name="Id"/> is stable for the same person in the same habitat, so it can
 /// be recorded; <paramref name="DisplayName"/> is what a human reads.
 /// </summary>
-public sealed record Principal(string Id, string DisplayName, PrincipalRole Role);
-
-/// <summary>
-/// BR-009's bundles, as DEC-034 fixed them: Admin is everything, Member observes and triggers.
-/// The rule stays unimplemented until operations name their permissions — this is what those
-/// checks will have to check against.
-/// </summary>
-public enum PrincipalRole
+public sealed record Principal(string Id, string DisplayName)
 {
-    Member = 1,
-    Admin = 2,
+    /// <summary>The machine's owner, who never signs in because the machine is theirs.</summary>
+    public const string LocalOwnerId = "local-owner";
+
+    /// <summary>
+    /// Nobody: either the habitat has no provider (DEC-049's self-host, which warns at startup),
+    /// or this is the window before a challenge completes in a habitat that does have one.
+    /// <para>
+    /// Those two are not the same thing, and nothing may treat them as one. In the first, the sole
+    /// caller holds everything; in the second, they hold nothing yet. Which it is depends on the
+    /// habitat and never on this id — see <see cref="IdentityHabitat"/>. An earlier draft of #13
+    /// inferred it from the id here, which would have handed Admin to an unauthenticated caller in
+    /// the deployed portal had the pipeline's 401 ever been carved out for a route that dispatches.
+    /// </para>
+    /// </summary>
+    public const string AnonymousId = "anonymous";
 }

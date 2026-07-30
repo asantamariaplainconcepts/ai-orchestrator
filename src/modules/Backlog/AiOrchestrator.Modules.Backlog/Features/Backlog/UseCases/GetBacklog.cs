@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -51,7 +52,8 @@ sealed class GetBacklog : IUseCase
 
     internal sealed record Response(ConnectorView? Connector, IReadOnlyList<StoryView> Stories);
 
-    internal sealed record Query(Guid ProjectId) : IQuery<Response>;
+    [Requires(Access.MemberOfProject)]
+    internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     internal sealed class Handler(BacklogDbContext database) : IAppQueryHandler<Query, Response>
     {

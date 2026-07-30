@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Contracts;
@@ -35,7 +36,8 @@ sealed class GetProjectPulse : IUseCase
             .WithName(nameof(GetProjectPulse))
             .WithTags("Runs");
 
-    internal sealed record Query(Guid ProjectId) : IQuery<Response>;
+    [Requires(Access.MemberOfProject)]
+    internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     /// <summary>An automation with zero window runs still appears — absence is the signal.</summary>
     internal sealed record AutomationEntry(

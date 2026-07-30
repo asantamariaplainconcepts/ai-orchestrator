@@ -34,9 +34,14 @@ public static class IdentityComposition
     /// </summary>
     public const string ProviderSectionKey = "AzureAd";
 
-    /// <summary>Whether this host authenticates through the identity provider.</summary>
+    /// <summary>
+    /// Whether this host authenticates through the identity provider. Delegated to
+    /// <see cref="IdentityHabitat"/> so the Projects module, which has to know whether an empty role
+    /// table means "nobody may administer anything", asks the same question and cannot get a
+    /// different answer (#13).
+    /// </summary>
     public static bool UsesProvider(IConfiguration configuration) =>
-        !string.IsNullOrWhiteSpace(configuration[$"{ProviderSectionKey}:ClientId"]);
+        IdentityHabitat.CallersSignIn(configuration);
 
     public static TBuilder AddIdentity<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
@@ -191,11 +196,7 @@ public static class IdentityComposition
 sealed class LocalOwner(string? name) : ICurrentPrincipal
 {
     public Principal Current { get; } =
-        new(
-            "local-owner",
-            string.IsNullOrWhiteSpace(name) ? "Local owner" : name,
-            PrincipalRole.Admin
-        );
+        new(Principal.LocalOwnerId, string.IsNullOrWhiteSpace(name) ? "Local owner" : name);
 }
 
 /// <summary>
@@ -203,10 +204,9 @@ sealed class LocalOwner(string? name) : ICurrentPrincipal
 /// singleton over <see cref="IHttpContextAccessor"/> rather than a scoped service, so the startup
 /// warning can still resolve the seam from the root scope.
 /// <para>
-/// Every signed-in user holds Admin — the interim rule the requirement states out loud. Role
-/// assignment per project is #13, landing on this same seam. The unauthenticated window (the
-/// challenge itself, health probes) reads as a Member-role anonymous, never Admin: API routes are
-/// refused before a handler runs, so this value deciding anything would already be a bug.
+/// It says who, and nothing about what they may do. The interim rule that every signed-in user held
+/// Admin is gone (#13): permission is a row against a Project now, read through
+/// <see cref="IProjectPermissions"/>, and this type has no opinion about it.
 /// </para>
 /// </summary>
 sealed class SignedInCaller(IHttpContextAccessor accessor) : ICurrentPrincipal
@@ -218,7 +218,9 @@ sealed class SignedInCaller(IHttpContextAccessor accessor) : ICurrentPrincipal
             var user = accessor.HttpContext?.User;
             if (user?.Identity?.IsAuthenticated != true)
             {
-                return new Principal("anonymous", "Not signed in", PrincipalRole.Member);
+                // The window before a challenge completes, and the machine probes. API routes are
+                // refused before a handler runs, so this deciding anything would already be a bug.
+                return new Principal(Principal.AnonymousId, "Not signed in");
             }
 
             // The object id is the stable identity; a name claim is a label that may change.
@@ -234,7 +236,7 @@ sealed class SignedInCaller(IHttpContextAccessor accessor) : ICurrentPrincipal
                 ?? user.Identity.Name
                 ?? "Signed in";
 
-            return new Principal(id, name, PrincipalRole.Admin);
+            return new Principal(id, name);
         }
     }
 }
@@ -246,7 +248,7 @@ sealed class SignedInCaller(IHttpContextAccessor accessor) : ICurrentPrincipal
 /// </summary>
 sealed class UnauthenticatedCaller : ICurrentPrincipal
 {
-    public Principal Current { get; } = new("anonymous", "Not signed in", PrincipalRole.Admin);
+    public Principal Current { get; } = new(Principal.AnonymousId, "Not signed in");
 }
 
 static partial class IdentityLog

@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Connectors;
 using ErrorOr;
@@ -43,7 +44,8 @@ sealed class TestConnector : IUseCase
 
     internal sealed record Response(bool Satisfied, IReadOnlyList<CapabilityView> Capabilities);
 
-    internal sealed record Query(Guid ProjectId) : IQuery<ErrorOr<Response>>;
+    [Requires(Access.AdminOfProject)]
+    internal sealed record Query(Guid ProjectId) : IQuery<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(ConnectorAccess access)
         : IAppQueryHandler<Query, ErrorOr<Response>>

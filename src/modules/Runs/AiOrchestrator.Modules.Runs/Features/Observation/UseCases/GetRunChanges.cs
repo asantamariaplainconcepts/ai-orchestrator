@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Runs.Domain;
@@ -52,7 +53,10 @@ sealed class GetRunChanges : IUseCase
         string? PatchOmittedReason
     );
 
-    internal sealed record Query(Guid ProjectId, Guid RunId) : IQuery<ErrorOr<Response>>;
+    [Requires(Access.MemberOfProject)]
+    internal sealed record Query(Guid ProjectId, Guid RunId)
+        : IQuery<ErrorOr<Response>>,
+            IScopedToProject;
 
     internal sealed class Handler(RunsDbContext database, IChangeFileReader changes)
         : IAppQueryHandler<Query, ErrorOr<Response>>

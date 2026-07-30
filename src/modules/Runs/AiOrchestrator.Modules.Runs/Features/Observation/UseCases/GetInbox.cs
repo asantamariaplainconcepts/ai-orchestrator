@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Runs.Domain;
@@ -36,6 +37,7 @@ sealed class GetInbox : IUseCase
             .WithName(nameof(GetInbox))
             .WithTags("Runs");
 
+    [Requires(Access.FiltersToCaller)]
     internal sealed record Query : IQuery<IReadOnlyList<Entry>>;
 
     /// <summary>
@@ -51,19 +53,33 @@ sealed class GetInbox : IUseCase
         DateTimeOffset WaitingSince
     );
 
-    internal sealed class Handler(RunsDbContext database, IStoryReader stories)
-        : IAppQueryHandler<Query, IReadOnlyList<Entry>>
+    internal sealed class Handler(
+        RunsDbContext database,
+        IStoryReader stories,
+        IProjectPermissions permissions
+    ) : IAppQueryHandler<Query, IReadOnlyList<Entry>>
     {
         public async Task<IReadOnlyList<Entry>> Handle(
             Query query,
             CancellationToken cancellationToken
         )
         {
-            var waiting = await database.Runs.WaitingOnAHuman().ToListAsync(cancellationToken);
+            // Cross-project, and therefore scoped here rather than by a project in the request
+            // (#13): every entry carries a Story id and title, so an unfiltered inbox would hand a
+            // caller with no roles the contents of other people's backlogs.
+            var visible = await permissions.VisibleProjects(cancellationToken);
 
-            var entries = new List<Entry>(waiting.Count);
+            var waiting = database.Runs.WaitingOnAHuman();
+            if (visible is not null)
+            {
+                waiting = waiting.Where(run => visible.Contains(run.ProjectId));
+            }
 
-            foreach (var run in waiting)
+            var runs = await waiting.ToListAsync(cancellationToken);
+
+            var entries = new List<Entry>(runs.Count);
+
+            foreach (var run in runs)
             {
                 // Per-entry lookup through Contracts (design D4): the list is human-scale by
                 // nature, and a denormalised title on the Run would mirror the mirror (BR-008).

@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using ErrorOr;
 using Microsoft.AspNetCore.Builder;
@@ -33,7 +34,8 @@ sealed class RefreshBacklog : IUseCase
 
     internal sealed record Response(int Changes);
 
-    internal sealed record Command(Guid ProjectId) : ICommand<ErrorOr<Response>>;
+    [Requires(Access.MemberOfProject)]
+    internal sealed record Command(Guid ProjectId) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(BacklogSynchroniser synchroniser)
         : IAppCommandHandler<Command, ErrorOr<Response>>

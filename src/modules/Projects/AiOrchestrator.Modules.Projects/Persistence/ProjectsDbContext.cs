@@ -11,6 +11,10 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
 
     public DbSet<Automation> Automations => Set<Automation>();
 
+    public DbSet<ProjectRoleAssignment> ProjectRoles => Set<ProjectRoleAssignment>();
+
+    public DbSet<Person> People => Set<Person>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -45,6 +49,34 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             // duplicates and silently miss the subsumption case, which is the interesting one
             // (design D4). The rule lives in the handler; this index only makes the lookup cheap.
             automation.HasIndex(entity => entity.ProjectId);
+        });
+
+        modelBuilder.Entity<ProjectRoleAssignment>(assignment =>
+        {
+            assignment.ToTable("project_roles");
+            assignment.HasKey(entity => entity.Id);
+            assignment.Property(entity => entity.IdentityId).HasMaxLength(200).IsRequired();
+
+            // Names, not ordinals — the same reason Automation stores its enums as strings.
+            assignment.Property(entity => entity.Role).HasConversion<string>().HasMaxLength(20);
+
+            // One role per person per project, enforced by the database rather than by the handler
+            // reading first: two concurrent grants would otherwise leave a person holding both, and
+            // "which row wins" is not a question a permission check should ever have to ask.
+            assignment
+                .HasIndex(entity => new { entity.ProjectId, entity.IdentityId })
+                .IsUnique();
+        });
+
+        modelBuilder.Entity<Person>(person =>
+        {
+            person.ToTable("people");
+            person.HasKey(entity => entity.Id);
+            person.Property(entity => entity.IdentityId).HasMaxLength(200).IsRequired();
+            person.Property(entity => entity.DisplayName).HasMaxLength(200).IsRequired();
+
+            // The identity id is the real key; Id is the surrogate every entity here carries.
+            person.HasIndex(entity => entity.IdentityId).IsUnique();
         });
     }
 }
