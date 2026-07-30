@@ -34,7 +34,7 @@ sealed class RefreshBacklog : IUseCase
 
     internal sealed record Response(int Changes);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(BacklogPermissions.Refresh)]
     internal sealed record Command(Guid ProjectId) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(BacklogSynchroniser synchroniser)

@@ -3,6 +3,7 @@ using AiOrchestrator.BuildingBlocks.Identity;
 using FluentValidation;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace AiOrchestrator.BuildingBlocks.CQS;
 
@@ -58,26 +59,38 @@ sealed partial class LoggingQueryHandlerDecorator<TQuery, TResponse>(
 /// </summary>
 sealed class AuthorizationCommandHandlerDecorator<TCommand, TResponse>(
     IAppCommandHandler<TCommand, TResponse> inner,
-    IProjectPermissions permissions
+    IProjectPermissions permissions,
+    IOptions<PermissionGrants> grants
 ) : IAppCommandHandler<TCommand, TResponse>
     where TCommand : ICommand<TResponse>
 {
     public async Task<TResponse> Handle(TCommand command, CancellationToken cancellationToken)
     {
-        await AuthorizationPipeline.EnsurePermitted(command, permissions, cancellationToken);
+        await AuthorizationPipeline.EnsurePermitted(
+            command,
+            permissions,
+            grants.Value,
+            cancellationToken
+        );
         return await inner.Handle(command, cancellationToken);
     }
 }
 
 sealed class AuthorizationQueryHandlerDecorator<TQuery, TResponse>(
     IAppQueryHandler<TQuery, TResponse> inner,
-    IProjectPermissions permissions
+    IProjectPermissions permissions,
+    IOptions<PermissionGrants> grants
 ) : IAppQueryHandler<TQuery, TResponse>
     where TQuery : IQuery<TResponse>
 {
     public async Task<TResponse> Handle(TQuery query, CancellationToken cancellationToken)
     {
-        await AuthorizationPipeline.EnsurePermitted(query, permissions, cancellationToken);
+        await AuthorizationPipeline.EnsurePermitted(
+            query,
+            permissions,
+            grants.Value,
+            cancellationToken
+        );
         return await inner.Handle(query, cancellationToken);
     }
 }
@@ -87,6 +100,7 @@ static class AuthorizationPipeline
     public static async Task EnsurePermitted<TRequest>(
         TRequest request,
         IProjectPermissions permissions,
+        PermissionGrants grants,
         CancellationToken cancellationToken
     )
     {
@@ -102,43 +116,39 @@ static class AuthorizationPipeline
             throw new PermissionDeniedException(typeof(TRequest).FullName!);
         }
 
-        switch (declared.Access)
+        // The two declarations that are not permissions. Whether anybody is asking at all is the
+        // pipeline's business, not this decorator's: /api is refused unauthenticated before a
+        // handler is ever resolved.
+        if (declared.Access is Access.AnyCaller or Access.FiltersToCaller)
         {
-            case Access.AnyCaller:
-            case Access.FiltersToCaller:
-                // Whether anybody is asking at all is the pipeline's business, not this decorator's:
-                // /api is refused unauthenticated before a handler is ever resolved.
-                return;
+            return;
+        }
 
-            case Access.MemberOfProject:
-            case Access.AdminOfProject:
-                if (request is not IScopedToProject scoped)
-                {
-                    // Not a refusal — a wiring mistake. Refusing would hide it; this says which
-                    // type is wrong, and a test asserts the pairing so it cannot reach a
-                    // deployment (task 5.3).
-                    throw new InvalidOperationException(
-                        $"{typeof(TRequest).Name} requires {declared.Access} but does not implement "
-                            + $"{nameof(IScopedToProject)}, so there is no project to check it against."
-                    );
-                }
+        if (declared.Permission is not { } permission)
+        {
+            // An Access value added without a rule here, or an attribute in some third state. Refused
+            // rather than waved through, for the same reason omission is.
+            throw new PermissionDeniedException(typeof(TRequest).FullName!);
+        }
 
-                var role = await permissions.RoleOn(scoped.ProjectId, cancellationToken);
-                var enough =
-                    declared.Access == Access.AdminOfProject
-                        ? role == ProjectRole.Admin
-                        : role is not null;
+        if (request is not IScopedToProject scoped)
+        {
+            // Not a refusal — a wiring mistake. Refusing would hide it behind a 403 that reads like
+            // an ordinary one; this says which type is wrong, and a test asserts the pairing so it
+            // cannot reach a deployment (task 5.3).
+            throw new InvalidOperationException(
+                $"{typeof(TRequest).Name} requires '{permission}' but does not implement "
+                    + $"{nameof(IScopedToProject)}, so there is no project to check it against."
+            );
+        }
 
-                if (!enough)
-                {
-                    throw new PermissionDeniedException(typeof(TRequest).FullName!);
-                }
+        // Two questions, in order, and neither collapses into the other: which bundle this caller
+        // holds *here*, then whether that bundle holds this permission.
+        var role = await permissions.RoleOn(scoped.ProjectId, cancellationToken);
 
-                return;
-
-            default:
-                // A value added to the enum without a rule here is refused, not waved through.
-                throw new PermissionDeniedException(typeof(TRequest).FullName!);
+        if (role is null || !grants.Holds(role.Value, permission))
+        {
+            throw new PermissionDeniedException(typeof(TRequest).FullName!);
         }
     }
 }

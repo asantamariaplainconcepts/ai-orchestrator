@@ -49,7 +49,7 @@ sealed class GetStory : IUseCase
         DateTimeOffset LastSeenAt
     );
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(BacklogPermissions.Read)]
     internal sealed record Query(Guid ProjectId, string VendorStoryId)
         : IQuery<ErrorOr<Response>>,
             IScopedToProject;

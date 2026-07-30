@@ -64,7 +64,7 @@ sealed class WriteStoryLabel : IUseCase
 
     internal sealed record Response(int Changes);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(BacklogPermissions.WriteLabel)]
     internal sealed record Command(Guid ProjectId, string VendorStoryId, string Label, bool Apply)
         : ICommand<ErrorOr<Response>>,
             IScopedToProject;

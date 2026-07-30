@@ -1,49 +1,59 @@
 namespace AiOrchestrator.BuildingBlocks.Identity;
 
 /// <summary>
-/// What a command or query requires of its caller (BR-009: every operation names a required
-/// permission). Declared on the request type and enforced by the pipeline, so a use case that
-/// forgets cannot thereby become public (#13, design D1).
+/// What a command or query requires of its caller. Declared on the request type and enforced by the
+/// shared pipeline, so a use case that forgets cannot thereby become public (#13, design D1).
+/// <para>
+/// Two shapes, because there are two kinds of operation. Most name a <b>permission</b> and act on a
+/// project, which is BR-009 exactly: <i>every operation names a required permission; roles are
+/// permission bundles</i>. A few name neither because no permission could describe them — a
+/// cross-project list, or creating the first project. Those say so explicitly; what none of them may
+/// do is say nothing.
+/// </para>
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class RequiresAttribute : Attribute
+{
+    /// <summary>
+    /// The permission required, on the project the request names. Checked against the caller's
+    /// bundle through <see cref="PermissionGrants"/> — never against a role written into a handler,
+    /// which is what makes a new bundle a change to one table instead of a sweep over every
+    /// declaration (DEC-034's "custom roles post-MVP").
+    /// </summary>
+    public RequiresAttribute(string permission) => Permission = permission;
+
+    /// <summary>For the operations no permission can describe. See <see cref="Identity.Access"/>.</summary>
+    public RequiresAttribute(Access access) => Access = access;
+
+    public string? Permission { get; }
+
+    public Access? Access { get; }
+}
+
+/// <summary>
+/// The declarations that are not permissions. Deliberately few, deliberately named: each one is a
+/// claim a reviewer can check, and "nothing to declare" is not among them.
 /// </summary>
 public enum Access
 {
-    /// <summary>Any role on the project the request names. Observing and triggering (DEC-034).</summary>
-    MemberOfProject = 1,
-
-    /// <summary>Admin on the project the request names. Configuring, and anything destructive.</summary>
-    AdminOfProject = 2,
+    /// <summary>
+    /// Reaches across projects, and narrows its own answer to the ones the caller may see. A named
+    /// value rather than an omission, because the declaration is what a reviewer reads: without it,
+    /// "I filter" would be indistinguishable from "I hand everything to everyone".
+    /// </summary>
+    FiltersToCaller = 1,
 
     /// <summary>
-    /// Reaches across projects, and narrows its own answer to the ones the caller may see. A
-    /// separate value from <see cref="AnyCaller"/> even though the pipeline treats them the same,
-    /// because the declaration is what a reviewer reads: collapsing them would make "I filter"
-    /// indistinguishable from "I hand everything to everyone".
+    /// Any caller, with nothing to scope it to. Creating the first project is the case: there is no
+    /// project yet to hold a permission on, and whoever creates one administers it (design D8).
     /// </summary>
-    FiltersToCaller = 3,
-
-    /// <summary>
-    /// Any caller, with nothing to scope it to. Creating the first project is the case: there is
-    /// no project yet to hold a role on, and whoever creates one administers it (design D8).
-    /// </summary>
-    AnyCaller = 4,
+    AnyCaller = 2,
 }
 
 /// <summary>
-/// The declaration. Its absence is not "no requirement" — an undeclared operation is refused
-/// outright, so the failure mode of forgetting is a refusal somebody notices rather than a hole
-/// nobody does (design D1).
-/// </summary>
-[AttributeUsage(AttributeTargets.Class, Inherited = false)]
-public sealed class RequiresAttribute(Access access) : Attribute
-{
-    public Access Access { get; } = access;
-}
-
-/// <summary>
-/// A request that names the project it acts on. Paired with
-/// <see cref="Access.MemberOfProject"/> or <see cref="Access.AdminOfProject"/>: the attribute says
-/// what is required, this says where. Declaring one without the other is a programming error the
-/// pipeline refuses loudly rather than guessing at.
+/// A request that names the project it acts on. Every permission here is project-scoped — the
+/// project is this product's only tenant — so declaring a permission without this is a wiring
+/// mistake the pipeline refuses loudly rather than guessing at.
 /// </summary>
 public interface IScopedToProject
 {
@@ -56,8 +66,8 @@ public interface IScopedToProject
 /// a pipeline whose response type is generic, and every path out of it must be the same path.
 /// <para>
 /// The message names permission as the reason and says nothing else — not whether the project
-/// exists, not what role would have been enough, not who holds it. A refusal that varies is a
-/// refusal that answers questions (task 2.4).
+/// exists, not what would have been enough, not who holds it. A refusal that varies is a refusal
+/// that answers questions (task 2.4).
 /// </para>
 /// </summary>
 public sealed class PermissionDeniedException : Exception

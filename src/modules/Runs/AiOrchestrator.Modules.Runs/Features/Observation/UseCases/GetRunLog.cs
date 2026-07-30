@@ -39,7 +39,7 @@ sealed class GetRunLog : IUseCase
             .WithName(nameof(GetRunLog))
             .WithTags("Runs");
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Read)]
     internal sealed record Query(Guid ProjectId, Guid RunId) : IQuery<Response?>, IScopedToProject;
 
     /// <summary>

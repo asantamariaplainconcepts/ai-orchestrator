@@ -12,9 +12,27 @@ it before the handler runs. The alternative — a check inside each handler — 
 somebody needed one. BR-009 says *every operation names a required permission*; a declaration the
 pipeline reads is that sentence made mechanical.
 
-**The default is deny.** An operation that declares nothing requires Admin, not nothing: a new use case
-added without thinking is then locked rather than open, and the failure mode of forgetting is a refusal
-somebody notices rather than a hole nobody does.
+**The default is deny.** An operation that declares nothing is refused whatever the caller holds: a new
+use case added without thinking is then locked rather than open, and the failure mode of forgetting is a
+refusal somebody notices rather than a hole nobody does.
+
+**What is declared is a permission, not a role.** The first version of this had operations naming the
+bundle — `AdminOfProject`, `MemberOfProject` — which is behaviourally identical while DEC-034 fixes the
+bundles at two, and is not what BR-009 says. The rule is *"every operation names a required permission;
+roles are permission bundles"*, and the indirection is the whole of the difference: with bundles named
+at the call site, DEC-034's post-MVP custom roles mean revisiting all twenty-nine declarations; with
+permissions, it means one more line in a table.
+
+So each module owns a `*Permissions` vocabulary beside the use cases that declare it, and contributes
+its bundle mapping in its own `Add()`. Admin holds everything by rule rather than by enumeration — a
+list would be one line per permission that can silently miss the next one, refusing it to the only
+bundle *defined* as holding all of them.
+
+The shape is ds-connect's, read after the owner pointed at it, and it costs one thing worth naming: the
+strings that let a declaration and a grant agree across a module boundary also let a typo through the
+compiler. A typo'd permission is held by nobody, so it is refused for Member, allowed for Admin, and
+silent. Two reflection sweeps buy the compile error back — every declared permission is one of the
+constants, and every constant is declared by something.
 
 ## D2 — The principal answers *who*, a second seam answers *what here*
 

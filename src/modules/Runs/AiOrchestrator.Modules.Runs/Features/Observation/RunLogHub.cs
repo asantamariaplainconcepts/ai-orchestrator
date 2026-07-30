@@ -2,6 +2,7 @@ using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 
 namespace AiOrchestrator.Modules.Runs.Features.Observation;
 
@@ -24,7 +25,11 @@ namespace AiOrchestrator.Modules.Runs.Features.Observation;
 /// for itself; found by reading how ds-connect gates surfaces its own pipeline cannot see.
 /// </para>
 /// </summary>
-sealed class RunLogHub(RunsDbContext database, IProjectPermissions permissions) : Hub
+sealed class RunLogHub(
+    RunsDbContext database,
+    IProjectPermissions permissions,
+    IOptions<PermissionGrants> grants
+) : Hub
 {
     internal static string GroupFor(Guid runId) => $"run-log:{runId}";
 
@@ -35,13 +40,15 @@ sealed class RunLogHub(RunsDbContext database, IProjectPermissions permissions) 
             .Select(run => (Guid?)run.ProjectId)
             .FirstOrDefaultAsync(Context.ConnectionAborted);
 
-        // A Run that does not exist and a Run in somebody else's project get the same refusal, for
-        // the same reason the HTTP ones do: telling them apart is a way to enumerate Runs. Member is
-        // enough — observing is what the bundle grants (ACT-002).
-        if (
-            projectId is null
-            || await permissions.RoleOn(projectId.Value, Context.ConnectionAborted) is null
-        )
+        // The same two questions the decorator asks, in the same order, against the same table — so
+        // watching a Run live and reading its log cannot disagree about who may. A Run that does not
+        // exist and a Run in somebody else's project get one refusal, for the same reason the HTTP
+        // ones do: telling them apart is a way to enumerate Runs.
+        var role = projectId is null
+            ? null
+            : await permissions.RoleOn(projectId.Value, Context.ConnectionAborted);
+
+        if (role is null || !grants.Value.Holds(role.Value, RunPermissions.Read))
         {
             throw new HubException("You do not have permission to watch this run.");
         }

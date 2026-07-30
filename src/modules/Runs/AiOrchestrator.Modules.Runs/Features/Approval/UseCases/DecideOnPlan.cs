@@ -68,7 +68,7 @@ sealed class DecideOnPlan : IUseCase
 
     internal sealed record Response(Guid Id, string State);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Approve)]
     internal sealed record Command(Guid ProjectId, Guid RunId, bool Approve)
         : ICommand<ErrorOr<Response>>,
             IScopedToProject;

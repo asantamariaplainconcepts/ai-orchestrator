@@ -33,7 +33,7 @@ sealed class ListRuns : IUseCase
             .WithName(nameof(ListRuns))
             .WithTags("Runs");
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Read)]
     internal sealed record Query(Guid ProjectId, string? VendorStoryId)
         : IQuery<IReadOnlyList<Response>>,
             IScopedToProject;

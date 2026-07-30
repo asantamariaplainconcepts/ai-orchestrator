@@ -64,12 +64,12 @@ sealed class ArchiveProject : IUseCase
 
     internal sealed record Request(string ConfirmName);
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.Archive)]
     internal sealed record Command(Guid ProjectId, string ConfirmName)
         : ICommand<ErrorOr<Success>>,
             IScopedToProject;
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.Archive)]
     internal sealed record Restore(Guid ProjectId) : ICommand<ErrorOr<Success>>, IScopedToProject;
 
     internal const string RestoreProject = nameof(RestoreProject);

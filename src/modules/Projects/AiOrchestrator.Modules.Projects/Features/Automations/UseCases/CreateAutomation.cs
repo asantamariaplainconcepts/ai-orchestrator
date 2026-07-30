@@ -98,7 +98,7 @@ sealed class CreateAutomation : IUseCase
         string? RubricPath
     );
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record Command(
         Guid ProjectId,
         string TriggerLabel,

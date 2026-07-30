@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Projects.Contracts;
 using AiOrchestrator.Modules.Projects.Features.Automations;
@@ -26,6 +27,13 @@ public sealed class ProjectsModule : ModuleBase
 
     public override void Add(IServiceCollection services, IConfiguration configuration)
     {
+        // ACT-002 may see what will act on this Project's Stories and nothing more: an Automation
+        // decides when an agent touches a repository, so creating or editing one is configuration,
+        // and so is retiring the Project or changing who may administer it.
+        services.AddPermissionGrants(
+            BuildingBlocks.Identity.ProjectRole.Member,
+            ProjectPermissions.ReadAutomations
+        );
         services.AddDbContext<ProjectsDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString(ConnectionStringName),

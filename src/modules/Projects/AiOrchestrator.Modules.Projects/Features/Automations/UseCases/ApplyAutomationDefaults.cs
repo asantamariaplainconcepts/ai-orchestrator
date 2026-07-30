@@ -56,7 +56,7 @@ sealed class ApplyAutomationDefaults : IUseCase
 
     internal sealed record SkippedDefault(string TriggerLabel, string Reason);
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record Command(Guid ProjectId) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(

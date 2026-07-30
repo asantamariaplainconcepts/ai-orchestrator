@@ -57,7 +57,7 @@ sealed class DismissFailure : IUseCase
 
     internal sealed record Response(Guid RunId, DateTimeOffset DismissedAt);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.DismissFailure)]
     internal sealed record Command(Guid ProjectId, Guid RunId)
         : ICommand<ErrorOr<Response>>,
             IScopedToProject;

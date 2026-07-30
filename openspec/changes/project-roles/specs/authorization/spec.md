@@ -13,6 +13,15 @@ Permission SHALL be a function of the caller **and** the project. There SHALL be
 caller may do without naming a project, because BR-009's bundles are project-scoped and a single
 global answer could only be invented.
 
+A declaration SHALL name a **permission**, and a role SHALL be a **bundle** of permissions — the two
+SHALL NOT be the same thing. An operation SHALL NOT name a role: adding a bundle must be a change to
+the mapping, not a sweep over every declaration in the product.
+
+The mapping SHALL be contributed by each module beside the operations that declare the permissions, so
+that adding one touches no central list. Admin SHALL hold every permission by rule rather than by
+enumeration, so a permission added later cannot be omitted from the bundle defined as holding all of
+them.
+
 The bundles SHALL be the two DEC-034 locked and no others: Admin holds everything; Member observes and
 triggers — labels, Run now, approve, cancel — and configures nothing.
 
@@ -36,7 +45,13 @@ mistaken there for being permitted.
 #### Scenario: an undeclared operation is closed, not open
 
 - **WHEN** an operation declares no permission
-- **THEN** it requires Admin
+- **THEN** it is refused, whatever bundle the caller holds
+
+#### Scenario: a bundle is a set of permissions, not a name in a handler
+
+- **WHEN** a bundle is given a permission it did not hold
+- **THEN** every operation requiring that permission becomes available to it, with no operation
+  changed
 
 #### Scenario: a role on one project is not a role on another
 

@@ -95,7 +95,7 @@ sealed class UpdateAutomation : IUseCase
             .WithTags("Automations");
     }
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record Command(
         Guid ProjectId,
         Guid AutomationId,
@@ -109,7 +109,7 @@ sealed class UpdateAutomation : IUseCase
         string? OutputLabel = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record SetEnabled(Guid ProjectId, Guid AutomationId, bool Enabled)
         : ICommand<ErrorOr<CreateAutomation.Response>>,
             IScopedToProject;

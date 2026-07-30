@@ -73,12 +73,12 @@ sealed class GetStoryDocuments : IUseCase
 
     internal sealed record ContentResponse(string Path, string HeadRef, string Content);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(BacklogPermissions.Read)]
     internal sealed record Query(Guid ProjectId, string VendorStoryId)
         : IQuery<ErrorOr<Response>>,
             IScopedToProject;
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(BacklogPermissions.Read)]
     internal sealed record ContentQuery(Guid ProjectId, string VendorStoryId, string Path)
         : IQuery<ErrorOr<ContentResponse>>,
             IScopedToProject;

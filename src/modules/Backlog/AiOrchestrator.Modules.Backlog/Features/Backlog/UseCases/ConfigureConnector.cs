@@ -90,7 +90,7 @@ sealed class ConfigureConnector : IUseCase
     // first two role checks lived — hand-copied, inside the handler, on two of its paths — and a
     // third copy was what the next person needing one would have written. The declaration the
     // pipeline enforces replaces both.
-    [Requires(Access.AdminOfProject)]
+    [Requires(BacklogPermissions.Configure)]
     internal sealed record Command(
         Guid ProjectId,
         string Owner,

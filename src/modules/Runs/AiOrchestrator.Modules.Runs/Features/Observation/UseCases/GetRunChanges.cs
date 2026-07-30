@@ -53,7 +53,7 @@ sealed class GetRunChanges : IUseCase
         string? PatchOmittedReason
     );
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Read)]
     internal sealed record Query(Guid ProjectId, Guid RunId)
         : IQuery<ErrorOr<Response>>,
             IScopedToProject;

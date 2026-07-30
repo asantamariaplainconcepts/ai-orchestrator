@@ -41,7 +41,7 @@ sealed class CancelRun : IUseCase
 
     internal sealed record Response(Guid Id, string State);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Cancel)]
     internal sealed record Command(Guid ProjectId, Guid RunId)
         : ICommand<ErrorOr<Response>>,
             IScopedToProject;

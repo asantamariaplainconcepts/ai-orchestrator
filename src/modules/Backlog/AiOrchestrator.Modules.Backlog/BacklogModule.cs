@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Connectors;
 using AiOrchestrator.Modules.Backlog.Contracts;
@@ -33,6 +34,21 @@ public sealed class BacklogModule : ModuleBase
 
     public override void Add(IServiceCollection services, IConfiguration configuration)
     {
+        // BR-009's bundle, for this module's permissions (DEC-034). Only Member is listed: Admin
+        // holds everything by rule, so a permission added later cannot be forgotten here for the one
+        // bundle defined as holding it.
+        //
+        // ACT-002 observes and triggers. Reading the mirror and applying trigger labels are named in
+        // it outright (UC-007); refreshing is a read of the vendor performed now rather than on the
+        // poller's schedule, which changes nothing anybody configured. Configuring the Connector and
+        // testing its credential are not here, and that is the whole of what a Member may not do to a
+        // backlog.
+        services.AddPermissionGrants(
+            BuildingBlocks.Identity.ProjectRole.Member,
+            BacklogPermissions.Read,
+            BacklogPermissions.Refresh,
+            BacklogPermissions.WriteLabel
+        );
         services.AddDbContext<BacklogDbContext>(options =>
             options.UseNpgsql(
                 configuration.GetConnectionString(ConnectionStringName),

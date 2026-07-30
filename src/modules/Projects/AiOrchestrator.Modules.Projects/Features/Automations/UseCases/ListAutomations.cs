@@ -22,7 +22,7 @@ sealed class ListAutomations : IUseCase
             .WithName(nameof(ListAutomations))
             .WithTags("Automations");
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(ProjectPermissions.ReadAutomations)]
     internal sealed record Query(Guid ProjectId)
         : IQuery<IReadOnlyList<CreateAutomation.Response>>,
             IScopedToProject;

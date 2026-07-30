@@ -44,7 +44,7 @@ sealed class TestConnector : IUseCase
 
     internal sealed record Response(bool Satisfied, IReadOnlyList<CapabilityView> Capabilities);
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(BacklogPermissions.TestConnector)]
     internal sealed record Query(Guid ProjectId) : IQuery<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(ConnectorAccess access)

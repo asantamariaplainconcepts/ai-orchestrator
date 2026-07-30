@@ -35,7 +35,7 @@ sealed class ListProjectRoles : IUseCase
             .WithName(nameof(ListProjectRoles))
             .WithTags("Identity");
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageRoles)]
     internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     internal sealed record Holder(

@@ -37,7 +37,7 @@ sealed class GetProjectCost : IUseCase
         int UnknownRuns
     );
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Read)]
     internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     internal sealed class Handler(RunsDbContext database) : IAppQueryHandler<Query, Response>

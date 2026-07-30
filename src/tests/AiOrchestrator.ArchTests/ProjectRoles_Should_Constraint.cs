@@ -1,29 +1,33 @@
 using System.Reflection;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Identity;
-using ErrorOr;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Shouldly;
 
 namespace AiOrchestrator.ArchTests;
 
 /// <summary>
-/// #13 — the pipeline's authorization decorator, and the property that makes it worth having:
-/// forgetting to declare must fail closed. Composition-level, with the real
-/// <c>AddVsaCqsArchitecture</c> and this assembly's own handlers, so the decorator under test is
-/// the one the product composes and not a copy of its logic.
+/// #13 / BR-009 — operations name permissions, roles are bundles over them, and forgetting to declare
+/// fails closed. Composition-level, with the real <c>AddVsaCqsArchitecture</c> and this assembly's own
+/// handlers, so the decorator under test is the one the product composes.
 /// <para>
-/// The reflection sweep at the bottom is the other half. The runtime tests prove an undeclared
-/// operation is refused; the sweep proves no real operation is relying on that refusal, which is a
-/// different claim and the one a reviewer actually wants.
+/// The reflection sweeps at the bottom police the indirection itself, which is what the string-keyed
+/// shape costs: a declaration nobody granted, or a permission nobody declares, would be a silent
+/// refusal rather than a compile error. They turn both into a red build.
 /// </para>
 /// </summary>
 public class ProjectRoles_Should_Constraint
 {
+    /// <summary>Granted to Member in the test pipeline below; the other is Admin-only.</summary>
+    const string Observe = "test.observe";
+    const string Configure = "test.configure";
+
     static IServiceProvider Pipeline(ProjectRole? role) =>
         new ServiceCollection()
             .AddLogging()
-            .AddSingleton<IProjectPermissions>(new FixedPermissions(role))
+            .AddSingleton<IProjectPermissions>(new FixedRole(role))
+            .AddPermissionGrants(ProjectRole.Member, Observe)
             .AddVsaCqsArchitecture(Assembly.GetExecutingAssembly())
             .BuildServiceProvider();
 
@@ -37,7 +41,7 @@ public class ProjectRoles_Should_Constraint
     public async Task AnUndeclaredOperation_Should_BeRefusedEvenFromAnAdmin()
     {
         // The default-deny that design D1 exists for: a use case added without thinking is locked,
-        // not open. Admin is the caller here on purpose — if the omission were treated as "no
+        // not open. Admin is the caller here on purpose — if the omission were read as "no
         // requirement", this would pass and the test would prove nothing.
         await Should.ThrowAsync<PermissionDeniedException>(() =>
             Send(ProjectRole.Admin, new Undeclared())
@@ -45,40 +49,43 @@ public class ProjectRoles_Should_Constraint
     }
 
     [Fact]
-    public async Task AMemberOnTheProject_Should_BeRefusedAnAdminOperation()
+    public async Task AMember_Should_BeRefusedAPermissionTheirBundleDoesNotHold()
     {
         await Should.ThrowAsync<PermissionDeniedException>(() =>
-            Send(ProjectRole.Member, new NeedsAdmin(Guid.NewGuid()))
+            Send(ProjectRole.Member, new NeedsConfigure(Guid.NewGuid()))
         );
     }
 
     [Fact]
-    public async Task AnAdminOnTheProject_Should_ReachTheHandler()
+    public async Task AMember_Should_ReachAPermissionTheirBundleHolds()
     {
-        (await Send(ProjectRole.Admin, new NeedsAdmin(Guid.NewGuid()))).ShouldBe("handled");
+        (await Send(ProjectRole.Member, new NeedsObserve(Guid.NewGuid()))).ShouldBe("handled");
     }
 
     [Fact]
-    public async Task AMemberOnTheProject_Should_ReachAMemberOperation()
+    public async Task AnAdmin_Should_HoldEveryPermissionWithoutBeingGrantedOne()
     {
-        (await Send(ProjectRole.Member, new NeedsMember(Guid.NewGuid()))).ShouldBe("handled");
+        // DEC-034's "Admin = all", made a rule rather than a list. The grant table above never
+        // mentions Configure, and Admin still reaches it — which is the property that stops a
+        // permission added later from being refused to the bundle defined as holding it.
+        (await Send(ProjectRole.Admin, new NeedsConfigure(Guid.NewGuid()))).ShouldBe("handled");
     }
 
     [Fact]
-    public async Task SomebodyHoldingNoRole_Should_BeRefusedEvenAMemberOperation()
+    public async Task SomebodyHoldingNoRole_Should_BeRefusedTheGentlestPermission()
     {
         // Null is "no row", which is also the answer for a project that does not exist — the two
         // must be indistinguishable or a refusal becomes a way to enumerate projects.
         await Should.ThrowAsync<PermissionDeniedException>(() =>
-            Send(null, new NeedsMember(Guid.NewGuid()))
+            Send(null, new NeedsObserve(Guid.NewGuid()))
         );
     }
 
     [Fact]
-    public async Task AProjectScopedDeclarationWithNoProject_Should_FailLoudlyRatherThanRefuse()
+    public async Task APermissionDeclaredWithNoProject_Should_FailLoudlyRatherThanRefuse()
     {
-        // A wiring mistake, not a permission decision. Refusing would hide it behind a 403 that
-        // looks like an ordinary refusal to whoever hits it.
+        // A wiring mistake, not a permission decision. Refusing would hide it behind a 403 that reads
+        // like an ordinary refusal to whoever hits it.
         var mistake = await Should.ThrowAsync<InvalidOperationException>(() =>
             Send(ProjectRole.Admin, new ScopelessButScoped())
         );
@@ -96,14 +103,14 @@ public class ProjectRoles_Should_Constraint
         await Should.ThrowAsync<PermissionDeniedException>(() =>
             refused
                 .ServiceProvider.GetRequiredService<ISender>()
-                .Send(new MemberQuery(Guid.NewGuid()))
+                .Send(new ObserveQuery(Guid.NewGuid()))
         );
 
         await using var allowed = Pipeline(ProjectRole.Member).CreateAsyncScope();
         (
             await allowed
                 .ServiceProvider.GetRequiredService<ISender>()
-                .Send(new MemberQuery(Guid.NewGuid()))
+                .Send(new ObserveQuery(Guid.NewGuid()))
         ).ShouldBe("handled");
     }
 
@@ -121,20 +128,50 @@ public class ProjectRoles_Should_Constraint
     }
 
     [Fact]
-    public void EveryProjectScopedRequest_Should_NameItsProject()
+    public void EveryRequestNamingAPermission_Should_NameItsProjectToo()
     {
-        var scoped = new[] { Access.AdminOfProject, Access.MemberOfProject };
-
         var unpaired = Requests()
             .Where(request =>
-                request.GetCustomAttribute<RequiresAttribute>() is { } declared
-                && scoped.Contains(declared.Access)
+                request.GetCustomAttribute<RequiresAttribute>()?.Permission is not null
                 && !typeof(IScopedToProject).IsAssignableFrom(request)
             )
             .Select(request => request.FullName!)
             .ToList();
 
         unpaired.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void EveryDeclaredPermission_Should_BeOneOfTheModulesConstants()
+    {
+        var known = KnownPermissions();
+
+        var invented = Requests()
+            .Select(request => request.GetCustomAttribute<RequiresAttribute>()?.Permission)
+            .Where(permission => permission is not null && !known.Contains(permission))
+            .Distinct()
+            .ToList();
+
+        // What the string-keyed shape costs, made cheap: a typo'd permission is held by nobody, so it
+        // would be refused for Member, allowed for Admin, and silent. This is the compile error the
+        // strings gave up.
+        invented.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void EveryPermissionConstant_Should_BeDeclaredBySomething()
+    {
+        var declared = Requests()
+            .Select(request => request.GetCustomAttribute<RequiresAttribute>()?.Permission)
+            .Where(permission => permission is not null)
+            .ToHashSet();
+
+        var unused = KnownPermissions().Where(known => !declared.Contains(known)).ToList();
+
+        // The other direction, and the one that rots quietly: a permission no operation requires
+        // still looks like a rule somebody must honour, and a grant table listing it reads as a
+        // decision that was made. Neither is true.
+        unused.ShouldBeEmpty();
     }
 
     /// <summary>Every command and query the product actually dispatches.</summary>
@@ -153,7 +190,23 @@ public class ProjectRoles_Should_Constraint
                     )
             );
 
-    sealed class FixedPermissions(ProjectRole? role) : IProjectPermissions
+    /// <summary>
+    /// The permission vocabulary, read from the <c>*Permissions</c> classes rather than from a list
+    /// here — a list here would be the second place a new permission has to be added, which is the
+    /// drift these tests exist to catch.
+    /// </summary>
+    static HashSet<string> KnownPermissions() =>
+        ModuleAssemblies
+            .Implementations.SelectMany(assembly => assembly.GetTypes())
+            .Where(type => type.Name.EndsWith("Permissions", StringComparison.Ordinal))
+            .SelectMany(type =>
+                type.GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static)
+            )
+            .Where(field => field.IsLiteral && field.FieldType == typeof(string))
+            .Select(field => (string)field.GetRawConstantValue()!)
+            .ToHashSet(StringComparer.Ordinal);
+
+    sealed class FixedRole(ProjectRole? role) : IProjectPermissions
     {
         public Task<ProjectRole?> RoleOn(Guid projectId, CancellationToken cancellationToken) =>
             Task.FromResult(role);
@@ -165,21 +218,21 @@ public class ProjectRoles_Should_Constraint
     // Deliberately carries no [Requires]: this type IS the test.
     internal sealed record Undeclared : ICommand<string>;
 
-    [Requires(Access.AdminOfProject)]
-    internal sealed record NeedsAdmin(Guid ProjectId) : ICommand<string>, IScopedToProject;
+    [Requires(Observe)]
+    internal sealed record NeedsObserve(Guid ProjectId) : ICommand<string>, IScopedToProject;
 
-    [Requires(Access.MemberOfProject)]
-    internal sealed record NeedsMember(Guid ProjectId) : ICommand<string>, IScopedToProject;
+    [Requires(Configure)]
+    internal sealed record NeedsConfigure(Guid ProjectId) : ICommand<string>, IScopedToProject;
 
-    // The pairing mistake: declares a project-scoped requirement, names no project.
-    [Requires(Access.AdminOfProject)]
+    // The pairing mistake: names a permission, names no project.
+    [Requires(Configure)]
     internal sealed record ScopelessButScoped : ICommand<string>;
 
     // A query as well as commands: AddVsaCqsArchitecture decorates both open handler interfaces and
     // Scrutor refuses to decorate one with no registrations, so an assembly of commands alone cannot
     // compose the real pipeline at all. Found by composing it.
-    [Requires(Access.MemberOfProject)]
-    internal sealed record MemberQuery(Guid ProjectId) : IQuery<string>, IScopedToProject;
+    [Requires(Observe)]
+    internal sealed record ObserveQuery(Guid ProjectId) : IQuery<string>, IScopedToProject;
 
     internal sealed class UndeclaredHandler : IAppCommandHandler<Undeclared, string>
     {
@@ -187,15 +240,15 @@ public class ProjectRoles_Should_Constraint
             Task.FromResult("handled");
     }
 
-    internal sealed class NeedsAdminHandler : IAppCommandHandler<NeedsAdmin, string>
+    internal sealed class NeedsObserveHandler : IAppCommandHandler<NeedsObserve, string>
     {
-        public Task<string> Handle(NeedsAdmin command, CancellationToken cancellationToken) =>
+        public Task<string> Handle(NeedsObserve command, CancellationToken cancellationToken) =>
             Task.FromResult("handled");
     }
 
-    internal sealed class NeedsMemberHandler : IAppCommandHandler<NeedsMember, string>
+    internal sealed class NeedsConfigureHandler : IAppCommandHandler<NeedsConfigure, string>
     {
-        public Task<string> Handle(NeedsMember command, CancellationToken cancellationToken) =>
+        public Task<string> Handle(NeedsConfigure command, CancellationToken cancellationToken) =>
             Task.FromResult("handled");
     }
 
@@ -207,9 +260,9 @@ public class ProjectRoles_Should_Constraint
         ) => Task.FromResult("handled");
     }
 
-    internal sealed class MemberQueryHandler : IAppQueryHandler<MemberQuery, string>
+    internal sealed class ObserveQueryHandler : IAppQueryHandler<ObserveQuery, string>
     {
-        public Task<string> Handle(MemberQuery query, CancellationToken cancellationToken) =>
+        public Task<string> Handle(ObserveQuery query, CancellationToken cancellationToken) =>
             Task.FromResult("handled");
     }
 }

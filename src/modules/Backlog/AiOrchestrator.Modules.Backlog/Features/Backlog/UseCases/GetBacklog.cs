@@ -52,7 +52,7 @@ sealed class GetBacklog : IUseCase
 
     internal sealed record Response(ConnectorView? Connector, IReadOnlyList<StoryView> Stories);
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(BacklogPermissions.Read)]
     internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     internal sealed class Handler(BacklogDbContext database) : IAppQueryHandler<Query, Response>

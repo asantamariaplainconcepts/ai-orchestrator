@@ -77,12 +77,12 @@ sealed class AssignProjectRole : IUseCase
 
     internal sealed record Response(string IdentityId, string Role, DateTimeOffset GrantedAt);
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageRoles)]
     internal sealed record Command(Guid ProjectId, string IdentityId, string Role)
         : ICommand<ErrorOr<Response>>,
             IScopedToProject;
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageRoles)]
     internal sealed record Revoke(Guid ProjectId, string IdentityId)
         : ICommand<ErrorOr<Success>>,
             IScopedToProject;

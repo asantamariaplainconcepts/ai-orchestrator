@@ -60,7 +60,7 @@ sealed class RunNow : IUseCase
         bool WaitingAtCap
     );
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Trigger)]
     internal sealed record Command(Guid ProjectId, string VendorStoryId, Guid AutomationId)
         : ICommand<ErrorOr<Response>>,
             IScopedToProject;

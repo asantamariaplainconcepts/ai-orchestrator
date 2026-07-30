@@ -49,7 +49,7 @@ sealed class DeleteAutomation : IUseCase
             .WithName(nameof(DeleteAutomation))
             .WithTags("Automations");
 
-    [Requires(Access.AdminOfProject)]
+    [Requires(ProjectPermissions.ManageAutomations)]
     internal sealed record Command(Guid ProjectId, Guid AutomationId)
         : ICommand<ErrorOr<Deleted>>,
             IScopedToProject;

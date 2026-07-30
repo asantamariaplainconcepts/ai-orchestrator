@@ -36,7 +36,7 @@ sealed class GetProjectPulse : IUseCase
             .WithName(nameof(GetProjectPulse))
             .WithTags("Runs");
 
-    [Requires(Access.MemberOfProject)]
+    [Requires(RunPermissions.Read)]
     internal sealed record Query(Guid ProjectId) : IQuery<Response>, IScopedToProject;
 
     /// <summary>An automation with zero window runs still appears — absence is the signal.</summary>

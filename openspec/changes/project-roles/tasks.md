@@ -9,7 +9,8 @@
 
 ## Enforcement
 
-- [x] 2.1 Commands and queries declare their required permission; undeclared means Admin (design D1).
+- [x] 2.1 Commands and queries declare a **permission**, and each module contributes its bundle
+      mapping beside them (BR-009, design D1). Undeclared is refused whatever the caller holds.
 - [x] 2.2 An authorization decorator in `AddVsaCqsArchitecture`'s fixed chain enforces it — outside
       validation and therefore outside caching, so no cached answer can reach the wrong caller.
 - [x] 2.3 The two inline Admin checks in `ConfigureConnector` are deleted, not adapted.
@@ -42,9 +43,12 @@
       nothing on another; no-role refusals disclose nothing; the projects list is scoped.
 - [x] 5.2 Functional: the bootstrap administrator needs no grant (single id and a separated list), and
       the only administrator can be neither removed nor demoted while none is configured.
-- [x] 5.3 Composition: an undeclared operation is refused even from an Admin, both bundles behave, a
-      project-scoped declaration with no project fails loudly — plus a reflection sweep asserting
-      every request in the product declares. Verified red by removing one attribute.
+- [x] 5.3 Composition: an undeclared operation is refused even from an Admin, a bundle is refused a
+      permission it does not hold and reaches one it does, Admin holds everything without a grant,
+      and a permission declared with no project fails loudly. Plus three reflection sweeps: every
+      request declares, every declared permission is a known constant, every constant is declared
+      by something — the last two buying back the compile error the strings gave up. Verified red
+      by removing one attribute.
 - [x] 5.4 E2E: the People panel is on Settings, renders for an Admin, and states both truths.
       **Scoped deliberately:** the AppHost habitat has one caller and no provider, so there is nobody
       to grant to and no sign-in to perform. The grant, the roster afterwards, the stranger refusal
