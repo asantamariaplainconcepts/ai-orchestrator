@@ -1,8 +1,10 @@
 using System.Net;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Shouldly;
@@ -150,6 +152,29 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
         var response = await client.GetAsync("/api/health");
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public void TheSessionCookie_Should_BeLaxBecauseStrictIsTheLoop()
+    {
+        // No tier can reproduce SameSite semantics — HttpClient ignores the attribute, and the
+        // loop needs a real browser against a live provider. What CAN be pinned is the
+        // configuration: Strict here is the infinite sign-in loop the owner hit (#176), because
+        // the post-login redirect is initiated from the provider's cross-site form post and a
+        // Strict cookie does not ride it.
+        using var factory = fixture.WithWebHostBuilder(builder =>
+        {
+            builder.UseSetting("AzureAd:TenantId", "00000000-0000-0000-0000-000000000001");
+            builder.UseSetting("AzureAd:ClientId", "00000000-0000-0000-0000-000000000002");
+        });
+        _ = factory.CreateClient();
+
+        var cookie = factory
+            .Services.GetRequiredService<IOptionsMonitor<CookieAuthenticationOptions>>()
+            .Get(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        cookie.Cookie.SameSite.ShouldBe(Microsoft.AspNetCore.Http.SameSiteMode.Lax);
+        cookie.Cookie.HttpOnly.ShouldBeTrue();
     }
 
     [Fact]

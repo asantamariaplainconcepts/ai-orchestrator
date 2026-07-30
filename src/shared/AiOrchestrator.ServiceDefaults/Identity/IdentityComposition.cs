@@ -100,10 +100,15 @@ public static class IdentityComposition
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 options =>
                 {
-                    // Strict for the SESSION only. The OIDC handshake cookies stay at the
-                    // library's defaults on purpose: that response arrives cross-site from the
-                    // provider, and a strict handshake cookie fails sign-in silently (DEC-058).
-                    options.Cookie.SameSite = SameSiteMode.Strict;
+                    // Lax, and Strict is the loop (#176): the provider's response is a
+                    // cross-site form POST, and the redirect that follows it is a navigation
+                    // initiated from that cross-site context — a Strict cookie is not attached
+                    // to it, so the landing page challenges again and Entra silently signs the
+                    // user straight back in, forever. Lax still withholds the cookie from
+                    // cross-site subrequests and POSTs; it rides top-level navigations, which
+                    // is exactly the post-login redirect. The handshake cookies stay at the
+                    // library's defaults for the sibling reason (DEC-058, corrected by DEC-059).
+                    options.Cookie.SameSite = SameSiteMode.Lax;
                     options.Cookie.HttpOnly = true;
                     // SameAsRequest rather than Always: the dev profile is plain http on
                     // localhost, and a Secure cookie over plain http is one that never comes

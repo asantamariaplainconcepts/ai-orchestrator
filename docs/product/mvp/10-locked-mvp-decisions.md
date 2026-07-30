@@ -285,3 +285,12 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   against a **test tenant** — it answers *is this viable*, which is what OPN-002 asked; pointing the
   registration at any particular organisation's tenant is configuration, not a new decision. Decided
   2026-07-30 with #11 and #167.
+- **DEC-059 — the session cookie is Lax, and DEC-058's Strict guidance is corrected** *(amends
+  DEC-058's rationale, not its decision)*: DEC-058 recorded "SameSite=Strict is right for the session
+  cookie", reasoned from every request that carries it being same-origin. The first real sign-in
+  disproved it: the provider's response is a cross-site form post, the redirect that follows is a
+  navigation initiated from that cross-site context, and a Strict cookie does not ride it — so the
+  landing page challenges again, the provider silently signs the user back in, and the loop never ends
+  (#176, observed by the owner). Lax is the correct setting: still absent from cross-site subrequests
+  and POSTs, present on top-level navigations, which is precisely the post-login redirect. The BFF
+  decision itself is unchanged. Decided 2026-07-30 with #176.
