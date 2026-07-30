@@ -1889,3 +1889,23 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. The three wrong claims are ADR-0009's family, each caught by its rule — exercise,
   don't reason.
+
+## 2026-07-30 — entra-instance-default (hotfix, #170)
+
+- **Worked:** the diagnosis was three commands — probe the URL, read the container log, find
+  `IDW10106` — because every layer said something true: the problem body carried a traceId, the log
+  named the missing option, and the option named the library that wanted it.
+- **Didn't — and this is the finding:** the wiring test was green over the exact gap that shipped. It
+  set `AzureAd:Instance` itself, so it exercised a configuration more complete than the deployed one.
+  That is the same shape as #160's E2E that passed without touching the reuse path: a test whose setup
+  quietly supplies what the system under test is missing proves the setup, not the system. The library
+  refusing per request — inside the auth middleware — is what turned one missing option into a total
+  outage including health probes.
+- **Next time:** a wiring test's configuration must be **exactly** what the deployment carries —
+  copied from the Terraform env block, not written from memory of what the library wants. Anything the
+  test adds beyond that list is a gap the test can no longer see.
+- **Time invested:** not measured (source: **manual** — seventy-sixth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new; second occurrence of the green-test-shaped-like-coverage finding (#160 was the
+  first). A third graduates it.

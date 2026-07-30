@@ -80,6 +80,22 @@ public static class IdentityComposition
                 .Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
                 .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection(ProviderSectionKey));
 
+            // The public cloud unless told otherwise (#170). Microsoft.Identity.Web refuses to run
+            // without an Instance, and it refuses PER REQUEST — the deployed portal answered 500 on
+            // everything, /health included, because the handler initializes inside the auth
+            // middleware. The two ids are the configuration a deployment actually varies; the
+            // instance only changes for sovereign clouds, which can still set it.
+            builder.Services.Configure<MicrosoftIdentityOptions>(
+                OpenIdConnectDefaults.AuthenticationScheme,
+                options =>
+                {
+                    if (string.IsNullOrWhiteSpace(options.Instance))
+                    {
+                        options.Instance = "https://login.microsoftonline.com/";
+                    }
+                }
+            );
+
             builder.Services.Configure<CookieAuthenticationOptions>(
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 options =>
