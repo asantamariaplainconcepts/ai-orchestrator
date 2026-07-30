@@ -24,6 +24,18 @@ resource "azurerm_container_app" "portal" {
     identity = azurerm_user_assigned_identity.workload.id
   }
 
+  # The sign-in secret rides as a vault REFERENCE (#12): the workload identity reads it at
+  # startup, so no value passes through Terraform state or this file. Created by entra-app.sh,
+  # deliberately outside Terraform — a directory bootstrap, like the deploy identity (DEC-046).
+  dynamic "secret" {
+    for_each = var.entra_client_id == "" ? [] : [1]
+    content {
+      name                = "entra-client-secret"
+      identity            = azurerm_user_assigned_identity.workload.id
+      key_vault_secret_id = "${azurerm_key_vault.main.vault_uri}secrets/entra-client-secret"
+    }
+  }
+
   ingress {
     external_enabled = true
     target_port      = 8080
@@ -75,6 +87,26 @@ resource "azurerm_container_app" "portal" {
       env {
         name  = "AZURE_CLIENT_ID"
         value = azurerm_user_assigned_identity.workload.client_id
+      }
+      # Sign-in (#12): present only when the registration is named, because presence of
+      # AzureAd__ClientId is exactly what turns the provider mode on in the Server. Ids are
+      # plain values — they identify the app, they do not authenticate it (DEC-058).
+      dynamic "env" {
+        for_each = var.entra_client_id == "" ? {} : {
+          AzureAd__TenantId = var.entra_tenant_id
+          AzureAd__ClientId = var.entra_client_id
+        }
+        content {
+          name  = env.key
+          value = env.value
+        }
+      }
+      dynamic "env" {
+        for_each = var.entra_client_id == "" ? [] : [1]
+        content {
+          name        = "AzureAd__ClientSecret"
+          secret_name = "entra-client-secret"
+        }
       }
     }
   }

@@ -90,6 +90,11 @@ jobs:
         working-directory: infra/dev
         env:
           TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          # Repository VARIABLES, not secrets: the ids identify the sign-in app, they do not
+          # authenticate it (DEC-058). Empty when unset, which leaves sign-in off — presence is
+          # the switch, in Terraform and in the Server alike.
+          TF_VAR_entra_tenant_id: ${{ vars.ENTRA_TENANT_ID }}
+          TF_VAR_entra_client_id: ${{ vars.ENTRA_CLIENT_ID }}
         run: |
           set -euo pipefail
           terraform plan -input=false -no-color -out=tfplan | tee plan.txt
@@ -104,6 +109,8 @@ jobs:
         working-directory: infra/dev
         env:
           TF_VAR_subscription_id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+          TF_VAR_entra_tenant_id: ${{ vars.ENTRA_TENANT_ID }}
+          TF_VAR_entra_client_id: ${{ vars.ENTRA_CLIENT_ID }}
         run: terraform apply -input=false -no-color tfplan
 
       # deploy.sh owns the release ordering — push, migrate, wait, then move the revision. CI

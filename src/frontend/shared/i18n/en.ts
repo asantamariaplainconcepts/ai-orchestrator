@@ -18,6 +18,8 @@ export const en = {
   "projects.count.other": "projects",
   "theme.toggle": "Switch theme",
   "ui.close": "Close",
+  "shell.auth.signIn": "Sign in",
+  "shell.auth.signOut": "Sign out",
   "shell.nav.collapse": "Collapse sidebar",
   "shell.nav.expand": "Expand sidebar",
   "shell.nav.openMenu": "Open navigation",

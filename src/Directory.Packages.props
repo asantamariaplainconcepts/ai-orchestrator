@@ -30,6 +30,11 @@
     />
     <!-- API / observability -->
     <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.Identity.Web" Version="4.14.1" />
+    <!-- Pinned to resolve CS0433: Microsoft.Identity.Web 4.x pairs with an Azure.Core generation
+         where DefaultAzureCredential type-forwards from Azure.Identity; the transitive 1.17 from
+         the Aspire Key Vault client predates the move, so both assemblies defined the type. -->
+    <PackageVersion Include="Azure.Identity" Version="1.21.0" />
     <PackageVersion Include="Microsoft.AspNetCore.SpaServices.Extensions" Version="10.0.9" />
     <!-- Transitive floor from Microsoft.AspNetCore.OpenApi 10.0.9 is 2.0.0, which has a known
          high-severity vulnerability (GHSA-v5pm-xwqc-g5wc, stack overflow on circular schema refs).

@@ -1864,3 +1864,28 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. The wrong-shape-first finding is ADR-0009's family (a claim believed over the
   spec that was one file away); the prediction-versus-probe finding is ADR-0001's.
+
+## 2026-07-30 — entra-sign-in
+
+- **Worked:** the two-mode contract held the whole way because composition keys on configuration
+  presence — the lesson IdentityComposition already carried. All 364 tests passed without any of them
+  learning that auth exists, which is DEC-058's second half doing its job: the seam from #119 absorbed
+  an identity provider without a single consumer changing. And reading the routes before writing the
+  /api gate caught the two carve-outs that would have shipped broken: webhooks are signed, not
+  sessioned, and the hub lives outside /api but must not be open.
+- **Didn't:** three claims failed on first contact, all caught by executing. WriteAsJsonAsync overwrites
+  a pre-set content type (the header rides the call). Setting OpenIdConnectOptions.Configuration does
+  not stop the discovery fetch — the handler consults the ConfigurationManager, and the 500 its
+  IOException caused is how the static manager earned its comment. And I asserted an unsigned webhook
+  answers 401 when it answers 200 with no matching connector — the test now pins what was observed.
+  Separately, the owner's first entra-app.sh run had no DEPLOYED_ORIGIN, and the script's create-only
+  redirect handling silently stranded the deployed environment; it is declarative now, because a
+  bootstrap whose re-run cannot converge is one that strands the first environment it was run without.
+- **Next time:** when wiring a gate over a path space, enumerate what already lives there by command
+  before choosing the predicate — the webhook and hub carve-outs were found that way and would not have
+  been found by reasoning about "the API".
+- **Time invested:** not measured (source: **manual** — seventy-fifth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. The three wrong claims are ADR-0009's family, each caught by its rule — exercise,
+  don't reason.

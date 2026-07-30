@@ -1,8 +1,13 @@
+using System.Security.Claims;
 using AiOrchestrator.BuildingBlocks.Identity;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Identity.Web;
 
 namespace AiOrchestrator.ServiceDefaults.Identity;
 
@@ -20,6 +25,18 @@ public static class IdentityComposition
     public const string OwnerNameKey = "Identity:OwnerName";
 
     internal const string LocalOwnerMode = "LocalOwner";
+
+    /// <summary>
+    /// The provider's configuration section. Presence is what composes it (#12, design D2) — never
+    /// an environment name, for the reason recorded in <see cref="UnsafeFor"/>: the self-host
+    /// compose defaults to Production, and gating on that once refused to start the very habitat
+    /// DEC-049 protects.
+    /// </summary>
+    public const string ProviderSectionKey = "AzureAd";
+
+    /// <summary>Whether this host authenticates through the identity provider.</summary>
+    public static bool UsesProvider(IConfiguration configuration) =>
+        !string.IsNullOrWhiteSpace(configuration[$"{ProviderSectionKey}:ClientId"]);
 
     public static TBuilder AddIdentity<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
@@ -54,9 +71,44 @@ public static class IdentityComposition
             return builder;
         }
 
+        // The provider mode (#12, DEC-058): a confidential BFF client. The session is an HttpOnly
+        // cookie; no token reaches the browser. Composed on configuration presence, and only in a
+        // host that serves HTTP — the worker has no callers to authenticate.
+        if (UsesProvider(builder.Configuration))
+        {
+            builder
+                .Services.AddAuthentication(OpenIdConnectDefaults.AuthenticationScheme)
+                .AddMicrosoftIdentityWebApp(builder.Configuration.GetSection(ProviderSectionKey));
+
+            builder.Services.Configure<CookieAuthenticationOptions>(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                options =>
+                {
+                    // Strict for the SESSION only. The OIDC handshake cookies stay at the
+                    // library's defaults on purpose: that response arrives cross-site from the
+                    // provider, and a strict handshake cookie fails sign-in silently (DEC-058).
+                    options.Cookie.SameSite = SameSiteMode.Strict;
+                    options.Cookie.HttpOnly = true;
+                    // SameAsRequest rather than Always: the dev profile is plain http on
+                    // localhost, and a Secure cookie over plain http is one that never comes
+                    // back. Browsers treat localhost as trustworthy, deployed traffic is https,
+                    // so this hardens exactly where hardening can work.
+                    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                }
+            );
+
+            // The fallback's RequireAuthorization needs the services even though no policy is
+            // custom: the default policy is "authenticated", which is exactly the semantics.
+            builder.Services.AddAuthorization();
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddSingleton<ICurrentPrincipal, SignedInCaller>();
+            return builder;
+        }
+
         // The third state (design D3): hosted, no provider, nobody authenticated. Real,
         // temporary, and invisible until identity existed as a concept. A condition with no
-        // voice is how a stopgap becomes permanent.
+        // voice is how a stopgap becomes permanent. It stays after the provider exists, because
+        // the self-host habitat (DEC-049) has no tenant to sign into.
         builder.Services.AddSingleton<ICurrentPrincipal, UnauthenticatedCaller>();
         return builder;
     }
@@ -121,9 +173,50 @@ sealed class LocalOwner(string? name) : ICurrentPrincipal
 }
 
 /// <summary>
-/// Nobody signed in, because there is nothing to sign in to yet (OPN-002). Deliberately still a
-/// principal: consumers never branch on identity being absent, and when a provider lands this
-/// implementation is the one that disappears.
+/// Whoever signed in (#12): the session's claims, read per request through the accessor. A
+/// singleton over <see cref="IHttpContextAccessor"/> rather than a scoped service, so the startup
+/// warning can still resolve the seam from the root scope.
+/// <para>
+/// Every signed-in user holds Admin — the interim rule the requirement states out loud. Role
+/// assignment per project is #13, landing on this same seam. The unauthenticated window (the
+/// challenge itself, health probes) reads as a Member-role anonymous, never Admin: API routes are
+/// refused before a handler runs, so this value deciding anything would already be a bug.
+/// </para>
+/// </summary>
+sealed class SignedInCaller(IHttpContextAccessor accessor) : ICurrentPrincipal
+{
+    public Principal Current
+    {
+        get
+        {
+            var user = accessor.HttpContext?.User;
+            if (user?.Identity?.IsAuthenticated != true)
+            {
+                return new Principal("anonymous", "Not signed in", PrincipalRole.Member);
+            }
+
+            // The object id is the stable identity; a name claim is a label that may change.
+            var id =
+                user.FindFirstValue("http://schemas.microsoft.com/identity/claims/objectidentifier")
+                ?? user.FindFirstValue("oid")
+                ?? user.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? "signed-in";
+
+            var name =
+                user.FindFirstValue("name")
+                ?? user.FindFirstValue(ClaimTypes.Name)
+                ?? user.Identity.Name
+                ?? "Signed in";
+
+            return new Principal(id, name, PrincipalRole.Admin);
+        }
+    }
+}
+
+/// <summary>
+/// Nobody signed in, because this host has no provider configured. Deliberately still a
+/// principal: consumers never branch on identity being absent. Kept after the provider exists,
+/// because the self-host habitat (DEC-049) has no tenant — this is the row that warns at startup.
 /// </summary>
 sealed class UnauthenticatedCaller : ICurrentPrincipal
 {
