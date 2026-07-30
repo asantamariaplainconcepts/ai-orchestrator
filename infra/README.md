@@ -162,7 +162,7 @@ does not have.
 | Entra | service principal | so the app appears as an enterprise application and users can be assigned |
 | Entra | one client secret, 1 year | a confidential client needs a credential to redeem the code |
 | Key Vault | the secret's **value** | piped from `az` into `az keyvault secret set` and never printed — this repository is public and so are its Actions logs |
-| — | **no** implicit flow | the code flow redeems server-side, so no `id_token` issuance is needed |
+| Entra | id-token issuance ON, access-token issuance OFF | Microsoft.Identity.Web's sign-in-only web apps use the id_token hybrid by form post to the server (#172) — the browser still never sees a token; access tokens stay off because nothing acquires them yet |
 
 The tenant id and client id are printed: they *identify* the app, they do not *authenticate* it. What
 authenticates it is in the vault, and what reaches configuration is that secret's **name** (BR-010).

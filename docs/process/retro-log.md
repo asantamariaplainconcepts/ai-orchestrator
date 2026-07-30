@@ -1909,3 +1909,24 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new; second occurrence of the green-test-shaped-like-coverage finding (#160 was the
   first). A third graduates it.
+
+## 2026-07-30 — sign-in-first-deploy-gaps (hotfix, #172)
+
+- **Worked:** the first real deploy was the test no tier could be — it found both gaps in one run.
+  The verify step failing IS the deploy contract asserting itself: /api/health behind the gate broke
+  the smoke check, and the challenge URL's response_type=id_token disproved the code-flow design
+  claim at the provider's own door, before any person hit AADSTS700054.
+- **Didn't:** my first red-check of the new health test proved nothing — the mutated build failed on
+  FORMATTING, so the test never ran, and set -e swallowed the evidence. A discriminator check must
+  watch the mutated build succeed before reading the test result; a red pipeline is not a red test.
+  And the spec itself carried the wrong flow: "authorization code flow, redeemed server-side" was
+  written from how I believed Microsoft.Identity.Web works, not from observing it — ADR-0009's
+  failure, this time landed in an archived spec.
+- **Next time:** for auth changes, the deploy IS part of the test plan: schedule the first deploy
+  before calling the change done, because the provider and the release pipeline assert contracts no
+  local tier reaches.
+- **Time invested:** not measured (source: **manual** — seventy-seventh consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. Third occurrence of green-over-the-gap is NOT this (the wiring test's Instance
+  gap was #170's, already counted); the discriminator-that-never-ran is a first.

@@ -122,6 +122,19 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
     }
 
     [Fact]
+    public async Task TheDeploysSmokeCheck_Should_NeedNoSession()
+    {
+        using var client = Client();
+
+        // deploy.yml verifies a release by polling /api/health until 200, and a machine polling
+        // liveness can never hold a session. Gating it is what failed deploy run #39 at its
+        // verify step — the release itself had succeeded (#172).
+        var response = await client.GetAsync("/api/health");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task WithNoProviderConfigured_Should_BehaveExactlyAsBefore()
     {
         // The fixture's own client: no AzureAd configuration, the stopgap row. This is the mode
