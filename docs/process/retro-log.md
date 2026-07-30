@@ -1952,3 +1952,27 @@ times in the project this framework came from.
 - **ADR:** none new; the habitat-contract family now has three members in one day, all under #12's
   umbrella. If the NEXT slice that touches a habitat contract ships a gap of this shape, that is the
   graduation point.
+
+## 2026-07-30 — session-cookie-lax (hotfix, #176)
+
+- **Worked:** the owner's one-line report ("me pide login todo el rato") was fully diagnostic — a
+  clean loop with no error page has exactly one shape in this setup, because a correlation failure
+  would have thrown and a config gap would have 500'd. The mechanics were nameable from the armchair
+  and the fix is one enum value.
+- **Didn't — and this one stings:** I documented the trap and then fell into its mirror. The README,
+  the code comment and DEC-058 all said "Strict for the session, Lax-ish defaults for the handshake",
+  and the first half was wrong for the one navigation that matters most: the post-login redirect is
+  initiated from the provider's cross-site form post, and Strict cookies do not ride it. I reasoned
+  "every request carrying it is same-origin" and never asked who INITIATES the first request after
+  sign-in. Worse: no tier could have caught it — HttpClient ignores SameSite — so the only detector
+  was a human with a browser, and that is what found it.
+- **Next time:** for any cookie policy decision, trace the first navigation after each cross-site
+  hop, not just the steady state. And when a rationale lands in a DEC, the DEC inherits the claim's
+  risk — corrections are new entries (DEC-059), which is fine, but cheaper never written wrong.
+- **Time invested:** not measured (source: **manual** — seventy-ninth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new. Fifth habitat-contract gap under #12's umbrella in one day (Instance, health
+  gate, id-token issuance, forwarded scheme, cookie policy). The #174 retro already named the rule —
+  the first deploy is a probe — and this extends it to: the first HUMAN sign-in is part of that
+  probe, because SameSite semantics have no machine-reachable tier.
