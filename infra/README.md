@@ -170,7 +170,13 @@ authenticates it is in the vault, and what reaches configuration is that secret'
 Rotation is deliberate: if the secret already exists the script leaves it alone rather than quietly
 minting a second one.
 
-**Cookies, for whoever wires this up.** `SameSite=Strict` is right for the *application session* —
+The local redirect URI is the Server's own dev profile — `http://localhost:5080`, from
+`launchSettings.json` rather than guessed, because a redirect URI that does not match to the character
+fails sign-in with no useful message. Plain `http` is fine there only because Entra exempts
+`localhost`; anywhere else it is rejected.
+
+**Cookies, for whoever wires this up.** A cookie marked `Secure` is not sent over plain `http`, so the
+local profile needs that relaxed in development or the session never arrives at all. `SameSite=Strict` is right for the *application session* —
 every request carrying it is same-origin. The OIDC handshake cookies are not: the response arrives
 from `login.microsoftonline.com`, which is cross-site, so `Strict` would drop them and sign-in would
 fail in a way that looks like nothing happened at all. Leave those at the library's default.

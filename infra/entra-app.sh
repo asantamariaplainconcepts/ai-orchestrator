@@ -22,9 +22,13 @@ set -euo pipefail
 
 APP_NAME="${APP_NAME:-ai-orchestrator-dev}"
 RESOURCE_GROUP="${RESOURCE_GROUP:-rg-aio-dev}"
-# Microsoft.Identity.Web's defaults. Both origins, because auth that only works deployed cannot be
-# developed against.
-LOCAL_ORIGIN="${LOCAL_ORIGIN:-https://localhost:7443}"
+# Both origins, because auth that only works deployed cannot be developed against.
+#
+# The local one is the Server's own dev profile (launchSettings: http://localhost:5080), read from
+# there rather than guessed — a redirect URI that does not match to the character fails sign-in with
+# no useful message. Plain http is allowed here because Entra exempts localhost specifically; it
+# would be rejected for any other host.
+LOCAL_ORIGIN="${LOCAL_ORIGIN:-http://localhost:5080}"
 DEPLOYED_ORIGIN="${DEPLOYED_ORIGIN:-}"
 SECRET_NAME="${SECRET_NAME:-entra-client-secret}"
 
@@ -132,7 +136,9 @@ Done. Configure the Server with:
 The tenant and client ids are not secrets — they identify the app, they do not authenticate it.
 The secret is in the vault and was never printed here.
 
-Session cookie, for whoever wires Microsoft.Identity.Web: SameSite=Strict is correct for the
+Two cookie traps, both silent. A cookie marked Secure is not sent over plain http, so the local
+profile above needs that relaxed in development or the session simply never arrives. And:
+SameSite=Strict is correct for the
 application session, because every request that carries it is same-origin. The OIDC handshake
 cookies (correlation, nonce) are a different matter — the response arrives from
 login.microsoftonline.com, which is cross-site, so Strict would drop them and sign-in would fail
