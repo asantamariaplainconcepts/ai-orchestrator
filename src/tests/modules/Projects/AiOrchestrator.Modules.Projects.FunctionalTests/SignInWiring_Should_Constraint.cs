@@ -22,9 +22,13 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
         fixture
             .WithWebHostBuilder(builder =>
             {
+                // Exactly what the deployment carries and nothing more (#170): the first version
+                // of this test also set AzureAd:Instance, which made it green over a configuration
+                // more complete than the deployed one — and the gap it papered over answered 500 on
+                // every request in dev, health probes included. The instance must come from the
+                // code's public-cloud default.
                 builder.UseSetting("AzureAd:TenantId", "00000000-0000-0000-0000-000000000001");
                 builder.UseSetting("AzureAd:ClientId", "00000000-0000-0000-0000-000000000002");
-                builder.UseSetting("AzureAd:Instance", "https://login.microsoftonline.com/");
                 builder.ConfigureTestServices(services =>
                     services.PostConfigure<OpenIdConnectOptions>(
                         OpenIdConnectDefaults.AuthenticationScheme,
