@@ -133,6 +133,35 @@ production data.
 > twice. Check `gh api repos/{owner}/{repo}/environments/dev` before trusting it, and correct it
 > here when it drifts.
 
+## Registering the sign-in app
+
+```bash
+./infra/entra-app.sh
+```
+
+Once per tenant, by a human with `az login`. Idempotent. Creates the Entra ID app registration the
+portal signs users in with, plus its service principal.
+
+A script rather than Terraform for the same reason `ci-identity.sh` is one: this is a **directory**
+object, not a subscription resource. Managing it in Terraform would mean granting the CI deploy
+identity Graph permissions with admin consent — widening what a pipeline can do inside the tenant,
+which is a bigger blast radius than the resource group it manages today.
+
+| Where | What | Why this shape |
+|---|---|---|
+| Entra | app registration, this tenant only | an app with no API permissions and no client secret can sign a user in and nothing else |
+| Entra | SPA redirect URIs, set through Graph | `az ad app create` has `--web-redirect-uris` and no SPA flag — checked against az 2.82, not assumed. `spa.redirectUris` is a `PATCH` |
+| Entra | service principal | so the app appears as an enterprise application and users can be assigned to it |
+| — | **no** client secret, **no** implicit flow | auth code with PKCE needs neither, and a secret would be one more thing to rotate and to keep out of state |
+
+The client id and tenant id are **printed, not stored as secrets**: both ship inside the browser
+bundle of any SPA that uses them, so treating them as secrets would be theatre. The subscription id
+— which this script never touches — is the one that stays out of a public repository.
+
+This answers [OPN-002](../docs/product/mvp/07-open-decisions.md)'s first half only. Its second half,
+a local-dev and functional-test strategy given that Entra cannot be containerized, is still open;
+issue #11 is where the outcome of both is recorded.
+
 ## Setting up the deploy credential
 
 ```bash
