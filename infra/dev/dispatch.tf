@@ -217,3 +217,39 @@ resource "azurerm_key_vault_secret" "dispatch_queue_connection" {
 
   depends_on = [azurerm_role_assignment.terraform_operator_secrets]
 }
+
+# The Data Protection key ring (#180). Not "just storage": this ring encrypts the OIDC state and
+# signs session cookies, and an in-memory ring cannot survive scale-to-zero or a new revision — the
+# two things that sit between a sign-in challenge and its callback. Sign-in failed on every real
+# attempt with "Unable to unprotect the message.State" until this existed.
+resource "azurerm_storage_container" "keyring" {
+  name                  = "dataprotection"
+  storage_account_id    = azurerm_storage_account.dispatch.id
+  container_access_type = "private"
+}
+
+# Wrapped, not written in the clear: an unwrapped ring readable from blob storage is forgeable
+# session cookies for anyone who can read that blob. Authentication material, not cache.
+resource "azurerm_key_vault_key" "keyring" {
+  name         = "dataprotection-wrapping"
+  key_vault_id = azurerm_key_vault.main.id
+  key_type     = "RSA"
+  key_size     = 2048
+  key_opts     = ["unwrapKey", "wrapKey"]
+
+  depends_on = [azurerm_role_assignment.terraform_operator_secrets]
+}
+
+resource "azurerm_role_assignment" "portal_keyring_blob" {
+  scope                = azurerm_storage_account.dispatch.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.workload.principal_id
+}
+
+# Crypto User, not Secrets User: wrapping a key is a key operation, and the secret roles the
+# identity already holds do not grant it.
+resource "azurerm_role_assignment" "portal_keyring_crypto" {
+  scope                = azurerm_key_vault.main.id
+  role_definition_name = "Key Vault Crypto User"
+  principal_id         = azurerm_user_assigned_identity.workload.principal_id
+}

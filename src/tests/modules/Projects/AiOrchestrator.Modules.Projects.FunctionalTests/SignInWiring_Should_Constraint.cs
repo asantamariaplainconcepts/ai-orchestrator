@@ -111,6 +111,19 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
     }
 
     [Fact]
+    public async Task ABareVisitToTheCallback_Should_RedirectRatherThanThrow()
+    {
+        using var client = Client();
+
+        // Opening /signin-oidc directly is not a callback — no state, no message — and the handler
+        // answers 500 for it. It is not a destination, so a stray visitor is sent to sign in (#180).
+        var response = await client.GetAsync("/signin-oidc");
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location!.OriginalString.ShouldBe("/auth/signin");
+    }
+
+    [Fact]
     public async Task TheSignedOutPage_Should_NeedNoSession()
     {
         using var client = Client();
