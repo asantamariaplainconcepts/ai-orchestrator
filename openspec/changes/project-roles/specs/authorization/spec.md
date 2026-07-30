@@ -19,6 +19,10 @@ triggers — labels, Run now, approve, cancel — and configures nothing.
 A refusal SHALL name that permission was the reason, and SHALL NOT reveal whether the project exists to
 a caller with no role on it.
 
+A surface that dispatches no command or query — a real-time subscription, for instance — SHALL check
+the same thing for itself. The pipeline cannot see such a surface, so being authenticated SHALL NOT be
+mistaken there for being permitted.
+
 #### Scenario: a Member cannot configure
 
 - **WHEN** a caller holding Member on a project configures its Connector or its Automations
@@ -114,6 +118,11 @@ yet" and "this person is the only occupant" are different states that must not b
 
 - **WHEN** a signed-in caller with no roles anywhere creates a project
 - **THEN** they hold Admin on it, and still nothing on any other
+
+#### Scenario: the live log stream is scoped per Run
+
+- **WHEN** a caller with no role on a project subscribes to one of its Runs' live log
+- **THEN** the subscription is refused, and refused identically for a Run that does not exist
 
 #### Scenario: a single-occupant habitat needs no roles
 

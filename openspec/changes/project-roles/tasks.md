@@ -16,6 +16,8 @@
 - [x] 2.4 A refusal names permission as the reason and does not disclose whether the project exists.
 - [x] 2.5 Cross-project reads narrow their own answer to the caller's projects (design D7) — projects,
       connectors, inbox.
+- [x] 2.6 The run-log hub checks per Run itself (design D9): it dispatches nothing, so the decorator
+      never saw it, and authentication alone stopped meaning permission the moment this slice landed.
 
 ## The data
 

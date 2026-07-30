@@ -105,6 +105,24 @@ every project's name, every connector's health and every waiting Story in the in
 operation on them was refused. That contradicts the refusals themselves, which are worded so as not to
 disclose that a project exists.
 
+## D9 — A surface the pipeline cannot see has to check for itself
+
+The decorator covers everything dispatched through `ISender`, which is every endpoint that carries a
+command or a query. The run-log **hub** carries neither: it joins a caller to a group and streams into
+it, and it therefore declared nothing and the decorator never saw it.
+
+That was harmless while being authenticated implied being permitted — every signed-in caller was Admin
+— and this change is exactly what ended that. Left alone, the slice that scoped every other read of a
+Run would have left the *live* stream of an agent's raw output open to any signed-in caller who knew a
+Run id. So `Watch` resolves the Run's project and asks the same seam, refusing a Run in somebody else's
+project and a Run that does not exist with one message, for the reason every other refusal here has one.
+
+Found by re-reading ds-connect, which reaches the same property from the other end: its permissions are
+endpoint policies, and its `AuthorizationOptions.FallbackPolicy` denies any endpoint that declared
+nothing. The two default-denies cover different things — theirs catches an endpoint that forgot,
+ours catches a *use case* that forgot — and the hub is in neither's blind spot by accident: it is in the
+gap between them. Worth remembering as more non-dispatching surfaces arrive.
+
 ## D8 — Whoever creates a project administers it
 
 D4's configured list solves the deployment's first administrator. It does not solve the second person,
