@@ -67,7 +67,13 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
         );
     }
 
-    public async Task ResetDatabase()
+    /// <summary>
+    /// Virtual so a fixture holding mutable stubs restores them here too (#13). A stub a test class
+    /// changed and never put back is a shared fixture leaking into the next class — and once
+    /// authorization gated every operation rather than one endpoint, a leaked Member role turned
+    /// eight unrelated tests red in a module that had not been touched.
+    /// </summary>
+    public virtual async Task ResetDatabase()
     {
         if (_respawner is not null && _respawnConnection is not null)
         {

@@ -69,6 +69,10 @@ public sealed class ProjectsModule : ModuleBase
         // to refuse the safe case and say something untrue about why.
         services.AddSingleton(Features.Identity.BootstrapAdministrators.From(configuration));
 
+        // One writer for "this deployment has met this person", used by both paths that create the
+        // obligation: signing in, and creating a Project (which grants its creator Admin).
+        services.AddScoped<Features.Identity.KnownPeople>();
+
         if (BuildingBlocks.Identity.IdentityHabitat.CallersSignIn(configuration))
         {
             services.AddScoped<

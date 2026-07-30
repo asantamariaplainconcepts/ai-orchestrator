@@ -32,13 +32,28 @@ sealed class GetCurrentPrincipal : IUseCase
                     ICurrentPrincipal principal,
                     IProjectPermissions permissions,
                     ProjectsDbContext database,
-                    TimeProvider clock,
+                    KnownPeople people,
                     CancellationToken cancellationToken
                 ) =>
                 {
                     var caller = principal.Current;
 
-                    await Remember(caller, database, clock, cancellationToken);
+                    // The first request every screen makes, and the first a new arrival makes — so
+                    // "has signed in at least once" becomes true at the moment it is true, with no
+                    // sign-in hook to keep in step (task 4.1).
+                    await people.Note(caller, cancellationToken);
+                    try
+                    {
+                        await database.SaveChangesAsync(cancellationToken);
+                    }
+                    catch (DbUpdateException)
+                    {
+                        // Two tabs opening at once both read "not known" and both insert. The unique
+                        // index settles it; losing that race means the row exists, which is the
+                        // outcome wanted. Cleared rather than retried, because nothing below reads
+                        // what we just wrote.
+                        database.ChangeTracker.Clear();
+                    }
 
                     var visible = await permissions.VisibleProjects(cancellationToken);
 
@@ -77,54 +92,6 @@ sealed class GetCurrentPrincipal : IUseCase
             )
             .WithName(nameof(GetCurrentPrincipal))
             .WithTags("Identity");
-
-    /// <summary>
-    /// Records that this person exists (task 4.1). Here because this is the one request every
-    /// screen makes and the first one a new arrival makes — so "has signed in at least once"
-    /// becomes true at the moment it is true, with no sign-in hook to keep in step.
-    /// </summary>
-    static async Task Remember(
-        Principal caller,
-        ProjectsDbContext database,
-        TimeProvider clock,
-        CancellationToken cancellationToken
-    )
-    {
-        // The two habitats with a single caller have nobody to grant a role to, and storing their
-        // sentinel as a grantable person would offer "local-owner" in a picker the day one of them
-        // gained a provider.
-        if (caller.Id is Principal.LocalOwnerId or Principal.AnonymousId)
-        {
-            return;
-        }
-
-        var now = clock.GetUtcNow();
-        var known = await database.People.FirstOrDefaultAsync(
-            person => person.IdentityId == caller.Id,
-            cancellationToken
-        );
-
-        if (known is not null)
-        {
-            known.SeenAgain(caller.DisplayName, now);
-            await database.SaveChangesAsync(cancellationToken);
-            return;
-        }
-
-        database.People.Add(Person.FirstSeen(caller.Id, caller.DisplayName, now));
-
-        try
-        {
-            await database.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateException)
-        {
-            // Two tabs opening at once both read "not known" and both insert. The unique index is
-            // what settles it; losing that race means the row exists, which is the outcome wanted.
-            // Swallowed rather than retried, because nothing downstream reads what we just wrote.
-            database.ChangeTracker.Clear();
-        }
-    }
 
     internal sealed record Response(
         string Id,

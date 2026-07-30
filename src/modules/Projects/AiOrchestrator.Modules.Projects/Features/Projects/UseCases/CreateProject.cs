@@ -57,6 +57,7 @@ sealed class CreateProject : IUseCase
     internal sealed class Handler(
         ProjectsDbContext database,
         ICurrentPrincipal principal,
+        Features.Identity.KnownPeople people,
         TimeProvider clock
     ) : IAppCommandHandler<Command, ErrorOr<Response>>
     {
@@ -96,6 +97,12 @@ sealed class CreateProject : IUseCase
                         clock.GetUtcNow()
                     )
                 );
+
+                // And recorded as somebody this deployment has met, in the same write. The
+                // invariant is that a role-holder is always known: without this the creator held
+                // Admin while the grant surface refused to manage them — "that person has not
+                // signed in" about the person who just created the project.
+                await people.Note(creator, cancellationToken);
             }
 
             await database.SaveChangesAsync(cancellationToken);

@@ -47,6 +47,19 @@ public sealed class BacklogApiFixture : ApiServiceFixtureBase
 
     protected override string[] SchemasToReset => [BacklogDbContext.Schema];
 
+    /// <summary>
+    /// The stubs go back with the database. Every class already calls this; the three that changed
+    /// the caller also called Reset themselves, which restored it before their own tests and not
+    /// after their last one — so the Member role a refusal test set leaked into the next class in the
+    /// collection. Harmless while one endpoint checked a role; eight failures once the pipeline did.
+    /// </summary>
+    public override async Task ResetDatabase()
+    {
+        await base.ResetDatabase();
+        Caller.Reset();
+        Permissions.Reset();
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         base.ConfigureWebHost(builder);
