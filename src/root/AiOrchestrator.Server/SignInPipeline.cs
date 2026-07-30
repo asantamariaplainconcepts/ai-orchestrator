@@ -35,6 +35,30 @@ static class SignInPipeline
         forwarded.KnownProxies.Clear();
         app.UseForwardedHeaders(forwarded);
 
+        // A bare visit to the callback path is not a callback: no state, no message, nothing to
+        // process — and the handler answers a 500 for it, which is what the owner saw when they
+        // opened the URL (#180). It is not a destination, so a stray visitor is sent to sign in.
+        // Detected by method and the absence of a form: a real callback is a POST carrying state.
+        app.Use(
+            async (context, next) =>
+            {
+                var stray =
+                    context.Request.Path.StartsWithSegments("/signin-oidc")
+                    && !(
+                        HttpMethods.IsPost(context.Request.Method)
+                        && context.Request.HasFormContentType
+                    );
+
+                if (stray)
+                {
+                    context.Response.Redirect("/auth/signin");
+                    return;
+                }
+
+                await next();
+            }
+        );
+
         app.UseAuthentication();
         app.UseAuthorization();
 

@@ -88,6 +88,16 @@ resource "azurerm_container_app" "portal" {
         name  = "AZURE_CLIENT_ID"
         value = azurerm_user_assigned_identity.workload.client_id
       }
+      # The Data Protection key ring (#180): persisted and wrapped, so the OIDC state survives the
+      # scale-to-zero and the revision change between a challenge and its callback.
+      env {
+        name  = "DataProtection__KeyRingBlobUri"
+        value = "https://${azurerm_storage_account.dispatch.name}.blob.core.windows.net/${azurerm_storage_container.keyring.name}/portal-keys.xml"
+      }
+      env {
+        name  = "DataProtection__WrappingKeyId"
+        value = azurerm_key_vault_key.keyring.versionless_id
+      }
       # Sign-in (#12): present only when the registration is named, because presence of
       # AzureAd__ClientId is exactly what turns the provider mode on in the Server. Ids are
       # plain values — they identify the app, they do not authenticate it (DEC-058).
@@ -114,6 +124,10 @@ resource "azurerm_container_app" "portal" {
   depends_on = [
     azurerm_role_assignment.workload_acr_pull,
     azurerm_role_assignment.workload_vault_read,
+    # The ring must be readable and unwrappable when the app first boots, not eventually: without
+    # these the first sign-in after a deploy races the role propagation.
+    azurerm_role_assignment.portal_keyring_blob,
+    azurerm_role_assignment.portal_keyring_crypto,
   ]
 
   lifecycle {

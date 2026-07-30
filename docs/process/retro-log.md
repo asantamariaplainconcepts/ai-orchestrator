@@ -1994,3 +1994,29 @@ times in the project this framework came from.
   `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
   *usage.jsonl has data*.
 - **ADR:** none new.
+
+## 2026-07-30 — persist-key-ring (hotfix, #180)
+
+- **Worked:** Log Analytics settled in one query what four hypotheses could not. The exception was
+  `Unable to unprotect the message.State` on the four *real* callbacks, while the `State is null`
+  entries were bare URL visits — two different failures in the same log, and reading the timestamps
+  is what separated the owner's problem from my own probes. Before that I had checked the cookie
+  attributes verbatim rather than trusting a hypothesis, which ruled out correlation properly.
+- **Didn't:** I mangled my own evidence once — a `sed` meant to shorten cookie values ate the
+  `secure` attribute, and I nearly concluded "SameSite=None without Secure" from output my own
+  command had corrupted. Caught it by re-reading unfiltered. Redacting evidence before reading it is
+  how a diagnosis becomes fiction.
+- **Also:** this is the sixth habitat gap under #12 and the first that no amount of local care could
+  have prevented — an in-memory key ring is invisible until two processes must share it, and
+  `min_replicas = 0` plus a revision per deploy guarantees they must. Worth naming as a class:
+  anything encrypted by one instance and decrypted by another needs a persisted, wrapped ring, and
+  the containerised default is that it has neither.
+- **Next time:** for any authentication work on a scale-to-zero host, provision the key ring in the
+  same change as the provider — not after the first failure. It is not an optimisation; it is the
+  difference between sign-in working once and working twice.
+- **Time invested:** not measured (source: **manual** — eighty-first consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new, but the habitat-contract family is now large enough to be worth an ADR of its
+  own once #13 lands: six gaps in one slice, every one at a boundary between the app and something
+  it does not run.

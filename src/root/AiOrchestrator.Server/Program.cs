@@ -40,6 +40,11 @@ builder.AddSecretResolution();
 // IConfiguration, and this reads the environment and the addresses the host will bind.
 builder.AddIdentity();
 
+// Where the Data Protection key ring lives (#180). Before authentication needs it: the OIDC state
+// is encrypted with this ring, and an in-memory ring cannot survive the scale-to-zero and the new
+// revision per deploy that sit between a challenge and its callback.
+builder.AddPersistedKeyRing();
+
 // Integration events: modules publish and subscribe through the BuildingBlocks seam; CAP and
 // its outbox live behind it. Composed here because a module structurally cannot (design D1).
 builder.AddIntegrationEvents();
