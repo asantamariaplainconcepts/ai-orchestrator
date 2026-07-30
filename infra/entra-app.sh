@@ -87,6 +87,9 @@ object_id="$(az ad app show --id "${app_id}" --query id -o tsv)"
 # was run without. The desired list simply overwrites — running twice converges, which is what
 # the first real run proved this script previously did not do (#12: the deployed redirect was
 # missing because the owner ran it before DEPLOYED_ORIGIN existed).
+# Word-splitting is the point here: $redirects is a space-separated list built above, and each
+# element becomes one JSON string.
+# shellcheck disable=SC2086
 uris_json="$(printf '"%s",' ${redirects} | sed 's/,$//')"
 az rest --method PATCH \
   --url "https://graph.microsoft.com/v1.0/applications/${object_id}" \
