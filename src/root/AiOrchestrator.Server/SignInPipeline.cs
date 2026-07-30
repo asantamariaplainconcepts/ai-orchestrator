@@ -13,12 +13,16 @@ namespace AiOrchestrator.Server;
 /// </summary>
 static class SignInPipeline
 {
-    /// <summary>Wires sign-in when the provider is configured. Returns whether it did.</summary>
-    public static bool UseSignIn(this WebApplication app)
+    /// <summary>
+    /// Wires sign-in when the provider is configured, and does nothing otherwise. No return value:
+    /// the SPA fallback used to branch on it, and removing that branch is what let the session
+    /// cookie be Strict (#182).
+    /// </summary>
+    public static void UseSignIn(this WebApplication app)
     {
         if (!IdentityComposition.UsesProvider(app.Configuration))
         {
-            return false;
+            return;
         }
 
         // Ahead of authentication, because the OIDC handler builds redirect_uri from the request
@@ -152,7 +156,5 @@ static class SignInPipeline
                     "text/html"
                 )
         );
-
-        return true;
     }
 }

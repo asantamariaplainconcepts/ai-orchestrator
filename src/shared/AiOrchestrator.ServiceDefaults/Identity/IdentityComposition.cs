@@ -100,15 +100,20 @@ public static class IdentityComposition
                 CookieAuthenticationDefaults.AuthenticationScheme,
                 options =>
                 {
-                    // Lax, and Strict is the loop (#176): the provider's response is a
-                    // cross-site form POST, and the redirect that follows it is a navigation
-                    // initiated from that cross-site context — a Strict cookie is not attached
-                    // to it, so the landing page challenges again and Entra silently signs the
-                    // user straight back in, forever. Lax still withholds the cookie from
-                    // cross-site subrequests and POSTs; it rides top-level navigations, which
-                    // is exactly the post-login redirect. The handshake cookies stay at the
-                    // library's defaults for the sibling reason (DEC-058, corrected by DEC-059).
-                    options.Cookie.SameSite = SameSiteMode.Lax;
+                    // Strict, and it works because the SPA shell is served ANONYMOUSLY (#182,
+                    // the shape ds-connect proved). The only cross-site-initiated navigation in
+                    // the whole flow is the callback's redirect to "/", and "/" needs no cookie:
+                    // the bundle is public. Everything that DOES need the cookie is a fetch from
+                    // our own document — same-site — which Strict permits.
+                    //
+                    // #176's loop was not Strict's fault: the fallback carried
+                    // RequireAuthorization, so "/" demanded the cookie on exactly the navigation
+                    // Strict withholds it from. Removing that requirement is what lets the
+                    // stricter setting stand (DEC-059 corrected again by DEC-060).
+                    //
+                    // The handshake cookies stay at the library's defaults: that response really
+                    // does arrive cross-site, and a strict handshake cookie fails sign-in.
+                    options.Cookie.SameSite = SameSiteMode.Strict;
                     options.Cookie.HttpOnly = true;
                     // SameAsRequest rather than Always: the dev profile is plain http on
                     // localhost, and a Secure cookie over plain http is one that never comes

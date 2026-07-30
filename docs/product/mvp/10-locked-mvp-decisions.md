@@ -294,3 +294,16 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   (#176, observed by the owner). Lax is the correct setting: still absent from cross-site subrequests
   and POSTs, present on top-level navigations, which is precisely the post-login redirect. The BFF
   decision itself is unchanged. Decided 2026-07-30 with #176.
+- **DEC-060 — the shell is anonymous, which is what lets the session cookie be Strict** *(corrects
+  DEC-059's setting and DEC-058's reasoning; the BFF decision itself still stands)*: the portal's SPA
+  bundle is served to anyone, and only `/api` answers `401`. The SPA navigates to sign-in itself when
+  it sees one. With the shell anonymous, the single cross-site-initiated navigation in the whole flow
+  — the provider's callback returning to `/` — needs no cookie, so the session cookie is
+  `SameSite=Strict`. Rationale, and why DEC-059 was wrong to relax it: #176's infinite loop came from
+  `RequireAuthorization` on the SPA fallback, which demanded the cookie on exactly the navigation
+  Strict withholds it from. The cause was that requirement, not the setting. Removing it is strictly
+  better than loosening the cookie — a Strict session cookie is not sent on any cross-site request,
+  which is the stronger CSRF posture. Provenance, stated because it is not ours: this shape is
+  ds-connect's, whose ADR-0001 challenges with Bearer so protected calls fail as `401` and the SPA
+  drives the interactive login. The handshake cookies remain at the library's defaults — that response
+  genuinely arrives cross-site. Decided 2026-07-30 with #182.
