@@ -40,21 +40,24 @@ public class ProjectRoles_Should_Constraint(AppHostFixture fixture)
 
         // It renders at all only because /api/me reports Admin on this project — the panel returns
         // null otherwise. So reaching this line is the role read working end to end.
-        var explainer = page.GetByText("Admins configure this project", new() { Exact = false });
-        (await explainer.IsVisibleAsync()).ShouldBeTrue();
+        await page.GetByText("Admins configure this project", new() { Exact = false })
+            .WaitForAsync(new() { Timeout = 15_000 });
 
         // Two truths about a project nobody has been granted anything on, in this habitat: no
         // holders, and nobody to offer — because a role belongs to a provider identity and this
         // deployment has no provider, so it has met nobody it could name (design D6).
-        (
-            await page.GetByText("Nobody has been given a role here yet").IsVisibleAsync()
-        ).ShouldBeTrue();
-        (
-            await page.GetByText("already has a role here", new() { Exact = false })
-                .IsVisibleAsync()
-        ).ShouldBeTrue();
+        //
+        // Waited for, not read once. Both messages appear only after the roles request settles, and
+        // until then the panel renders neither — so an immediate IsVisibleAsync is a race that the
+        // fast machine wins and CI loses. It did exactly that: green here, red there, on its first
+        // run. Waiting asserts the same thing without asking how quick the host was.
+        await page.GetByText("Nobody has been given a role here yet")
+            .WaitForAsync(new() { Timeout = 15_000 });
+        await page.GetByText("already has a role here", new() { Exact = false })
+            .WaitForAsync(new() { Timeout = 15_000 });
 
-        // And no form offering a select with nothing in it, which is the shape this replaced.
+        // And no form offering a select with nothing in it, which is the shape this replaced. Safe as
+        // a count now: the waits above prove the answer has arrived.
         (await page.GetByLabel("Person").CountAsync()).ShouldBe(0);
     }
 
