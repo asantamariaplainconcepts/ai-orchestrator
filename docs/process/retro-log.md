@@ -2047,3 +2047,45 @@ times in the project this framework came from.
 - **ADR:** none new. Worth noting for the habitat-contract ADR that #12 keeps earning: two of the
   seven gaps were fixed by reading another repository rather than the docs, which is an argument for
   looking at a working implementation before designing an auth flow from primitives.
+
+## 2026-07-30 — project-roles (#13)
+
+- **Worked:** the breaking Contracts change was the right call at the right size. `Principal` carried
+  one global `Role` while BR-009's roles are per project, so "this caller's role" had no answer — and
+  three call sites is cheap. Every future feature asking "may they?" would otherwise have asked the
+  wrong question and got a plausible answer. Making the check a pipeline decorator with **default
+  deny** is what turned BR-009 from a sentence into a mechanism: an operation added without thought is
+  refused, and a reflection sweep names it before a human meets the refusal.
+- **Didn't — I wrote a hole and caught it while writing the design.** The permission reader asked the
+  principal whether it was the habitat's "sole occupant" and derived that from its id. The provider
+  habitat calls its pre-sign-in caller `anonymous`, exactly as the provider-less habitat calls its only
+  caller: one value, two opposite meanings, and an unauthenticated caller would have held Admin
+  everywhere. The pipeline's 401 stood in front of it, so nothing was reachable — but a permission
+  model whose correctness rests on a carve-out list in unrelated middleware is one bad exemption from a
+  breach. This is the seventh habitat-inference defect in two slices; ADR-0010 is the graduation the
+  previous entry promised "once #13 lands".
+- **Didn't — my own slice opened the run-log hub.** It dispatches nothing, so it declared nothing and
+  the decorator never saw it. That was harmless only while being authenticated implied being permitted,
+  and this change is precisely what ended that: the slice that scoped every other read of a Run would
+  have left its **live** stream of an agent's raw output open to any signed-in caller with a Run id.
+  Found by re-reading ds-connect at the owner's suggestion — not by any test I had written, and not by
+  reasoning about my own change's blast radius, which is where it should have been found.
+- **Didn't — two test failures I caused and one I inherited.** A shared fixture's stub was restored
+  *before* each test of the three classes that mutated it and never after the last, so a Member role
+  leaked into the next class and reddened eight Backlog tests in a module I had not touched; the reset
+  now rides with the database reset. An E2E assertion read visibility once instead of waiting, passed
+  here and failed in CI on its first run. And a mutation check reported "3 passed" from stale binaries
+  because the mutated build had failed — the second time that trap has been stepped in, and the reason
+  the next mutation was only believed after confirming the build reached zero errors.
+- **Also:** the owner's "look at how ds-connect resolves permissions" replaced my vocabulary as well as
+  finding the hub. BR-009 says *operations name permissions, roles are bundles*; I had shipped
+  operations naming the bundle. Identical behaviour under DEC-034's two fixed bundles, and one table
+  versus twenty-nine declarations when custom roles arrive. Second time in three slices that reading a
+  sibling codebase beat designing from the rule text — worth noticing as a habit, not just a rescue.
+- **Next time:** when a change makes two previously-equivalent things different — here authentication
+  and permission — enumerate every surface that relied on the equivalence *before* implementing, not
+  after. The hub was reachable from that question in one step, and no test would have asked it.
+- **Time invested:** not measured (source: **manual** — eighty-third consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** **ADR-0010 — a habitat contract is asked, never inferred.** Seven occurrences across #12 and
+  #13, the last caught in review rather than in production.
