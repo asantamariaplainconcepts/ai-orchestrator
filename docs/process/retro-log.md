@@ -1930,3 +1930,25 @@ times in the project this framework came from.
   *usage.jsonl has data*.
 - **ADR:** none new. Third occurrence of green-over-the-gap is NOT this (the wiring test's Instance
   gap was #170's, already counted); the discriminator-that-never-ran is a first.
+
+## 2026-07-30 — forwarded-proto (hotfix, #174)
+
+- **Worked:** the challenge URL itself was the diagnosis — `redirect_uri=http%3A%2F%2F` in the
+  Location header names the missing X-Forwarded-Proto processing without a single log line. And the
+  gap was testable locally all along: one request with the header the ingress actually sends, asserting
+  the scheme in the challenge. Verified red without UseForwardedHeaders, green with it — with the
+  mutated build watched to 0 first, which is #172's discriminator lesson applied one day later.
+- **Didn't:** three deploys to get one sign-in chain right (#170 Instance, #172 issuance + health,
+  #174 scheme). Every gap was between the app and its habitat — provider contract, release contract,
+  ingress contract — and none was reachable by reasoning; each surfaced only when the deployed
+  artifact met the real counterpart.
+- **Next time:** the #172 retro said the deploy is part of the test plan for auth; this adds the
+  refinement that the *first* deploy should be expected to fail more than once, and budgeted as a
+  probe rather than treated as a release. Chain: probe-deploy, read what the habitat says, fix, then
+  the release deploy.
+- **Time invested:** not measured (source: **manual** — seventy-eighth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new; the habitat-contract family now has three members in one day, all under #12's
+  umbrella. If the NEXT slice that touches a habitat contract ships a gap of this shape, that is the
+  graduation point.

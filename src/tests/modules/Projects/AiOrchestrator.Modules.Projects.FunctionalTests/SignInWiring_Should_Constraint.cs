@@ -91,6 +91,24 @@ public class SignInWiring_Should_Constraint(ProjectsApiFixture fixture)
     }
 
     [Fact]
+    public async Task TheChallenge_Should_BuildItsRedirectFromTheForwardedScheme()
+    {
+        using var client = Client();
+
+        // What the TLS-terminating ingress actually sends (#174): the request arrives over http
+        // with X-Forwarded-Proto=https. Without forwarded-header processing the challenge asked
+        // Entra for an http redirect the registration cannot carry (AADSTS50011).
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/");
+        request.Headers.Add("X-Forwarded-Proto", "https");
+
+        var response = await client.SendAsync(request);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        var location = response.Headers.Location!.AbsoluteUri;
+        location.ShouldContain("redirect_uri=https%3A%2F%2F");
+    }
+
+    [Fact]
     public async Task TheSignedOutPage_Should_NeedNoSession()
     {
         using var client = Client();

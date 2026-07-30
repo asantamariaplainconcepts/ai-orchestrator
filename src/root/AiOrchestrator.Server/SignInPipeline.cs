@@ -2,6 +2,7 @@ using AiOrchestrator.ServiceDefaults.Identity;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.HttpOverrides;
 
 namespace AiOrchestrator.Server;
 
@@ -19,6 +20,20 @@ static class SignInPipeline
         {
             return false;
         }
+
+        // Ahead of authentication, because the OIDC handler builds redirect_uri from the request
+        // scheme: Container Apps' ingress terminates TLS and forwards http, and without
+        // X-Forwarded-Proto processing the challenge asked Entra for an http redirect the
+        // registration cannot even carry (#174, AADSTS50011). Clearing the known networks trusts
+        // the forwarder, which is correct HERE specifically — the container is reachable only
+        // through the ingress that sets the header. In the provider-less modes none of this runs.
+        var forwarded = new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedFor,
+        };
+        forwarded.KnownIPNetworks.Clear();
+        forwarded.KnownProxies.Clear();
+        app.UseForwardedHeaders(forwarded);
 
         app.UseAuthentication();
         app.UseAuthorization();
