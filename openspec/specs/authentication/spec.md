@@ -5,9 +5,11 @@ TBD - created by archiving change entra-sign-in. Update Purpose after archive.
 ## Requirements
 ### Requirement: a user signs in through the identity provider, and the browser never holds a token
 
-The hosted portal SHALL authenticate users through the configured identity provider using the
-authorization code flow, redeemed server-side as a confidential client whose secret arrives by
-vault reference (BR-010). The session SHALL be an `HttpOnly` cookie; no access token, id token or
+The hosted portal SHALL authenticate users through the configured identity provider as a
+confidential web client whose secret arrives by vault reference (BR-010). The sign-in response
+SHALL be delivered to the server — the library's sign-in-only shape is the id_token hybrid by
+form post, which the first deploy established against the provider itself (#172) — and SHALL
+never be exposed to browser script in any flow. The session SHALL be an `HttpOnly` cookie; no access token, id token or
 refresh token SHALL be sent to the browser. The session cookie SHALL be `SameSite=Strict`; the
 sign-in handshake cookies SHALL NOT be, because the provider's response arrives cross-site and a
 strict handshake cookie fails sign-in silently.

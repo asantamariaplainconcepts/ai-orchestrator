@@ -75,6 +75,7 @@ else
   app_id="$(az ad app create \
     --display-name "${APP_NAME}" \
     --sign-in-audience AzureADMyOrg \
+    --enable-id-token-issuance true \
     --web-redirect-uris ${redirects} \
     --query appId -o tsv)"
   echo "✓ created app registration ${APP_NAME}"
@@ -94,8 +95,8 @@ uris_json="$(printf '"%s",' ${redirects} | sed 's/,$//')"
 az rest --method PATCH \
   --url "https://graph.microsoft.com/v1.0/applications/${object_id}" \
   --headers "Content-Type=application/json" \
-  --body "{\"web\":{\"redirectUris\":[${uris_json}]}}"
-echo "✓ redirect URIs set (declaratively, ${redirects})"
+  --body "{\"web\":{\"redirectUris\":[${uris_json}],\"implicitGrantSettings\":{\"enableIdTokenIssuance\":true,\"enableAccessTokenIssuance\":false}}}"
+echo "✓ redirect URIs and id-token issuance set (declaratively, ${redirects})"
 
 # Front-channel logout, so signing out of Entra also drops the local cookie session.
 front_channel="${DEPLOYED_ORIGIN:-${LOCAL_ORIGIN}}/signout-oidc"

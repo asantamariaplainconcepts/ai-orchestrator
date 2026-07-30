@@ -27,9 +27,14 @@ static class SignInPipeline
         // that receives a 302 toward the provider dies as an opaque CORS failure, so /api
         // answers 401 with a problem body and the SPA can say "sign in again".
         //
-        // Two deliberate carve-outs, each authenticated by something that is not a cookie:
+        // Three deliberate carve-outs, each authenticated by something that is not a cookie —
+        // or by nothing, because it discloses nothing:
         //  - /api/webhooks: the vendor signs those deliveries (BR-015), and GitHub cannot hold
         //    a session. A cookie gate here would break ingest the day sign-in ships.
+        //  - /api/health: machine ingress like the webhooks. The deploy's own smoke check polls
+        //    it until 200, and a machine polling liveness can never hold a session — gating it
+        //    is what failed deploy run #39 at its verify step (#172). It discloses liveness,
+        //    never data.
         //  - /hubs is NOT exempt: it sits outside /api, and leaving it open would stream every
         //    Run's log to anyone who found the address. Same-origin cookies ride the SignalR
         //    handshake, so the session works there unchanged.
@@ -38,8 +43,11 @@ static class SignInPipeline
             {
                 var path = context.Request.Path;
                 var guarded =
-                    (path.StartsWithSegments("/api") && !path.StartsWithSegments("/api/webhooks"))
-                    || path.StartsWithSegments("/hubs");
+                    (
+                        path.StartsWithSegments("/api")
+                        && !path.StartsWithSegments("/api/webhooks")
+                        && !path.StartsWithSegments("/api/health")
+                    ) || path.StartsWithSegments("/hubs");
 
                 if (guarded && context.User.Identity?.IsAuthenticated != true)
                 {
