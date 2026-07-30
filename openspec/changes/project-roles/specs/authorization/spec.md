@@ -82,3 +82,40 @@ deployment SHALL say so plainly rather than locking silently or granting silentl
 
 - **WHEN** an Admin removes somebody's role
 - **THEN** that person's configuring operations on that project are refused from the next request
+
+#### Scenario: the last administrator cannot be removed or demoted
+
+- **WHEN** removing or demoting a role would leave a project with nobody holding Admin — no stored
+  administrator and none configured
+- **THEN** it is refused, because nothing inside the product could undo it
+
+### Requirement: a caller sees only the projects they have a role on
+
+An operation that reaches across projects SHALL narrow its answer to the projects the caller holds a
+role on. A list that named every project would disclose exactly what the refusals are worded to
+withhold, and a permission model whose reads ignore it is a decorative one.
+
+Creating a project SHALL be available to any signed-in caller, and its creator SHALL hold Admin on
+it. This is not administration claimed by race — it is authority over the one thing that caller
+brought into existence, and without it only the configured bootstrap administrators could ever
+begin.
+
+Where a habitat has a single caller — a machine its owner owns, or a deployment with no identity
+provider — that caller SHALL hold every permission, and no role SHALL need storing. Which habitat
+this is SHALL be decided by configuration, never inferred from the caller: "nobody has signed in
+yet" and "this person is the only occupant" are different states that must not be confused.
+
+#### Scenario: cross-project reads are scoped
+
+- **WHEN** a caller who holds a role on one project lists projects, connectors or the inbox
+- **THEN** only the project they hold a role on appears
+
+#### Scenario: creating a project makes you its Admin
+
+- **WHEN** a signed-in caller with no roles anywhere creates a project
+- **THEN** they hold Admin on it, and still nothing on any other
+
+#### Scenario: a single-occupant habitat needs no roles
+
+- **WHEN** the habitat is a machine one person owns, or has no identity provider configured
+- **THEN** that caller may do everything, with no role stored anywhere

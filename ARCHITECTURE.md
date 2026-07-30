@@ -63,8 +63,17 @@ Requests travel a fixed decorator pipeline owned solely by
 [`AddVsaCqsArchitecture()`](src/shared/AiOrchestrator.BuildingBlocks/CQS/AddVsaCqsArchitecture.cs):
 
 ```
-Logging → Validation → Caching → Handler → InvalidateCaching
+Logging → Authorization → Validation → Caching → Handler → InvalidateCaching
 ```
+
+Authorization sits there and not elsewhere (#13, BR-009). Each request declares what it requires with
+`[Requires(Access.…)]`, and **an undeclared request is refused** — so a use case added without thought
+is locked rather than open, and an ArchTest sweep names any that forgot. It is outside validation, so a
+caller with no role learns nothing about the payload's shape, and therefore outside caching, so an
+answer cached for somebody allowed cannot reach somebody who is not. Permission is a function of the
+caller **and** the project: `ICurrentPrincipal` says who,
+[`IProjectPermissions`](src/shared/AiOrchestrator.BuildingBlocks/Identity/IProjectPermissions.cs) says
+what, there.
 
 Two error channels, deliberately distinct:
 

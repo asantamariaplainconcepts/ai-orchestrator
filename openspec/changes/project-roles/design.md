@@ -81,3 +81,45 @@ and it wants its own slice with its own decision about what an invitation *is*.
 **Tenant-wide administration.** Every role here is scoped to one project. A "platform admin" is a
 different concept with a different blast radius, and inventing it as a side effect of making BR-009
 enforceable would be the kind of scope growth that is hard to review.
+
+## D7 — The habitat decides whether roles exist, and it is asked rather than guessed
+
+Three habitats, and only one of them has roles. On a machine its owner owns, and in DEC-049's
+self-host deployment with no provider, there is one caller and everything is theirs — so the reader is
+composed per habitat exactly as the principal beside it is, and the row-consulting one is registered
+only where people sign in.
+
+**The rejected version of this is worth recording, because it was written and it was a hole.** The
+first draft asked the principal whether it was a "sole occupant" and derived that from its id — the
+two sentinels `local-owner` and `anonymous`, which the portal's shell already tests for. But the
+provider mode calls its *pre-sign-in* caller `anonymous` too, exactly as the provider-less habitat
+calls its only caller. So "nobody is signed in yet" and "this person owns the machine" were the same
+value, and an unauthenticated caller would have held Admin everywhere. The pipeline's 401 stands in
+front of it, so nothing was reachable — but a permission model whose correctness rests on a carve-out
+list in unrelated middleware is one bad exemption from a breach. Configuration answers it now, through
+one shared question both the host and the module read.
+
+Cross-project reads are the other half. `FiltersToCaller` is not "no requirement": those operations
+narrow their own answer to the caller's projects. Without it a signed-in person holding nothing saw
+every project's name, every connector's health and every waiting Story in the inbox — while every
+operation on them was refused. That contradicts the refusals themselves, which are worded so as not to
+disclose that a project exists.
+
+## D8 — Whoever creates a project administers it
+
+D4's configured list solves the deployment's first administrator. It does not solve the second person,
+or the project created next year: with rows only, a new project would have nobody able to configure it
+unless the creator happened to be in the configuration.
+
+So creating a project grants its creator Admin on it, in the same write as the project itself — no
+instant exists in which a project has nobody able to configure it, and no second call could close that
+gap because closing it would need the role.
+
+This is not the race D4 rejects. That one hands administration of *existing* things to whoever arrives
+first; this hands authority over one new thing to the person who made it, which is what "create" has
+always meant.
+
+The invariant it created, and broke once: **a role-holder is somebody this deployment has met**. The
+creator got a role without a people row, so the grant surface answered "that person has not signed in"
+about the person who had just created the project — found by a test trying to demote them. One writer
+now records people, and both paths that create the obligation use it.
