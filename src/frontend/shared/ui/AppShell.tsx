@@ -99,39 +99,7 @@ export function AppShell({
         </div>
         {/* Identity is a label, and a label is what a rail has no room for — so it goes rather than
             being truncated into something unreadable. Nothing is lost: it is not a destination. */}
-        {collapsed ? null : (
-          <div className="flex flex-col gap-0.5 px-3">
-            {/* A 401 here is a session that ended mid-use (#12): the initial navigation was
-                challenged before the SPA ever loaded, so this state only appears when the cookie
-                expired under an open tab. Sign-in is offered, not forced — plain anchors, because
-                both destinations are server navigations, not SPA routes. */}
-            {me.error instanceof ApiError && me.error.status === 401 ? (
-              <a className="text-sm font-medium underline" href="/auth/signin">
-                {t("shell.auth.signIn")}
-              </a>
-            ) : (
-              <>
-                {/* What the server says, not what the page assumes (#119). */}
-                <span className="text-sm font-medium">
-                  {me.data?.displayName ?? t("shell.user.name")}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {me.data ? me.data.role : t("shell.user.hint")}
-                </span>
-                {/* Only a provider session can end; the local owner and the stopgap have nothing
-                    to sign out of, and their ids are the seam's two fixed sentinels. */}
-                {me.data && me.data.id !== "local-owner" && me.data.id !== "anonymous" ? (
-                  <a
-                    className="text-xs text-muted-foreground underline hover:text-foreground"
-                    href="/auth/signout"
-                  >
-                    {t("shell.auth.signOut")}
-                  </a>
-                ) : null}
-              </>
-            )}
-          </div>
-        )}
+        {collapsed ? null : <UserBlock me={me} />}
       </aside>
 
       <div className="flex min-w-0 flex-col">
@@ -147,8 +115,12 @@ export function AppShell({
               <SheetHeader>
                 <SheetTitle>{t("app.title")}</SheetTitle>
               </SheetHeader>
-              <div className="px-4">
+              <div className="flex h-full flex-col justify-between px-4 pb-6">
                 <NavItems waiting={waiting} onNavigate={() => setNavOpen(false)} />
+                {/* One identity, two containers (#178): the sheet IS the phone's sidebar, and a
+                    phone user who cannot see who they are cannot end a session either — which is
+                    exactly what the owner hit on the first mobile sign-in. */}
+                <UserBlock me={me} />
               </div>
             </SheetContent>
           </Sheet>
@@ -195,6 +167,47 @@ export function AppShell({
 
         <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Who is signed in, and the way out (#12, #178). One component in two containers — the expanded
+ * desktop sidebar and the mobile sheet — for the same reason the nav items are: two copies is how
+ * the phone lost this block in the first place.
+ */
+function UserBlock({ me }: { me: ReturnType<typeof useCurrentPrincipal> }) {
+  return (
+    <div className="flex flex-col gap-0.5 px-3">
+      {/* A 401 here is a session that ended mid-use (#12): the initial navigation was challenged
+          before the SPA ever loaded, so this state only appears when the cookie expired under an
+          open tab. Sign-in is offered, not forced — plain anchors, because both destinations are
+          server navigations, not SPA routes. */}
+      {me.error instanceof ApiError && me.error.status === 401 ? (
+        <a className="text-sm font-medium underline" href="/auth/signin">
+          {t("shell.auth.signIn")}
+        </a>
+      ) : (
+        <>
+          {/* What the server says, not what the page assumes (#119). */}
+          <span className="text-sm font-medium">
+            {me.data?.displayName ?? t("shell.user.name")}
+          </span>
+          <span className="text-xs text-muted-foreground">
+            {me.data ? me.data.role : t("shell.user.hint")}
+          </span>
+          {/* Only a provider session can end; the local owner and the stopgap have nothing to
+              sign out of, and their ids are the seam's two fixed sentinels. */}
+          {me.data && me.data.id !== "local-owner" && me.data.id !== "anonymous" ? (
+            <a
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+              href="/auth/signout"
+            >
+              {t("shell.auth.signOut")}
+            </a>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

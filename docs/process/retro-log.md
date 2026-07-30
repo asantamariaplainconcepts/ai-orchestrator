@@ -1976,3 +1976,21 @@ times in the project this framework came from.
   gate, id-token issuance, forwarded scheme, cookie policy). The #174 retro already named the rule —
   the first deploy is a probe — and this extends it to: the first HUMAN sign-in is part of that
   probe, because SameSite semantics have no machine-reachable tier.
+
+## 2026-07-30 — mobile-identity-block (hotfix, #178)
+
+- **Worked:** the one-nav-two-containers rule already in the shell named both the defect and the fix.
+  The identity block had been written once, into one container; extracting UserBlock and rendering it
+  in both is the same medicine the nav items took long ago. Verified in the browser at 375px before
+  committing.
+- **Didn't:** two small stumbles, both self-inflicted. I asserted the E2E environment shows the
+  stopgap's label and it composes the local owner — instrumenting the assertion to print what the
+  sheet actually said settled it in one run (ADR-0009: observe, don't assume). And an edit script's
+  replace was a silent no-op because csharpier had reflowed the target text — the wrong assertion ran
+  twice before I noticed. A replace without an assert on "did it match" is an edit that can lie.
+- **Next time:** python edit scripts assert their replaces matched, every time — the no-op cost two
+  test runs here and cost a broken temp-edit earlier this week (#130's mock).
+- **Time invested:** not measured (source: **manual** — eightieth consecutive). Unchanged:
+  `node .config/otel/verify-telemetry.mjs` fails *exporter enabled AND pointed here* and
+  *usage.jsonl has data*.
+- **ADR:** none new.

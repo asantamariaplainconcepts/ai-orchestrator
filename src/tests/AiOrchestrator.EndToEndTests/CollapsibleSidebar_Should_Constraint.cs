@@ -108,6 +108,18 @@ public class CollapsibleSidebar_Should_Constraint(AppHostFixture fixture)
         await Assertions
             .Expect(page.GetByRole(AriaRole.Button, new() { Name = "Expand sidebar" }))
             .ToBeHiddenAsync();
+
+        // The sheet is the phone's sidebar, so it carries the identity block too (#178): a phone
+        // user who cannot see who they are cannot end a session either — found by the owner on
+        // the first mobile sign-in. This environment composes the LOCAL OWNER (observed, not
+        // assumed: the first version of this assertion expected the stopgap's label and the
+        // sheet said "Local owner"), so that is the name the block shows here.
+        await page.GetByRole(AriaRole.Button, new() { Name = "Open navigation" }).ClickAsync();
+        var sheet = page.GetByRole(AriaRole.Dialog);
+        await sheet.WaitForAsync(new() { Timeout = 10_000 });
+        var sheetText = await sheet.TextContentAsync();
+        sheetText.ShouldNotBeNull();
+        sheetText.ShouldContain("Local owner");
     }
 
     /// <summary>The rendered width, which is what the token is supposed to decide.</summary>
