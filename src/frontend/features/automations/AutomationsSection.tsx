@@ -1,3 +1,4 @@
+import { X } from "lucide-react";
 import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
 import { Badge } from "@/shared/ui/badge";
@@ -45,7 +46,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [rubricPath, setRubricPath] = useState("");
-  const [outputLabel, setOutputLabel] = useState("");
+  // A set since #165, plus the text currently being typed into the picker. Two pieces of state
+  // because they are two things: what is chosen, and what is half-written.
+  const [outputLabels, setOutputLabels] = useState<string[]>([]);
+  const [outputDraft, setOutputDraft] = useState("");
   // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
 
@@ -56,6 +60,39 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const isRepositoryPrompt = action === "RepositoryPrompt";
   const namesADocument = isGrill || isRepositoryPrompt;
 
+  /** The chosen set plus whatever is still in the input, deduped the way the vendor compares. */
+  function withDraft() {
+    const draft = outputDraft.trim();
+    if (!draft) return outputLabels;
+    return outputLabels.some((label) => label.toLowerCase() === draft.toLowerCase())
+      ? outputLabels
+      : [...outputLabels, draft];
+  }
+
+  function addOutputLabel() {
+    setOutputLabels(withDraft());
+    setOutputDraft("");
+  }
+
+  /**
+   * What the picker offers (#165, design D5): the trigger labels of this project's other **enabled**
+   * Automations, because wiring the next step is what this field is most often for.
+   *
+   * Not this Automation's own trigger (#115 would refuse it), and not a disabled one — wiring an
+   * edge into something switched off produces a hand-off that goes nowhere, which is exactly the
+   * dangling state the canvas warns about. Free text stays possible: a label may be a mark that
+   * triggers nothing, or a trigger that does not exist yet.
+   */
+  const outputSuggestions = (automations.data ?? [])
+    .filter(
+      (candidate) =>
+        candidate.enabled &&
+        candidate.id !== editing?.id &&
+        candidate.triggerLabel.toLowerCase() !== triggerLabel.trim().toLowerCase() &&
+        !outputLabels.some((label) => label.toLowerCase() === candidate.triggerLabel.toLowerCase()),
+    )
+    .map((candidate) => candidate.triggerLabel);
+
   /** Every field, blank, for a create that starts from nothing. */
   function reset() {
     setTriggerLabel("");
@@ -64,7 +101,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setRuntime("ClaudeCodeHeadless");
     setRequiresApproval(false);
     setRubricPath("");
-    setOutputLabel("");
+    setOutputLabels([]);
+    setOutputDraft("");
     setTimeoutMinutes("");
   }
 
@@ -82,7 +120,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setRuntime(automation.runtime);
     setRequiresApproval(automation.requiresApproval);
     setRubricPath(automation.rubricPath ?? "");
-    setOutputLabel(automation.outputLabel ?? "");
+    setOutputLabels([...automation.outputLabels]);
+    setOutputDraft("");
     setTimeoutMinutes(String(automation.timeoutMinutes));
   }
 
@@ -108,7 +147,9 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       // Cleared when the action reads no document: a value no visible control can reach is one the
       // Admin cannot manage, and a replace would carry it forever unseen (design D3).
       rubricPath: namesADocument && rubricPath.trim() ? rubricPath.trim() : null,
-      outputLabel: outputLabel.trim() ? outputLabel.trim() : null,
+      // The half-typed value counts: an Admin who typed a label and pressed Save meant it, and
+      // silently dropping it is the kind of loss a form should never inflict.
+      outputLabels: withDraft(),
     };
 
     if (editing) {
@@ -361,12 +402,60 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                 </div>
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
-                  <Input
-                    id="output-label"
-                    value={outputLabel}
-                    onChange={(event) => setOutputLabel(event.target.value)}
-                    placeholder={t("automations.outputLabelPlaceholder")}
-                  />
+                  {/* Chosen first, each removable: the set is the answer, and the input below is how
+                      it grows. Chips rather than a comma-separated string, because a string makes
+                      the reader parse what the product already knows. */}
+                  {outputLabels.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {outputLabels.map((label) => (
+                        <Badge key={label} variant="secondary" className="gap-1 font-mono">
+                          {label}
+                          <button
+                            type="button"
+                            aria-label={`${t("automations.outputLabelRemove")} ${label}`}
+                            onClick={() =>
+                              setOutputLabels(outputLabels.filter((kept) => kept !== label))
+                            }
+                          >
+                            <X className="size-3" aria-hidden="true" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="flex gap-2">
+                    {/* A datalist, so one control both suggests and accepts anything — a select
+                        would refuse the label that does not exist yet, which is a legitimate way
+                        to build a workflow forwards. */}
+                    <Input
+                      id="output-label"
+                      list="output-label-suggestions"
+                      value={outputDraft}
+                      onChange={(event) => setOutputDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          // Enter adds a label; without this it would submit the whole form, which
+                          // is the wrong thing to do while somebody is still listing destinations.
+                          event.preventDefault();
+                          addOutputLabel();
+                        }
+                      }}
+                      placeholder={t("automations.outputLabelPlaceholder")}
+                    />
+                    <datalist id="output-label-suggestions">
+                      {outputSuggestions.map((suggestion) => (
+                        <option key={suggestion} value={suggestion} />
+                      ))}
+                    </datalist>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={addOutputLabel}
+                      disabled={!outputDraft.trim()}
+                    >
+                      {t("automations.outputLabelAdd")}
+                    </Button>
+                  </div>
                 </div>
               </div>
 

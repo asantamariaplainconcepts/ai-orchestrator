@@ -50,7 +50,7 @@ sealed class CreateAutomation : IUseCase
                         request.RequiresApproval,
                         request.TimeoutMinutes,
                         request.RubricPath,
-                        request.OutputLabel
+                        request.OutputLabels
                     );
 
                     var result = await sender.Send(command, cancellationToken);
@@ -76,7 +76,7 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? RubricPath = null,
-        string? OutputLabel = null
+        IReadOnlyList<string>? OutputLabels = null
     );
 
     internal sealed record Response(
@@ -88,10 +88,10 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int TimeoutMinutes,
         bool Enabled,
-        /// <summary>What this Automation hands on when it succeeds (#115). The canvas derives
-        /// an edge wherever this equals another Automation's trigger label (#116), so it has to
+        /// <summary>What this Automation hands on when it succeeds (#115/#165). The canvas derives
+        /// one edge per member that equals another Automation's trigger label (#116), so it has to
         /// be readable, not merely writable.</summary>
-        string? OutputLabel,
+        IReadOnlyList<string> OutputLabels,
         /// <summary>Grill only. Readable for the same reason: the update endpoint replaces the
         /// whole Automation, so a caller that cannot read this field would silently clear it on
         /// every edit.</summary>
@@ -108,7 +108,7 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? RubricPath = null,
-        string? OutputLabel = null
+        IReadOnlyList<string>? OutputLabels = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -118,21 +118,43 @@ sealed class CreateAutomation : IUseCase
             RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
             RuleFor(command => command.TriggerState).MaximumLength(100);
             RuleFor(command => command.RubricPath).MaximumLength(300);
-            RuleFor(command => command.OutputLabel).MaximumLength(200);
+            // Each member bounded exactly as the single label was, and the collection bounded too:
+            // a set is a field a caller controls the size of.
+            RuleForEach(command => command.OutputLabels!)
+                .NotEmpty()
+                .MaximumLength(200)
+                .When(command => command.OutputLabels is not null);
+            RuleFor(command => command.OutputLabels!)
+                .Must(labels => labels.Count <= 10)
+                .When(command => command.OutputLabels is not null)
+                .WithMessage("An Automation can hand on at most 10 labels.");
 
             // An Automation whose output label is its own trigger re-fires itself: the first Run
             // succeeds, writes the label, and matching declines the second because BR-001 sees an
             // active Run — leaving a labelled Story, no work, and nothing saying why. Refused
             // here because it is a relation between two fields of this request, not a conflict
             // with stored state (#115 design D3).
-            RuleFor(command => command.OutputLabel)
+            // Every member, not one (#165): the rule is about the relation between the set and the
+            // trigger, so a set of three with the trigger third is the same defect as a set of one.
+            //
+            // Case-insensitive, unlike the version this replaces. The vendor treats AI:Implement and
+            // ai:implement as one label (DEC-056) and BR-003's identity already does, so an ordinal
+            // comparison let a differently-cased self-trigger through — the exact loop the rule
+            // exists to prevent, spelled differently.
+            RuleFor(command => command.OutputLabels!)
                 .Must(
-                    (command, output) =>
-                        !string.Equals(output, command.TriggerLabel, StringComparison.Ordinal)
+                    (command, labels) =>
+                        !labels.Any(label =>
+                            string.Equals(
+                                label,
+                                command.TriggerLabel,
+                                StringComparison.OrdinalIgnoreCase
+                            )
+                        )
                 )
-                .When(command => !string.IsNullOrWhiteSpace(command.OutputLabel))
+                .When(command => command.OutputLabels is not null)
                 .WithMessage(
-                    "An Automation cannot hand work to itself: its output label is its own trigger label."
+                    "An Automation cannot hand work to itself: one of its output labels is its own trigger label."
                 );
 
             // Parseable-to-the-enum is input validation, not a domain rule: an unknown action is
@@ -189,7 +211,7 @@ sealed class CreateAutomation : IUseCase
                     ? TimeSpan.FromMinutes(minutes)
                     : DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
-                string.IsNullOrWhiteSpace(command.OutputLabel) ? null : command.OutputLabel
+                command.OutputLabels is null ? [] : Clean(command.OutputLabels)
             );
 
             var overlap = await overlaps.Check(
@@ -220,6 +242,14 @@ sealed class CreateAutomation : IUseCase
         }
     }
 
+    /// <summary>
+    /// What actually gets stored: blanks dropped and edges trimmed, so a form that submitted an empty
+    /// row does not persist one. Deduplication is the aggregate's, not this slice's — it is a rule
+    /// about what an Automation *is*, and both endpoints would otherwise have to remember it.
+    /// </summary>
+    internal static IReadOnlyList<string> Clean(IReadOnlyList<string> labels) =>
+        [.. labels.Where(label => !string.IsNullOrWhiteSpace(label)).Select(label => label.Trim())];
+
     internal static Response ToResponse(Automation automation) =>
         new(
             automation.Id,
@@ -230,7 +260,7 @@ sealed class CreateAutomation : IUseCase
             automation.RequiresApproval,
             (int)automation.Timeout.TotalMinutes,
             automation.Enabled,
-            automation.OutputLabel,
+            automation.OutputLabels,
             automation.RubricPath
         );
 }

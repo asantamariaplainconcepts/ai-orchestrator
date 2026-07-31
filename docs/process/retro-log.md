@@ -2089,3 +2089,39 @@ times in the project this framework came from.
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** **ADR-0010 — a habitat contract is asked, never inferred.** Seven occurrences across #12 and
   #13, the last caught in review rather than in production.
+
+## 2026-07-31 — output-label-set (#165)
+
+- **Worked:** exercising the migration instead of trusting it. EF scaffolded the type change as
+  `DropColumn` + `AddColumn` and even warned that it "may result in the loss of data" — applied as
+  generated it would have discarded **every hand-off configured in the deployment**, every workflow
+  edge, and left a perfectly correct schema behind. No test of the new shape would have noticed,
+  because the new shape works fine empty. The test that matters spins its own container, migrates to
+  the version before the change, writes a row the old way, migrates to head, and looks. Verified red
+  by removing the copy step — which is to say, by reproducing exactly what EF had written.
+- **Didn't — the E2E proved nothing and I nearly shipped it.** It asserted that the source's trigger
+  label appeared twice, reasoning that a branch row repeats it. The Automations tab renders the
+  catalogue *and* the canvas, so every trigger already appears twice: the assertion passed with branch
+  rows switched off entirely. Found only by running the mutation, not by reading the test. This is
+  **ADR-0004 again** — a verification asserted a proxy signal rather than the artifact — and the fix
+  is the shape that ADR implies: the branch chip now carries its own accessible name, and the test
+  asserts on the name the feature owns.
+- **Didn't — the first mutation attempt lied too.** Removing the branch push left `node.branches`
+  populated, so the serialization note still rendered and the run came back green. A mutation that
+  does not actually remove the behaviour is a green that means nothing, which is the same trap as
+  #13's "3 passed" from a build that had failed. Twice in two slices now: the mutation itself needs
+  the same scepticism as the test.
+- **Also:** widening the self-trigger rule to a set exposed that it compared with `Ordinal` while the
+  vendor and BR-003 both compare case-insensitively (DEC-056). `AI:Implement` as the output of an
+  `ai:implement` trigger walked straight past the guard — the exact loop the rule exists to prevent,
+  spelled differently. Fixed while the rule was being rewritten anyway.
+- **Also:** the canvas's contract says a chain is one row that must not wrap, which a branch cannot
+  obey. Rather than redesign a surface #136/#142 own, each extra hand-off became a row of its own
+  opened by a chip naming the step it left — two edges, two rows, one reading direction.
+- **Next time:** an assertion that would pass for a reason unrelated to the feature is not an
+  assertion. Before writing one over rendered text, ask what *else* puts that text on the page —
+  and prefer a name the feature owns to a string it merely contains.
+- **Time invested:** not measured (source: **manual** — eighty-fourth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. ADR-0004's second recurrence is recorded above rather than graduated again — the
+  decision already says this; what failed was applying it.

@@ -73,8 +73,13 @@ export function KanbanBoard({
   // Ordered by the flow, not by when somebody happened to create each Automation (#128, design D1).
   // Deduplicated: two Automations may share a trigger label, and that is one column, not two.
   const byTrigger = new Map(enabled.map((automation) => [automation.triggerLabel, automation]));
+  // The first hand-off that lands on a column, since #165 made the output a set: the board is a
+  // row of columns, so it follows the spine the canvas draws and leaves the branches to the canvas,
+  // which has room to say what they are.
   const handsTo = (automation: BoardAutomation) =>
-    automation.outputLabel ? byTrigger.get(automation.outputLabel) : undefined;
+    automation.outputLabels
+      .map((label) => byTrigger.get(label))
+      .find((target) => target !== undefined);
   const receives = new Set(
     enabled.map((automation) => handsTo(automation)?.id).filter(Boolean) as string[],
   );
@@ -269,7 +274,7 @@ export function KanbanBoard({
                             requiresApproval: step.requiresApproval,
                             timeoutMinutes: step.timeoutMinutes,
                             rubricPath: step.rubricPath ?? null,
-                            outputLabel: null,
+                            outputLabels: [],
                           },
                         })
                       }

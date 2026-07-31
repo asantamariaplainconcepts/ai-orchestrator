@@ -1,4 +1,4 @@
-import { GripVertical, UserRound, UserRoundPlus } from "lucide-react";
+import { CornerDownRight, GripVertical, UserRound, UserRoundPlus } from "lucide-react";
 import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
@@ -9,7 +9,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
 import { useSetAutomationEnabled, useUpdateAutomation } from "./useAutomations";
-import { summarise, workflowChains } from "./workflowGraph";
+import { hasBranches, summarise, workflowChains } from "./workflowGraph";
 
 /**
  * What a drag carries (#137). "new" is a block coming out of the catalogue; anything else is the id
@@ -64,6 +64,8 @@ export function WorkflowCanvas({
   // belongs to the catalogue and not here. That single filter is what removed #122's special case.
   const chains = workflowChains(automations);
   const summary = summarise(chains);
+  // Whether any step hands on to more than one place — what the BR-001 note is for.
+  const branching = hasBranches(chains);
   const [dragging, setDragging] = useState(false);
 
   /**
@@ -83,7 +85,7 @@ export function WorkflowCanvas({
         requiresApproval: automation.requiresApproval,
         timeoutMinutes: automation.timeoutMinutes,
         rubricPath: automation.rubricPath ?? null,
-        outputLabel: automation.outputLabel ?? null,
+        outputLabels: automation.outputLabels,
         ...patch,
       },
     });
@@ -104,8 +106,14 @@ export function WorkflowCanvas({
    * move out of such a gap leaves it open, with its existing select as the way to close it. That is
    * the fail-safe direction anyway: an extra review costs a click, a missing one lets work through.
    */
-  function placeBlock(preceding: Automation, movedFrom: string | null) {
-    change(preceding, { outputLabel: null });
+  function placeBlock(preceding: Automation, movedFrom: string | null, edge?: string) {
+    // One edge, not the field (#165): a step that hands on to three places must not lose the other
+    // two because a person was placed on one of them. Without a named edge — the row's own
+    // hand-off — the first label is the one this gap represents.
+    const removed = edge ?? preceding.outputLabels[0];
+    change(preceding, {
+      outputLabels: preceding.outputLabels.filter((label) => label !== removed),
+    });
 
     if (!movedFrom || movedFrom === preceding.id) {
       return;
@@ -113,8 +121,8 @@ export function WorkflowCanvas({
 
     const source = automations.find((candidate) => candidate.id === movedFrom);
     const destination = reconnectionFor(movedFrom);
-    if (source && destination) {
-      change(source, { outputLabel: destination });
+    if (source && destination && !source.outputLabels.includes(destination)) {
+      change(source, { outputLabels: [...source.outputLabels, destination] });
     }
   }
 
@@ -125,9 +133,9 @@ export function WorkflowCanvas({
    */
   function reconnectionFor(endingAutomationId: string): string | undefined {
     const index = chains.findIndex(
-      (chain) => chain[chain.length - 1]?.automation.id === endingAutomationId,
+      (chain) => chain.nodes[chain.nodes.length - 1]?.automation.id === endingAutomationId,
     );
-    return index >= 0 ? chains[index + 1]?.[0]?.automation.triggerLabel : undefined;
+    return index >= 0 ? chains[index + 1]?.nodes[0]?.automation.triggerLabel : undefined;
   }
 
   if (chains.length === 0) {
@@ -160,13 +168,19 @@ export function WorkflowCanvas({
 
       <p className="text-xs text-muted-foreground">{t("canvas.hint")}</p>
 
+      {/* The ceiling, stated where the edges are explained (#165, design D3). A picture of two
+          branches cannot say this by itself, and left unsaid it teaches its reader that both run:
+          BR-001 allows one active Run per Story, so the second simultaneous match is ignored
+          rather than queued. */}
+      {branching ? <p className="text-xs text-warning">{t("canvas.branchesSerialize")}</p> : null}
+
       {/* A chain reads left to right, like the board's columns, and each step is separated from
           the next by a vertical rule — solid where work flows on its own, dotted where a person
           carries it. Chains stack, and a long one scrolls sideways exactly as the board does. */}
       <div className="flex flex-col gap-6">
         {chains.map((chain) => (
           <div
-            key={chain[0]?.automation.id}
+            key={chain.nodes[0]?.automation.id}
             // Inside its own container, deliberately: a row that lets the page scroll sideways
             // breaks every other screen on a phone. flex-nowrap so a long chain scrolls rather
             // than folding into a grid whose rows mean nothing (design D3).
@@ -178,7 +192,23 @@ export function WorkflowCanvas({
             onDragLeave={() => setDragging(false)}
             onDrop={() => setDragging(false)}
           >
-            {chain.map((node) => (
+            {/* A branch row exists because an edge points into it, so it opens by naming where
+                that edge came from — otherwise the second hand-off would read as an unrelated
+                chain that happens to sit below. */}
+            {chain.branchedFrom ? (
+              <div
+                // Named, not just drawn: the chip's own accessible name is "from <trigger>", which
+                // is what makes "this row is a branch of that step" assertable — and readable by
+                // somebody who cannot see the layout that would otherwise carry the meaning.
+                aria-label={`${t("canvas.branchFrom")} ${chain.branchedFrom.triggerLabel}`}
+                className="flex shrink-0 items-center pr-2 text-xs text-muted-foreground"
+              >
+                <CornerDownRight className="mr-1 size-3.5 shrink-0" aria-hidden="true" />
+                {t("canvas.branchFrom")}{" "}
+                <span className="ml-1 font-mono">{chain.branchedFrom.triggerLabel}</span>
+              </div>
+            ) : null}
+            {chain.nodes.map((node) => (
               <div key={node.automation.id} className="flex shrink-0 items-stretch">
                 <AutomationNode
                   automation={node.automation}
@@ -200,7 +230,7 @@ export function WorkflowCanvas({
                   dragging={dragging}
                   onDropBlock={(movedFrom) => {
                     setDragging(false);
-                    placeBlock(node.automation, movedFrom);
+                    placeBlock(node.automation, movedFrom, node.next?.triggerLabel);
                   }}
                   candidates={automations.filter(
                     (candidate) =>
@@ -208,14 +238,20 @@ export function WorkflowCanvas({
                       candidate.triggerLabel !== node.automation.triggerLabel,
                   )}
                   onConnect={(triggerLabel) =>
-                    change(node.automation, { outputLabel: triggerLabel })
+                    change(node.automation, {
+                      // Added, not assigned (#165): connecting a second destination is what a
+                      // branch is, and replacing the field would silently delete the first.
+                      outputLabels: node.automation.outputLabels.includes(triggerLabel)
+                        ? node.automation.outputLabels
+                        : [...node.automation.outputLabels, triggerLabel],
+                    })
                   }
                   // The button and the drop are one path with two callers, the discipline
                   // RunCreator and HandOn already apply. It matters more than usual here:
                   // Playwright cannot perform an HTML5 drag (#110 recorded this), so routing the
                   // explicit control through the same function is what puts this logic under test
                   // at all.
-                  onDisconnect={() => placeBlock(node.automation, null)}
+                  onDisconnect={() => placeBlock(node.automation, null, node.next?.triggerLabel)}
                 />
               </div>
             ))}
@@ -300,7 +336,7 @@ function Connector({
 }) {
   // An output label pointing at no Automation: the vendor will carry the label and nobody will
   // answer it. Said plainly rather than drawn as a chain that does not exist.
-  const dangling = !connected && Boolean(automation.outputLabel);
+  const dangling = !connected && automation.outputLabels.length > 0;
 
   const rule = cn(
     "w-0 flex-1 border-l-2",
@@ -369,7 +405,8 @@ function Connector({
           </span>
           {dangling ? (
             <span className="text-center text-xs text-destructive">
-              {t("canvas.dangling")} <span className="font-mono">{automation.outputLabel}</span>
+              {t("canvas.dangling")}{" "}
+              <span className="font-mono">{automation.outputLabels.join(", ")}</span>
             </span>
           ) : null}
           <NativeSelect

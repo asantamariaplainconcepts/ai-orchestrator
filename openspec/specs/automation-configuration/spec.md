@@ -5,10 +5,18 @@ TBD - created by archiving change automation-configuration. Update Purpose after
 ## Requirements
 ### Requirement: an Admin configures what a trigger label makes an Agent do
 
-An Admin SHALL create an Automation on a Project consisting of a trigger label, an optional Story
-state, an action from the locked catalogue (DEC-026), a runtime, a `requiresApproval` flag, and a
-phase timeout defaulting to 30 minutes (BR-005). The trigger label SHALL be required and
-non-empty; the state SHALL be optional and compared as the vendor's own opaque string.
+An Admin SHALL configure, per Project, which trigger label starts which action, on which runtime,
+with which timeout and whether the plan requires approval. Every field SHALL be bounded, and the
+refusal for an unbounded or unparseable value SHALL name the field.
+
+The output labels input SHALL be a picker that also accepts a freely typed value. It SHALL suggest
+the trigger labels of the project's **other enabled** Automations, because wiring the next step of a
+sequential workflow is what this field is most often for, and SHALL NOT suggest the Automation's own
+trigger. Accepting free text SHALL remain possible, because a label may be a mark that triggers
+nothing, or a trigger that does not exist yet.
+
+A suggestion SHALL be a convenience only: every refusal SHALL also be enforced where the Automation
+is saved, so a caller that does not use the portal is refused identically.
 
 #### Scenario: creating an Automation
 
@@ -20,6 +28,21 @@ non-empty; the state SHALL be optional and compared as the vendor's own opaque s
 - **WHEN** an action from the catalogue has no executing Agent yet
 - **THEN** it remains selectable and the interface says it cannot run yet — a configurable
   action that silently never executes is a trap
+
+#### Scenario: the form offers what is wirable
+
+- **WHEN** an Admin opens the output labels input on a project with other enabled Automations
+- **THEN** their trigger labels are offered, and this Automation's own trigger is not
+
+#### Scenario: a disabled Automation is not offered
+
+- **WHEN** another Automation in the project is disabled
+- **THEN** its trigger is not among the suggestions
+
+#### Scenario: a label nobody listens to is still allowed
+
+- **WHEN** an Admin types a label that matches no trigger
+- **THEN** it is accepted and applied on success like any other
 
 ### Requirement: overlapping triggers are rejected when saved
 
@@ -303,10 +326,19 @@ SHALL be reported as not found.
 
 ### Requirement: an Automation can hand work on by writing a label when it succeeds
 
-An Automation SHALL carry an optional output label, applied to the Story through the licensed
-label write when a Run of that Automation succeeds, and applied at no other time. An unset output
-label SHALL mean the Automation ends silently. Saving an Automation whose output label equals its
-own trigger label SHALL be refused, naming the reason.
+An Automation SHALL carry a **set** of output labels, every one of them applied to the Story through
+the licensed label write when a Run of that Automation succeeds, and applied at no other time. An
+empty set SHALL mean the Automation ends silently. Saving an Automation whose set contains its own
+trigger label SHALL be refused, naming the reason — the refusal SHALL apply to every member, not only
+to a single value.
+
+Labels SHALL be compared the way the vendor compares them, so a set SHALL NOT hold the same label
+twice in two spellings.
+
+Every label SHALL be attempted, and a label the vendor could not ensure SHALL be reported to the human
+rather than silently skipped; the Run SHALL fail naming every label that did not land. A Run that
+failed at hand-off MAY already have handed on through the labels that did land, which is what a
+partially applied set means and SHALL be visible on the Story.
 
 #### Scenario: the chain continues past the grill
 
@@ -329,6 +361,27 @@ own trigger label SHALL be refused, naming the reason.
 - **WHEN** an Automation is saved with an output label equal to its trigger label
 - **THEN** the save is refused with the reason
 
+#### Scenario: several labels leave together
+
+- **WHEN** an Automation naming several output labels has a Run that succeeds
+- **THEN** every one of them reaches the vendor through the same write path
+
+#### Scenario: one label the vendor refuses does not hide the others
+
+- **WHEN** one label of several cannot be ensured
+- **THEN** the remaining labels are still attempted, and the Run fails naming every label that did
+  not land
+
+#### Scenario: the same label twice is one label
+
+- **WHEN** a set is saved containing the same label in two spellings the vendor treats as one
+- **THEN** it is stored once
+
+#### Scenario: what was configured before still works
+
+- **WHEN** an Automation configured with a single output label runs after this change
+- **THEN** it behaves exactly as it did, as a set of one
+
 ### Requirement: an Admin shapes the pipeline on a canvas
 
 The portal SHALL present a project's Automations as two named things: a **catalogue** of every
@@ -341,20 +394,25 @@ label. Membership SHALL be derived from the edges and SHALL NOT be stored.
 The catalogue SHALL show each Automation's trigger label, action, runtime and whether it is
 enabled, and SHALL offer every action already available: create, edit, disable, re-enable, delete.
 
-The workflow SHALL render each Automation as a node, with an edge exactly where one Automation's
-output label equals another's trigger label. The graph and its layout SHALL be derived from the
-Automations themselves, with nothing about the picture stored. At a wide viewport the chain SHALL
-be a single row read left to right, scrolling horizontally **within its own container** when it
-exceeds it, and SHALL NOT wrap onto a second line; the page itself SHALL NOT scroll sideways. At a
-narrow viewport it SHALL read top to bottom instead. The workflow SHALL state how many steps it has
-and how many times it stops for a person, both derived.
+The workflow SHALL render each Automation as a node, with **one edge per output label that equals
+another Automation's trigger label** — several edges leaving one node when several match. The graph
+and its layout SHALL be derived from the Automations themselves, with nothing about the picture
+stored. At a wide viewport the chain SHALL be a single row read left to right, scrolling horizontally
+**within its own container** when it exceeds it, and SHALL NOT wrap onto a second line; the page
+itself SHALL NOT scroll sideways. At a narrow viewport it SHALL read top to bottom instead. The
+workflow SHALL state how many steps it has and how many times it stops for a person, both derived.
 
-The workflow SHALL let an Admin connect one Automation to another, which sets the upstream output
-label to the downstream trigger label, and disconnect them, which clears it. It SHALL show where a
-human is required — a broken chain between two Automations, and an Automation that requires
-approval — and let the Admin add or remove that requirement in both positions. Every change
-available by dragging SHALL be available from an explicit control at every viewport width. All
-changes SHALL go through the ordinary Automation update, so its refusals apply unchanged.
+Where several edges leave one node, the workflow SHALL state that they do not run at once: BR-001
+allows one active Run per Story, so a second simultaneous match is ignored rather than queued. A
+picture that draws branches without saying this SHALL be treated as claiming otherwise.
+
+The workflow SHALL let an Admin connect one Automation to another, which **adds** the downstream
+trigger label to the upstream set, and disconnect them, which **removes that label and leaves the
+rest**. It SHALL show where a human is required — a broken chain between two Automations, and an
+Automation that requires approval — and let the Admin add or remove that requirement in both
+positions. Every change available by dragging SHALL be available from an explicit control at every
+viewport width. All changes SHALL go through the ordinary Automation update, so its refusals apply
+unchanged.
 
 #### Scenario: the seeded defaults draw the shipped pipeline
 
@@ -414,6 +472,18 @@ changes SHALL go through the ordinary Automation update, so its refusals apply u
 - **WHEN** the canvas renders at any width
 - **THEN** every connection and human-requirement change offered by dragging is offered by an
   explicit control
+
+#### Scenario: two edges leave one node
+
+- **WHEN** an Automation names two output labels that each match another enabled Automation's
+  trigger
+- **THEN** two edges leave that node, and the workflow says that branches serialize rather than run
+  at once
+
+#### Scenario: disconnecting one branch keeps the other
+
+- **WHEN** one of two connections leaving an Automation is removed
+- **THEN** only that label leaves the set, and the other edge still renders
 
 ### Requirement: an Admin places the human review by dragging it where the person belongs
 
