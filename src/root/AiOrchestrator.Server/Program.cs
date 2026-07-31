@@ -55,6 +55,12 @@ builder.AddRunDispatch();
 // The runtime seam's implementation: the Server never invokes it, but the Runs module's
 // executor depends on the seam and DI validation rightly demands the dependency exist.
 builder.AddAgentRuntime();
+
+// Where a conversation's agent pass runs (#166): a session container per conversation where the
+// habitat provides a pool, this process where it does not. Composed on the endpoint's presence like
+// every other habitat decision here (ADR-0010) — its absence is correct on a machine one person
+// owns, not a degraded mode.
+builder.AddConversationRuntime();
 builder.AddCodeWorkspace();
 builder.Services.AddSingleton(TimeProvider.System);
 

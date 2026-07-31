@@ -20,6 +20,13 @@ static class RunPermissions
     public const string Cancel = "run.cancel";
 
     /// <summary>
+    /// Hold a conversation with an agent about this project (#166). A Member's, because ACT-002 is
+    /// the actor the capability names and a conversation configures nothing and writes nothing to
+    /// the vendor — it reads the project's code and answers.
+    /// </summary>
+    public const string HoldConversation = "conversation.hold";
+
+    /// <summary>
     /// Take a failure out of the inbox (#145). Not in ACT-002's list, and granted to Member anyway:
     /// it changes no configuration and destroys no record — the Run stays exactly as readable as it
     /// was — and an inbox only the Admin bundle could clear would stop being the shared queue UC-026

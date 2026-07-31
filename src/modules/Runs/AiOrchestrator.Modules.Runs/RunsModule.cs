@@ -57,7 +57,8 @@ public sealed class RunsModule : ModuleBase
             RunPermissions.Trigger,
             RunPermissions.Approve,
             RunPermissions.Cancel,
-            RunPermissions.DismissFailure
+            RunPermissions.DismissFailure,
+            RunPermissions.HoldConversation
         );
         services.AddDbContext<RunsDbContext>(options =>
             options.UseNpgsql(
