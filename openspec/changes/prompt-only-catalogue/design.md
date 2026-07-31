@@ -14,6 +14,20 @@ The refusal for the removed names is the ordinary unknown-action one. No special
 removed" message: the vocabulary is what it is now, and a caller sending `Estimate` is sending
 something that is not an action, which is exactly what the existing refusal says.
 
+## D1a — The rubric path is renamed, not removed
+
+The proposal's first draft said the rubric path left with the grill. It was wrong, and reading the
+executor is what caught it: #150 made that same column the way a `RepositoryPrompt` names its prompt
+file. Removing it would have deleted the only field the surviving action needs, and the failure would
+have been every Run resolving an empty path.
+
+So it is renamed to `PromptPath`. "Rubric" was the grill's word for a readiness bar; what the column
+holds now is the name of a prompt, and a field whose name describes a deleted feature is a field the
+next reader mistrusts. The migration renames the column and keeps every value.
+
+What does go is the other half of that requirement: the grill's default ready label. With no grill,
+nothing defaults an output label, and an Automation that names none hands nothing on.
+
 ## D2 — The migration deletes rather than converts
 
 An Automation naming `Estimate` cannot become a `RepositoryPrompt` one: there is no prompt file to

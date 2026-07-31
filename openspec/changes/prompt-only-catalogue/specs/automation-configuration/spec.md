@@ -79,5 +79,7 @@ goes is the bulk ensure that ran as part of applying defaults.
 **Reason:** the grill is not an action any more (#162). A rubric path is a field that only meant
 something to it, and a readiness bar is a prompt — it is one in this repository already.
 
-**Migration:** the rubric path field is removed from the Automation; the readiness bar moves into a
-prompt file in the project's repository. Nothing in production carries one.
+**Migration:** the field is **renamed**, not removed — #150 made that same column the way a
+`RepositoryPrompt` names its prompt file, so it is `PromptPath` now and every value is kept. What
+goes is the grill's half: the readiness bar moves into a prompt file, and the default ready label
+goes with the action that defaulted it.

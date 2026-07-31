@@ -22,6 +22,9 @@ arrive later as per-Automation grants**, which is a named follow-up and not this
   ran, no writing a comment, no transitioning a state, no parsing an estimate. The agent did those
   or it did not.
 - The one-click defaults go too, to return later as prompt-and-grant bundles.
+- `RubricPath` is renamed `PromptPath` rather than removed: #150 made it how a `RepositoryPrompt`
+  names its prompt file, and the first draft of this proposal had it leaving with the grill — which
+  would have broken the one action that survives.
 - Automations naming a removed action are deleted by the migration. Past Runs render as any Run
   whose Automation is gone already does.
 

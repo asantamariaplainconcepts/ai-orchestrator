@@ -4,10 +4,13 @@
 
 - [ ] 1.1 `AutomationAction` keeps one member: `RepositoryPrompt`. The other seven leave the enum,
       the API surface and the frontend's two lists.
-- [ ] 1.2 The rubric path leaves the Automation — it meant something only to the grill (design D1).
-- [ ] 1.3 A migration that **deletes** Automations naming a removed action, and drops the rubric
-      column. Deleting rather than converting: there is no prompt to point them at, and an
-      Automation that matches and then always fails is worse than one that is gone (design D2).
+- [ ] 1.2 `RubricPath` is **renamed** to `PromptPath`, not removed: #150 made it how a
+      `RepositoryPrompt` names its prompt file, so removing it would break the one surviving action.
+      "Rubric" was the grill's word (design D1a).
+- [ ] 1.3 A migration that **deletes** Automations naming a removed action and **renames** the rubric
+      column to the prompt path, keeping every value. Deleting rather than converting: there is no
+      prompt to point a retired Automation at, and one that matches and then always fails is worse
+      than one that is gone (design D2).
 
 ## The executor
 
