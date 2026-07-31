@@ -217,7 +217,11 @@ sealed class HoldConversation : IUseCase
 
             // Recorded before the pass runs: a crash mid-pass leaves the question in the
             // conversation rather than losing what somebody typed.
-            conversation.Ask(command.Body, clock.GetUtcNow());
+            // Added explicitly, not left to graph discovery. BaseEntity sets its own GUID v7 in the
+            // constructor, so a child reached through a tracked parent's navigation already has a key
+            // — and EF reads that as "this row exists", turning the insert into an update of nothing.
+            // It surfaced as DbUpdateConcurrencyException about a row nobody had written.
+            database.Add(conversation.Ask(command.Body, clock.GetUtcNow()));
             await database.SaveChangesAsync(cancellationToken);
 
             var storyContext = conversation.VendorStoryId is null
@@ -239,20 +243,17 @@ sealed class HoldConversation : IUseCase
             // A failure is a message, not an ending: the conversation stays open and takes another
             // (#166). Nothing about this returns an error to the caller — the exchange is the
             // answer, and it now contains a failure the person can read.
-            if (!reply.Succeeded)
-            {
-                conversation.Fail(reply.Body, clock.GetUtcNow());
-            }
-            else
-            {
-                conversation.Answer(
-                    reply.Body,
-                    clock.GetUtcNow(),
-                    reply.Usage?.InputTokens,
-                    reply.Usage?.OutputTokens,
-                    reply.Usage?.CostUsd
-                );
-            }
+            database.Add(
+                reply.Succeeded
+                    ? conversation.Answer(
+                        reply.Body,
+                        clock.GetUtcNow(),
+                        reply.Usage?.InputTokens,
+                        reply.Usage?.OutputTokens,
+                        reply.Usage?.CostUsd
+                    )
+                    : conversation.Fail(reply.Body, clock.GetUtcNow())
+            );
 
             await database.SaveChangesAsync(cancellationToken);
 

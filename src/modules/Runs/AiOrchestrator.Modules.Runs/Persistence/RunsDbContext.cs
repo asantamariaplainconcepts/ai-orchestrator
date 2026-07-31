@@ -32,7 +32,15 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
                 .WithOne()
                 .HasForeignKey(message => message.ConversationId)
                 .OnDelete(DeleteBehavior.Cascade);
-            conversation.Navigation(entity => entity.Messages).AutoInclude();
+
+            // Through the backing field, explicitly. The navigation is an IReadOnlyList over a
+            // private list, so without this EF reads the property and cannot see what the aggregate's
+            // own methods add to the field — the messages never became Added, and the save came back
+            // as a concurrency failure about a row nobody had written.
+            conversation
+                .Navigation(entity => entity.Messages)
+                .UsePropertyAccessMode(PropertyAccessMode.Field)
+                .AutoInclude();
 
             conversation.HasIndex(entity => new { entity.ProjectId, entity.LastActivityAt });
         });

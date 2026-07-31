@@ -45,6 +45,14 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// <summary>The ceremony faked at its seam: scripted preparation and publication.</summary>
     internal FakeCodeWorkspace Workspace { get; } = new();
 
+    /// <summary>
+    /// The conversation runtime, faked at its seam (#166). Faked rather than driven through the
+    /// in-process implementation, because what these tests are about is what the module does with a
+    /// reply — one pass per message, usage recorded, a failure left open — and not how an agent
+    /// produces one.
+    /// </summary>
+    internal FakeConversationRuntime Conversations { get; } = new();
+
     // "projects" is spelled out: ProjectsDbContext is internal to its module, and a schema
     // constant is not worth an InternalsVisibleTo.
     protected override string[] SchemasToReset =>
@@ -81,6 +89,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
             // Selection faked at ITS seam: each runtime name maps to its own recording fake;
             // the OpenCode entry carries no credential name (free model, design D3).
+            services.RemoveAll<IConversationRuntime>();
+            services.AddSingleton<IConversationRuntime>(Conversations);
+
             services.RemoveAll<IAgentRuntimeSelector>();
             services.AddSingleton<IAgentRuntimeSelector>(
                 new FakeRuntimeSelector(
@@ -525,4 +536,41 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
 public sealed class RunsCollection : ICollectionFixture<RunsApiFixture>
 {
     public const string Name = "Runs";
+}
+
+/// <summary>
+/// A scripted conversation runtime. Counts its passes, because "exactly one agent pass per message"
+/// is ADR-0008's whole model and a test that did not count could not tell one from two.
+/// </summary>
+sealed class FakeConversationRuntime : IConversationRuntime
+{
+    int _passes;
+
+    public int Passes => _passes;
+
+    /// <summary>What the next pass returns. Default: a success with usage.</summary>
+    public ConversationReply Next { get; set; } =
+        new(true, "Because the connector's token expired.", new AgentUsage(120, 80, 0.004m));
+
+    /// <summary>Every context the module handed over — what the assertions about grounding read.</summary>
+    public List<ConversationContext> Contexts { get; } = [];
+
+    public Task<ConversationReply> Answer(
+        Guid conversationId,
+        ConversationContext context,
+        string message,
+        CancellationToken cancellationToken = default
+    )
+    {
+        Interlocked.Increment(ref _passes);
+        Contexts.Add(context);
+        return Task.FromResult(Next);
+    }
+
+    public void Reset()
+    {
+        _passes = 0;
+        Contexts.Clear();
+        Next = new(true, "Because the connector's token expired.", new AgentUsage(120, 80, 0.004m));
+    }
 }
