@@ -13,6 +13,7 @@
   <Folder Name="/root/">
     <Project Path="root/AiOrchestrator.AppHost/AiOrchestrator.AppHost.csproj" />
     <Project Path="root/AiOrchestrator.DispatchWorker/AiOrchestrator.DispatchWorker.csproj" />
+    <Project Path="root/AiOrchestrator.ConversationSession/AiOrchestrator.ConversationSession.csproj" />
     <Project Path="root/AiOrchestrator.MigrationService/AiOrchestrator.MigrationService.csproj" />
     <Project Path="root/AiOrchestrator.Server/AiOrchestrator.Server.csproj" />
   </Folder>

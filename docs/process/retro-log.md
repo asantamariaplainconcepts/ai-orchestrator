@@ -2125,3 +2125,41 @@ times in the project this framework came from.
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none new. ADR-0004's second recurrence is recorded above rather than graduated again — the
   decision already says this; what failed was applying it.
+
+## 2026-07-31 — portal-conversation (#166)
+
+- **Worked:** two platform facts were checked instead of recalled, and both changed the design. The
+  provider was asked for its own schema — `azurerm` 4.81 models no session pool — which is why the
+  stack gained `azapi` for exactly one resource. Then `terraform validate` rejected identity-based
+  registry auth at `2024-02-02-preview`, which sent me to `az provider show` for the version list and
+  landed the pool on the **stable** `2025-01-01` that accepts it. Neither came from documentation, and
+  the second was a version I would otherwise have picked wrongly and discovered at apply time — in the
+  owner's subscription, not mine.
+- **Worked:** the owner's answer to "one slice or two" was worth asking for. The shape they picked
+  (a warm container per conversation) is not an optimisation — a cold start per message is ten seconds
+  on every reply — and building the cheap version first would have shipped something that met every
+  acceptance criterion and was unpleasant to use.
+- **Didn't — I ticked two tasks that were false, and caught it only on re-reading.** 5.5 claimed an
+  E2E that "sends a message and reads the reply and its cost"; mine deliberately does not, because
+  sending clones a repository and calls a model. 5.1 claimed an Automation still runs on a Story with
+  an open conversation — the design's *headline* claim — with no test behind it at all. The first is
+  now written as the scoped thing it is; the second is a real test. Ticking a checklist from memory of
+  intent rather than from what exists is the same failure as asserting a proxy signal (ADR-0004), one
+  layer up.
+- **Didn't — the third false mutation of the session.** Removing the panel from the tab left an
+  unused import, so the build failed and the "2 failed" it printed proved nothing about the test. This
+  has now happened with a formatting break (#13), an incomplete mutation (#165) and an unused import
+  (here). The rule that keeps being relearned: **check the mutated build reached zero errors before
+  reading the result.** It is written into the loop prompt now, which is where it should have been
+  after the first time.
+- **Also:** EF turned every conversation message into an update of a row nobody had written. A child
+  reached through a tracked parent's navigation is treated as existing when its key is already set,
+  and `BaseEntity` sets a GUID v7 in its constructor — every other aggregate here escapes it by being
+  `Add`-ed explicitly. Worth remembering the next time a collection is reached only by navigation.
+- **Next time:** when a slice ends with tasks to tick, re-read each one against the artifact rather
+  than against the intention. Two of eighteen were wrong, and both were wrong in the flattering
+  direction.
+- **Time invested:** not measured (source: **manual** — eighty-fifth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. ADR-0010's rule (a habitat fact is asked, never inferred) did its job twice here
+  and is cited above rather than restated.

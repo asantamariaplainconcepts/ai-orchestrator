@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
+import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
 import { RunsSection } from "@/features/runs/RunsSection";
@@ -32,7 +33,7 @@ import type { BoardAutomation } from "./KanbanBoard";
 import { BACKLOG_VENDORS } from "./types";
 import type { BacklogVendor, ConnectorView, StoryView } from "./types";
 
-const TABS = ["operate", "runs", "automations", "settings"] as const;
+const TABS = ["operate", "runs", "automations", "ask", "settings"] as const;
 type Tab = (typeof TABS)[number];
 
 type BacklogViewMode = "list" | "board";
@@ -118,6 +119,7 @@ export function ProjectScreen() {
           <TabsTrigger value="operate">{t("project.tab.operate")}</TabsTrigger>
           <TabsTrigger value="runs">{t("project.tab.runs")}</TabsTrigger>
           <TabsTrigger value="automations">{t("project.tab.automations")}</TabsTrigger>
+          <TabsTrigger value="ask">{t("project.tab.ask")}</TabsTrigger>
           <TabsTrigger value="settings">{t("project.tab.settings")}</TabsTrigger>
         </TabsList>
 
@@ -154,6 +156,12 @@ export function ProjectScreen() {
 
           <TabsContent value="automations">
             <AutomationsSection projectId={projectId} />
+          </TabsContent>
+
+          {/* Its own tab, because a conversation is its own thing (#166): not a Run, so not
+              beside them, and not configuration, so not in Settings. */}
+          <TabsContent value="ask">
+            <ConversationPanel projectId={projectId} />
           </TabsContent>
 
           <TabsContent value="settings" className="flex flex-col gap-6">

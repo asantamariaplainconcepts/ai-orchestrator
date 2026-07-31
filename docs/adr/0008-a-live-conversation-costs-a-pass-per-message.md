@@ -1,6 +1,6 @@
 # ADR-0008: A live conversation costs a pass per message, because an untimed wait cannot idle
 
-- **Status:** Accepted
+- **Status:** Accepted *(the "nothing idles" consequence revised by DEC-061, #166)*
 - **Date:** 2026-07-29
 - **Deciders:** repository owner (DEC-003); analysis by the agent working #149
 - **Tags:** architecture, dispatch, cost, conversation
