@@ -48,7 +48,9 @@ function auto(
     requiresApproval,
     timeoutMinutes: 30,
     enabled: true,
-    outputLabel,
+    // A set since #165. The factory still takes one, because every mock scenario here describes a
+    // single hand-off and inventing branches nobody asked for would be fixture noise.
+    outputLabels: outputLabel === null ? [] : [outputLabel],
     rubricPath: null,
   };
 }

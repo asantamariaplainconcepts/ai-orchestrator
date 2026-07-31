@@ -56,12 +56,15 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
         var stored = await Eventually(
             () => Automations(page, projectId),
             automations =>
-                automations.Single(automation => automation.TriggerLabel == "ai:grill").OutputLabel
-                    is null
+                automations
+                    .Single(automation => automation.TriggerLabel == "ai:grill")
+                    .OutputLabels.Count == 0
         );
         var grill = stored.Single(automation => automation.TriggerLabel == "ai:grill");
 
-        grill.OutputLabel.ShouldBeNull();
+        // Empty, not "the set lost one member of several": placing a human here removes the edge
+        // this gap represents and leaves any others alone (#165), and this Automation had one.
+        grill.OutputLabels.ShouldBeEmpty();
 
         // The other wait, untouched. BR-007's two-phase Run is a different thing from reviewing what
         // the previous step produced, and the workflow must keep them distinguishable.
@@ -122,7 +125,7 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
                     action,
                     runtime = "ClaudeCodeHeadless",
                     requiresApproval = false,
-                    outputLabel,
+                    outputLabels = outputLabel is null ? Array.Empty<string>() : [outputLabel],
                 },
             }
         );
@@ -148,7 +151,7 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
     sealed record StoredAutomation(
         Guid Id,
         string TriggerLabel,
-        string? OutputLabel,
+        IReadOnlyList<string> OutputLabels,
         bool RequiresApproval
     );
 }

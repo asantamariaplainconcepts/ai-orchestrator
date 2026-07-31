@@ -170,10 +170,12 @@ export const en = {
   "automations.promptFilePlaceholder": "estimate.md",
   "automations.promptFileHint":
     "A file name inside this project's prompts directory, which is set on the Settings tab.",
-  "automations.outputLabel": "Output label",
+  "automations.outputLabel": "Output labels",
   "automations.outputLabelPlaceholder": "the next step\u2019s trigger",
+  "automations.outputLabelAdd": "Add",
+  "automations.outputLabelRemove": "Remove",
   "automations.outputLabelHint":
-    "Applied to the Story when a Run of this Automation succeeds \u2014 leave empty to end here.",
+    "Applied to the Story when a Run of this Automation succeeds \u2014 add as many as you need, or leave empty to end here.",
   "automations.delete": "Delete",
   "automations.delete.hint":
     "Only possible while no run has used it. Once one has, disable it instead \u2014 runs keep their automation for the audit trail.",
@@ -207,6 +209,10 @@ export const en = {
   "canvas.disconnect": "Require a person here",
   "canvas.approval.on": "A person approves the plan",
   "canvas.approval.off": "Runs without approval",
+  // Branches (#165): two edges are not two Runs, and the picture cannot say that by itself.
+  "canvas.branchesSerialize":
+    "A step can hand on to several places, but they do not run at once \u2014 one run per story at a time, so a second match while one is running is skipped, not queued.",
+  "canvas.branchFrom": "from",
   "canvas.dangling": "Writes a label nothing listens for:",
   // Two named things, not two views of one list (#136, DEC-053).
   "automations.catalogue": "Catalogue",
