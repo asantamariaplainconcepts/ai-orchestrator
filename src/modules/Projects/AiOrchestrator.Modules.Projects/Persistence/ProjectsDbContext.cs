@@ -33,7 +33,7 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             automation.HasKey(entity => entity.Id);
             automation.Property(entity => entity.TriggerLabel).HasMaxLength(200).IsRequired();
             automation.Property(entity => entity.TriggerState).HasMaxLength(100);
-            automation.Property(entity => entity.RubricPath).HasMaxLength(300);
+            automation.Property(entity => entity.PromptPath).HasMaxLength(300);
             // A Postgres text[] (#165, design D1): the set belongs to one Automation, is loaded and
             // saved with it, and is never queried on its own. Npgsql maps a List<string> natively, so
             // there is no delimiter to parse and no value a label could contain that would break it.

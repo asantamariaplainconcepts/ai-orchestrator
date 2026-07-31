@@ -53,7 +53,7 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             {
                 triggerLabel = "ai:implement",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }

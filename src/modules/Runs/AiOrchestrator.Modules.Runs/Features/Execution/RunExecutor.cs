@@ -21,8 +21,6 @@ sealed class RunExecutor(
     IConnectorReader connectors,
     IStoryWriter storyWriter,
     IDocumentReader documents,
-    IConversationReader conversations,
-    IChangeFileReader changes,
     Conversation.ConversationGate conversationGate,
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
@@ -210,10 +208,10 @@ sealed class RunExecutor(
             cancellationToken
         );
 
-        var labels =
-            automation?.OutputLabels is { Count: > 0 } named ? named
-            : automation?.Action == "GrillToReady" ? [DefaultReadyLabel]
-            : (IReadOnlyList<string>)[];
+        // No default any more (#162): the grill was the one action that defaulted an output label,
+        // and with the catalogue gone an Automation that names none hands nothing on. What it hands
+        // on is now entirely what its Admin wired.
+        var labels = automation?.OutputLabels ?? [];
 
         var refusals = new List<string>();
 
@@ -237,6 +235,21 @@ sealed class RunExecutor(
         return refusals.Count == 0 ? null : string.Join(" ", refusals);
     }
 
+    /// <summary>
+    /// One action, one shape (#162): clone the project's repository with its credential, resolve the
+    /// prompt the project itself wrote, run the agent, and record what came back.
+    /// <para>
+    /// <b>Nothing is published afterwards.</b> The orchestrator used to open the pull request, write
+    /// the comment, transition the state and parse the estimate on the agent's behalf; all of that is
+    /// gone. The agent holds the same credential and does those itself, or they do not happen
+    /// (DEC-062).
+    /// </para>
+    /// <para>
+    /// Two promises degraded with it, and the decision says so rather than the code pretending
+    /// otherwise: a planning phase writing nothing, and a cancelled Run producing no pull request,
+    /// are now what the prompt says it will do. Both were enforced by owning the write.
+    /// </para>
+    /// </summary>
     async Task<Outcome> Invoke(
         Run run,
         bool planning,
@@ -247,14 +260,7 @@ sealed class RunExecutor(
         var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
         if (story is null)
         {
-            return new Outcome(
-                new AgentResult(
-                    Succeeded: false,
-                    Log: "The mirrored story no longer exists.",
-                    OutputLink: null,
-                    Usage: null
-                )
-            );
+            return new Outcome(Failure("The mirrored story no longer exists."));
         }
 
         var automation = await automations.Detail(
@@ -264,27 +270,13 @@ sealed class RunExecutor(
         );
         if (automation is null)
         {
-            return new Outcome(
-                new AgentResult(
-                    Succeeded: false,
-                    Log: "The automation is no longer enabled on this project.",
-                    OutputLink: null,
-                    Usage: null
-                )
-            );
+            return new Outcome(Failure("The automation is no longer enabled on this project."));
         }
 
         var connector = await connectors.Find(run.ProjectId, cancellationToken);
         if (connector is null)
         {
-            return new Outcome(
-                new AgentResult(
-                    Succeeded: false,
-                    Log: "The project has no connector.",
-                    OutputLink: null,
-                    Usage: null
-                )
-            );
+            return new Outcome(Failure("The project has no connector."));
         }
 
         // Selection is composition (opencode-runtime D1): the Automation's runtime names the
@@ -308,14 +300,7 @@ sealed class RunExecutor(
         catch (SecretNotFoundException exception)
         {
             // The name that failed is safe to state; a value never appears (BR-010).
-            return new Outcome(
-                new AgentResult(
-                    Succeeded: false,
-                    Log: $"Credential could not be resolved: {exception.Message}",
-                    OutputLink: null,
-                    Usage: null
-                )
-            );
+            return new Outcome(Failure($"Credential could not be resolved: {exception.Message}"));
         }
 
         var context =
@@ -323,281 +308,36 @@ sealed class RunExecutor(
             + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
             + $"Description:\n{Requirement(story.Body)}";
 
-        // The grill converses rather than writing once, so it routes before the simple
-        // actions (#79, DEC-048).
-        if (automation.Action == "GrillToReady")
+        // The prompt is read before the workspace, because both of its refusals must land before any
+        // money is spent — cloning to discover a file is missing is spend for nothing (design D4).
+        var (body, refusal) = await RepositoryPrompt(run.ProjectId, automation, cancellationToken);
+        if (refusal is not null)
         {
-            return await RunGrill(
-                run,
-                automation,
-                context,
-                selection,
-                vendorToken,
-                aiKey,
-                onOutput,
-                cancellationToken
-            );
+            return new Outcome(Failure(refusal));
         }
 
-        var proposing = automation.Action == "ProposeSpec";
-        var syncing = automation.Action == "SyncChange";
-
-        if (syncing)
-        {
-            // Both refusals precede the workspace (design D4): cloning to discover what the
-            // caller already knew is spend for nothing.
-            var change = await changes.ForStory(
-                run.ProjectId,
-                run.VendorStoryId,
-                cancellationToken
-            );
-            if (change is null)
-            {
-                return new Outcome(
-                    Failure(
-                        "The story has no open change to close. Sync closes what implement "
-                            + "opened; there is nothing here yet."
-                    )
-                );
-            }
-
-            // The procedure belongs to the project, never to this product (design D1).
-            var procedurePath = automation.RubricPath ?? DefaultCloseOutPath;
-            var procedure = await documents.Read(run.ProjectId, procedurePath, cancellationToken);
-            if (procedure.Failure is not null)
-            {
-                return new Outcome(
-                    Failure($"The close-out procedure at '{procedurePath}' could not be read.")
-                );
-            }
-
-            return await RunSync(
-                run,
-                automation,
-                new CodeCoordinates(connector.Owner, connector.Repository),
-                change,
-                procedure.Content ?? string.Empty,
-                procedurePath,
-                context,
-                selection,
-                vendorToken,
-                aiKey,
-                onOutput,
-                cancellationToken
-            );
-        }
-
-        if (proposing)
-        {
-            // Both refusals precede the workspace: no spend on a Story this action cannot
-            // honestly serve (#80). A missing body means there is nothing to propose from —
-            // inventing the requirement would be worse than refusing.
-            if (string.IsNullOrWhiteSpace(story.Body))
-            {
-                return new Outcome(
-                    Failure("The story has no description — there is nothing to propose from.")
-                );
-            }
-
-            // One open change per Story (BR-001's spirit at the artifact level).
-            var linked = await changes.ForStory(
-                run.ProjectId,
-                run.VendorStoryId,
-                cancellationToken
-            );
-            if (linked is not null)
-            {
-                return new Outcome(Failure($"The story already has an open change: {linked.Url}."));
-            }
-        }
-
-        // Every other catalogue action is one shot. Only the two PR-producing actions touch a
-        // repository, so only they prepare a workspace — the rest are one prompt and one
-        // vendor write.
-        if (automation.Action != "ImplementToPullRequest" && !proposing && !syncing)
-        {
-            return new Outcome(
-                await RunSimpleAction(
-                    run,
-                    automation,
-                    story,
-                    context,
-                    selection,
-                    vendorToken,
-                    aiKey,
-                    onOutput,
-                    cancellationToken
-                )
-            );
-        }
-
-        var coordinates = new CodeCoordinates(connector.Owner, connector.Repository);
-        var prepared = await workspace.Prepare(coordinates, run.Id, vendorToken, cancellationToken);
+        var prepared = await workspace.Prepare(
+            new CodeCoordinates(connector.Owner, connector.Repository),
+            run.Id,
+            vendorToken,
+            cancellationToken
+        );
         if (prepared.IsError)
         {
             // Stage-named refusal (design D4): the reason says "clone", not "something".
             return new Outcome(Failure(prepared.FirstError.Description));
         }
 
-        try
-        {
-            // The Agent implements; the ceremony is ours (design D1). The prompt says so, or
-            // the agent and the workspace seam would both try to own the same push.
-            var prompt =
-                proposing
-                    ? "Write a proposal for the following story as documentation files in the "
-                        + "repository at your current working directory: why, what changes, impact, "
-                        + "and a task breakdown. Follow the repository's own conventions for such "
-                        + "documents where its instructions declare any (AGENTS.md, CONTRIBUTING); "
-                        + $"otherwise create them under docs/proposals/story-{story.VendorStoryId}/. "
-                        + "Write documentation only — change no code. Do not commit, push, or open "
-                        + "pull requests — the orchestrator publishes your changes when you are "
-                        + $"done.\n\n{context}"
-                : planning
-                    ? "Read the repository at your current working directory and write a short "
-                        + "implementation plan for the following story: the files you would change "
-                        + "and why, in markdown. Change nothing — this is a proposal a human will "
-                        + $"review before any code is written.\n\n{context}"
-                // The approved Plan is an input (design D2): without it the human blessed a
-                // document the Agent never sees again.
-                : $"Implement the following story in the repository at your current working "
-                    + $"directory.\n\n{context}\n\n"
-                    + PlanSection(run.Plan)
-                    + "Make the code changes only. Do not commit, push, or open pull requests — "
-                    + "the orchestrator publishes your changes when you are done.";
-
-            var agentResult = await selection.Runtime.Execute(
-                new AgentInstruction(
-                    prompt,
-                    automation.Action,
-                    automation.Timeout,
-                    prepared.Value.Path,
-                    new AgentCredentials(vendorToken, aiKey),
-                    onOutput
-                ),
-                cancellationToken
-            );
-
-            if (!agentResult.Succeeded || planning)
-            {
-                // Phase 1 publishes nothing: a plan-phase pull request would be a lie.
-                return new Outcome(agentResult);
-            }
-
-            // Boundary two (design D2): the spend is sunk, but the *consequence* is not. This
-            // check has to live here, immediately before Publish — one level up, after Invoke
-            // returns, the pull request already exists.
-            await database.Entry(run).ReloadAsync(cancellationToken);
-            if (run.IsCancelled)
-            {
-                return new Outcome(
-                    agentResult with
-                    {
-                        Succeeded = false,
-                        Log = "Cancelled before publishing.",
-                    }
-                );
-            }
-
-            var published = await workspace.Publish(
-                prepared.Value,
-                proposing
-                    ? $"docs: proposal for story #{story.VendorStoryId} — {story.Title}"
-                    : $"feat: story #{story.VendorStoryId} — {story.Title}",
-                proposing
-                    ? $"Proposal for story #{story.VendorStoryId} "
-                        + $"({connector.Owner}/{connector.Repository}) by run {run.Id}. "
-                        + "Documentation only — the review is the gate."
-                    : $"Automated implementation of story #{story.VendorStoryId} "
-                        + $"({connector.Owner}/{connector.Repository}) by run {run.Id}.",
-                vendorToken,
-                cancellationToken
-            );
-
-            return new Outcome(
-                published.IsError
-                    ? agentResult with
-                    {
-                        Succeeded = false,
-                        Log = published.FirstError.Description,
-                    }
-                    : agentResult with
-                    {
-                        OutputLink = published.Value.PullRequestUrl,
-                    }
-            );
-        }
-        finally
-        {
-            try
-            {
-                Directory.Delete(prepared.Value.Path, recursive: true);
-            }
-            catch (IOException)
-            {
-                // A leftover temp directory is not worth failing a finished Run over.
-            }
-        }
-    }
-
-    /// <summary>The framework's conventions; an Automation may override both (grill D5).</summary>
-    internal const string DefaultRubricPath = "docs/process/definition-of-ready.md";
-
-    /// <summary>
-    /// Where a project that adopted this framework documents how a change closes (#123). In code
-    /// rather than in data, for the grill's reason: a default that lived in the database would
-    /// be a product-wide procedure imposed on every repository this ever runs against.
-    /// </summary>
-    internal const string DefaultCloseOutPath = "docs/process/close-out.md";
-
-    internal const string DefaultReadyLabel = "ready-for-proposal";
-
-    /// <summary>
-    /// UC-024: interrogate the Story to its project's readiness bar. Each pass is stateless —
-    /// the rubric, the body and the whole conversation are re-read (grill D3) — and ends one of
-    /// three ways: READY (label + verdict, the Run succeeds), questions (the Run waits, #78),
-    /// or an honest failure. The rubric is read before anything is written (D2): a grill that
-    /// cannot find its bar must not put that confusion on somebody's backlog.
-    /// </summary>
-    /// <summary>
-    /// Closes the Story's change by following the project's own procedure (#123, design D1).
-    /// The agent holds the tools, so the prompt is where "follow it exactly, refuse rather than
-    /// improvise, and leave the pull request untouched if you stop" has to be said (design D5).
-    /// </summary>
-    async Task<Outcome> RunSync(
-        Run run,
-        AutomationDetail automation,
-        CodeCoordinates coordinates,
-        ChangeFiles change,
-        string procedure,
-        string procedurePath,
-        string context,
-        AgentRuntimeSelection selection,
-        string vendorToken,
-        string aiKey,
-        Action<string> onOutput,
-        CancellationToken cancellationToken
-    )
-    {
-        var prepared = await workspace.Prepare(coordinates, run.Id, vendorToken, cancellationToken);
-        if (prepared.IsError)
-        {
-            return new Outcome(Failure(prepared.FirstError.Description));
-        }
-
-        var prompt =
-            $"Close the change at {change.Url} for the following story, by following this "
-            + $"repository's own close-out procedure exactly as written.\n\n"
-            + $"--- {procedurePath} ---\n{procedure}\n--- end ---\n\n"
-            + "Follow that document and nothing else: it is this project's process, not a "
-            + "suggestion. If any step cannot be completed as written, stop and explain why "
-            + "— leave the pull request exactly as you found it rather than half-closing "
-            + "it, because a half-closed change is worse than an open one.\n\n"
-            + context;
+        // What the orchestrator still says, and it is only ever framing: which story, which phase,
+        // and the approved plan when there is one. What to *do* is entirely the project's prompt.
+        var instruction = planning
+            ? $"{body}\n\n{context}\n\nThis is a planning phase: a human will review what you "
+                + "produce before any work is carried out."
+            : $"{body}\n\n{context}\n\n{PlanSection(run.Plan)}".TrimEnd();
 
         var agentResult = await selection.Runtime.Execute(
             new AgentInstruction(
-                prompt,
+                instruction,
                 automation.Action,
                 automation.Timeout,
                 prepared.Value.Path,
@@ -607,123 +347,10 @@ sealed class RunExecutor(
             cancellationToken
         );
 
-        // Nothing is published here: unlike implement and propose, the procedure the agent
-        // followed is what touched the change. The Run records where it acted.
-        return new Outcome(agentResult with { OutputLink = agentResult.OutputLink ?? change.Url });
-    }
-
-    async Task<Outcome> RunGrill(
-        Run run,
-        AutomationDetail automation,
-        string context,
-        AgentRuntimeSelection selection,
-        string vendorToken,
-        string aiKey,
-        Action<string> onOutput,
-        CancellationToken cancellationToken
-    )
-    {
-        var rubricPath = automation.RubricPath ?? DefaultRubricPath;
-
-        var rubric = await documents.Read(run.ProjectId, rubricPath, cancellationToken);
-        if (rubric.Failure is not null)
-        {
-            return new Outcome(
-                Failure(
-                    $"The readiness document could not be read at '{rubricPath}': {rubric.Failure}"
-                )
-            );
-        }
-
-        var conversation = await conversations.ReadSince(
-            run.ProjectId,
-            run.VendorStoryId,
-            run.CreatedAt,
-            cancellationToken
-        );
-        if (conversation.Failure is not null)
-        {
-            return new Outcome(
-                Failure($"The conversation could not be read: {conversation.Failure}")
-            );
-        }
-
-        var dialogue = string.Join(
-            "\n\n",
-            conversation.Comments.Select(comment =>
-                Conversation.RunMarker.IsAgentComment(comment.Body)
-                    ? $"You previously asked:\n{StripMarker(comment.Body)}"
-                    : $"The human answered:\n{comment.Body}"
-            )
-        );
-
-        var prompt =
-            "You are assessing whether a story meets its team's Definition of Ready, quoted "
-            + "below. If every criterion is met, reply with the single word READY on the first "
-            + "line, followed by a short verdict naming the criteria that pass. If anything is "
-            + "missing, reply ONLY with the specific questions whose answers would close the "
-            + "gaps — name the missing criteria, never ask generically, and never repeat a "
-            + "question the conversation below has already answered.\n\n"
-            + $"Definition of Ready:\n{rubric.Content}\n\n{context}"
-            + (dialogue.Length > 0 ? $"\n\nConversation so far:\n{dialogue}" : string.Empty);
-
-        var workspacePath = Directory.CreateTempSubdirectory("grill-").FullName;
-        AgentResult agentResult;
-        try
-        {
-            agentResult = await selection.Runtime.Execute(
-                new AgentInstruction(
-                    prompt,
-                    automation.Action,
-                    automation.Timeout,
-                    workspacePath,
-                    new AgentCredentials(vendorToken, aiKey),
-                    onOutput
-                ),
-                cancellationToken
-            );
-        }
-        finally
-        {
-            try
-            {
-                Directory.Delete(workspacePath, recursive: true);
-            }
-            catch (IOException) { }
-        }
-
-        if (!agentResult.Succeeded)
-        {
-            return new Outcome(agentResult);
-        }
-
-        var answer = agentResult.Log.Trim();
-
-        if (!FirstWord(answer).Equals("READY", StringComparison.OrdinalIgnoreCase))
-        {
-            // Not ready: the whole reply is the questions. A rambling model degrades into
-            // questions a human reads — never into a wrong state (grill D1).
-            return new Outcome(agentResult, Questions: answer);
-        }
-
-        // The ready label is no longer applied here. Since #115 every Automation hands work on
-        // from one place (HandOn, design D2) and the grill is simply the one action with a
-        // default — so what used to be the grill's private chaining is now the model's. The
-        // verdict comment stays, because only the grill has a verdict to leave.
-        var verdict =
-            answer.Length > "READY".Length
-                ? answer["READY".Length..].Trim()
-                : "The story meets its Definition of Ready.";
-        var commented = await storyWriter.AddComment(
-            run.ProjectId,
-            run.VendorStoryId,
-            Conversation.RunMarker.Sign(run.Id, verdict),
-            cancellationToken
-        );
-
-        return commented is not null
-            ? new Outcome(agentResult with { Succeeded = false, Log = commented })
-            : new Outcome(agentResult);
+        // Straight back. There is no publish step to withhold and no answer to post — which is the
+        // whole of #162, and the reason the second cancellation boundary went with it: there is no
+        // longer a consequence sitting between the spend and the record.
+        return new Outcome(agentResult);
     }
 
     /// <summary>
@@ -739,7 +366,7 @@ sealed class RunExecutor(
     {
         var document = await documents.ReadPrompt(
             projectId,
-            automation.RubricPath ?? string.Empty,
+            automation.PromptPath ?? string.Empty,
             cancellationToken
         );
 
@@ -790,173 +417,6 @@ sealed class RunExecutor(
         // real problem is a missing '---'.
         return content.Trim();
     }
-
-    static string StripMarker(string body)
-    {
-        var lines = body.Split('\n');
-        return string.Join('\n', lines.Skip(1)).Trim();
-    }
-
-    /// <summary>
-    /// The three actions that touch no code (design D1): one prompt, one answer, one vendor
-    /// write. No workspace is prepared, which is also why they are fast and cheap.
-    /// </summary>
-    async Task<AgentResult> RunSimpleAction(
-        Run run,
-        AutomationDetail automation,
-        StorySnapshot story,
-        string context,
-        AgentRuntimeSelection selection,
-        string vendorToken,
-        string aiKey,
-        Action<string> onOutput,
-        CancellationToken cancellationToken
-    )
-    {
-        // The repository prompt is read before the switch, because this instruction does not exist
-        // until a document has been fetched — and both of its refusals must land before any money is
-        // spent (design D4). Everything after this point is the path the catalogue actions take.
-        string? repositoryPrompt = null;
-        if (automation.Action == "RepositoryPrompt")
-        {
-            var (body, refusal) = await RepositoryPrompt(
-                run.ProjectId,
-                automation,
-                cancellationToken
-            );
-            if (refusal is not null)
-            {
-                return Failure(refusal);
-            }
-
-            repositoryPrompt = $"{body}\n\n{context}";
-        }
-
-        var instruction =
-            repositoryPrompt
-            ?? automation.Action switch
-            {
-                "RefineOrComment" =>
-                    "Analyse the following story and reply with refinement questions, analysis, or "
-                        + "a draft of its acceptance criteria. Your whole reply becomes a comment on "
-                        + $"the story, so write it for its readers.\n\n{context}",
-                "TransitionState" =>
-                    "Decide what state the following story should be in and reply with ONLY that "
-                        + $"state as a single word.\n\n{context}",
-                "Estimate" =>
-                    "Estimate the following story in story points and reply with the number first, "
-                        + $"then one short paragraph explaining it.\n\n{context}",
-                _ => string.Empty,
-            };
-
-        if (instruction.Length == 0)
-        {
-            return Failure($"Action '{automation.Action}' has no implementation.");
-        }
-
-        // A temporary directory only because the runtime needs somewhere to be; nothing is
-        // cloned into it and nothing is published from it.
-        var workspacePath = Directory.CreateTempSubdirectory("action-").FullName;
-
-        AgentResult agentResult;
-        try
-        {
-            agentResult = await selection.Runtime.Execute(
-                new AgentInstruction(
-                    instruction,
-                    automation.Action,
-                    automation.Timeout,
-                    workspacePath,
-                    new AgentCredentials(vendorToken, aiKey),
-                    onOutput
-                ),
-                cancellationToken
-            );
-        }
-        finally
-        {
-            try
-            {
-                Directory.Delete(workspacePath, recursive: true);
-            }
-            catch (IOException) { }
-        }
-
-        if (!agentResult.Succeeded)
-        {
-            return agentResult;
-        }
-
-        var answer = agentResult.Log.Trim();
-
-        var failure = automation.Action switch
-        {
-            "RefineOrComment" => await storyWriter.AddComment(
-                run.ProjectId,
-                run.VendorStoryId,
-                answer,
-                cancellationToken
-            ),
-            "TransitionState" => await storyWriter.SetState(
-                run.ProjectId,
-                run.VendorStoryId,
-                FirstWord(answer),
-                cancellationToken
-            ),
-            "Estimate" => await Estimate(run, answer, cancellationToken),
-            // One comment, and that is the whole safety argument for running a prompt this product
-            // did not write: what it can ask for is unbounded, what it can do is decided here
-            // (design D3).
-            "RepositoryPrompt" => await storyWriter.AddComment(
-                run.ProjectId,
-                run.VendorStoryId,
-                answer,
-                cancellationToken
-            ),
-            _ => "Unreachable.",
-        };
-
-        return failure is null
-            ? agentResult
-            : agentResult with
-            {
-                Succeeded = false,
-                Log = failure,
-            };
-    }
-
-    async Task<string?> Estimate(Run run, string answer, CancellationToken cancellationToken)
-    {
-        // The number is the estimate; a reply with none is a stated failure, never a guessed
-        // zero — an invented estimate is worse than no estimate (design D2).
-        var digits = new string([.. answer.TakeWhile(char.IsDigit)]);
-        if (digits.Length == 0 || !int.TryParse(digits, out var points))
-        {
-            return $"The agent's answer did not start with a number: '{Truncate(answer, 200)}'.";
-        }
-
-        var labelled = await storyWriter.SetEstimate(
-            run.ProjectId,
-            run.VendorStoryId,
-            points,
-            cancellationToken
-        );
-
-        return labelled
-            // UC-019 asks for the field AND the reasoning.
-            ?? await storyWriter.AddComment(
-                run.ProjectId,
-                run.VendorStoryId,
-                answer,
-                cancellationToken
-            );
-    }
-
-    static string FirstWord(string answer) =>
-        answer
-            .Split([' ', '\n', '\r', '.', ','], StringSplitOptions.RemoveEmptyEntries)
-            .FirstOrDefault()
-        ?? answer;
 
     static AgentResult Failure(string log) =>
         new(Succeeded: false, Log: log, OutputLink: null, Usage: null);

@@ -42,10 +42,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState<Automation | null>(null);
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
-  const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
+  const [action, setAction] = useState<AutomationAction>("RepositoryPrompt");
   const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
   const [requiresApproval, setRequiresApproval] = useState(false);
-  const [rubricPath, setRubricPath] = useState("");
+  const [promptPath, setPromptPath] = useState("");
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
   // because they are two things: what is chosen, and what is half-written.
   const [outputLabels, setOutputLabels] = useState<string[]>([]);
@@ -56,7 +56,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // Two actions read a document the project owns, and they read a different one: the grill its
   // readiness bar, the repository prompt its instruction. One field, relabelled — a second input
   // would suggest an Automation could carry both, and it cannot.
-  const isGrill = action === "GrillToReady";
+  const isGrill = action === "RepositoryPrompt";
   const isRepositoryPrompt = action === "RepositoryPrompt";
   const namesADocument = isGrill || isRepositoryPrompt;
 
@@ -97,10 +97,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   function reset() {
     setTriggerLabel("");
     setTriggerState("");
-    setAction("ImplementToPullRequest");
+    setAction("RepositoryPrompt");
     setRuntime("ClaudeCodeHeadless");
     setRequiresApproval(false);
-    setRubricPath("");
+    setPromptPath("");
     setOutputLabels([]);
     setOutputDraft("");
     setTimeoutMinutes("");
@@ -119,7 +119,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setAction(automation.action);
     setRuntime(automation.runtime);
     setRequiresApproval(automation.requiresApproval);
-    setRubricPath(automation.rubricPath ?? "");
+    setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
     setOutputDraft("");
     setTimeoutMinutes(String(automation.timeoutMinutes));
@@ -146,7 +146,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       timeoutMinutes: timeoutMinutes.trim() === "" ? null : Number(timeoutMinutes),
       // Cleared when the action reads no document: a value no visible control can reach is one the
       // Admin cannot manage, and a replace would carry it forever unseen (design D3).
-      rubricPath: namesADocument && rubricPath.trim() ? rubricPath.trim() : null,
+      promptPath: namesADocument && promptPath.trim() ? promptPath.trim() : null,
       // The half-typed value counts: an Admin who typed a label and pressed Save meant it, and
       // silently dropping it is the kind of loss a form should never inflict.
       outputLabels: withDraft(),
@@ -365,16 +365,16 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                     <Label htmlFor="rubric-path">
                       {isRepositoryPrompt
                         ? t("automations.promptFile")
-                        : t("automations.rubricPath")}
+                        : t("automations.promptPath")}
                     </Label>
                     <Input
                       id="rubric-path"
-                      value={rubricPath}
-                      onChange={(event) => setRubricPath(event.target.value)}
+                      value={promptPath}
+                      onChange={(event) => setPromptPath(event.target.value)}
                       placeholder={
                         isRepositoryPrompt
                           ? t("automations.promptFilePlaceholder")
-                          : t("automations.rubricPathPlaceholder")
+                          : t("automations.promptPathPlaceholder")
                       }
                     />
                     {/* A name, not a path: the directory is the project's, on the Settings tab. */}

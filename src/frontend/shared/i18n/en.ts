@@ -160,8 +160,8 @@ export const en = {
   "story.documents.openChange": "Open the change",
 
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
-  "automations.rubricPath": "Readiness document",
-  "automations.rubricPathPlaceholder": "docs/process/definition-of-ready.md",
+  "automations.promptPath": "Readiness document",
+  "automations.promptPathPlaceholder": "docs/process/definition-of-ready.md",
   "automations.edit": "Edit",
   "automations.save": "Save changes",
   "automations.saving": "Saving…",

@@ -54,7 +54,7 @@ public class RunCancellation_Should_Constraint(RunsApiFixture fixture) : IAsyncL
             {
                 triggerLabel = "ai:implement",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
             }

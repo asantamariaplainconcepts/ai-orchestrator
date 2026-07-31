@@ -49,7 +49,7 @@ sealed class CreateAutomation : IUseCase
                         request.Runtime,
                         request.RequiresApproval,
                         request.TimeoutMinutes,
-                        request.RubricPath,
+                        request.PromptPath,
                         request.OutputLabels
                     );
 
@@ -75,7 +75,7 @@ sealed class CreateAutomation : IUseCase
         string Runtime,
         bool RequiresApproval,
         int? TimeoutMinutes,
-        string? RubricPath = null,
+        string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null
     );
 
@@ -95,7 +95,7 @@ sealed class CreateAutomation : IUseCase
         /// <summary>Grill only. Readable for the same reason: the update endpoint replaces the
         /// whole Automation, so a caller that cannot read this field would silently clear it on
         /// every edit.</summary>
-        string? RubricPath
+        string? PromptPath
     );
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -107,7 +107,7 @@ sealed class CreateAutomation : IUseCase
         string Runtime,
         bool RequiresApproval,
         int? TimeoutMinutes,
-        string? RubricPath = null,
+        string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
@@ -117,7 +117,7 @@ sealed class CreateAutomation : IUseCase
         {
             RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
             RuleFor(command => command.TriggerState).MaximumLength(100);
-            RuleFor(command => command.RubricPath).MaximumLength(300);
+            RuleFor(command => command.PromptPath).MaximumLength(300);
             // Each member bounded exactly as the single label was, and the collection bounded too:
             // a set is a field a caller controls the size of.
             RuleForEach(command => command.OutputLabels!)
@@ -210,7 +210,7 @@ sealed class CreateAutomation : IUseCase
                 command.TimeoutMinutes is { } minutes
                     ? TimeSpan.FromMinutes(minutes)
                     : DefaultTimeout,
-                string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
+                string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
                 command.OutputLabels is null ? [] : Clean(command.OutputLabels)
             );
 
@@ -261,6 +261,6 @@ sealed class CreateAutomation : IUseCase
             (int)automation.Timeout.TotalMinutes,
             automation.Enabled,
             automation.OutputLabels,
-            automation.RubricPath
+            automation.PromptPath
         );
 }

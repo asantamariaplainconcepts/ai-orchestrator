@@ -84,7 +84,7 @@ export function WorkflowCanvas({
         runtime: automation.runtime,
         requiresApproval: automation.requiresApproval,
         timeoutMinutes: automation.timeoutMinutes,
-        rubricPath: automation.rubricPath ?? null,
+        promptPath: automation.promptPath ?? null,
         outputLabels: automation.outputLabels,
         ...patch,
       },

@@ -41,10 +41,15 @@ sealed class Automation : Aggregate
     public string? TriggerState { get; private set; }
 
     /// <summary>
-    /// Grill only: where the readiness document lives in the connected repository. Null means
-    /// the framework's convention — the default is code, not data (grill design D5).
+    /// Which prompt this Automation runs, resolved against the project's prompts directory (#150).
+    /// Null means the convention.
+    /// <para>
+    /// Called <c>RubricPath</c> until #162, when the grill it was named for stopped existing. The
+    /// column was never only the grill's after #150 made it how a repository prompt names its file —
+    /// which is why this change renames it rather than removing it with the action.
+    /// </para>
     /// </summary>
-    public string? RubricPath { get; private set; }
+    public string? PromptPath { get; private set; }
 
     /// <summary>
     /// What this Automation applies to the Story when a Run of it succeeds (#165): the workflow's
@@ -95,12 +100,12 @@ sealed class Automation : Aggregate
         AgentRuntime runtime,
         bool requiresApproval,
         TimeSpan timeout,
-        string? rubricPath = null,
+        string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null
     ) =>
         new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
         {
-            RubricPath = rubricPath,
+            PromptPath = promptPath,
             OutputLabels = outputLabels ?? [],
         };
 
@@ -112,7 +117,7 @@ sealed class Automation : Aggregate
         AgentRuntime runtime,
         bool requiresApproval,
         TimeSpan timeout,
-        string? rubricPath = null,
+        string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null
     )
     {
@@ -122,7 +127,7 @@ sealed class Automation : Aggregate
         Runtime = runtime;
         RequiresApproval = requiresApproval;
         Timeout = timeout;
-        RubricPath = rubricPath;
+        PromptPath = promptPath;
         OutputLabels = outputLabels ?? [];
     }
 
@@ -212,39 +217,27 @@ sealed class Automation : Aggregate
     }
 }
 
-/// <summary>The MVP action catalogue (DEC-026). All four configurable; only Implement→PR executes yet.</summary>
+/// <summary>
+/// The catalogue, after #162 collapsed it to one: an Automation runs the repository's own prompt.
+/// <para>
+/// Kept as an enum with one member rather than removed, because the field is where the second thing
+/// will be said — grants are the named follow-up, and "which prompt, under which grants" belongs
+/// beside "which trigger". A stored row saying <c>RepositoryPrompt</c> also explains itself; a row
+/// with the column gone relies on the reader knowing what year it was written.
+/// </para>
+/// <para>
+/// What left with the other seven: the orchestrator opening a pull request, writing a comment,
+/// transitioning a state or parsing an estimate on the agent's behalf. The prompt does those, holding
+/// the same credential, or they do not happen (DEC-062).
+/// </para>
+/// </summary>
 enum AutomationAction
 {
-    ImplementToPullRequest = 1,
-    RefineOrComment = 2,
-    TransitionState = 3,
-    Estimate = 4,
-
     /// <summary>
-    /// Interrogates a Story to its project's readiness bar through the conversational wait
-    /// (#79, revising DEC-026's four-action catalogue as DEC-048).
-    /// </summary>
-    GrillToReady = 5,
-
-    /// <summary>
-    /// Turns a ready Story into a documentation pull request — the reviewable step between
-    /// ready and implemented (#80, UC-025; DEC-048 licenses the growth).
-    /// </summary>
-    ProposeSpec = 6,
-
-    /// <summary>
-    /// Closes the Story's open change by following the connected repository's own close-out
-    /// procedure (#123, DEC-048). The product knows that a change closes, never how — that
-    /// document belongs to the project, exactly as the grill's readiness bar does.
-    /// </summary>
-    SyncChange = 7,
-
-    /// <summary>
-    /// Runs a prompt the project itself wrote, named by <c>RubricPath</c> and resolved against the
-    /// project's prompts directory (#150, DEC-048's lane again). The body is the prompt; any
+    /// Runs a prompt the project itself wrote, named by <see cref="Automation.PromptPath"/> and
+    /// resolved against the project's prompts directory (#150). The body is the prompt; any
     /// frontmatter is another runner's wiring and is ignored, because the Automation is already this
-    /// product's. The answer becomes one Story comment and nothing else — a prompt cannot widen its
-    /// own surface by asking to.
+    /// product's.
     /// </summary>
     RepositoryPrompt = 8,
 }

@@ -154,7 +154,7 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                 new
                 {
                     triggerLabel = "ai:refine",
-                    action = "RefineOrComment",
+                    action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     requiresApproval = false,
                 }
@@ -180,7 +180,7 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                 new
                 {
                     triggerLabel = "ai:refine",
-                    action = "RefineOrComment",
+                    action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     requiresApproval = false,
                 }
@@ -236,7 +236,7 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                 new
                 {
                     triggerLabel = "ai:refine",
-                    action = "RefineOrComment",
+                    action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     requiresApproval = false,
                 }

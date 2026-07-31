@@ -25,12 +25,12 @@ const projects: { id: string; name: string; archivedAt: string | null }[] = [
 const automations = [
   // The shipped pipeline: grill hands to propose, and propose deliberately hands to nobody —
   // which is the gap the canvas draws as "a person continues" (#116).
-  auto("ai:grill", "GrillToReady", false, "ready-for-proposal"),
-  auto("ready-for-proposal", "ProposeSpec", false, null),
-  auto("ai:implement", "ImplementToPullRequest", true, null),
-  auto("ai:refine", "RefineOrComment", false, null),
+  auto("ai:grill", "RepositoryPrompt", false, "ready-for-proposal"),
+  auto("ready-for-proposal", "RepositoryPrompt", false, null),
+  auto("ai:implement", "RepositoryPrompt", true, null),
+  auto("ai:refine", "RepositoryPrompt", false, null),
   auto("ai:estimate", "Estimate", false, null),
-  auto("ai:transition", "TransitionState", false, null),
+  auto("ai:transition", "RepositoryPrompt", false, null),
 ];
 
 function auto(
@@ -51,7 +51,7 @@ function auto(
     // A set since #165. The factory still takes one, because every mock scenario here describes a
     // single hand-off and inventing branches nobody asked for would be fixture noise.
     outputLabels: outputLabel === null ? [] : [outputLabel],
-    rubricPath: null,
+    promptPath: null,
   };
 }
 
@@ -281,21 +281,21 @@ const routes: [string, RegExp, Handler][] = [
         {
           automationId: "a1",
           triggerLabel: "ai:implement",
-          action: "ImplementToPullRequest",
+          action: "RepositoryPrompt",
           fired: 7,
           failed: 1,
         },
         {
           automationId: "a2",
           triggerLabel: "ai:grill",
-          action: "GrillToReady",
+          action: "RepositoryPrompt",
           fired: 5,
           failed: 1,
         },
         {
           automationId: "a3",
           triggerLabel: "ai:transition",
-          action: "TransitionState",
+          action: "RepositoryPrompt",
           fired: 0,
           failed: 0,
         },

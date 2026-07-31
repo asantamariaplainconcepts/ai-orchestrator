@@ -36,7 +36,7 @@ public sealed record AutomationDetail(
     bool RequiresApproval,
     TimeSpan Timeout,
     /// <summary>Grill only; null means the framework's convention (grill design D5).</summary>
-    string? RubricPath = null,
+    string? PromptPath = null,
     /// <summary>
     /// Applied to the Story when a Run succeeds (#165). Empty means the Automation ends silently —
     /// except for a grill, whose documented default lives in the executor (grill design D5).

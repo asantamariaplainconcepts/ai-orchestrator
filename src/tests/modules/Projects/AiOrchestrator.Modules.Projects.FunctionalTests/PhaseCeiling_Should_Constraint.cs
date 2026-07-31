@@ -37,7 +37,7 @@ public class PhaseCeiling_Should_Constraint(ProjectsApiFixture fixture) : IAsync
             {
                 triggerLabel = $"ai:t-{Guid.NewGuid():N}",
                 triggerState = (string?)null,
-                action = "RefineOrComment",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
                 timeoutMinutes,

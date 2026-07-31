@@ -40,7 +40,7 @@ public class AgentRuntimeTimeout_Should_Constraint
         var result = await runtime.Execute(
             new AgentInstruction(
                 "irrelevant",
-                "ImplementToPullRequest",
+                "RepositoryPrompt",
                 TimeSpan.FromSeconds(2),
                 Path.GetTempPath(),
                 new AgentCredentials("token", "key")
@@ -79,7 +79,7 @@ public class AgentRuntimeTimeout_Should_Constraint
         var result = await runtime.Execute(
             new AgentInstruction(
                 "irrelevant",
-                "ImplementToPullRequest",
+                "RepositoryPrompt",
                 TimeSpan.FromSeconds(30),
                 Path.GetTempPath(),
                 new AgentCredentials("token", "key")

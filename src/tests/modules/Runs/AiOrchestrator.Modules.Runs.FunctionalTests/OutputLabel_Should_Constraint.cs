@@ -114,7 +114,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     public async Task ASucceedingAutomation_Should_WriteItsOutputLabelAndStartTheNextRun()
     {
         // The point of #115: this is RefineOrComment, not the grill, and it chains.
-        var refine = await Automation("ai:refine", "RefineOrComment", "ai:estimate");
+        var refine = await Automation("ai:refine", "RepositoryPrompt", "ai:estimate");
         await Automation("ai:estimate", "Estimate", null);
 
         AgentSays(true, "A helpful comment.");
@@ -144,7 +144,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     [Fact]
     public async Task AnAutomationWithoutAnOutputLabel_Should_EndSilently()
     {
-        var refine = await Automation("ai:refine", "RefineOrComment", null);
+        var refine = await Automation("ai:refine", "RepositoryPrompt", null);
 
         AgentSays(true, "A helpful comment.");
         var runId = await Dispatch(refine);
@@ -157,7 +157,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     [Fact]
     public async Task AFailingRun_Should_HandNothingOn()
     {
-        var refine = await Automation("ai:refine", "RefineOrComment", "ai:estimate");
+        var refine = await Automation("ai:refine", "RepositoryPrompt", "ai:estimate");
 
         AgentSays(false, "boom");
         var runId = await Dispatch(refine);
@@ -172,7 +172,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     [Fact]
     public async Task ARefusedLabelWrite_Should_FailTheRunRatherThanClaimSuccess()
     {
-        var refine = await Automation("ai:refine", "RefineOrComment", "ai:estimate");
+        var refine = await Automation("ai:refine", "RepositoryPrompt", "ai:estimate");
         fixture.Vendor.FailNextLabelWrite = "The vendor rejected the label.";
 
         AgentSays(true, "A helpful comment.");
@@ -194,7 +194,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
         // canvas removes a human requirement by setting the upstream output label through the
         // ordinary update endpoint. Nothing here touches the canvas — it exercises what the
         // canvas does, which is the part that can break.
-        var upstream = await Automation("ai:refine", "RefineOrComment", null);
+        var upstream = await Automation("ai:refine", "RepositoryPrompt", null);
         await Automation("ai:estimate", "Estimate", null);
 
         // Before: the chain stops, and a Run of the upstream Automation hands nothing on.
@@ -209,11 +209,11 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
             {
                 triggerLabel = "ai:refine",
                 triggerState = (string?)null,
-                action = "RefineOrComment",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
-                rubricPath = (string?)null,
+                promptPath = (string?)null,
                 outputLabels = new[] { "ai:estimate" },
             }
         );
@@ -229,7 +229,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     [Fact]
     public async Task AnAutomationFeedingItself_Should_BeRefusedAtSave()
     {
-        var response = await CreateAutomation("ai:refine", "RefineOrComment", "ai:refine");
+        var response = await CreateAutomation("ai:refine", "RepositoryPrompt", "ai:refine");
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         (await response.Content.ReadAsStringAsync()).ShouldContain("hand work to itself");

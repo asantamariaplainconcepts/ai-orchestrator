@@ -1,12 +1,12 @@
 /** Mirrors the API's enum *names* — never ordinals. */
 export const AUTOMATION_ACTIONS = [
-  "ImplementToPullRequest",
-  "RefineOrComment",
-  "TransitionState",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
   "Estimate",
-  "GrillToReady",
-  "ProposeSpec",
-  "SyncChange",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
   "RepositoryPrompt",
 ] as const;
 
@@ -18,13 +18,13 @@ export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
  * existed for.
  */
 export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = [
-  "ImplementToPullRequest",
-  "RefineOrComment",
-  "TransitionState",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
   "Estimate",
-  "GrillToReady",
-  "ProposeSpec",
-  "SyncChange",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
+  "RepositoryPrompt",
   "RepositoryPrompt",
 ];
 
@@ -45,7 +45,7 @@ export interface Automation {
   /** What this Automation hands on when it succeeds (#115/#165); empty ends the chain here. */
   outputLabels: string[];
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
-  rubricPath: string | null;
+  promptPath: string | null;
 }
 
 export interface CreateAutomationRequest {
@@ -56,7 +56,7 @@ export interface CreateAutomationRequest {
   requiresApproval: boolean;
   timeoutMinutes: number | null;
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
-  rubricPath?: string | null;
+  promptPath?: string | null;
   /** Applied to the Story when a Run of this Automation succeeds; empty ends the chain here.
    *  Was one label until #165 made it a set, so one Automation can hand on to more than one place. */
   outputLabels?: string[];

@@ -51,7 +51,7 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
                 automation.Runtime.ToString(),
                 automation.RequiresApproval,
                 automation.Timeout,
-                automation.RubricPath,
+                automation.PromptPath,
                 automation.OutputLabels
             );
     }

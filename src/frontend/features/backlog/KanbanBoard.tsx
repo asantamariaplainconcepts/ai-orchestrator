@@ -273,7 +273,7 @@ export function KanbanBoard({
                             runtime: step.runtime,
                             requiresApproval: step.requiresApproval,
                             timeoutMinutes: step.timeoutMinutes,
-                            rubricPath: step.rubricPath ?? null,
+                            promptPath: step.promptPath ?? null,
                             outputLabels: [],
                           },
                         })

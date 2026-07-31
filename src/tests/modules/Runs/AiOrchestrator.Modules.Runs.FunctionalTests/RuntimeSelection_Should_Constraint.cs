@@ -61,7 +61,7 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
             {
                 triggerLabel = label,
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
                 runtime,
                 requiresApproval = false,
             }

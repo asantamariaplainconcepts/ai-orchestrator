@@ -83,6 +83,21 @@ conversation to become that producer. It did not — the conversation built ther
 never touches the gate. That was the right call for #166 (a conversation is not a Run, and the gate
 pauses Runs) and it is why this gap exists now rather than being closed by accident.
 
+## D5a — A Run's output link goes empty, and the surfaces already say so
+
+Found while removing the publish step, not predicted: **every runtime reports `OutputLink: null`.**
+The only thing that ever set a Run's output link was `workspace.Publish` returning the pull request
+URL — the ceremony this change removes. So after it, no Run has one.
+
+That reaches UC-024, which reads what the agent changed at the Run's linked change. A prompt can open
+a pull request; nothing tells the product its URL, so the product cannot show it.
+
+Left as it falls, and named here rather than patched. The surfaces were built to distinguish three
+absences — no pull request, a change touching nothing, a patch that cannot be shown — so "no pull
+request" is a sentence they already say honestly; what changes is that it becomes the usual answer
+rather than the edge. The alternative was scraping a URL out of the agent's log, which is a guess
+dressed as a fact, and the real fix is the agent reporting what it did — which belongs with grants.
+
 ## D6 — What is deliberately not built
 
 **The grants model.** Named in the issue as the follow-up, and it is the thing that makes "unbounded"
