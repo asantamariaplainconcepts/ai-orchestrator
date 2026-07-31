@@ -11,9 +11,43 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
 
     public DbSet<RunLogChunk> LogChunks => Set<RunLogChunk>();
 
+    public DbSet<Conversation> Conversations => Set<Conversation>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
+
+        // A conversation is not a Run (#166) and its tables say so: no story-uniqueness index, no
+        // state the cap counts, nothing that could make one occupy a slot by accident.
+        modelBuilder.Entity<Conversation>(conversation =>
+        {
+            conversation.ToTable("conversations");
+            conversation.HasKey(entity => entity.Id);
+            conversation.Property(entity => entity.VendorStoryId).HasMaxLength(200);
+
+            // Owned in the aggregate sense: messages are loaded and saved with the conversation and
+            // are never queried on their own, so the navigation is the only way in.
+            conversation
+                .HasMany(entity => entity.Messages)
+                .WithOne()
+                .HasForeignKey(message => message.ConversationId)
+                .OnDelete(DeleteBehavior.Cascade);
+            conversation.Navigation(entity => entity.Messages).AutoInclude();
+
+            conversation.HasIndex(entity => new { entity.ProjectId, entity.LastActivityAt });
+        });
+
+        modelBuilder.Entity<ConversationMessage>(message =>
+        {
+            message.ToTable("conversation_messages");
+            message.HasKey(entity => entity.Id);
+            message.Property(entity => entity.Role).HasConversion<string>().HasMaxLength(20);
+            message.Property(entity => entity.Body).HasMaxLength(65536).IsRequired();
+
+            // Explicit precision: a cost read back as a rounded double is a cost that stops adding
+            // up, and BR-011 already distinguishes unknown from zero.
+            message.Property(entity => entity.CostUsd).HasPrecision(18, 6);
+        });
 
         modelBuilder.Entity<Run>(run =>
         {
