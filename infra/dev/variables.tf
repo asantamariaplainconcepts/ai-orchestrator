@@ -110,3 +110,13 @@ variable "bootstrap_admins" {
   type        = string
   default     = ""
 }
+
+variable "session_image" {
+  description = <<-EOT
+    The conversation session's image (#166). A placeholder until the first deploy pushes a real tag,
+    exactly as the jobs use one: deploy.sh rolls the image, and pinning a tag here would make
+    Terraform and the deploy script disagree about which one is current.
+  EOT
+  type        = string
+  default     = "mcr.microsoft.com/k8se/quickstart:latest"
+}

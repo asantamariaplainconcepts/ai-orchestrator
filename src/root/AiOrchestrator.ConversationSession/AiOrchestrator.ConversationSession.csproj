@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <RootNamespace>AiOrchestrator.ConversationSession</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The seams and the runtimes, and nothing else: this process holds no database, no modules
+         and no queue. It answers one message with the project's code checked out beside it. -->
+    <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+  </ItemGroup>
+</Project>

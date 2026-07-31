@@ -33,6 +33,9 @@ PORTAL_URL="$(tf portal_url)"
 PORTAL_IMAGE="${REGISTRY}/portal:${TAG}"
 MIGRATION_IMAGE="${REGISTRY}/migrations:${TAG}"
 DISPATCH_IMAGE="${REGISTRY}/dispatch:${TAG}"
+# The conversation session (#166). Built and pushed like the others; the session pool is pointed
+# at it by Terraform rather than by this script, because a pool has no revision to roll.
+SESSION_IMAGE="${REGISTRY}/conversation-session:${TAG}"
 
 echo "Tag        : ${TAG}"
 echo "Registry   : ${REGISTRY}"
@@ -54,11 +57,15 @@ docker build --platform linux/amd64 \
 docker build --platform linux/amd64 \
   -f "${REPO_ROOT}/src/root/AiOrchestrator.DispatchWorker/Dockerfile" \
   -t "${DISPATCH_IMAGE}" "${REPO_ROOT}"
+docker build --platform linux/amd64 \
+  -f "${REPO_ROOT}/src/root/AiOrchestrator.ConversationSession/Dockerfile" \
+  -t "${SESSION_IMAGE}" "${REPO_ROOT}"
 
 echo "→ pushing"
 docker push "${PORTAL_IMAGE}"
 docker push "${MIGRATION_IMAGE}"
 docker push "${DISPATCH_IMAGE}"
+docker push "${SESSION_IMAGE}"
 
 echo "→ pointing the migration job at ${TAG}"
 az containerapp job update \

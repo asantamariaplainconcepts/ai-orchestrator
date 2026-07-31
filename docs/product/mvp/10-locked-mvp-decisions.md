@@ -307,3 +307,16 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   ds-connect's, whose ADR-0001 challenges with Bearer so protected calls fail as `401` and the SPA
   drives the interactive login. The handshake cookies remain at the library's defaults — that response
   genuinely arrives cross-site. Decided 2026-07-30 with #182.
+- **DEC-061 — A conversation's container stays warm while the conversation lives** *(revises
+  [ADR-0008](../../adr/0008-a-live-conversation-costs-a-pass-per-message.md)'s "nothing idles")*: a
+  portal conversation (#166) runs in an on-demand Container Apps **session**, one per conversation,
+  addressed by the conversation's id. It starts on the first message, keeps its cloned workspace, and
+  the platform reclaims it after ten minutes of inactivity. Rationale: ADR-0008 chose a pass per
+  message on the argument that nothing should idle between them — true of the *model*, but taken
+  literally about the *container* it means a cold start on every reply. Ten seconds per answer is the
+  difference between a conversation and a ticket queue, and the workspace would be re-cloned each
+  time. What is accepted is bounded idling, by the pool's own cooldown, with no ready instances held
+  in reserve — nobody talking costs nothing. What is preserved is the property the shape was chosen
+  for: one conversation is one container is one project's PAT, so the isolation boundary coincides
+  with the credential boundary (DEC-030) and the portal never holds a project credential. Decided
+  2026-07-31 with #166.

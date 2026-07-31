@@ -10,6 +10,12 @@ terraform {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
+    # For the one resource azurerm does not model: Container Apps session pools (#166). Verified
+    # against the provider's own schema, not its docs. When azurerm grows the resource, this goes.
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.0"
+    }
   }
 
   # Configured at init time from the bootstrap script's output, so no account name or key is

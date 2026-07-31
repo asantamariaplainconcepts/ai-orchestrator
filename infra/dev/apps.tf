@@ -126,6 +126,13 @@ resource "azurerm_container_app" "portal" {
         name  = "Auth__BootstrapAdmins"
         value = var.bootstrap_admins
       }
+      # Where a conversation's agent pass runs (#166). Presence is the switch, as everywhere else:
+      # without it the portal answers in process, which is correct on a machine one person owns and
+      # wrong here — the portal must not hold a project's credential (design D2).
+      env {
+        name  = "Conversations__SessionPoolEndpoint"
+        value = azapi_resource.conversation_sessions.output.properties.poolManagementEndpoint
+      }
     }
   }
 
