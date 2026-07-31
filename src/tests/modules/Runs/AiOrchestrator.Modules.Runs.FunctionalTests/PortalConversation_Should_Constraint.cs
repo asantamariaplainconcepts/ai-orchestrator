@@ -104,6 +104,44 @@ public class PortalConversation_Should_Constraint(RunsApiFixture fixture) : IAsy
     }
 
     [Fact]
+    public async Task AnOpenConversationOnAStory_Should_NotStopItsAutomations()
+    {
+        // The design's headline claim, and until now the one thing not tested: a conversation is not
+        // a Run, so it holds no lock on the Story and BR-001 is untouched. Asserting "no Run row
+        // exists" says the conversation created none; this says the Story is still workable, which is
+        // the property somebody would actually notice losing.
+        fixture.Vendor.Stories.Add(new VendorStory("77", "A busy story", "open", [], "Do it."));
+        (
+            await _client.PostAsync($"/api/projects/{_projectId}/backlog/refresh", null)
+        ).EnsureSuccessStatusCode();
+
+        var conversationId = await StartedConversation("77");
+        (await Say(conversationId, "What is going on with this?")).EnsureSuccessStatusCode();
+
+        var automation = await _client.PostAsJsonAsync(
+            $"/api/projects/{_projectId}/automations",
+            new
+            {
+                triggerLabel = "ai:refine",
+                triggerState = (string?)null,
+                action = "RefineOrComment",
+                runtime = "ClaudeCodeHeadless",
+                requiresApproval = false,
+            }
+        );
+        automation.EnsureSuccessStatusCode();
+        var automationId = (await automation.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
+
+        // The Story has an open conversation on it. A Run must still start.
+        var run = await _client.PostAsJsonAsync(
+            $"/api/projects/{_projectId}/runs",
+            new { vendorStoryId = "77", automationId }
+        );
+
+        run.StatusCode.ShouldBe(HttpStatusCode.Created, await run.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task AConversationAboutNothing_Should_BeAnOrdinaryCase()
     {
         // Not a degraded conversation: "what would you do here" is a question about a project, and
@@ -269,6 +307,8 @@ public class PortalConversation_Should_Constraint(RunsApiFixture fixture) : IAsy
     }
 
     sealed record ProjectResponse(Guid Id, string Name);
+
+    sealed record AutomationResponse(Guid Id);
 
     sealed record ConversationResponse(
         Guid Id,
