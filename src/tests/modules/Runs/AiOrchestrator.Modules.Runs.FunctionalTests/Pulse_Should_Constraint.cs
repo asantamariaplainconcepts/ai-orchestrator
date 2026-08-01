@@ -169,7 +169,7 @@ public class Pulse_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task AnUnusedAutomation_Should_AppearRatherThanBeOmitted()
     {
-        var unused = await CreateAutomation("ai:estimate", "Estimate");
+        var unused = await CreateAutomation("ai:estimate", "RepositoryPrompt");
 
         var pulse = await Pulse(_projectId);
 

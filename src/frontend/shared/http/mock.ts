@@ -29,7 +29,7 @@ const automations = [
   auto("ready-for-proposal", "RepositoryPrompt", false, null),
   auto("ai:implement", "RepositoryPrompt", true, null),
   auto("ai:refine", "RepositoryPrompt", false, null),
-  auto("ai:estimate", "Estimate", false, null),
+  auto("ai:estimate", "RepositoryPrompt", false, null),
   auto("ai:transition", "RepositoryPrompt", false, null),
 ];
 

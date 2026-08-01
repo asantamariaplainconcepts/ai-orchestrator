@@ -150,7 +150,12 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         // any more: the agent holds the credential in both phases, and containment is what the prompt
         // promises until grants land. What is still the product's to guarantee — and so what this
         // now asserts — is that the plan is stored and the work does not proceed unapproved.
-        fixture.Agent.Instructions.Single().Prompt.ShouldContain("Change nothing");
+        // "Change nothing" was the executor's own planning prompt, retired with the catalogue. What
+        // the orchestrator still owns is the framing: the phase is announced, and containment is the
+        // prompt's promise now (#162, design D4).
+        fixture
+            .Agent.Instructions.Single()
+            .Prompt.ShouldContain("planning phase: a human will review");
     }
 
     [Fact]

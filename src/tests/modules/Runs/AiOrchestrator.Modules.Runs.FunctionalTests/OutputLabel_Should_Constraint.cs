@@ -116,7 +116,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     {
         // The point of #115: this is RefineOrComment, not the grill, and it chains.
         var refine = await Automation("ai:refine", "RepositoryPrompt", "ai:estimate");
-        await Automation("ai:estimate", "Estimate", null);
+        await Automation("ai:estimate", "RepositoryPrompt", null);
 
         AgentSays(true, "A helpful comment.");
         var runId = await Dispatch(refine);
@@ -196,7 +196,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
         // ordinary update endpoint. Nothing here touches the canvas — it exercises what the
         // canvas does, which is the part that can break.
         var upstream = await Automation("ai:refine", "RepositoryPrompt", null);
-        await Automation("ai:estimate", "Estimate", null);
+        await Automation("ai:estimate", "RepositoryPrompt", null);
 
         // Before: the chain stops, and a Run of the upstream Automation hands nothing on.
         AgentSays(true, "A helpful comment.");

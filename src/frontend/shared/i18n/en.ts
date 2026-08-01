@@ -160,8 +160,6 @@ export const en = {
   "story.documents.openChange": "Open the change",
 
   // Automations — the locked vocabulary (Automation, Agent, Run) used exactly.
-  "automations.promptPath": "Readiness document",
-  "automations.promptPathPlaceholder": "docs/process/definition-of-ready.md",
   "automations.edit": "Edit",
   "automations.save": "Save changes",
   "automations.saving": "Saving…",
@@ -181,15 +179,6 @@ export const en = {
     "Only possible while no run has used it. Once one has, disable it instead \u2014 runs keep their automation for the audit trail.",
   "automations.delete.refused":
     "That automation has runs, so it cannot be deleted. Disable it instead: it stops triggering and its history stays intact.",
-  "automations.defaults": "Set up defaults",
-  "automations.defaults.hint":
-    "Creates this framework's four Automations and makes sure their trigger labels exist in the connected repository. Safe to press twice \u2014 nothing is duplicated.",
-  "automations.defaults.applying": "Setting up\u2026",
-  "automations.defaults.created": "created",
-  "automations.defaults.skipped": "already handled",
-  "automations.defaults.nothingNew": "Everything was already set up",
-  "automations.defaults.labels": "labels could not be ensured at the vendor",
-  "automations.defaults.failed": "Could not set up the defaults.",
   "automations.heading": "Automations",
   "automations.count.one": "Automation",
   "automations.count.other": "Automations",

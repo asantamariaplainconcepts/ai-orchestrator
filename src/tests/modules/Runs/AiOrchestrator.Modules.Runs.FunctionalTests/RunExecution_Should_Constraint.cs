@@ -130,7 +130,10 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         var instruction = fixture.Agent.Instructions.Single();
         instruction.Credentials.VendorAccessToken.ShouldBe("stub-token");
         instruction.Prompt.ShouldContain("#9");
-        instruction.Prompt.ShouldContain("Do not commit");
+        // The instruction is the repository's prompt plus the story (#162): the orchestrator's own
+        // "Do not commit" framing went with the publish step it existed to protect.
+        instruction.Prompt.ShouldContain("Do what the story asks.");
+        instruction.Prompt.ShouldContain("Story #9");
         // The requirement itself, not just the headline (#37's whole point).
         instruction.Prompt.ShouldContain("Build the thing properly.");
     }
@@ -208,21 +211,24 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
     [Fact]
     public async Task EachStage_Should_RefuseDistinctly()
     {
+        // Two stages left, and each still names itself (#162): the publish stage and its no-changes
+        // gate are gone — nothing is published, so an agent that changed nothing is an ordinary
+        // success whose meaning is the prompt's business, not a refusal.
+
         // Clone failure names the clone.
         fixture.Workspace.PrepareError = WorkspaceErrors.CloneFailed("auth failed");
         var cloneRun = await Dispatch();
         await Execute(cloneRun);
         (await Load(cloneRun)).FailureReason!.ShouldContain("Cloning");
 
-        // Publication failure names the publication; the no-changes gate names itself.
+        // A missing prompt names the resolved path (#150, unchanged by the removal).
         fixture.Workspace.Reset();
-        fixture.Workspace.PublishError = WorkspaceErrors.NoChanges();
-        var emptyRun = await Dispatch();
-        await Execute(emptyRun);
-        var empty = await Load(emptyRun);
-        empty.State.ShouldBe("Failed");
-        empty.FailureReason!.ShouldContain("no file changes");
-        empty.OutputLink.ShouldBeNull();
+        fixture.Vendor.Documents.Clear();
+        var promptless = await Dispatch();
+        await Execute(promptless);
+        var missing = await Load(promptless);
+        missing.State.ShouldBe("Failed");
+        missing.FailureReason!.ShouldContain("ai/prompts/story.md");
     }
 
     [Fact]

@@ -70,13 +70,9 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         // distinction this test exists to police: relocated is fine, unreachable is not.
         await page.GetByRole(AriaRole.Tab, new() { Name = "Automations" }).ClickAsync();
 
-        // The one-click set-up is a capability too, and an unreachable button is the exact
-        // failure this test exists for.
-        var setUpDefaults = page.GetByRole(AriaRole.Button, new() { Name = "Set up defaults" });
-        await setUpDefaults.WaitForAsync(new() { Timeout = 15_000 });
-        (await setUpDefaults.IsVisibleAsync()).ShouldBeTrue();
-        (await setUpDefaults.IsDisabledAsync()).ShouldBeFalse();
-
+        // The one-click defaults are gone WITH their capability (#162, DEC-062): the set was "one
+        // of each action", and there is one action now. This test policed a button whose absence
+        // would have been a regression; today its absence is the specification.
         await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" }).ClickAsync();
 
         var runtime = page.Locator("#runtime");
@@ -85,6 +81,12 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         var runtimes = await runtime.Locator("option").AllInnerTextsAsync();
         runtimes.ShouldContain("ClaudeCodeHeadless");
         runtimes.ShouldContain("OpenCode");
+
+        // One action, offered rather than hidden (ADR-0006 still applies to it), and the prompt
+        // field beside it required — an Automation that names no prompt could never run.
+        var action = page.Locator("#action");
+        (await action.Locator("option").AllInnerTextsAsync()).ShouldHaveSingleItem();
+        (await page.Locator("#prompt-path").GetAttributeAsync("required")).ShouldNotBeNull();
 
         // The inbox is a capability too (UC-026): its nav entry must exist and lead somewhere.
         var inboxNav = page.GetByRole(AriaRole.Link, new() { Name = "Inbox" });

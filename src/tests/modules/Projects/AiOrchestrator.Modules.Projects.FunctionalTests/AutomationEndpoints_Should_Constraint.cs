@@ -109,10 +109,10 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
         // Editing only the action leaves the trigger identical — refusing this as an overlap
         // would make every Automation uneditable after creation.
         (
-            await Update(id, "ai:implement", state: null, action: "Estimate")
+            await Update(id, "ai:implement", state: null, action: "RepositoryPrompt")
         ).EnsureSuccessStatusCode();
 
-        (await List()).Single().Action.ShouldBe("Estimate");
+        (await List()).Single().Action.ShouldBe("RepositoryPrompt");
     }
 
     [Fact]

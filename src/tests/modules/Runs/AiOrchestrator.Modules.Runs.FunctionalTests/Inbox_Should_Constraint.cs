@@ -119,22 +119,27 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         fixture.Agent.Result = new AgentResult(ok, reply, null, null);
 
     [Fact]
-    public async Task ThreeKindsOfWaiting_Should_ShareOneList()
+    public async Task TheKindsOfWaiting_Should_ShareOneList()
     {
+        // Two kinds now, not three (#162, design D5): the grill's question path was the only
+        // producer of "input", and it left with the catalogue. The category still exists in the
+        // vocabulary and nothing enters it — kept dormant deliberately, because changing Run states
+        // was out of scope. This test asserts the two a Run can still reach.
+
         // A failure that nobody has re-triggered.
         AgentSays(false, "boom");
         var failed = await Run("1", _refineId);
         await Execute(failed);
 
-        // A question awaiting its answer.
-        AgentSays(true, "What is out of scope?");
-        var asking = await Run("2", _grillId);
-        await Execute(asking);
+        // A plan awaiting its human.
+        AgentSays(true, "The plan.");
+        var planning = await Run("2", _approvalId);
+        await Execute(planning);
 
         var inbox = await Inbox();
 
         inbox.Count.ShouldBe(2);
-        inbox.Select(entry => entry.WaitingFor).ShouldBe(["input", "failure"]);
+        inbox.Select(entry => entry.WaitingFor).ShouldBe(["approval", "failure"]);
         inbox.Single(entry => entry.WaitingFor == "failure").StoryTitle.ShouldBe("First story");
         inbox.ShouldAllBe(entry => entry.ProjectId == _projectId);
     }
@@ -154,19 +159,17 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task Resolution_Should_RemoveTheEntry()
     {
-        AgentSays(true, "Which actor?");
-        var asking = await Run("1", _grillId);
-        await Execute(asking);
+        // The producible wait is the approval now (#162): the human acting on the entry is what
+        // clears it, which is the property this test has always been about — the actor changed,
+        // the rule did not.
+        AgentSays(true, "The plan.");
+        var planning = await Run("1", _approvalId);
+        await Execute(planning);
         (await Inbox()).Count.ShouldBe(1);
 
-        // The human answers; the resume checker requeues — the wait is over.
-        fixture.Vendor.StoryComments.Add(
-            ("1", new StoryComment("The admin.", DateTimeOffset.UtcNow.AddSeconds(5)))
-        );
-        await using (var scope = fixture.Services.CreateAsyncScope())
-        {
-            await ResumeChecker.CheckOnce(scope.ServiceProvider, CancellationToken.None);
-        }
+        (
+            await _client.PostAsync($"/api/projects/{_projectId}/runs/{planning}/reject", null)
+        ).EnsureSuccessStatusCode();
 
         (await Inbox()).ShouldBeEmpty();
     }
@@ -191,13 +194,13 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task ACancelledWait_Should_LeaveTheInbox()
     {
-        AgentSays(true, "Which actor?");
-        var asking = await Run("1", _grillId);
-        await Execute(asking);
+        AgentSays(true, "The plan.");
+        var waiting = await Run("1", _approvalId);
+        await Execute(waiting);
         (await Inbox()).Count.ShouldBe(1);
 
         (
-            await _client.PostAsync($"/api/projects/{_projectId}/runs/{asking}/cancel", null)
+            await _client.PostAsync($"/api/projects/{_projectId}/runs/{waiting}/cancel", null)
         ).EnsureSuccessStatusCode();
 
         // Cancelled is terminal-by-human-choice: it waits on nobody and must not linger as a

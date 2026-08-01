@@ -123,14 +123,13 @@ public class RepositoryPrompt_Should_Constraint(RunsApiFixture fixture) : IAsync
         // Verbatim: the product carries no prompt of its own for this action.
         fixture.Agent.Instructions.Single().Prompt.ShouldContain(Body);
 
-        // One comment, and only a comment. That bound is the whole reason a prompt this product did
         // No comment is asserted any more (#162): the orchestrator posts nothing, and the prompt
-        // either did or did not. What must hold is that the prompt reached the agent with the
-        // project's repository checked out beside it.
+        // either did or did not. What must hold instead is that the prompt reached the agent with
+        // the project's repository checked out beside it — the old test asserted the exact
+        // opposite (no workspace), because the old RepositoryPrompt was a one-comment action.
         fixture.Vendor.Comments.ShouldBeEmpty();
-        fixture.Workspace.Prepared.ShouldBeTrue();
         fixture.Vendor.Stories.Single().State.ShouldBe("open");
-        fixture.Workspace.Prepared.ShouldBeFalse();
+        fixture.Workspace.Prepared.ShouldBeTrue();
     }
 
     [Fact]

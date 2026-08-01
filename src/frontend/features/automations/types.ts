@@ -1,12 +1,7 @@
 /** Mirrors the API's enum *names* — never ordinals. */
 export const AUTOMATION_ACTIONS = [
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "Estimate",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
+  // One action since #162: an Automation runs the repository's own prompt, and what it does is the
+  // prompt's business. The list survives as a list because grants will widen what a row carries.
   "RepositoryPrompt",
 ] as const;
 
@@ -17,16 +12,7 @@ export type AutomationAction = (typeof AUTOMATION_ACTIONS)[number];
  * the catalogue ahead of its implementation can be marked again, which is the situation this
  * existed for.
  */
-export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = [
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "Estimate",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-  "RepositoryPrompt",
-];
+export const EXECUTABLE_ACTIONS: readonly AutomationAction[] = ["RepositoryPrompt"];
 
 export const AGENT_RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;
 
@@ -60,12 +46,4 @@ export interface CreateAutomationRequest {
   /** Applied to the Story when a Run of this Automation succeeds; empty ends the chain here.
    *  Was one label until #165 made it a set, so one Automation can hand on to more than one place. */
   outputLabels?: string[];
-}
-
-/** What applying the framework defaults did — partial success is the normal shape (design D2). */
-export interface AutomationDefaultsResult {
-  created: Automation[];
-  skipped: { triggerLabel: string; reason: string }[];
-  /** Null when every trigger label is present at the vendor; otherwise why it is not. */
-  labelNote: string | null;
 }
