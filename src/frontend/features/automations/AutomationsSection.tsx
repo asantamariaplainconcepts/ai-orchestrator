@@ -13,7 +13,6 @@ import { ApiError } from "@/shared/http/client";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, Automation, AutomationAction } from "./types";
 import {
-  useApplyAutomationDefaults,
   useAutomations,
   useCreateAutomation,
   useDeleteAutomation,
@@ -31,7 +30,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // Enabling can be refused by BR-003's re-check; disabling never is (design D2).
   const setEnabled = useSetAutomationEnabled(projectId);
   const create = useCreateAutomation(projectId);
-  const defaults = useApplyAutomationDefaults(projectId);
   const remove = useDeleteAutomation(projectId);
   const update = useUpdateAutomation(projectId);
 
@@ -42,23 +40,16 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [editing, setEditing] = useState<Automation | null>(null);
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
-  const [action, setAction] = useState<AutomationAction>("ImplementToPullRequest");
+  const [action, setAction] = useState<AutomationAction>("RepositoryPrompt");
   const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
   const [requiresApproval, setRequiresApproval] = useState(false);
-  const [rubricPath, setRubricPath] = useState("");
+  const [promptPath, setPromptPath] = useState("");
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
   // because they are two things: what is chosen, and what is half-written.
   const [outputLabels, setOutputLabels] = useState<string[]>([]);
   const [outputDraft, setOutputDraft] = useState("");
   // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
-
-  // Two actions read a document the project owns, and they read a different one: the grill its
-  // readiness bar, the repository prompt its instruction. One field, relabelled — a second input
-  // would suggest an Automation could carry both, and it cannot.
-  const isGrill = action === "GrillToReady";
-  const isRepositoryPrompt = action === "RepositoryPrompt";
-  const namesADocument = isGrill || isRepositoryPrompt;
 
   /** The chosen set plus whatever is still in the input, deduped the way the vendor compares. */
   function withDraft() {
@@ -97,10 +88,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   function reset() {
     setTriggerLabel("");
     setTriggerState("");
-    setAction("ImplementToPullRequest");
+    setAction("RepositoryPrompt");
     setRuntime("ClaudeCodeHeadless");
     setRequiresApproval(false);
-    setRubricPath("");
+    setPromptPath("");
     setOutputLabels([]);
     setOutputDraft("");
     setTimeoutMinutes("");
@@ -119,7 +110,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setAction(automation.action);
     setRuntime(automation.runtime);
     setRequiresApproval(automation.requiresApproval);
-    setRubricPath(automation.rubricPath ?? "");
+    setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
     setOutputDraft("");
     setTimeoutMinutes(String(automation.timeoutMinutes));
@@ -144,9 +135,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       requiresApproval,
       // Blank is the default, not zero. Sending 0 would be a timeout of no time at all.
       timeoutMinutes: timeoutMinutes.trim() === "" ? null : Number(timeoutMinutes),
-      // Cleared when the action reads no document: a value no visible control can reach is one the
-      // Admin cannot manage, and a replace would carry it forever unseen (design D3).
-      rubricPath: namesADocument && rubricPath.trim() ? rubricPath.trim() : null,
+      // Required since #162: with one action, an Automation that names no prompt could never run,
+      // and the server refuses it at save. Trimmed only — the empty case is the server's refusal to
+      // give, not this form's to silently swallow.
+      promptPath: promptPath.trim() ? promptPath.trim() : null,
       // The half-typed value counts: an Admin who typed a label and pressed Save meant it, and
       // silently dropping it is the kind of loss a form should never inflict.
       outputLabels: withDraft(),
@@ -254,15 +246,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => defaults.mutate()}
-            disabled={defaults.isPending}
-            title={t("automations.defaults.hint")}
-          >
-            {defaults.isPending ? t("automations.defaults.applying") : t("automations.defaults")}
-          </Button>
           <Button type="button" onClick={() => (creating ? closeForm() : setCreating(true))}>
             {creating ? t("automations.new.close") : t("automations.new")}
           </Button>
@@ -282,27 +265,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           {t("automations.enableFailed")}
         </p>
       )}
-      {defaults.isError && (
-        <p className="text-sm text-destructive" role="alert">
-          {t("automations.defaults.failed")}
-        </p>
-      )}
-      {/* Partial success is the normal outcome, so the result is reported rather than reduced
-          to success or failure (design D2). */}
-      {defaults.data ? (
-        <p className="text-xs text-muted-foreground">
-          {defaults.data.created.length > 0
-            ? `${defaults.data.created.length} ${t("automations.defaults.created")}`
-            : t("automations.defaults.nothingNew")}
-          {defaults.data.skipped.length > 0
-            ? ` · ${defaults.data.skipped.length} ${t("automations.defaults.skipped")}`
-            : ""}
-          {/* A label that never reached the vendor is not selectable there, which is the whole
-              point of the action — so it is said, not implied. */}
-          {defaults.data.labelNote ? ` · ${t("automations.defaults.labels")}` : ""}
-        </p>
-      ) : null}
-
       {creating && (
         <Card>
           <CardContent>
@@ -357,34 +319,20 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                     ))}
                   </NativeSelect>
                 </div>
-                {/* Only the grill converses with a rubric; the field would be noise elsewhere.
-                    The output label is every action's, since #115 — chaining is a property of
-                    the model now, not of the grill. */}
-                {namesADocument ? (
-                  <div className="flex flex-col gap-2">
-                    <Label htmlFor="rubric-path">
-                      {isRepositoryPrompt
-                        ? t("automations.promptFile")
-                        : t("automations.rubricPath")}
-                    </Label>
-                    <Input
-                      id="rubric-path"
-                      value={rubricPath}
-                      onChange={(event) => setRubricPath(event.target.value)}
-                      placeholder={
-                        isRepositoryPrompt
-                          ? t("automations.promptFilePlaceholder")
-                          : t("automations.rubricPathPlaceholder")
-                      }
-                    />
-                    {/* A name, not a path: the directory is the project's, on the Settings tab. */}
-                    {isRepositoryPrompt ? (
-                      <p className="text-xs text-muted-foreground">
-                        {t("automations.promptFileHint")}
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
+                {/* The prompt is the Automation now (#162): what it does is this file's
+                    business, so the field is required and always visible. A name, not a path —
+                    the directory is the project's, on the Settings tab. */}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="prompt-path">{t("automations.promptFile")}</Label>
+                  <Input
+                    id="prompt-path"
+                    required
+                    value={promptPath}
+                    onChange={(event) => setPromptPath(event.target.value)}
+                    placeholder={t("automations.promptFilePlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("automations.promptFileHint")}</p>
+                </div>
                 {/* Visible in both modes (design D2): an edit resends this value, and a value
                     resent on somebody's behalf is one they are entitled to see. Blank is BR-005's
                     default, which is also why create never needed it until now. */}

@@ -168,34 +168,20 @@ rather than by two code paths promising to agree, and every refusal answers alik
 unauthenticated caller learns nothing about which repositories exist. Polling continues, so a
 missed webhook costs latency and never correctness.
 
-**A Run can wait for a human and resume (#78).** The shape is the approval gate's, generalised:
-an agent pass that ends with questions posts them on the Story signed with a run marker
-(`<!-- aio:run:<id> -->`), the Run enters `AwaitingInput` — active for BR-001, untimed per
-BR-006 — and the container exits. Nothing idles. A checker polls only the Runs that are waiting;
-a comment newer than the questions and not carrying a marker sends the Run back to `Queued`, and
-ordinary dispatch re-runs it with the re-read Story plus the whole conversation. The marker
-rather than the author distinguishes question from answer, because DEC-030's single project PAT
-can make them the same vendor account. Comments are never mirrored — they are read live at
-resume time (BR-008).
+**A Run could wait for a human and resume (#78) — the machinery stands, dormant (#162).** The
+shape was the approval gate's, generalised: an agent pass ending with questions posted them on the
+Story signed with a run marker, the Run entered `AwaitingInput`, and a checker resumed it when an
+unsigned newer comment arrived. The grill's question path was that state's only producer, and it
+left with the catalogue — so today nothing reaches `AwaitingInput`, nothing enters the inbox's
+waiting-for-input category, and `ConversationGate`, `ResumeChecker` and `RunMarker` have no caller.
+They are kept rather than removed because #162 put Run states out of scope, and this paragraph is
+the stated dormancy rather than a grep surprise. A prompt can ask a question by commenting; it
+cannot pause its own Run.
 
-**Propose closes the chain (#80, UC-025).** A ready Story becomes a documentation PR through
-the same workspace pipeline implement uses — different prompt, different PR framing, no new
-publishing machinery. Its two refusals run before any workspace exists: a bodyless Story is
-"nothing to propose from", and a Story with a linked change is named rather than duplicated. The
-full loop is three ordinary Automations wired by labels alone, and **the one-click defaults seed
-exactly that pipeline**: `ai:grill` marks a Story `ready-for-proposal`, which is the seeded
-propose Automation's trigger, and the chain stops there so a human reads the proposal before
-labelling `ai:implement`. Because BR-003 makes a second press additive, the same button also
-carries a project seeded from an older catalogue forward to the current one.
-
-**The grill action is its first consumer (#79, UC-024).** Each pass reads the project's own
-readiness document live from the repository (default `docs/process/definition-of-ready.md`,
-per-Automation override), evaluates the Story plus the whole conversation, and either asks the
-specific unmet criteria — entering the wait above — or applies a configurable ready label and a
-verdict comment. The verdict is a first-line contract like Estimate's number: `READY` or the
-questions verbatim, so a rambling model degrades into questions a human reads, never into a wrong
-state. The ready label rides UC-008's ordinary write path, which is what makes grill→propose
-chaining plain matching rather than an orchestrator.
+The retired ceremonies — the grill's readiness interrogation, propose's documentation PR, the
+one-click defaults that seeded the pipeline — are all realisable as prompts, which is the point of
+DEC-062: they were this product doing an agent's job, and the sibling ds-connect repository runs
+the same workflow entirely from prompt files today.
 
 ## Dispatch
 
@@ -324,21 +310,22 @@ and the values live exactly as long as the child process does.
 succeeded. The result-JSON shape is verified by exercising, and the parser is defensive so a
 shape surprise degrades to honesty, not to failed Runs.
 
-**Every catalogue action executes.** The executor dispatches on the Automation's action:
-implement-to-PR clones and publishes; refine-or-comment posts the Agent's answer as a Story
-comment; transition-state writes the state it names (the vendor's vocabulary is finite, and
-anything outside it is refused, not guessed); estimate writes an `estimate:<n>` label plus the
-reasoning as a comment, replacing any previous estimate by reading the **vendor's** labels
-rather than the Mirror's — the Mirror is a poll behind, and replacing against it would leave
-two estimates on a Story. Only implement-to-PR prepares a workspace; the other three touch no
-code, which is why they are fast.
+**The catalogue is one action, and the prompt decides what happens (#162, DEC-062).** An
+Automation runs the prompt its repository names: the executor clones the project's repository with
+the project PAT, resolves the prompt from the prompts directory read live (#150 — a missing file
+fails naming the **resolved** path), hands the agent the prompt plus the story, and records what
+came back. **Nothing is published afterwards** — no PR opened, no comment posted, no state written,
+no estimate parsed. The agent held the same credential and did those itself, or they did not
+happen. The single carve-out is the workflow's own wiring: output labels are still applied on
+success, because that is machinery like matching, not action ceremony.
 
-**ImplementToPullRequest is real, and the ceremony is code.** `ICodeWorkspace` clones on a
-run-scoped branch, and after the Agent implements (and only implements — the prompt forbids it
-the ceremony), commits, pushes and opens the PR whose URL lands on the Run and in the Runs
-table's Output column. An empty change set fails the Run honestly instead of opening an empty
-PR; clone, agent, push and PR failures each carry their own reason. Other catalogue actions
-fail stating they are not executable yet.
+Two promises degraded with the ceremonies, and the decision says so rather than the code
+pretending: "a plan phase publishes nothing" and "a cancelled Run produces no PR" are prompt-level
+promises until the grants model lands. The approval gate still routes two phases and still refuses
+to run phase two unapproved — it decides whether a human sees the plan, and no longer guarantees
+the work has not already happened. The grill's conversational wait is dormant: nothing reaches
+`AwaitingInput`, and its machinery is kept rather than removed because Run states were out of
+scope. No Run carries an output link — only the retired publish step ever set one.
 
 **Terminal states exist now.** Queued → Executing at claim; Succeeded/Failed with timestamps
 at the end — and a crash mid-execution still ends the Run, because nothing redelivers

@@ -165,103 +165,6 @@ never their sum and never the interval a human spent deciding (BR-006).
 - **WHEN** the execution phase runs after approval
 - **THEN** the instruction handed to the runtime contains the approved Plan
 
-### Requirement: every catalogue action executes
-
-Run execution SHALL dispatch on the Automation's action, and all four of DEC-026's actions SHALL
-execute: implement-to-pull-request (unchanged), refine-or-comment (the Agent's answer posted as
-a Story comment), transition-state (the Agent's proposed state written through the seam), and
-estimate (an `estimate:<n>` label replacing any prior one, plus the reasoning as a comment).
-Only implement-to-pull-request SHALL prepare a workspace — the others touch no code. An
-estimate whose answer carries no number, and a transition whose state the vendor rejects, SHALL
-fail the Run with that reason rather than guessing.
-
-#### Scenario: the Agent comments
-
-- **WHEN** a refine-or-comment Run executes
-- **THEN** the Agent's answer is a comment on the Story and the Run succeeds
-
-#### Scenario: the Agent transitions
-
-- **WHEN** a transition-state Run executes and the Agent names an acceptable state
-- **THEN** the Story's state changes and the Run succeeds
-
-#### Scenario: the Agent estimates
-
-- **WHEN** an estimate Run executes
-- **THEN** the Story carries exactly one `estimate:<n>` label and a comment with the reasoning
-
-#### Scenario: an unusable answer fails honestly
-
-- **WHEN** an estimate answer carries no number, or a transition names a state the vendor
-  rejects
-- **THEN** the Run fails with that reason and the Story is unchanged
-
-#### Scenario: only the PR action clones
-
-- **WHEN** any action other than implement-to-pull-request executes
-- **THEN** no workspace is prepared and nothing is published
-
-### Requirement: the grill action interrogates a Story to its project's readiness bar
-
-A `GrillToReady` Run SHALL evaluate the Story's current body and its conversation so far against
-a readiness document read live from the connected repository. When criteria are unmet, the pass
-SHALL end by asking — the specific unmet criteria, posted through the conversational wait — and
-questions SHALL NOT repeat what the conversation has already settled. When the bar is met, the
-Run SHALL apply the configured ready label through the ordinary label write and post a verdict
-comment naming the criteria, then succeed. A missing readiness document SHALL fail the Run naming
-the configured path, before any comment or label is written.
-
-#### Scenario: gaps become questions
-
-- **WHEN** a grilled Story is missing criteria the rubric demands
-- **THEN** the Run's comment names them specifically and the Run waits for input
-
-#### Scenario: answers close the gaps
-
-- **WHEN** the resumed pass finds the conversation satisfies the rubric
-- **THEN** the ready label is applied, the verdict comment names the criteria, and the Run
-  succeeds
-
-#### Scenario: already ready
-
-- **WHEN** a Story that meets the bar is grilled
-- **THEN** the first pass marks it ready with no questions asked
-
-#### Scenario: no rubric, no grill
-
-- **WHEN** the configured rubric path does not exist in the repository
-- **THEN** the Run fails naming that path, and the Story is untouched
-
-#### Scenario: the chain is ordinary matching
-
-- **WHEN** the ready label is another enabled Automation's trigger
-- **THEN** that Automation triggers through reconciliation and matching, with no dedicated
-  chaining code
-
-### Requirement: the propose action turns a ready Story into a documentation PR
-
-A `ProposeSpec` Run SHALL produce a pull request containing only documentation — the proposal
-for the Story — through the same publishing pipeline as implementation, and record it as the
-Run's output. It SHALL follow the repository's own declared conventions for such documents,
-defaulting to a proposals directory. A Story with no body SHALL fail before any workspace is
-prepared, stating there is nothing to propose from. A Story whose linked change already exists
-SHALL fail naming that change rather than opening a second.
-
-#### Scenario: a ready story becomes a proposal PR
-
-- **WHEN** a propose Run executes against a Story with a body
-- **THEN** a pull request with the proposal exists, linked as the Run's output
-
-#### Scenario: nothing to propose from
-
-- **WHEN** the Story has no body
-- **THEN** the Run fails saying so, and no workspace was prepared
-
-#### Scenario: one open change per Story
-
-- **WHEN** the Story already has a linked change
-- **THEN** the Run fails naming it, and no second pull request exists
-
 ### Requirement: a Run's output is observable while it executes
 
 Agent output SHALL be persisted incrementally while a Run executes, and readable through the
@@ -419,4 +322,45 @@ Usage, cost and streamed output SHALL behave as on any other Run.
   not configure
 - **THEN** nothing about the Run's surface changes: one comment, the Automation's runtime, the
   Automation's timeout
+
+### Requirement: an Automation runs the repository's prompt, and the orchestrator writes nothing on its behalf
+
+An Automation SHALL name exactly one action: run the repository's prompt. When a Run executes, the
+workspace SHALL be cloned with the project's credential, the prompt SHALL resolve from the project's
+prompts directory read live, and the agent SHALL run holding both the project credential and the AI
+credential.
+
+The orchestrator SHALL perform **no vendor or repository write of its own** afterwards. Whether a
+pull request was opened, a comment written, a state transitioned or an estimate recorded is whatever
+the prompt did — the orchestrator SHALL NOT do any of it on the agent's behalf, and SHALL NOT parse
+the agent's output looking for something to publish.
+
+Success and failure SHALL come from the agent's own result, the log SHALL stream as on any Run, and
+usage SHALL stay honest — unknown remains unknown (BR-011).
+
+The single exception is the workflow's own wiring: on success the orchestrator SHALL still apply the
+Automation's output labels (#115/#116). That is machinery, true of every Automation whatever its
+prompt says, rather than one action's ceremony.
+
+#### Scenario: the prompt decides what happens
+
+- **WHEN** a Run of an Automation executes
+- **THEN** the agent runs against a cloned workspace with the project's credential, and no vendor
+  write happens except what the agent itself performed
+
+#### Scenario: nothing is published afterwards
+
+- **WHEN** an agent finishes having produced file changes
+- **THEN** the orchestrator opens no pull request and writes no comment — if the prompt did not
+  publish, nothing was published
+
+#### Scenario: the hand-off still happens
+
+- **WHEN** a Run succeeds and its Automation names output labels
+- **THEN** the orchestrator applies them, as it does for every Automation
+
+#### Scenario: an unknown action is refused
+
+- **WHEN** an Automation is saved naming any action other than the repository prompt
+- **THEN** it is refused with the unknown-action refusal
 

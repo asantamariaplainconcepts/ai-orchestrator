@@ -5,9 +5,18 @@ TBD - created by archiving change automation-configuration. Update Purpose after
 ## Requirements
 ### Requirement: an Admin configures what a trigger label makes an Agent do
 
-An Admin SHALL configure, per Project, which trigger label starts which action, on which runtime,
-with which timeout and whether the plan requires approval. Every field SHALL be bounded, and the
-refusal for an unbounded or unparseable value SHALL name the field.
+An Admin SHALL configure, per Project, which trigger label starts a Run, on which runtime, with which
+timeout and whether the plan requires approval. Every field SHALL be bounded, and the refusal for an
+unbounded or unparseable value SHALL name the field.
+
+**The action is one and only one: run the repository's prompt (#162).** Any other action SHALL be
+refused with the ordinary unknown-action refusal. What an Automation *does* is decided by the prompt
+file in the project's repository, read live at Run time, and not by anything chosen here.
+
+**Naming that prompt SHALL be required.** With one action, an Automation that names no prompt can
+never run, and a configurable thing that silently never executes is the trap this spec already
+forbids. The refusal SHALL land where the Admin is looking — at save — rather than at the first Run,
+in front of somebody who did not configure it.
 
 The output labels input SHALL be a picker that also accepts a freely typed value. It SHALL suggest
 the trigger labels of the project's **other enabled** Automations, because wiring the next step of a
@@ -25,9 +34,9 @@ is saved, so a caller that does not use the portal is refused identically.
 
 #### Scenario: an action with no implementation yet
 
-- **WHEN** an action from the catalogue has no executing Agent yet
-- **THEN** it remains selectable and the interface says it cannot run yet — a configurable
-  action that silently never executes is a trap
+- **WHEN** an action is offered that no Agent can execute
+- **THEN** it is not offered at all — the catalogue is one action, and a selectable action that
+  cannot run has no way to exist
 
 #### Scenario: the form offers what is wirable
 
@@ -43,6 +52,16 @@ is saved, so a caller that does not use the portal is refused identically.
 
 - **WHEN** an Admin types a label that matches no trigger
 - **THEN** it is accepted and applied on success like any other
+
+#### Scenario: an Automation must name its prompt
+
+- **WHEN** an Automation is saved naming no prompt
+- **THEN** it is refused, because with one action it could never run
+
+#### Scenario: the vocabulary is one word
+
+- **WHEN** an Automation is saved naming any of the retired actions
+- **THEN** it is refused, because they are not actions any more
 
 ### Requirement: overlapping triggers are rejected when saved
 
@@ -192,103 +211,6 @@ An edit SHALL NOT change whether the Automation is enabled.
 
 - **WHEN** a save is refused for overlap or for triggering itself
 - **THEN** the reason the API gave is what the form shows
-
-### Requirement: a project can be given the framework's default Automations in one action
-
-An Admin SHALL be able to apply a default set of Automations to a project in a single action. The
-set SHALL be defined in code and SHALL cover **every** action in the catalogue, each with a
-trigger label, a runtime, and an approval setting. Where two defaults compose — one produces a
-label another triggers on — the set SHALL wire them, so the workflow they describe works without
-further configuration. Applying it SHALL be safe to repeat: the action SHALL create only what is
-absent and SHALL report what already existed, separately from what it created, which SHALL also
-make a later, larger set applicable to a project seeded from an earlier one. A trigger that
-overlaps an existing Automation SHALL be skipped rather than failing the whole operation, and the
-remaining defaults SHALL still be created.
-
-A default whose action is irreversible SHALL require approval (DEC-040). Opening a pull request
-and closing a change by merging are the two the catalogue holds today; every other default SHALL
-run unattended, so the gate marks what cannot be undone rather than becoming a habit.
-
-#### Scenario: an unconfigured project
-
-- **WHEN** an Admin applies the defaults to a project with no Automations
-- **THEN** one Automation exists per catalogue action, and the response reports them as created
-
-#### Scenario: applied a second time
-
-- **WHEN** an Admin applies the defaults again
-- **THEN** nothing is duplicated, the response reports every default as already present, and the
-  operation succeeds
-
-#### Scenario: a project seeded before the set grew
-
-- **WHEN** the defaults are applied to a project holding an earlier, smaller set
-- **THEN** only the additions are created and the rest are reported as already handled
-
-#### Scenario: the seeded workflow chains
-
-- **WHEN** a seeded Automation applies a label another seeded Automation triggers on
-- **THEN** that Automation triggers through ordinary matching, with no configuration by the Admin
-
-#### Scenario: one trigger is already taken
-
-- **WHEN** a default's trigger label is already used by an Automation with a different action
-- **THEN** that one is reported as skipped, the others are created, and the existing Automation
-  is left exactly as it was
-
-#### Scenario: only the irreversible defaults ask
-
-- **WHEN** an Admin inspects the seeded set
-- **THEN** exactly the default that opens a pull request and the default that closes a change
-  require approval, and every other default does not
-
-### Requirement: the default trigger labels are ensured in the connected backlog
-
-Applying the defaults SHALL ensure each trigger label exists in the project's connected
-repository, so a Member can choose it in the vendor's own interface without any Story having been
-labelled first. Ensuring labels SHALL NOT be a precondition for creating the Automations: a
-vendor failure SHALL be reported naming the labels affected, while the Automations remain
-created. A project with no Connector SHALL still receive its Automations, and the response SHALL
-say that no labels could be ensured.
-
-#### Scenario: labels become selectable at the vendor
-
-- **WHEN** the defaults are applied to a project connected to a repository with none of them
-- **THEN** each trigger label exists in that repository, without any Story having been modified
-
-#### Scenario: the vendor refuses
-
-- **WHEN** the vendor rejects a label
-- **THEN** the Automations are still created, the failure names the label, and the Story mirror
-  is unchanged
-
-#### Scenario: no Connector
-
-- **WHEN** the defaults are applied to a project with no Connector
-- **THEN** the Automations are created and the response states that labels could not be ensured
-
-### Requirement: grill Automations carry their rubric path and ready label
-
-An Automation whose action is the grill SHALL carry an optional rubric path, defaulting in code
-to the framework's convention (`docs/process/definition-of-ready.md`). The label the grill applies
-when the bar is met SHALL be the Automation's output label, defaulting in code to
-`ready-for-proposal` for the grill action only. The portal SHALL offer the rubric path only for
-the grill action, and the output label for every action.
-
-#### Scenario: defaults apply when unset
-
-- **WHEN** a grill Automation is created without either setting
-- **THEN** execution uses the framework defaults
-
-#### Scenario: the settings are the Admin's
-
-- **WHEN** a rubric path or output label is set
-- **THEN** execution uses exactly those values
-
-#### Scenario: a grill configured before the field widened
-
-- **WHEN** a grill Automation configured with a ready label is read after the change
-- **THEN** that value is its output label and its behaviour is unchanged
 
 ### Requirement: an Automation that no Run has used can be deleted
 

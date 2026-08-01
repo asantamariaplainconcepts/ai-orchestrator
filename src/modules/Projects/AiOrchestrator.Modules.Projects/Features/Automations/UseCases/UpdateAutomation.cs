@@ -43,7 +43,7 @@ sealed class UpdateAutomation : IUseCase
                             request.Runtime,
                             request.RequiresApproval,
                             request.TimeoutMinutes,
-                            request.RubricPath,
+                            request.PromptPath,
                             request.OutputLabels
                         ),
                         cancellationToken
@@ -105,7 +105,7 @@ sealed class UpdateAutomation : IUseCase
         string Runtime,
         bool RequiresApproval,
         int? TimeoutMinutes,
-        string? RubricPath = null,
+        string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
@@ -123,7 +123,14 @@ sealed class UpdateAutomation : IUseCase
             RuleFor(command => command.TriggerState).MaximumLength(100);
             // The length bounds were on create but not here, so an edit could store a value the
             // column refuses. Same bounds, same place, both directions.
-            RuleFor(command => command.RubricPath).MaximumLength(300);
+            // Required since #162. With one action, an Automation that names no prompt can never
+            // run — and the spec already forbids a configurable thing that silently never executes.
+            // Refused at save, where the Admin is looking, rather than at the first Run in front of
+            // somebody who did not configure it.
+            RuleFor(command => command.PromptPath)
+                .NotEmpty()
+                .WithMessage("An Automation must name the prompt it runs.")
+                .MaximumLength(300);
             // Each member bounded exactly as the single label was, and the collection bounded too:
             // a set is a field a caller controls the size of.
             RuleForEach(command => command.OutputLabels!)
@@ -214,7 +221,7 @@ sealed class UpdateAutomation : IUseCase
                 command.TimeoutMinutes is { } minutes
                     ? TimeSpan.FromMinutes(minutes)
                     : CreateAutomation.DefaultTimeout,
-                string.IsNullOrWhiteSpace(command.RubricPath) ? null : command.RubricPath,
+                string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
                 command.OutputLabels is null ? [] : CreateAutomation.Clean(command.OutputLabels)
             );
 

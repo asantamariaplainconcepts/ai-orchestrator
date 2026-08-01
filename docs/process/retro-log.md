@@ -2163,3 +2163,35 @@ times in the project this framework came from.
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none new. ADR-0010's rule (a habitat fact is asked, never inferred) did its job twice here
   and is cited above rather than restated.
+
+## 2026-08-01 — prompt-only-catalogue (#162)
+
+- **Worked:** reading the executor before trusting my own proposal. The first draft removed the
+  rubric path "with the grill" — and #150 had quietly made that same column how a RepositoryPrompt
+  names its file, so the removal would have broken the one action that survives. Caught at
+  proposal-review, renamed instead of removed, and the correction is its own commit. ADR-0009's
+  rule (a claim about existing behaviour cites where it lives) is what caught it, applied to my own
+  artifact.
+- **Worked:** deleting tests instead of adapting them, and saying which was which. Five ceremony
+  suites and the defaults suite went outright. Two more asserted guarantees the change removes —
+  "phase one publishes nothing", the published link — and were rewritten to what is still true: the
+  plan is stored, the work does not proceed unapproved, the link is null. An adapted test for a
+  removed behaviour asserts nothing and reads as coverage.
+- **Didn't — my retirement sweep missed one of seven actions.** The list I swept omitted Estimate,
+  and eight test payloads kept sending it; the 400s looked like missing prompts until one was read
+  properly. A sweep whose input list is typed from memory has the same failure mode as a checklist
+  ticked from memory (#166's retro): wrong in the flattering direction, found by the leftovers.
+- **Didn't — two sweeps, two shapes missed.** The first prompt-path sweep matched only literal
+  runtime strings; payloads passing `runtime` as a variable and a helper already naming its own
+  prompt both slipped through, one producing a duplicate key. Mechanical edits over test corpora
+  need a verification pass of their own — the failures list, re-read, was that pass.
+- **Also:** the dormancy is now stated in three places rather than discovered in any — the design
+  (D5), ARCHITECTURE.md's resume section rewritten from "exists" to "stands dormant", and DEC-062's
+  cost list. Nothing reaches AwaitingInput; a prompt can ask by commenting but cannot pause its Run.
+- **Also:** every Run resolves the project PAT twice now — the prompt read and the runtime — and
+  the resolution-order test states it rather than hiding it. Names only, still (BR-010).
+- **Next time:** when a change makes N things into one, enumerate the N from the code, not from
+  recall, before sweeping — the enum was right there and the sweep list was typed by hand anyway.
+- **Time invested:** not measured (source: **manual** — eighty-sixth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. ADR-0004 and ADR-0009 each did their job once here and are cited above.

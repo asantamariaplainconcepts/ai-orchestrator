@@ -41,8 +41,9 @@ public class AbandonedRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             {
                 triggerLabel = "ai:grill",
                 triggerState = (string?)null,
-                action = "GrillToReady",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
                 timeoutMinutes = 30,
             }

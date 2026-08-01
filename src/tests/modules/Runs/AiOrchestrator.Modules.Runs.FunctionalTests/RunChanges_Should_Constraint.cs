@@ -50,8 +50,9 @@ public class RunChanges_Should_Constraint(RunsApiFixture fixture) : IAsyncLifeti
             {
                 triggerLabel = "ai:implement",
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );

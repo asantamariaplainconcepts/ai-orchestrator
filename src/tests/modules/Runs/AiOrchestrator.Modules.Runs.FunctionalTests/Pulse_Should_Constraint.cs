@@ -41,7 +41,7 @@ public class Pulse_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             )
         ).EnsureSuccessStatusCode();
 
-        _refineId = await CreateAutomation("ai:refine", "RefineOrComment");
+        _refineId = await CreateAutomation("ai:refine", "RepositoryPrompt");
 
         fixture.Vendor.Stories.Add(new VendorStory("1", "First", "open", [], "Body."));
         fixture.Vendor.Stories.Add(new VendorStory("2", "Second", "open", [], "Body."));
@@ -72,6 +72,7 @@ public class Pulse_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 triggerState = (string?)null,
                 action,
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );
@@ -151,7 +152,7 @@ public class Pulse_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         // The automation fired twice in the window (the old run is outside it), failed once.
         var refine = pulse.Automations.Single(entry => entry.AutomationId == _refineId);
         refine.TriggerLabel.ShouldBe("ai:refine");
-        refine.Action.ShouldBe("RefineOrComment");
+        refine.Action.ShouldBe("RepositoryPrompt");
         refine.Fired.ShouldBe(2);
         refine.Failed.ShouldBe(1);
 
@@ -168,7 +169,7 @@ public class Pulse_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task AnUnusedAutomation_Should_AppearRatherThanBeOmitted()
     {
-        var unused = await CreateAutomation("ai:estimate", "Estimate");
+        var unused = await CreateAutomation("ai:estimate", "RepositoryPrompt");
 
         var pulse = await Pulse(_projectId);
 

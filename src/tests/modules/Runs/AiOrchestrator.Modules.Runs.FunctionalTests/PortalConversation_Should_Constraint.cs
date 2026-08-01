@@ -124,8 +124,9 @@ public class PortalConversation_Should_Constraint(RunsApiFixture fixture) : IAsy
             {
                 triggerLabel = "ai:refine",
                 triggerState = (string?)null,
-                action = "RefineOrComment",
+                action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );

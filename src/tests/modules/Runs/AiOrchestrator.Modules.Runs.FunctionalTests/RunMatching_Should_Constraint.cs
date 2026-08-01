@@ -59,8 +59,9 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 {
                     triggerLabel = label,
                     triggerState = state,
-                    action = "ImplementToPullRequest",
+                    action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval,
                 }
             )

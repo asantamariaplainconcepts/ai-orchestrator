@@ -320,3 +320,21 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   for: one conversation is one container is one project's PAT, so the isolation boundary coincides
   with the credential boundary (DEC-030) and the portal never holds a project credential. Decided
   2026-07-31 with #166.
+- **DEC-062 — The catalogue is one action: the repository's prompt, unbounded** *(revises DEC-026's
+  four-action catalogue, DEC-048's licensed growth of it, and #150's "what it can do is decided
+  here")*: every built-in action is removed and an Automation runs the prompt its project's
+  repository names, with the project PAT and a cloned workspace, exactly as the repository's own
+  `/aio:*` commands run locally. The orchestrator keeps what makes it a product — triggers and
+  matching (BR-003), one-active-Run and the cap (BR-001/BR-002), dispatch, timeouts (BR-005), the
+  live log (UC-027), usage (BR-011), terminal states (BR-004) — and performs **no vendor or
+  repository write of its own**, with one stated carve-out: output labels are still applied on
+  success, because the workflow's wiring is machinery like matching, not action ceremony.
+  **Costs accepted and stated:** (1) BR-007's approval gate is a workflow control now, not a
+  containment control — "a plan phase publishes nothing" and "a cancelled Run produces no PR" are
+  prompt-level promises until the **grants model** (the named follow-up) lands; (2) the
+  conversational wait is dormant — the grill's question path was `AwaitingInput`'s only producer,
+  and the state, its machinery and the inbox category are kept unreached rather than removed,
+  because Run states were out of scope; (3) no Run carries an output link — only the retired
+  publish step ever set one, and the agent reporting what it did belongs with grants. Naming a
+  prompt is **required at save**: with one action, an Automation that names none could never run.
+  Decided 2026-08-01 with #162.

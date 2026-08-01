@@ -61,7 +61,8 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
             {
                 triggerLabel = label,
                 triggerState = (string?)null,
-                action = "ImplementToPullRequest",
+                action = "RepositoryPrompt",
+                promptPath = "story.md",
                 runtime,
                 requiresApproval = false,
             }
@@ -103,9 +104,10 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
 
         await Execute(runId);
 
-        // Only the PAT was resolved — no AI credential name reached the vault, and the fake
-        // received an empty key.
-        fixture.SecretNames.All.ShouldBe(["acme-pat"]);
+        // Only the PAT's name reached the vault — no AI credential, and the fake received an empty
+        // key. It is resolved twice since #162: once by the prompt read, once for the workspace and
+        // the runtime — same name, still never a value anywhere (BR-010).
+        fixture.SecretNames.All.ShouldBe(["acme-pat", "acme-pat"]);
         fixture.OpenCodeAgent.Instructions.Single().Credentials.AiApiKey.ShouldBe(string.Empty);
     }
 
@@ -117,7 +119,8 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
 
         await Execute(runId);
 
-        fixture.SecretNames.All.ShouldBe(["acme-pat", "anthropic-api-key"]);
+        // The PAT twice (the prompt read, then the runtime) plus the AI credential once.
+        fixture.SecretNames.All.ShouldBe(["acme-pat", "anthropic-api-key", "acme-pat"]);
         fixture.Agent.Instructions.Single().Credentials.AiApiKey.ShouldBe("stub-token");
     }
 
