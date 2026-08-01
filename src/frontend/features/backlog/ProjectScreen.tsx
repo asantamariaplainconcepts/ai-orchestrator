@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
+import { PromptScratchpad } from "@/features/automations/PromptScratchpad";
 import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
@@ -154,8 +155,11 @@ export function ProjectScreen() {
             />
           </TabsContent>
 
-          <TabsContent value="automations">
+          <TabsContent value="automations" className="flex flex-col gap-6">
             <AutomationsSection projectId={projectId} />
+            {/* Beside the field that names a prompt file, because this is how you find out what
+                that file will do before there is a file (#189). */}
+            <PromptScratchpad projectId={projectId} />
           </TabsContent>
 
           {/* Its own tab, because a conversation is its own thing (#166): not a Run, so not

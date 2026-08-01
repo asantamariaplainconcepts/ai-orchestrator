@@ -2195,3 +2195,37 @@ times in the project this framework came from.
 - **Time invested:** not measured (source: **manual** — eighty-sixth consecutive). Unchanged:
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none new. ADR-0004 and ADR-0009 each did their job once here and are cited above.
+
+## 2026-08-01 — prompt-scratchpad (#189)
+
+- **Worked: counting the criteria instead of arguing the shape.** The issue left "a conversation or
+  its own thing" open. Nine of its twelve acceptance criteria turned out to be existing properties of
+  `HoldConversation.Say`, each citable to a line — so the decision was a table, not a preference, and
+  the change landed with no new slice, no new permission, no aggregate and no migration.
+- **Worked: reading both call sites rather than only the one being changed.** That is where the two
+  findings the issue did not carry came from. A Run framed a Story with its number, state, labels and
+  a bounded description; a conversation sent title and body unbounded — so the scratchpad, built on
+  the second, would have tried prompts against a different input than the Run gives them. And the
+  message cap was 10,000 characters against a largest-real-prompt of 9,741: the surface would have
+  refused what it exists to author, measured before it was written rather than discovered by a user.
+- **Didn't — I wrote a test that the change it tests does not affect.** The length test first
+  asserted only that a 9,741-character message was accepted. The *old* 10,000 cap allowed that too,
+  so it passed under the reverted bound and proved nothing. The mutation check found it; reading it
+  had not. New rule, and the one worth carrying: when a test defends a *number*, assert the edge the
+  number moved to, not a value that sat inside the old one as well.
+- **Also: a task marked done for a reason, not a result.** 4.4's permission coverage is not a test I
+  wrote — the criterion is met by adding no request at all, so the refusal is already policed by
+  `ProjectRoles_Should_Constraint` and exercised by `ProjectRoleAssignment_Should_Constraint`. The
+  task file says that in full rather than carrying a tick that would read as a test somebody could go
+  and find. Same for 4.5's E2E, which cannot assert a reply in a habitat that would call a real model.
+- **Also: one kit addition.** `shared/ui/textarea.tsx` — a prompt is a document, and the kit had no
+  multi-line input. Same border, ring and invalid state as `Input`, because a field that looked like
+  a different product for being taller is the drift the design contract exists to stop.
+- **Next time:** for every test defending a threshold, ask "what value would fail under the old
+  behaviour" before writing the assertion — that question is what the mutation check ended up asking
+  for me, one round later than it needed to.
+- **Time invested:** not measured (source: **manual** — eighty-seventh consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. This is the second consecutive change where the mutation check caught something
+  reading did not (#162's three false reds, this one's false green) — ADR-0004 already carries that
+  rule, and applying it is what worked both times, so it graduates nothing new.

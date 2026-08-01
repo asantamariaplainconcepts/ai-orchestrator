@@ -183,6 +183,21 @@ one-click defaults that seeded the pipeline — are all realisable as prompts, w
 DEC-062: they were this product doing an agent's job, and the sibling ds-connect repository runs
 the same workflow entirely from prompt files today.
 
+**A prompt can be tried before it is committed (#189), and the scratchpad is a conversation.** With
+the catalogue at one action, writing a prompt is the configuration activity — so the portal runs
+supplied text once against the project's repository and shows the reply and the cost. It stores
+nothing: the repository stays the only place a prompt lives, and the Run path never consults it.
+Each attempt starts a *fresh* conversation, because reusing one would hand the agent the previous
+draft and its own reply, and a trial contaminated by the draft it replaced predicts nothing.
+
+That fidelity is why **a Story is described to an agent in exactly one way**, by a single helper both
+`RunExecutor` and the conversation use: number, title, state, labels, and a description bounded at
+8,000 characters. Before #189 the two disagreed — a conversation sent title and body, unbounded —
+so a prompt tried in one and run by the other was tried against a different input, and state and
+labels are precisely what a real prompt branches on. Two differences remain and are stated in the
+surface's own copy rather than left to be discovered: a trial has no approval-gate planning phase,
+and no per-Automation timeout.
+
 ## Dispatch
 
 A Run reaches an Agent through an Azure Storage Queue (DEC-013) that KEDA watches: a message

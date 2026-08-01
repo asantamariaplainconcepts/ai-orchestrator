@@ -303,10 +303,9 @@ sealed class RunExecutor(
             return new Outcome(Failure($"Credential could not be resolved: {exception.Message}"));
         }
 
-        var context =
-            $"Story #{story.VendorStoryId}: {story.Title}\n"
-            + $"State: {story.State}; labels: {string.Join(", ", story.Labels)}.\n\n"
-            + $"Description:\n{Requirement(story.Body)}";
+        // One description, shared with the conversation path (#189, design D3) — so a prompt tried
+        // in the scratchpad is tried against the input the Run will give it.
+        var context = StoryDescription.Of(story);
 
         // The prompt is read before the workspace, because both of its refusals must land before any
         // money is spent — cloning to discover a file is missing is spend for nothing (design D4).
@@ -432,19 +431,6 @@ sealed class RunExecutor(
         string.IsNullOrWhiteSpace(plan)
             ? string.Empty
             : $"A human approved this plan — follow it:\n{plan}\n\n";
-
-    /// <summary>
-    /// The requirement, bounded at the prompt rather than at rest (design D3): the Mirror keeps
-    /// the vendor's whole body, but an unbounded prompt is a cost and timeout surprise. The
-    /// truncation says so, because an Agent silently given half a requirement will confidently
-    /// implement half a story.
-    /// </summary>
-    const int PromptBodyLimit = 8000;
-
-    static string Requirement(string? body) =>
-        string.IsNullOrWhiteSpace(body) ? "(the story has no description)"
-        : body.Length <= PromptBodyLimit ? body
-        : body[..PromptBodyLimit] + "\n\n[description truncated by the orchestrator]";
 }
 
 static partial class ExecutionLog
