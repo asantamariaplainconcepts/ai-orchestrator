@@ -2471,3 +2471,34 @@ times in the project this framework came from.
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none. This is a workflow fix with its reason at the site; the general lesson is the same
   "exercise the artifact" ADR-0004 already carries, now with a workflow step (#202) enforcing it.
+
+## 2026-08-01 — catalogue-inside-the-module (#207)
+
+- **Didn't — I shipped an embedded resource pointing outside the project and never built an image.**
+  #190's catalogue lived at `prompts/starter/` with a `..\..\..\..` glob. Every Dockerfile copies
+  `src/`; none copies `prompts/`. All four images broke at `dotnet publish`, and I had run the
+  solution build, the unit tests, the functional tests, the E2E suite, the design gate and CI — none
+  of which builds a container. The one check that mattered was `docker build`, and it takes two
+  minutes.
+- **The structural finding: no workflow builds the images that ship.** `ci.yml` and `build-test.yml`
+  have no `docker build` and no `Dockerfile` reference. The images are first built during the
+  deploy, after the merge — so any change that compiles can still be unbuildable, and only a release
+  finds out. Left open in #207 rather than folded in, because it is a pipeline change and this was a
+  fix.
+- **Worked: choosing the fix that removes the class.** `COPY prompts/` in four Dockerfiles would
+  have worked and left four places to remember. Moving the catalogue inside the project makes it
+  travel by construction, and resource names did not change, so the 51 tests passed at the same
+  count — which is itself the evidence the move was inert.
+- **Worked: verifying inside the artifact.** All four images built, and the resource name was read
+  out of the portal image's own assembly rather than inferred from a green compile. That is exactly
+  the check #190 was missing, run at the point where it would have failed.
+- **Also: the archived design gained a D3a rather than an edit.** The bundle is history; correcting
+  the original in place would erase the fact that the decision was made and was wrong.
+- **Next time:** an `EmbeddedResource`, `Content`, or `None` item whose path leaves the project
+  directory is a build-context question, not a project question. Ask "which build contexts include
+  this path" before "does it compile".
+- **Time invested:** not measured (source: **manual** — ninety-sixth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none. Sixth occurrence this session of "a green gate that does not exercise the artifact
+  proves nothing" (ADR-0004). The rule is not missing; the gates are, and #202 and #207 are the two
+  places that is being fixed.
