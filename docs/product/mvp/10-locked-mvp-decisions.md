@@ -338,3 +338,18 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   publish step ever set one, and the agent reporting what it did belongs with grants. Naming a
   prompt is **required at save**: with one action, an Automation that names none could never run.
   Decided 2026-08-01 with #162.
+
+- **DEC-063 — One session always idles, because the platform allows nothing less** *(revises
+  [DEC-061](#)'s "no ready instances held in reserve — nobody talking costs nothing")*: the
+  conversation session pool holds `readySessionInstances = 1` at 1 vCPU and 2 GiB, continuously.
+  Rationale: DEC-061 chose zero on a cost argument and Azure refuses the value —
+  `SessionPoolInvalidReadySessionInstances`, *"supported values should be greater than 0 and smaller
+  than maxConcurrentSessions"*. This is not a preference that was reconsidered; it is a constraint
+  that was discovered, at apply, after the provider's own schema had accepted the zero. The
+  alternatives were a smaller always-on container or no pool at all, and the second was refused on
+  the same ground DEC-030 rests on: without a pool the deployed portal composes the in-process
+  runtime and resolves a project's PAT inside the portal. **What is accepted:** a standing cost in
+  dev for a container nobody is talking to, at the full size, because an agent cloning a repository
+  and running a model is not a small workload and a warm session that then thrashes on memory would
+  buy nothing. **What it buys back:** the first conversation of the day answers without a cold
+  start — the one thing zero ever gave away. Decided 2026-08-01 with #198.

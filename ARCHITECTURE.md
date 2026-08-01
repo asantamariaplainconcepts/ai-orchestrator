@@ -183,6 +183,12 @@ one-click defaults that seeded the pipeline — are all realisable as prompts, w
 DEC-062: they were this product doing an agent's job, and the sibling ds-connect repository runs
 the same workflow entirely from prompt files today.
 
+**One session idles, and not by choice (DEC-063).** DEC-061 accepted bounded idling with no ready
+instances — nobody talking costs nothing. Azure refuses `readySessionInstances = 0`, so the pool
+holds one warm container continuously. The provider's schema accepted the zero and the service did
+not, which is the general shape of this whole seam: `azapi` is an escape hatch, and its embedded
+schema is not the API.
+
 **A prompt can be tried before it is committed (#189), and the scratchpad is a conversation.** With
 the catalogue at one action, writing a prompt is the configuration activity — so the portal runs
 supplied text once against the project's repository and shows the reply and the cost. It stores
