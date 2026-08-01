@@ -499,6 +499,87 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
         );
     }
 
+    /// <summary>
+    /// Stated hypothesis, like every REST call in this class (ADR-0005): the Items API with a
+    /// one-level scope path lists a folder's entries; a 404 on the scope path is an absent
+    /// directory, the seam's null. Unexercised against a real organisation.
+    /// </summary>
+    public async Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+        BacklogCoordinates coordinates,
+        string path,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<IReadOnlyList<string>?>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/git/repositories/"
+                        + $"{Uri.EscapeDataString(coordinates.Repository)}/items"
+                        + $"?scopePath={Uri.EscapeDataString($"/{path}")}"
+                        + $"&recursionLevel=OneLevel&api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (response.StatusCode == HttpStatusCode.NotFound)
+                {
+                    IReadOnlyList<string>? absent = null;
+                    return ErrorOrFactory.From(absent);
+                }
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                return ErrorOrFactory.From<IReadOnlyList<string>?>(
+                    ParseDirectoryFileNames(document.RootElement)
+                );
+            }
+        );
+    }
+
+    /// <summary>
+    /// The Items response's files as names relative to the listed directory — the API answers
+    /// repository-absolute paths and marks folders, and nothing outside here learns either (D4).
+    /// </summary>
+    public static IReadOnlyList<string> ParseDirectoryFileNames(JsonElement root)
+    {
+        if (!root.TryGetProperty("value", out var entries))
+        {
+            return [];
+        }
+
+        var names = new List<string>();
+        foreach (var entry in entries.EnumerateArray())
+        {
+            var isFolder = entry.TryGetProperty("isFolder", out var folder) && folder.GetBoolean();
+            if (isFolder)
+            {
+                continue;
+            }
+
+            if (entry.TryGetProperty("path", out var entryPath))
+            {
+                var value = entryPath.GetString();
+                if (!string.IsNullOrEmpty(value))
+                {
+                    names.Add(value[(value.LastIndexOf('/') + 1)..]);
+                }
+            }
+        }
+
+        return names;
+    }
+
     /// <summary>Tags are one semicolon-delimited string, which nothing outside here learns (D4).</summary>
     public static IReadOnlyList<string> ParseTags(string? tags) =>
         string.IsNullOrWhiteSpace(tags)

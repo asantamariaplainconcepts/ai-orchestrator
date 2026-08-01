@@ -112,6 +112,36 @@ public class AzureDevOpsTranslation_Should_Constraint
     }
 
     [Fact]
+    public void ADirectoryListing_Should_BecomeNamesRelativeToTheDirectory()
+    {
+        // The Items API answers repository-absolute paths and marks folders; the seam speaks
+        // file names only (#215) — folders skipped, paths cut to their last segment.
+        using var document = JsonDocument.Parse(
+            """
+            {
+              "value": [
+                { "path": "/ai/prompts", "isFolder": true },
+                { "path": "/ai/prompts/estimate.md" },
+                { "path": "/ai/prompts/triage.md", "isFolder": false }
+              ]
+            }
+            """
+        );
+
+        AzureDevOpsBacklogConnector
+            .ParseDirectoryFileNames(document.RootElement)
+            .ShouldBe(["estimate.md", "triage.md"]);
+    }
+
+    [Fact]
+    public void AListingWithNoValue_Should_BeEmptyNotAThrow()
+    {
+        using var document = JsonDocument.Parse("""{"count": 0}""");
+
+        AzureDevOpsBacklogConnector.ParseDirectoryFileNames(document.RootElement).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void TheEstimateFields_Should_CoverTheProcessTemplatesThatHaveOne()
     {
         // Agile and Scrum name it differently and Basic has none — which is why the connector

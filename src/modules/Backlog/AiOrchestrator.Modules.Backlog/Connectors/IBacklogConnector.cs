@@ -152,6 +152,23 @@ interface IBacklogConnector
         CancellationToken cancellationToken
     );
 
+    /// <summary>
+    /// The file names of a repository directory at the default branch — names only, no content,
+    /// one level deep, read live (#215). Exists so the portal can offer the prompts that actually
+    /// exist without the browser ever holding a credential.
+    /// <para>
+    /// Null means the directory is absent — an ordinary outcome, distinguishable from a vendor
+    /// refusal (the error), because the caller renders one as "nothing there yet" and the other
+    /// with the vendor's reason. Neither throws.
+    /// </para>
+    /// </summary>
+    Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+        BacklogCoordinates coordinates,
+        string path,
+        string token,
+        CancellationToken cancellationToken
+    );
+
     Task<ErrorOr<Success>> RemoveLabel(
         BacklogCoordinates coordinates,
         string vendorStoryId,

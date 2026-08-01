@@ -240,6 +240,16 @@ const routes: [string, RegExp, Handler][] = [
     }),
   ],
   ["POST", /^\/api\/projects\/[^/]+\/backlog\/refresh$/, () => ({ changes: 0 })],
+  // The picker's listing (#215): what the repository's prompts directory holds, read live.
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/prompts$/,
+    () => ({
+      directory: "ai/prompts",
+      names: ["estimate.md", "triage.md", "explain.md"],
+      reason: null,
+    }),
+  ],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
   [
     "POST",

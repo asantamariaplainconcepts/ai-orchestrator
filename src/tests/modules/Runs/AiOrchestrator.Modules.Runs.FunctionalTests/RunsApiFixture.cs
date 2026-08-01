@@ -345,6 +345,19 @@ sealed class StubBacklogConnector : IBacklogConnector
                 ? content
                 : AiOrchestrator.Modules.Backlog.Domain.BacklogErrors.DocumentNotFound(path)
         );
+
+    public Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+        BacklogCoordinates coordinates,
+        string path,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        // The Runs tests never list prompts; the seam member exists so the fake stays a
+        // complete connector.
+        IReadOnlyList<string>? none = null;
+        return Task.FromResult(ErrorOr.ErrorOrFactory.From(none));
+    }
 }
 
 sealed class StubSecretResolver(ResolvedNames names) : ISecretResolver
