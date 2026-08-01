@@ -119,6 +119,22 @@ jobs:
           TF_VAR_bootstrap_admins: ${{ vars.BOOTSTRAP_ADMINS }}
         run: terraform apply -input=false -no-color tfplan
 
+      # Sign in again, because the job can outlive its own sign-in (#205). The OIDC token minted at
+      # the top is exchanged for a client assertion valid for five minutes; rebuilding the Container
+      # Apps environment took eighteen, and `az acr login` then failed with AADSTS700024 — "client
+      # assertion is not within its valid time range". Nothing was wrong with the credential, the
+      # federation or the permissions.
+      #
+      # Not specific to that rebuild: any apply longer than the assertion's validity leaves every
+      # later step unauthenticated, and applies get longer as the environment grows. Two seconds
+      # here removes the whole class. Do not delete this as a redundant sign-in.
+      - name: Sign in again for the release
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
+
       # deploy.sh owns the release ordering — push, migrate, wait, then move the revision. CI
       # calls it rather than restating it, so the sequence that protects a running app cannot
       # drift between the two ways of invoking it (ADR-0003).

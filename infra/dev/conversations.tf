@@ -128,6 +128,10 @@ resource "azapi_resource" "conversation_sessions" {
     }
   }
 
+  # Verified against the created pool (#193 flagged this as unverified, #205 confirmed it): the
+  # running image reads back at `properties.customContainerTemplate.containers[0].image`, which is
+  # the path deploy.sh asserts on.
+
   # The endpoint the portal calls. azapi returns nothing by default, so what is needed is asked for
   # by name — and the portal's configuration reads it from here rather than from a hand-built URL.
   response_export_values = ["properties.poolManagementEndpoint"]
