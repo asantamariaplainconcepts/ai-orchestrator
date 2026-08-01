@@ -1,28 +1,22 @@
-import { useMemo } from "react";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { t } from "@/shared/i18n";
-import { parseTranscript } from "./transcript";
 import type { TranscriptEntry, TranscriptTotals } from "./transcript";
 
 /**
  * The Output section as a transcript (#130). The agent's words are prose, tools are one line each, and
  * anything this product cannot interpret is shown verbatim — completeness first, presentation second
- * (design D5).
+ * (design D5). The card and its header live on the Run screen, which also carries the running spend;
+ * this renders the lines.
  */
-export function RunTranscript({ log }: { log: string }) {
-  const transcript = useMemo(() => parseTranscript(log), [log]);
-
+export function RunTranscript({ entries }: { entries: readonly TranscriptEntry[] }) {
   return (
-    <div className="flex flex-col gap-3">
-      <Spend totals={transcript.totals} />
-      <ol className="flex flex-col gap-2">
-        {transcript.entries.map((entry, index) => (
-          <li key={index}>
-            <Entry entry={entry} />
-          </li>
-        ))}
-      </ol>
-    </div>
+    <ol className="flex flex-col gap-2">
+      {entries.map((entry, index) => (
+        <li key={index}>
+          <Entry entry={entry} />
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -30,7 +24,7 @@ export function RunTranscript({ log }: { log: string }) {
  * A running total from what the lines carry. Unknown rather than zero when they carry nothing
  * (BR-011, design D4) — zero is a claim, unknown is a fact.
  */
-function Spend({ totals }: { totals: TranscriptTotals }) {
+export function TranscriptSpend({ totals }: { totals: TranscriptTotals }) {
   const tokens =
     totals.inputTokens === null
       ? t("run.transcript.unknown")
@@ -42,9 +36,9 @@ function Spend({ totals }: { totals: TranscriptTotals }) {
     totals.costUsd === null ? t("run.transcript.unknown") : `$${totals.costUsd.toFixed(4)}`;
 
   return (
-    <p className="text-xs text-muted-foreground">
-      {t("run.transcript.spend")}: {tokens} · {cost}
-    </p>
+    <span className="font-mono text-xs text-muted-foreground" title={t("run.transcript.spend")}>
+      {tokens} · {cost}
+    </span>
   );
 }
 
@@ -55,7 +49,7 @@ function Entry({ entry }: { entry: TranscriptEntry }) {
         // The same class the Plan uses for sanitised model output, so the two read alike. Worth
         // knowing: no CSS in this app defines `.prose`, so it currently styles nothing — matching the
         // Plan is still the right call, and giving it meaning is a design-system change, not this one.
-        className="prose text-sm"
+        className="prose text-sm leading-relaxed"
         // Sanitised by renderStoryMarkdown (design D3): agent output is model output, exactly as
         // untrusted as a Story description, so it takes the pipeline that already made that judgement
         // rather than a second opinion.
@@ -67,13 +61,19 @@ function Entry({ entry }: { entry: TranscriptEntry }) {
   if (entry.kind === "tool") {
     return (
       <details className="text-sm">
-        <summary className="cursor-pointer">
-          <span className="pill pill-neutral">{entry.tool}</span>
+        <summary className="flex cursor-pointer items-center gap-2 rounded-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+          <span className="rounded-sm bg-accent px-2 py-0.5 font-mono text-[10.5px] font-semibold text-accent-foreground">
+            {entry.tool}
+          </span>
           {entry.subject ? (
-            <span className="mono ml-2 text-xs text-muted-foreground">{entry.subject}</span>
+            <span className="min-w-0 truncate font-mono text-xs text-muted-foreground">
+              {entry.subject}
+            </span>
           ) : null}
         </summary>
-        <pre className="mono log-view mt-2 text-xs">{entry.detail}</pre>
+        <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
+          {entry.detail}
+        </pre>
       </details>
     );
   }
@@ -81,13 +81,19 @@ function Entry({ entry }: { entry: TranscriptEntry }) {
   if (entry.kind === "event") {
     return (
       <details className="text-sm">
-        <summary className="cursor-pointer text-xs text-muted-foreground">{entry.label}</summary>
-        <pre className="mono log-view mt-2 text-xs">{entry.detail}</pre>
+        <summary className="cursor-pointer rounded-sm text-xs text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+          {entry.label}
+        </summary>
+        <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
+          {entry.detail}
+        </pre>
       </details>
     );
   }
 
   // Verbatim, and deliberately not inside a disclosure: an uninterpretable line is often the crash or
   // the stack trace somebody opened this page to find.
-  return <pre className="mono log-view text-xs">{entry.body}</pre>;
+  return (
+    <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">{entry.body}</pre>
+  );
 }

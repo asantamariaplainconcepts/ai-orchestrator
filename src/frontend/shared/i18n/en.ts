@@ -53,6 +53,12 @@ export const en = {
   "inbox.reason.approval": "Approve a plan",
   "inbox.reason.input": "Answer a question",
   "inbox.reason.failure": "Decide about a failure",
+  // Mid-sentence, after the project and Story id: "Phoenix · #491 · waiting 2h".
+  "inbox.waitingFor": "waiting",
+  // The verb each row leads with — what following it does, in the Run's own vocabulary.
+  "inbox.action.approval": "Review plan",
+  "inbox.action.input": "Answer",
+  "inbox.action.failure": "Open Run",
   "inbox.table.story": "Story",
   "inbox.table.reason": "Needs",
   "inbox.table.waiting": "Waiting",
@@ -348,8 +354,14 @@ export const en = {
   "board.untouched": "Untouched",
   "board.columnEmpty": "Nothing here.",
   "board.moveTo": "Move to\u2026",
+  "board.cardActions": "Card actions",
   "board.gated": "Approval",
   "board.gated.hint": "Dropping here starts a plan for a human to approve.",
+  // Composed after the step's own mono label, which is vendor data and cannot live here.
+  "board.human.explainer":
+    "finished \u2014 a person carries these on. Cards cannot be dropped here.",
+  "board.dropToApply": "Drop to apply",
+  "board.viewActiveRun": "View the active Run",
   "board.moveFailed": "The vendor refused the move. Nothing changed.",
   "board.refusedActiveRun": "This Story already has an active Run — one at a time.",
   "board.run.executing": "Executing",
@@ -456,6 +468,21 @@ export const en = {
   "run.field.approved": "Approved",
   "run.field.output": "Output",
   "run.field.failure": "Failure",
+  "run.section.details": "Details",
+  // The lifecycle as copy: the stepper's stations and the state pill share these names, so the
+  // enum's internal spelling never reaches a reader.
+  "run.stepper": "Run progress",
+  "run.state.queued": "Queued",
+  "run.state.planning": "Planning",
+  "run.state.awaitingApproval": "Awaiting approval",
+  "run.state.executing": "Executing",
+  "run.state.awaitingInput": "Waiting for an answer",
+  "run.state.succeeded": "Succeeded",
+  "run.state.failed": "Failed",
+  "run.state.cancelled": "Cancelled",
+  "run.step.done": "Done",
+  "run.decision.explainer":
+    "The plan below is waiting for your decision — nothing runs until you act.",
 
   // Table headers.
   "backlog.table.id": "#",

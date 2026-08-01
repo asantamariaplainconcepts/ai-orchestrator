@@ -19,6 +19,7 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
 {
     readonly HttpClient _client = fixture.CreateClient();
     Guid _projectId;
+    string _projectName = "";
     Guid _refineId;
     Guid _grillId;
     Guid _approvalId;
@@ -70,7 +71,9 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             new { name = $"p-{Guid.NewGuid():N}" }
         );
         created.EnsureSuccessStatusCode();
-        return (await created.Content.ReadFromJsonAsync<ProjectResponse>())!.Id;
+        var project = (await created.Content.ReadFromJsonAsync<ProjectResponse>())!;
+        _projectName = project.Name;
+        return project.Id;
     }
 
     async Task<Guid> CreateAutomation(
@@ -142,6 +145,9 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         inbox.Select(entry => entry.WaitingFor).ShouldBe(["approval", "failure"]);
         inbox.Single(entry => entry.WaitingFor == "failure").StoryTitle.ShouldBe("First story");
         inbox.ShouldAllBe(entry => entry.ProjectId == _projectId);
+        // Cross-project by design (UC-026), so every row names its Project — "which #491?"
+        // must never be the reader's problem.
+        inbox.ShouldAllBe(entry => entry.ProjectName == _projectName);
     }
 
     [Fact]
@@ -226,6 +232,7 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     sealed record InboxEntry(
         Guid RunId,
         Guid ProjectId,
+        string? ProjectName,
         string VendorStoryId,
         string? StoryTitle,
         string WaitingFor,

@@ -12,4 +12,12 @@ sealed class ProjectCatalog(ProjectsDbContext database) : IProjectCatalog
             project => project.Id == projectId && project.ArchivedAt == null,
             cancellationToken
         );
+
+    // Archived included on purpose: an entry for a Run that already exists still deserves its
+    // Project's name — the question is "which project?", not "does it accept work?".
+    public Task<string?> Name(Guid projectId, CancellationToken cancellationToken = default) =>
+        database
+            .Projects.Where(project => project.Id == projectId)
+            .Select(project => (string?)project.Name)
+            .FirstOrDefaultAsync(cancellationToken);
 }
