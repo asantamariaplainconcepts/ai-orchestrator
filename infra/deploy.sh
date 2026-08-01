@@ -28,13 +28,15 @@ REGISTRY_NAME="$(tf registry_name)"
 PORTAL_APP="$(tf portal_app_name)"
 MIGRATION_JOB="$(tf migration_job_name)"
 DISPATCH_JOB="$(tf dispatch_job_name)"
+SESSION_POOL="$(tf conversation_session_pool_name)"
 PORTAL_URL="$(tf portal_url)"
 
 PORTAL_IMAGE="${REGISTRY}/portal:${TAG}"
 MIGRATION_IMAGE="${REGISTRY}/migrations:${TAG}"
 DISPATCH_IMAGE="${REGISTRY}/dispatch:${TAG}"
-# The conversation session (#166). Built and pushed like the others; the session pool is pointed
-# at it by Terraform rather than by this script, because a pool has no revision to roll.
+# The conversation session (#166). Built, pushed and rolled like the others (#193). It has no
+# revision, so there is nothing to roll back to and nothing to wait for — but leaving it out was
+# how the pool stayed on the bootstrap placeholder while every other workload moved.
 SESSION_IMAGE="${REGISTRY}/conversation-session:${TAG}"
 
 echo "Tag        : ${TAG}"
@@ -122,6 +124,17 @@ az containerapp job update \
   --image "${DISPATCH_IMAGE}" \
   --output none
 
+# Before the portal, for the same reason the worker moves first: the portal is what starts sessions,
+# and a new portal talking to a pool still running the previous image is the window this ordering
+# exists to close. A pool has no revision, so this replaces the image for sessions started from now
+# on; sessions already running finish on the old one and are reclaimed on cooldown.
+echo "→ pointing the session pool at ${TAG}"
+az containerapp sessionpool update \
+  --name "${SESSION_POOL}" \
+  --resource-group "${RESOURCE_GROUP}" \
+  --image "${SESSION_IMAGE}" \
+  --output none
+
 echo "→ updating the portal revision"
 az containerapp update \
   --name "${PORTAL_APP}" \
@@ -134,8 +147,9 @@ az containerapp update \
 echo "→ confirming the running images carry ${TAG}"
 running_portal="$(az containerapp show --name "${PORTAL_APP}" --resource-group "${RESOURCE_GROUP}" --query "properties.template.containers[0].image" -o tsv)"
 running_dispatch="$(az containerapp job show --name "${DISPATCH_JOB}" --resource-group "${RESOURCE_GROUP}" --query "properties.template.containers[0].image" -o tsv)"
+running_session="$(az containerapp sessionpool show --name "${SESSION_POOL}" --resource-group "${RESOURCE_GROUP}" --query "properties.customContainerTemplate.containers[0].image" -o tsv)"
 
-for pair in "portal:${running_portal}" "dispatch:${running_dispatch}"; do
+for pair in "portal:${running_portal}" "dispatch:${running_dispatch}" "session:${running_session}"; do
   name="${pair%%:*}"
   image="${pair#*:}"
   case "${image}" in

@@ -35,6 +35,18 @@ resource "azapi_resource" "conversation_sessions" {
   parent_id = azurerm_resource_group.main.id
   tags      = local.tags
 
+  # The provider's embedded schema for this type applies `^[a-z][a-z0-9]*$` to every `name` inside
+  # the body, including the container's environment variables — and those are `AZURE_CLIENT_ID`,
+  # Azure's own name for the managed identity to use, and `Secrets__KeyVaultUri`, whose separator is
+  # .NET's. Neither can be lowercased, so a plan cannot pass with validation on (#193). Established
+  # by elimination rather than assumed: a hyphen-free container name did not clear it, disabling this
+  # did.
+  #
+  # Before removing this: upgrade azapi, turn it back on, and run `terraform plan`. If it passes, the
+  # schema has been fixed and this line should go — it is the only thing standing between a typo in
+  # this body and an apply-time failure.
+  schema_validation_enabled = false
+
   identity {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.dispatch.id]
@@ -72,7 +84,10 @@ resource "azapi_resource" "conversation_sessions" {
 
         containers = [
           {
-            name = "conversation-session"
+            # No hyphen: a session pool's container name must match ^[a-z][a-z0-9]*$, which the
+            # jobs' names do not have to. Caught by the provider's own schema validation at plan
+            # time, which is the only reason the first apply did not fail against ARM instead.
+            name = "conversationsession"
             # Placeholder until the first deploy pushes a real tag, exactly as the jobs do: the image
             # is rolled by deploy.sh, and pinning a tag here would make Terraform and the deploy
             # script disagree about which one is current.
@@ -114,6 +129,13 @@ resource "azapi_resource" "conversation_sessions" {
     azurerm_role_assignment.session_acr_pull,
     azurerm_role_assignment.dispatch_vault_read,
   ]
+
+  lifecycle {
+    # deploy.sh owns the image after the first apply, exactly as it does for the portal and the two
+    # jobs. Without this the pool was the one workload where rolling the image meant passing a
+    # variable on the command line, which the next plain apply then silently reverted (#193).
+    ignore_changes = [body.properties.customContainerTemplate.containers[0].image]
+  }
 }
 
 # ---- The portal's permission to start one ------------------------------------------------------
