@@ -74,14 +74,28 @@ resource "azurerm_role_assignment" "dispatch_queue_scaler" {
   principal_id         = azurerm_user_assigned_identity.dispatch.principal_id
 }
 
-# The human running Terraform also needs data-plane access, for the same reason they need
-# Secrets Officer on the vault: exercising the substrate by hand is how it gets verified at all.
-# Owning the subscription grants neither — data-plane RBAC is separate from management-plane, and
-# the first attempt to enqueue a test message failed on precisely this.
+# Operators need data-plane access, for the same reason they need Secrets Officer on the vault:
+# exercising the substrate by hand is how it gets verified at all. Owning the subscription grants
+# neither — data-plane RBAC is separate from management-plane, and the first attempt to enqueue a
+# test message failed on precisely this.
+#
+# **Named, not inferred from whoever ran the apply (#195).** This was scoped to
+# `data.azurerm_client_config.current.object_id`, so the grant followed the last principal to apply
+# and every plan afterwards proposed replacing it — a `must be replaced` on a role assignment that a
+# reader has to stop and dismiss, which is a tax on exactly the moment when reading a plan carefully
+# matters most.
+#
+# The shape is `bootstrap_admins`', because this repository already answered "how does Terraform
+# carry a list of people": a comma-separated string of object ids from a repository variable, empty
+# by default and honest about it. Deliberately a *separate* list from that one: holding Admin in the
+# portal and holding Azure queue data-plane access are different powers, and conflating them would
+# make adding a portal administrator silently grant them access to the substrate.
 resource "azurerm_role_assignment" "operator_queue_data" {
+  for_each = toset(compact(split(",", replace(var.operator_object_ids, " ", ""))))
+
   scope                = azurerm_storage_account.dispatch.id
   role_definition_name = "Storage Queue Data Contributor"
-  principal_id         = data.azurerm_client_config.current.object_id
+  principal_id         = each.value
 }
 
 # ---- The job ----------------------------------------------------------------------------------
