@@ -2266,3 +2266,36 @@ times in the project this framework came from.
 - **ADR:** none new. The vacuous-assertion finding is the second occurrence and would normally
   graduate — but ADR-0004 already carries "assert the artifact", and what is new is a sharper test
   for it, recorded here rather than as a fourth restatement of the same rule.
+
+## 2026-08-01 — session-pool-deployable (#193)
+
+- **Worked: running the command before handing it over.** The owner asked for the terraform-and-
+  deploy script to bring #166's session pool up. Writing it, I ran `terraform plan` against the real
+  state — and it fails. The pool has never existed, and the committed config could not have created
+  it. Had I written the steps from the files alone, as I nearly did, the first thing the owner would
+  have seen is a schema error I could have found in one read-only command.
+- **Worked: eliminating rather than guessing the cause.** The error named a `name` field against
+  `^[a-z][a-z0-9]*$`. The obvious suspect was the container's hyphenated name; renaming it did not
+  clear the error, which is what proved the offender was the environment variables —
+  `AZURE_CLIENT_ID` and `Secrets__KeyVaultUri`, neither of which can be lowercased. One extra plan
+  turned a plausible fix into a demonstrated one.
+- **Didn't — the pool was missing from a pattern three other workloads already follow, and nobody
+  compared.** Placeholder image, `ignore_changes`, rolled by `deploy.sh`, asserted at the end: the
+  portal, the migration job and the dispatch job all do this. The pool did none of it, and #166's
+  own comment rationalised the gap ("a pool has no revision to roll") rather than noticing it. The
+  check that would have caught it is mechanical — when adding the Nth of a kind, diff it against the
+  other N−1.
+- **Also: #92's lesson had a hole in it.** `deploy.sh` reads back the *running* image and refuses to
+  claim success on a mismatch — for two of the three workloads it deploys. An assertion that covers
+  most of what it deploys reads exactly like one that covers all of it.
+- **Also, named rather than buried:** applying moves `operator_queue_data` from the CI deploy
+  identity to whoever applies, because it is scoped to the current client config. Harmless — CI's
+  grants come from `ci-identity.sh` and `deploy.sh` never touches the queue — but it oscillates with
+  whoever applied last, and that belongs in an issue rather than in a plan somebody reads at speed.
+- **Next time:** treat "give me the command" as "run the read-only half of the command". Plans,
+  `--dry-run`, `--what-if` and `state list` cost nothing and are the difference between a script and
+  a guess.
+- **Time invested:** not measured (source: **manual** — eighty-ninth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. ADR-0004's "assert the artifact" already covers the missing pool assertion; this
+  is a second instance of it rather than a new rule.
