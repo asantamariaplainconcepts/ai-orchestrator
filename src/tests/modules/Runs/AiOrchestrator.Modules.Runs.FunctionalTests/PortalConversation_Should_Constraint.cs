@@ -126,6 +126,7 @@ public class PortalConversation_Should_Constraint(RunsApiFixture fixture) : IAsy
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );

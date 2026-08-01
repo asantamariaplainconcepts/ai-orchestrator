@@ -124,6 +124,7 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
                     triggerState = (string?)null,
                     action,
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval = false,
                     outputLabels = outputLabel is null ? Array.Empty<string>() : [outputLabel],
                 },

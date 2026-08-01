@@ -64,6 +64,7 @@ public class DeleteAutomation_Should_Constraint(RunsApiFixture fixture) : IAsync
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );

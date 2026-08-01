@@ -43,6 +43,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
                 triggerState = state,
                 action,
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
             }
@@ -69,6 +70,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
                 triggerState = state,
                 action,
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
             }
@@ -236,6 +238,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
                 triggerState = (string?)null,
                 action = "TakeOverTheWorld",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
             }
@@ -257,6 +260,7 @@ public class AutomationEndpoints_Should_Constraint(ProjectsApiFixture fixture) :
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
             }

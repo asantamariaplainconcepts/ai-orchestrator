@@ -126,6 +126,9 @@ sealed class StubBacklogConnector : IBacklogConnector
         StoryComments.Clear();
         ReadCommentsError = null;
         Documents.Clear();
+        // Every Run resolves a prompt since #162. Seeded here so each suite is about what it is
+        // named for rather than about a missing file; a suite testing that refusal clears it.
+        Documents[DefaultPromptPath] = "Do what the story asks.";
         RepositoryLabels.Clear();
         EnsureLabelError = null;
         FailNextLabelWrite = null;
@@ -321,6 +324,11 @@ sealed class StubBacklogConnector : IBacklogConnector
         string token,
         CancellationToken cancellationToken
     ) => Task.FromResult<ErrorOr<IReadOnlyList<ChangedFile>>>(Files);
+
+    /// <summary>The prompt every test Automation names (#162 made naming one required).</summary>
+    public const string DefaultPromptName = "story.md";
+
+    internal const string DefaultPromptPath = "ai/prompts/story.md";
 
     /// <summary>Repository documents by path; a path not present reads as the vendor's 404.</summary>
     public Dictionary<string, string> Documents { get; } = [];

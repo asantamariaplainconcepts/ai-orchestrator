@@ -117,7 +117,14 @@ sealed class CreateAutomation : IUseCase
         {
             RuleFor(command => command.TriggerLabel).NotEmpty().MaximumLength(200);
             RuleFor(command => command.TriggerState).MaximumLength(100);
-            RuleFor(command => command.PromptPath).MaximumLength(300);
+            // Required since #162. With one action, an Automation that names no prompt can never
+            // run — and the spec already forbids a configurable thing that silently never executes.
+            // Refused at save, where the Admin is looking, rather than at the first Run in front of
+            // somebody who did not configure it.
+            RuleFor(command => command.PromptPath)
+                .NotEmpty()
+                .WithMessage("An Automation must name the prompt it runs.")
+                .MaximumLength(300);
             // Each member bounded exactly as the single label was, and the collection bounded too:
             // a set is a field a caller controls the size of.
             RuleForEach(command => command.OutputLabels!)

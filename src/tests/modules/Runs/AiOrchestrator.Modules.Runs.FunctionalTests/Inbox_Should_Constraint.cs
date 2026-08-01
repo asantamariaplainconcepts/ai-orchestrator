@@ -88,6 +88,7 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 triggerState = (string?)null,
                 action,
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval,
             }
         );

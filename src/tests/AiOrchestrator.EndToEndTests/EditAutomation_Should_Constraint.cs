@@ -172,6 +172,7 @@ public class EditAutomation_Should_Constraint(AppHostFixture fixture)
                     triggerState = (string?)null,
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval = false,
                     timeoutMinutes,
                 },

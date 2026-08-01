@@ -61,6 +61,7 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                     triggerState = state,
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval,
                 }
             )

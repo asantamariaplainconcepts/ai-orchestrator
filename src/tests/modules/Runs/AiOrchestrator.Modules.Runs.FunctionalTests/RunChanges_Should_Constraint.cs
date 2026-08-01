@@ -52,6 +52,7 @@ public class RunChanges_Should_Constraint(RunsApiFixture fixture) : IAsyncLifeti
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );

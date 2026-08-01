@@ -71,7 +71,7 @@ public class OutputLabelMigration_Should_Constraint : IAsyncLifetime
                 INSERT INTO projects.automations
                   ("Id", "ProjectId", "TriggerLabel", "TriggerState", "Action", "Runtime",
                    "RequiresApproval", "Timeout", "Enabled", "RubricPath", "OutputLabel")
-                VALUES ({1}, {0}, 'ai:grill', NULL, 'GrillToReady', 'ClaudeCodeHeadless',
+                VALUES ({1}, {0}, 'ai:grill', NULL, 'RepositoryPrompt', 'ClaudeCodeHeadless',
                         false, INTERVAL '30 minutes', true, NULL, 'ai:estimate');
                 """.Replace("{0}", $"'{ProjectId}'").Replace("{1}", $"'{AutomationId}'")
             );
@@ -105,7 +105,7 @@ public class OutputLabelMigration_Should_Constraint : IAsyncLifetime
                 INSERT INTO projects.automations
                   ("Id", "ProjectId", "TriggerLabel", "TriggerState", "Action", "Runtime",
                    "RequiresApproval", "Timeout", "Enabled", "RubricPath", "OutputLabel")
-                VALUES ({1}, {0}, 'ai:implement', NULL, 'ImplementToPullRequest', 'ClaudeCodeHeadless',
+                VALUES ({1}, {0}, 'ai:implement', NULL, 'RepositoryPrompt', 'ClaudeCodeHeadless',
                         false, INTERVAL '30 minutes', true, NULL, NULL);
                 """.Replace("{0}", $"'{SilentProjectId}'").Replace("{1}", $"'{SilentAutomationId}'")
             );

@@ -105,7 +105,7 @@ public class RepositoryPrompt_Should_Constraint(RunsApiFixture fixture) : IAsync
     }
 
     [Fact]
-    public async Task TheRepositorysPrompt_Should_ReachTheAgentAndItsAnswerBecomeAComment()
+    public async Task TheRepositorysPrompt_Should_ReachTheAgentWithTheWorkspaceCloned()
     {
         fixture.Vendor.Documents["ai/prompts/estimate.md"] = Body;
         fixture.Agent.Result = new AgentResult(
@@ -124,8 +124,11 @@ public class RepositoryPrompt_Should_Constraint(RunsApiFixture fixture) : IAsync
         fixture.Agent.Instructions.Single().Prompt.ShouldContain(Body);
 
         // One comment, and only a comment. That bound is the whole reason a prompt this product did
-        // not write can be run at all, so it is asserted rather than assumed.
-        fixture.Vendor.Comments.Single().ShouldBe("13 points, because the API is unknown.");
+        // No comment is asserted any more (#162): the orchestrator posts nothing, and the prompt
+        // either did or did not. What must hold is that the prompt reached the agent with the
+        // project's repository checked out beside it.
+        fixture.Vendor.Comments.ShouldBeEmpty();
+        fixture.Workspace.Prepared.ShouldBeTrue();
         fixture.Vendor.Stories.Single().State.ShouldBe("open");
         fixture.Workspace.Prepared.ShouldBeFalse();
     }

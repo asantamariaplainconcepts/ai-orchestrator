@@ -12,6 +12,11 @@ unbounded or unparseable value SHALL name the field.
 refused with the ordinary unknown-action refusal. What an Automation *does* is decided by the prompt
 file in the project's repository, read live at Run time, and not by anything chosen here.
 
+**Naming that prompt SHALL be required.** With one action, an Automation that names no prompt can
+never run, and a configurable thing that silently never executes is the trap this spec already
+forbids. The refusal SHALL land where the Admin is looking — at save — rather than at the first Run,
+in front of somebody who did not configure it.
+
 The output labels input SHALL be a picker that also accepts a freely typed value. It SHALL suggest
 the trigger labels of the project's **other enabled** Automations, because wiring the next step of a
 sequential workflow is what this field is most often for, and SHALL NOT suggest the Automation's own
@@ -46,6 +51,11 @@ is saved, so a caller that does not use the portal is refused identically.
 
 - **WHEN** an Admin types a label that matches no trigger
 - **THEN** it is accepted and applied on success like any other
+
+#### Scenario: an Automation must name its prompt
+
+- **WHEN** an Automation is saved naming no prompt
+- **THEN** it is refused, because with one action it could never run
 
 #### Scenario: the vocabulary is one word
 

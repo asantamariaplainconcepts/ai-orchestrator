@@ -55,6 +55,7 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );
@@ -114,7 +115,10 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
 
         var run = await Load(runId);
         run.State.ShouldBe("Succeeded");
-        run.OutputLink.ShouldBe("https://github.com/acme/portal/pull/1");
+        // No link, and that is the new truth rather than a gap (#162, design D5a): only the retired
+        // publish step ever set one, and every runtime reports none. If the prompt opened a pull
+        // request, nothing told the product its URL.
+        run.OutputLink.ShouldBeNull();
         run.StartedAt.ShouldNotBeNull();
         run.EndedAt.ShouldNotBeNull();
         run.UsageInputTokens.ShouldBe(10);

@@ -56,6 +56,7 @@ public class RunCancellation_Should_Constraint(RunsApiFixture fixture) : IAsyncL
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );

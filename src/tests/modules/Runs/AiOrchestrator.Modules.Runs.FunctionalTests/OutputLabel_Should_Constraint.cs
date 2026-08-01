@@ -67,6 +67,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 triggerState = (string?)null,
                 action,
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
                 // A set since #165; these tests still describe one hand-off, which is now a set of one.
                 outputLabels = outputLabel is null ? Array.Empty<string>() : [outputLabel],
@@ -213,7 +214,7 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 runtime = "ClaudeCodeHeadless",
                 requiresApproval = false,
                 timeoutMinutes = (int?)null,
-                promptPath = (string?)null,
+                promptPath = "story.md",
                 outputLabels = new[] { "ai:estimate" },
             }
         );

@@ -156,6 +156,7 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     triggerLabel = "ai:refine",
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval = false,
                 }
             )
@@ -182,6 +183,7 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     triggerLabel = "ai:refine",
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval = false,
                 }
             )
@@ -238,6 +240,7 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     triggerLabel = "ai:refine",
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
                     requiresApproval = false,
                 }
             )

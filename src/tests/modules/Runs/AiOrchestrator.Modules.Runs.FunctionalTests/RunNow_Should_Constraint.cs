@@ -53,6 +53,7 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = false,
             }
         );
@@ -147,6 +148,7 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = true,
             }
         );

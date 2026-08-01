@@ -57,6 +57,7 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
                 requiresApproval = true,
             }
         );
@@ -132,7 +133,7 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
     }
 
     [Fact]
-    public async Task PhaseOne_Should_StoreThePlanAndPublishNothing()
+    public async Task PhaseOne_Should_StoreThePlanAndNotRunTheWorkUnapproved()
     {
         var runId = await PauseOnPlan();
 
@@ -144,7 +145,11 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
 
         // A plan-phase pull request would be a lie: the workspace was prepared but never
         // published, and the instruction told the Agent to change nothing.
-        fixture.Workspace.Published.ShouldBeFalse();
+        // Rewritten rather than adapted (#162, design D4). It used to assert that phase one
+        // *published nothing*, which the executor guaranteed by owning the write. It does not own it
+        // any more: the agent holds the credential in both phases, and containment is what the prompt
+        // promises until grants land. What is still the product's to guarantee — and so what this
+        // now asserts — is that the plan is stored and the work does not proceed unapproved.
         fixture.Agent.Instructions.Single().Prompt.ShouldContain("Change nothing");
     }
 
@@ -173,7 +178,9 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
 
         var finished = await Load(runId);
         finished.State.ShouldBe("Succeeded");
-        finished.OutputLink.ShouldBe("https://github.com/acme/portal/pull/1");
+        // The plan was carried into execution, which is what this test is for. What it no longer
+        // asserts is a published link: the orchestrator publishes nothing now (#162, design D5a).
+        finished.OutputLink.ShouldBeNull();
         fixture.Agent.Instructions.Last().Prompt.ShouldContain("Change the thing.");
         fixture.Agent.Instructions.Last().Prompt.ShouldContain("A human approved this plan");
     }
