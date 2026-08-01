@@ -2299,3 +2299,34 @@ times in the project this framework came from.
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none new. ADR-0004's "assert the artifact" already covers the missing pool assertion; this
   is a second instance of it rather than a new rule.
+
+## 2026-08-01 — deploy-red-duplicate-grant (#196)
+
+- **Didn't, and this is the headline: I merged five changes onto a deploy pipeline that was red, and
+  never looked.** `deploy.yml` runs on every push to `main` — plan, apply, `deploy.sh`, verify — and
+  it has failed on all five runs since #166 landed. Every one of those merges reported green,
+  because what I watched was `gh pr checks`, which is pre-merge CI. The deploy is a different
+  workflow that runs after, and nothing surfaces its result to whoever merged. Green PR checks were
+  never evidence that the thing deployed.
+- **Worked: the owner's question, not my process, is what found it.** "So the dev deploy will run
+  this?" — a question I could only answer by reading `deploy.yml`, which is when the five red runs
+  became visible. I had already told them the release needed a local `terraform apply`; the workflow
+  does that itself. Answering from the file rather than from memory corrected both.
+- **Worked: fixing the first fault exposed the second.** #193 got the pipeline past Plan, and Apply
+  then failed on a duplicate role assignment — `session_acr_pull` granting AcrPull to a principal
+  that `dispatch_acr_pull` already granted it to. Sequential faults only surface sequentially, which
+  is an argument for fixing a red pipeline immediately rather than batching.
+- **Also: the duplicate's own comment explained why it was redundant.** *"A session gets the dispatch
+  identity's entitlements rather than the portal's"* — it **is** that identity, so it holds what that
+  identity holds. A comment that states the premise of its own deletion is a strong signal, and it
+  survived review twice.
+- **Next time — the concrete change:** `/aio:sync` watches PR checks before merging and stops there.
+  It should watch the deploy run the merge triggers, too. A merge that lands a red deploy is not a
+  finished change, and the current loop cannot tell the difference. Filed rather than assumed, so
+  the fix is a decision rather than a reflex.
+- **Time invested:** not measured (source: **manual** — ninetieth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none yet, and this is the second occurrence of "assert the artifact, not the exit code"
+  at the *pipeline* level rather than the command level — ADR-0004 covers the command. If the sync
+  change above lands, that is where the rule belongs; recording the second occurrence here so the
+  graduation rule has its count.

@@ -15,16 +15,16 @@
 # conversation does, between one message and the next — recorded as DEC-061 rather than left as a
 # contradiction, and bounded by the cooldown below rather than by hope.
 
-# ---- The session's own identity, separate again -----------------------------------------------
-# A session clones repositories with project PATs, exactly as a dispatch job does, so it gets the
-# dispatch identity's entitlements rather than the portal's. The portal must not gain the ability to
-# read a project credential just because it can start a conversation.
-
-resource "azurerm_role_assignment" "session_acr_pull" {
-  scope                = azurerm_container_registry.main.id
-  role_definition_name = "AcrPull"
-  principal_id         = azurerm_user_assigned_identity.dispatch.principal_id
-}
+# ---- The session's identity is the dispatch identity -------------------------------------------
+# A session clones repositories with project PATs, exactly as a dispatch job does, so it runs as the
+# dispatch identity rather than the portal's. The portal must not gain the ability to read a project
+# credential just because it can start a conversation.
+#
+# **Which is why there is no role assignment here.** Running as that identity means holding what it
+# already holds: `azurerm_role_assignment.dispatch_acr_pull` in dispatch.tf pulls from this registry,
+# and `dispatch_vault_read` reads the secrets. A second grant of the same role, to the same principal,
+# on the same scope is not belt and braces — Azure answers 409 RoleAssignmentExists and the apply
+# stops (#196). The pool's depends_on names the real ones.
 
 # ---- The pool ----------------------------------------------------------------------------------
 
@@ -125,8 +125,11 @@ resource "azapi_resource" "conversation_sessions" {
   # by name — and the portal's configuration reads it from here rather than from a hand-built URL.
   response_export_values = ["properties.poolManagementEndpoint"]
 
+  # The identity must already hold both when the pool is created, or the first session fails to pull
+  # or fails to read a secret — and the pool would look healthy either way until somebody talked to
+  # it. These are the dispatch job's own grants; see the note above for why there are no others.
   depends_on = [
-    azurerm_role_assignment.session_acr_pull,
+    azurerm_role_assignment.dispatch_acr_pull,
     azurerm_role_assignment.dispatch_vault_read,
   ]
 
