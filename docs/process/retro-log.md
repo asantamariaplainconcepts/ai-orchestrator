@@ -2415,3 +2415,32 @@ times in the project this framework came from.
 - **ADR:** none. This is ADR-0004's "assert the artifact" applied to the pipeline rather than a new
   rule, and the third occurrence of that shape — recorded so the graduation count is honest, but the
   rule already exists and is already cited.
+
+## 2026-08-01 — workload-profile-environment (#200)
+
+- **Worked: measuring the blast radius before proposing anything.** Adding the block on a scratch
+  branch and planning gave `6 to add, 0 to change, 4 to destroy` with the exact resources named —
+  which turned "we might need to rebuild dev" into a decision with a survives-and-does-not list. The
+  owner chose from facts rather than from my summary of a risk.
+- **Worked: refusing to commit it while it was still a question.** Merging is what applies it, so
+  committing before the decision would have rebuilt dev at whatever moment the next merge landed.
+  The gap between "I know the fix" and "the fix is authorised" is exactly where a deploy-on-merge
+  pipeline turns a plan into an event.
+- **Didn't — four faults, one at a time, over a day.** azapi's schema, a duplicate role assignment,
+  `readySessionInstances = 0`, the environment type. Every one was a plan or an apply away from
+  being known on the day #166 merged, and none was found until somebody asked whether the deploy
+  ran. The sequence is the lesson: a red pipeline hides the queue behind the first fault, and each
+  fix bought exactly one step of visibility.
+- **Also: the unautomated step is the one that will look like a bug.** After the hostname changes,
+  sign-in fails until `entra-app.sh` re-registers the redirect URIs — Entra matches them to the
+  character. It is now in `infra/README.md` beside the block that causes it, because a consequence
+  documented in a commit message is a consequence nobody reads twice.
+- **Next time:** when a resource is declared but has never been applied, treat it as unverified
+  regardless of how carefully it was reviewed. #166's pool passed spec review, code review and CI,
+  and was wrong in four independent ways — because none of those gates run a plan against real
+  state, and the one that does runs after the merge.
+- **Time invested:** not measured (source: **manual** — ninety-fourth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new, but the count is worth stating: this is the fourth occurrence this session of
+  "a green gate that does not exercise the artifact proves nothing" (ADR-0004). #202 turned it into
+  a workflow step rather than a fifth restatement.

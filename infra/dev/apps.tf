@@ -12,6 +12,10 @@ resource "azurerm_container_app" "portal" {
   revision_mode                = "Single"
   tags                         = local.tags
 
+  # Stated rather than defaulted (#200). A workload-profiles environment assigns Consumption
+  # when nothing asks, and a value Azure chooses is a value Terraform does not manage.
+  workload_profile_name = "Consumption"
+
   identity {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.workload.id]
@@ -157,6 +161,7 @@ resource "azurerm_container_app_job" "migrations" {
   resource_group_name          = azurerm_resource_group.main.name
   location                     = azurerm_resource_group.main.location
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   tags                         = local.tags
 
   # Manual trigger: the deploy script starts it and waits. Nothing schedules migrations.

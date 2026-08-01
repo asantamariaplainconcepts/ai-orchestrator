@@ -18,6 +18,24 @@ Then create `infra/dev/terraform.tfvars` (gitignored):
 subscription_id = "<your subscription id>"
 ```
 
+## The environment is workload-profiles, and replacing it is a rebuild
+
+`azurerm_container_app_environment.main` declares a `workload_profile` block because dynamic
+sessions refuse a Consumption-only environment (#200). Azure does not convert the type in place, so
+**changing or removing that block replaces the environment** — and the portal, the dispatch job and
+the migration job go with it, because they take their environment id from it.
+
+What survives a replacement: PostgreSQL, Key Vault, the registry, the storage account and the Data
+Protection key ring. What does not: the portal is down while it is recreated, and **its hostname
+changes**, because it comes from the environment's default domain.
+
+After any replacement, re-run the Entra registration against the new origin — sign-in fails until
+the redirect URIs match to the character:
+
+```bash
+DEPLOYED_ORIGIN="$(terraform -chdir=infra/dev output -raw portal_url)" ./infra/entra-app.sh
+```
+
 ## Apply
 
 ```bash
