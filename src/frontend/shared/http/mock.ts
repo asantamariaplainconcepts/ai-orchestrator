@@ -125,7 +125,19 @@ const connector = {
 type Handler = (match: RegExpMatchArray, body: unknown, params: URLSearchParams) => unknown;
 
 const routes: [string, RegExp, Handler][] = [
-  ["GET", /^\/api\/me$/, () => ({ id: "local-owner", displayName: "Local owner", role: "Admin" })],
+  [
+    "GET",
+    /^\/api\/me$/,
+    // The CurrentPrincipal shape since #13: standing per project, never a single role.
+    () => ({
+      id: "local-owner",
+      displayName: "Local owner",
+      projects: [
+        { projectId: projectAlpha, name: "Alpha portal", role: "Admin" },
+        { projectId: projectBeta, name: "Beta warehouse", role: "Admin" },
+      ],
+    }),
+  ],
   [
     "GET",
     /^\/api\/projects$/,
@@ -197,6 +209,7 @@ const routes: [string, RegExp, Handler][] = [
         .map((r) => ({
           runId: r.id,
           projectId: projectAlpha,
+          projectName: "Alpha portal",
           vendorStoryId: r.vendorStoryId,
           storyTitle: stories.find((s) => s.vendorId === r.vendorStoryId)?.title ?? null,
           waitingFor:

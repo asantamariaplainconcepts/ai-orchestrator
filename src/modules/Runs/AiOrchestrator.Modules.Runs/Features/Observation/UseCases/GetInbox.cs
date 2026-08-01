@@ -2,6 +2,7 @@ using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
+using AiOrchestrator.Modules.Projects.Contracts;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.AspNetCore.Builder;
@@ -43,10 +44,13 @@ sealed class GetInbox : IUseCase
     /// <summary>
     /// <paramref name="WaitingFor"/> is one of <c>approval</c>, <c>input</c>, <c>failure</c> —
     /// the reason vocabulary, not the state enum, so the UI never switches on internal names.
+    /// <paramref name="ProjectName"/> because the list is cross-project: a Story id without its
+    /// Project's name answers "which #491?" with silence.
     /// </summary>
     internal sealed record Entry(
         Guid RunId,
         Guid ProjectId,
+        string? ProjectName,
         string VendorStoryId,
         string? StoryTitle,
         string WaitingFor,
@@ -56,6 +60,7 @@ sealed class GetInbox : IUseCase
     internal sealed class Handler(
         RunsDbContext database,
         IStoryReader stories,
+        IProjectCatalog projects,
         IProjectPermissions permissions
     ) : IAppQueryHandler<Query, IReadOnlyList<Entry>>
     {
@@ -79,16 +84,27 @@ sealed class GetInbox : IUseCase
 
             var entries = new List<Entry>(runs.Count);
 
+            // One name lookup per distinct Project, not per entry: the list crosses projects but
+            // rarely many, and the name cannot change between two rows of one response.
+            var names = new Dictionary<Guid, string?>();
+
             foreach (var run in runs)
             {
                 // Per-entry lookup through Contracts (design D4): the list is human-scale by
                 // nature, and a denormalised title on the Run would mirror the mirror (BR-008).
                 var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
 
+                if (!names.TryGetValue(run.ProjectId, out var projectName))
+                {
+                    projectName = await projects.Name(run.ProjectId, cancellationToken);
+                    names[run.ProjectId] = projectName;
+                }
+
                 entries.Add(
                     new Entry(
                         run.Id,
                         run.ProjectId,
+                        projectName,
                         run.VendorStoryId,
                         story?.Title,
                         run.State switch

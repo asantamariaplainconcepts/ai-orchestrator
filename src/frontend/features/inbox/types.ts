@@ -2,6 +2,8 @@
 export interface InboxEntry {
   runId: string;
   projectId: string;
+  /** The list is cross-project, so every row names its project; null when it no longer exists. */
+  projectName: string | null;
   vendorStoryId: string;
   storyTitle: string | null;
   waitingFor: "approval" | "input" | "failure";

@@ -68,10 +68,13 @@ public class KanbanBoard_Should_Constraint(AppHostFixture fixture)
 
         // Criterion 6: the move is made without dragging. Playwright cannot perform an HTML5
         // drag anyway, which is precisely why the menu is the semantics and the drag is sugar
-        // (design D1) — the path a test can drive is the path a keyboard user has.
-        var moveMenu = page.GetByLabel("Move to…").First;
-        await moveMenu.WaitForAsync(new() { Timeout = 15_000 });
-        await moveMenu.SelectOptionAsync("ai:refine");
+        // (design D1) — the path a test can drive is the path a keyboard user has. Since the
+        // design review that path is the card's ⋯ actions menu: revealed on hover and focus,
+        // never out of the accessibility tree.
+        var cardActions = page.GetByLabel("Card actions").First;
+        await cardActions.WaitForAsync(new() { Timeout = 15_000 });
+        await cardActions.ClickAsync();
+        await page.GetByRole(AriaRole.Menuitem, new() { Name = "ai:refine" }).ClickAsync();
 
         // Criterion 2, at the vendor: the label really landed on the far end.
         await Expect(
