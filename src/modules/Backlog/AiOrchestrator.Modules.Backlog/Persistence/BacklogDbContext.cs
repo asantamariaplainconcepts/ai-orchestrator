@@ -28,6 +28,12 @@ sealed class BacklogDbContext(DbContextOptions<BacklogDbContext> options) : DbCo
             connector.Property(entity => entity.Repository).HasMaxLength(200).IsRequired();
             connector.Property(entity => entity.SecretName).HasMaxLength(200).IsRequired();
             connector.Property(entity => entity.LastFailure).HasMaxLength(1000);
+            // The database default is what makes every pre-#210 row read as Repository —
+            // an int column defaulting to 0 would read as no enum value at all.
+            connector
+                .Property(entity => entity.CodeSource)
+                .HasDefaultValue(CodeSource.Repository);
+            connector.Property(entity => entity.LocalPath).HasMaxLength(500);
         });
 
         modelBuilder.Entity<Story>(story =>

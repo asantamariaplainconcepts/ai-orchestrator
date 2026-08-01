@@ -23,7 +23,9 @@ sealed class ConnectorReader(BacklogDbContext database) : IConnectorReader
                 connector.Vendor.ToString(),
                 connector.Owner,
                 connector.Repository,
-                connector.SecretName
+                connector.SecretName,
+                connector.CodeSource.ToString(),
+                connector.LocalPath
             );
     }
 }

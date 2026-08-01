@@ -53,6 +53,13 @@ where possible, a machine gate (validator, DB constraint, command refusal).
 - **BR-015 — One event stream.** Webhook events and polling diffs normalize into
   identical story events before matching; detection behavior must not depend on the
   source. Poll interval: default 60 s, configurable per project.
+- **BR-016 — A Local run requires a clean working tree.** A Run whose execution locus is
+  the host's own folder (#210, self-host flavour — [DEC-049](10-locked-mvp-decisions.md))
+  is refused **before any write** when the folder has uncommitted changes, in BR-001's
+  pre-write pattern; the refusal names the folder. The check runs again at execution,
+  because the folder belongs to a person who may have typed in between — that failure ends
+  the Run with the same sentence and restores their checkout. The run branch
+  (`ai/{story}-{slug}`) is the Run's output: committed, never pushed, no PR.
 
 ## Backlog & vendors
 

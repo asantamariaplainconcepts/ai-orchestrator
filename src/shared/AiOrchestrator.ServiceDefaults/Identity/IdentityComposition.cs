@@ -18,8 +18,10 @@ namespace AiOrchestrator.ServiceDefaults.Identity;
 /// </summary>
 public static class IdentityComposition
 {
-    /// <summary>Set to <c>LocalOwner</c> on a machine one person owns. Absent everywhere else.</summary>
-    public const string ModeKey = "Identity:Mode";
+    /// <summary>Set to <c>LocalOwner</c> on a machine one person owns. Absent everywhere else.
+    /// Aliased from <see cref="IdentityHabitat"/>, which owns the key since #210 so modules can
+    /// ask the self-host question without reaching above BuildingBlocks.</summary>
+    public const string ModeKey = IdentityHabitat.ModeKey;
 
     /// <summary>What the local owner is called in the portal and in attribution.</summary>
     public const string OwnerNameKey = "Identity:OwnerName";

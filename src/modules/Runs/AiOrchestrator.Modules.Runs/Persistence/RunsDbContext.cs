@@ -70,6 +70,14 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
             run.Property(entity => entity.OutputLink).HasMaxLength(500);
             run.Property(entity => entity.Plan).HasMaxLength(65536);
 
+            // #210 — names again; the default is what makes every pre-locus row read as Pod.
+            run.Property(entity => entity.Locus)
+                .HasConversion<string>()
+                .HasMaxLength(20)
+                .HasDefaultValue(RunLocus.Pod);
+            run.Property(entity => entity.WorkingFolder).HasMaxLength(500);
+            run.Property(entity => entity.BranchName).HasMaxLength(200);
+
             // BR-001 as a constraint, not a hope: one Run per Story reference across the
             // active states. Every current state is active (see RunState); the filter is
             // written out so the day a terminal state exists, this index already excludes it

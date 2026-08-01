@@ -96,6 +96,32 @@ sealed class Connector : Aggregate
 
     public void UsePromptDirectory(string? directory) => PromptDirectory = directory;
 
+    /// <summary>
+    /// Where the Agent's working copy comes from (#210). The backlog vendor and the code source
+    /// are two facts: Stories always come from the vendor; only the code may be a folder on the
+    /// host, in the self-host flavour (DEC-049). Every Connector configured before this field
+    /// existed reads as <see cref="Domain.CodeSource.Repository"/> and behaves as before.
+    /// </summary>
+    public CodeSource CodeSource { get; private set; } = CodeSource.Repository;
+
+    /// <summary>
+    /// The absolute path on the host, when <see cref="CodeSource"/> is a local folder. Null
+    /// otherwise — a stale path surviving a switch back to Repository would look configured.
+    /// </summary>
+    public string? LocalPath { get; private set; }
+
+    public void UseLocalFolder(string path)
+    {
+        CodeSource = CodeSource.LocalFolder;
+        LocalPath = path;
+    }
+
+    public void UseRepositorySource()
+    {
+        CodeSource = CodeSource.Repository;
+        LocalPath = null;
+    }
+
     public static Connector Create(
         Guid projectId,
         BacklogVendor vendor,
@@ -153,4 +179,14 @@ enum BacklogVendor
     /// and estimate field that depend on the project's process template (DEC-011, OPN-003).
     /// </summary>
     AzureDevOps = 2,
+}
+
+/// <summary>Where the Agent's working copy comes from (#210). Orthogonal to the vendor.</summary>
+enum CodeSource
+{
+    /// <summary>The vendor's repository, cloned fresh per Run — today's behaviour.</summary>
+    Repository = 1,
+
+    /// <summary>A folder on the orchestrator's host (self-host flavour, DEC-049).</summary>
+    LocalFolder = 2,
 }

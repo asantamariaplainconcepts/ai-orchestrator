@@ -62,7 +62,13 @@ public class DismissedFailure_Should_Constraint(RunsApiFixture fixture) : IAsync
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
 
-        var run = Run.Create(_projectId, storyId, _automationId, DateTimeOffset.UtcNow);
+        var run = Run.Create(
+            _projectId,
+            storyId,
+            _automationId,
+            RunLocus.Pod,
+            DateTimeOffset.UtcNow
+        );
         run.MarkExecuting(DateTimeOffset.UtcNow);
         run.Fail(DateTimeOffset.UtcNow, "the vendor refused");
 
@@ -137,7 +143,7 @@ public class DismissedFailure_Should_Constraint(RunsApiFixture fixture) : IAsync
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
-        var run = Run.Create(_projectId, "24", _automationId, DateTimeOffset.UtcNow);
+        var run = Run.Create(_projectId, "24", _automationId, RunLocus.Pod, DateTimeOffset.UtcNow);
         run.MarkExecuting(DateTimeOffset.UtcNow);
         database.Runs.Add(run);
         await database.SaveChangesAsync();

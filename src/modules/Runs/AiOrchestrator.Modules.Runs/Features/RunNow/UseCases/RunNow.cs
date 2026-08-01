@@ -33,7 +33,12 @@ sealed class RunNow : IUseCase
                 ) =>
                 {
                     var result = await sender.Send(
-                        new Command(projectId, request.VendorStoryId, request.AutomationId),
+                        new Command(
+                            projectId,
+                            request.VendorStoryId,
+                            request.AutomationId,
+                            request.Locus
+                        ),
                         cancellationToken
                     );
 
@@ -50,7 +55,9 @@ sealed class RunNow : IUseCase
             .WithName(nameof(RunNow))
             .WithTags("Runs");
 
-    internal sealed record Request(string VendorStoryId, Guid AutomationId);
+    // Locus is optional (#210): absent means the project's default — Local for a local-folder
+    // code source, Pod otherwise. Only Run now offers the choice; matching never does.
+    internal sealed record Request(string VendorStoryId, Guid AutomationId, string? Locus = null);
 
     internal sealed record Response(
         Guid Id,
@@ -61,9 +68,12 @@ sealed class RunNow : IUseCase
     );
 
     [Requires(RunPermissions.Trigger)]
-    internal sealed record Command(Guid ProjectId, string VendorStoryId, Guid AutomationId)
-        : ICommand<ErrorOr<Response>>,
-            IScopedToProject;
+    internal sealed record Command(
+        Guid ProjectId,
+        string VendorStoryId,
+        Guid AutomationId,
+        string? Locus = null
+    ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(
         IStoryReader stories,
@@ -100,11 +110,23 @@ sealed class RunNow : IUseCase
                 return RunsErrors.AutomationNotAvailable(command.AutomationId);
             }
 
+            // Misspelled must not silently mean the default (the Vendor lesson, #210).
+            RunLocus? locus = null;
+            if (!string.IsNullOrWhiteSpace(command.Locus))
+            {
+                if (!Enum.TryParse<RunLocus>(command.Locus, ignoreCase: true, out var parsed))
+                {
+                    return RunsErrors.UnknownLocus(command.Locus);
+                }
+                locus = parsed;
+            }
+
             var outcome = await creator.Create(
                 command.ProjectId,
                 command.VendorStoryId,
                 automation,
-                cancellationToken
+                cancellationToken,
+                locus
             );
 
             return outcome switch
@@ -133,6 +155,9 @@ sealed class RunNow : IUseCase
                 RunCreation.AlreadyActive => RunsErrors.StoryHasActiveRun(command.VendorStoryId),
                 // The human asked, so the human is told why (#121).
                 RunCreation.ProjectArchived => RunsErrors.ProjectArchived(command.ProjectId),
+                // BR-016 and the impossible pairings (#210): the sentence decided pre-write is
+                // the answer, verbatim — the human is looking at the dialog it belongs in.
+                RunCreation.PreconditionFailed failed => RunsErrors.LocusRefused(failed.Reason),
                 _ => Error.Unexpected(
                     "Runs.UnknownOutcome",
                     "Run creation returned an unknown outcome."

@@ -63,6 +63,18 @@ static class BacklogErrors
         Error.Validation("Connector.SecretNotFound", $"No secret named '{secretName}' was found.");
 
     /// <summary>
+    /// #210 — the code-source surface exists only where the host is somebody's own machine.
+    /// NotFound rather than Forbidden on purpose: on a cloud deployment the surface is absent,
+    /// not gated, and a 403 would advertise a capability that can never be granted there.
+    /// </summary>
+    public static Error CodeSourceUnavailable() =>
+        Error.NotFound(
+            "Connector.CodeSourceUnavailable",
+            "This deployment cannot use a local folder as a code source — that exists only where "
+                + "the orchestrator runs on a machine its owner controls."
+        );
+
+    /// <summary>
     /// The vendor answered, and the answer was "this credential may not do that" (#132, design
     /// D3). Distinct from <see cref="VendorUnavailable"/>, which claims the vendor could not be
     /// reached — false whenever it replied, and the sentence that made a missing Contents

@@ -2545,3 +2545,31 @@ whole session boundary exist for, and the first time it has actually been true.
 **Still open and owner-only:** #183 (a Key Vault Crypto Officer grant), and re-registering the Entra
 redirect URIs against the new hostname — sign-in is broken until then, and that is the rebuild's
 documented consequence rather than a fault.
+
+## 2026-08-01 — local-code-source
+
+**Time (manual — telemetry capture is broken in this worktree session, and that is a finding, not
+a footnote):** `verify-telemetry.mjs` fails three checks here — `OTEL_EXPORTER_OTLP_ENDPOINT`
+unset in the shell the worktree session inherits, `usage.jsonl` empty, and the SessionStart hook
+never fired, so `.telemetry/sessions.jsonl` does not exist in the worktree. Everything measured
+about this change is therefore unmeasured. Roughly one focused session: proposal through green
+suites.
+
+**What worked:** deciding locus as a *workspace* fact, not a routing fact (design D1) — the queue,
+worker and Aspire wiring have zero diff, and the whole feature sits behind one existing seam plus
+one new sibling interface. The derived-factory trick (`WithWebHostBuilder` +
+`Identity:Mode=LocalOwner`) let self-host and cloud postures be tested against one shared
+container stack, and the cloud-absence test is just the untouched fixture. Reusing the BR-001
+pre-write refusal shape for BR-016 meant the dirty-tree rule needed no new machinery anywhere.
+
+**What didn't:** the executor's cancellation-race `ReloadAsync` silently discarded the unsaved
+locus audit fields — a fact recorded in memory and wiped one line later. Only the functional
+test's `workingFolder` assertion caught it; nothing about the code looked wrong. Also the
+telemetry gap above: worktree sessions inherit neither the OTel endpoint nor the session-mapping
+hook, so any change built in a worktree loses its measurements.
+
+**One change next time:** persist an audit fact in the same `SaveChanges` moment it becomes true,
+never batched with a terminal state that a reload can precede (applied here; worth keeping as the
+pattern). And wire worktree sessions into telemetry — endpoint + SessionStart hook — before the
+next change is built in one; if a second worktree change loses its measurements the same way,
+that is the graduation point for an ADR.

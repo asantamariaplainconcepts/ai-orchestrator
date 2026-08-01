@@ -1,4 +1,6 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Contracts;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
@@ -20,6 +22,8 @@ sealed class RunCreator(
     RunsDbContext database,
     IRunDispatcher dispatcher,
     IProjectCatalog projects,
+    IConnectorReader connectors,
+    ILocalCodeWorkspace localWorkspace,
     RunsOptions options,
     TimeProvider clock,
     ILogger<RunCreator> logger
@@ -29,7 +33,8 @@ sealed class RunCreator(
         Guid projectId,
         string vendorStoryId,
         AutomationTrigger automation,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        RunLocus? requestedLocus = null
     )
     {
         // An archived Project starts no work (#121). Checked here because this is the one
@@ -38,6 +43,61 @@ sealed class RunCreator(
         if (!await projects.AcceptsWork(projectId, cancellationToken))
         {
             return new RunCreation.ProjectArchived();
+        }
+
+        // Where this Run will execute (#210): the project's code source decides the default,
+        // and an explicit choice is honoured only when it is physically possible — a pod
+        // cannot see the host's disk, and a folder cannot be cloned from a vendor.
+        var connector = await connectors.Find(projectId, cancellationToken);
+        var sourceIsLocal = string.Equals(
+            connector?.CodeSource,
+            "LocalFolder",
+            StringComparison.Ordinal
+        );
+        var locus = requestedLocus ?? (sourceIsLocal ? RunLocus.Local : RunLocus.Pod);
+
+        if (locus == RunLocus.Local && !sourceIsLocal)
+        {
+            return Refused(
+                "This project's code source is a repository — a local run needs a folder on "
+                    + "this machine, configured on the Connector."
+            );
+        }
+        if (locus == RunLocus.Pod && sourceIsLocal)
+        {
+            return Refused(
+                "This project's code is a folder on this machine, which an Agent pod cannot "
+                    + "see — runs of this project execute locally."
+            );
+        }
+
+        // BR-016, refused before any write (the BR-001 pattern): a Local run must start from a
+        // clean tree, and letting the Run exist first would spend a slot on a refusal.
+        if (locus == RunLocus.Local)
+        {
+            var inspection = await localWorkspace.Inspect(connector!.LocalPath!, cancellationToken);
+            if (!inspection.IsGitRepository)
+            {
+                return Refused(
+                    $"'{connector.LocalPath}' is not a git repository — a local run needs one "
+                        + "to branch in."
+                );
+            }
+            if (inspection.IsClean is not true)
+            {
+                return Refused(
+                    $"The folder '{connector.LocalPath}' has uncommitted changes — commit or "
+                        + "stash them first."
+                );
+            }
+        }
+
+        // Logged here, once, because matching deliberately discards outcomes: a labelled Story
+        // that never runs must leave a trace somewhere a person can find.
+        RunCreation.PreconditionFailed Refused(string reason)
+        {
+            MatchingLog.PreconditionRefused(logger, projectId, vendorStoryId, reason);
+            return new RunCreation.PreconditionFailed(reason);
         }
 
         // BR-001 pre-check keeps the common case quiet; the index owns the race below. The
@@ -64,7 +124,13 @@ sealed class RunCreator(
         );
         var belowCap = busy < options.ProjectConcurrencyCap;
 
-        var run = Run.Create(projectId, vendorStoryId, automation.AutomationId, clock.GetUtcNow());
+        var run = Run.Create(
+            projectId,
+            vendorStoryId,
+            automation.AutomationId,
+            locus,
+            clock.GetUtcNow()
+        );
         database.Runs.Add(run);
 
         try
@@ -127,4 +193,10 @@ abstract record RunCreation
 
     /// <summary>The Run exists but the enqueue failed — visible as Queued with no DispatchedAt.</summary>
     public sealed record DispatchFailed(Guid RunId) : RunCreation;
+
+    /// <summary>
+    /// #210 — a locus precondition failed before any write (BR-016, impossible pairings). The
+    /// sentence is the answer: Run now repeats it to the human; matching logs it and moves on.
+    /// </summary>
+    public sealed record PreconditionFailed(string Reason) : RunCreation;
 }
