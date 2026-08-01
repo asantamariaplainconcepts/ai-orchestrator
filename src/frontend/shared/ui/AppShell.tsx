@@ -138,6 +138,21 @@ export function AppShell({
           ) : null}
         </header>
 
+        {/* Mock 3d (#211): the posture stated where it applies — every screen, while the
+            principal is the local-owner sentinel. Persistent because it is a security stance,
+            not a notification: it never dismisses and never animates. */}
+        {me.data?.id === "local-owner" ? (
+          <div
+            role="status"
+            className="border-warning/40 bg-warning/10 flex items-start gap-2 border-b px-4 py-2.5 md:px-8"
+          >
+            <span aria-hidden="true" className="text-warning text-sm leading-none">
+              ⚠
+            </span>
+            <span className="text-sm">{t("shell.localOwner")}</span>
+          </div>
+        ) : null}
+
         <header className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 md:px-8">
           <div className="min-w-0">
             <nav

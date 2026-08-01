@@ -15,6 +15,9 @@ export interface ConnectorView {
   /** Non-null means the last poll failed — which is a different fact from "no Stories". */
   lastFailure: string | null;
   lastFailureAt: string | null;
+  /** Repository | LocalFolder (#210); the path travels only with the latter. */
+  codeSource: string;
+  localPath: string | null;
 }
 
 export interface StoryView {
@@ -56,6 +59,17 @@ export interface ConfigureConnectorRequest {
   vendor: BacklogVendor;
   codeRepository: string | null;
   promptDirectory: string | null;
+  /** Repository | LocalFolder (#210); null keeps the API's default (Repository). */
+  codeSource: string | null;
+  localPath: string | null;
+}
+
+/** #210 — four facts about one path, enough to name the failing check (mock 3a). */
+export interface PathValidation {
+  isDirectory: boolean;
+  isGitRepository: boolean;
+  branch: string | null;
+  isClean: boolean | null;
 }
 
 /** UC-022's detail read — the body arrives verbatim and is sanitised at render (design D2). */

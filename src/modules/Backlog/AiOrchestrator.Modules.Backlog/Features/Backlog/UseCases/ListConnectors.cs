@@ -31,13 +31,19 @@ sealed class ListConnectors : IUseCase
     [Requires(Access.FiltersToCaller)]
     internal sealed record Query : IQuery<IReadOnlyList<Response>>;
 
-    /// <summary>Note what is absent: no secret name even — the list needs health, not config.</summary>
+    /// <summary>
+    /// Note what is absent: no secret name even — the list needs health, not config. The code
+    /// source and its path travel since #211: the projects list marks LocalFolder projects, and
+    /// the settings form offers paths other visible projects already use as recents.
+    /// </summary>
     internal sealed record Response(
         Guid ProjectId,
         string Vendor,
         DateTimeOffset? LastSyncedAt,
         string? LastFailure,
-        DateTimeOffset? LastFailureAt
+        DateTimeOffset? LastFailureAt,
+        string CodeSource,
+        string? LocalPath
     );
 
     internal sealed class Handler(BacklogDbContext database, IProjectPermissions permissions)
@@ -69,7 +75,9 @@ sealed class ListConnectors : IUseCase
                     entity.Vendor.ToString(),
                     entity.LastSyncedAt,
                     entity.LastFailure,
-                    entity.LastFailureAt
+                    entity.LastFailureAt,
+                    entity.CodeSource.ToString(),
+                    entity.LocalPath
                 )),
             ];
         }

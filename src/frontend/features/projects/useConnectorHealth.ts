@@ -8,6 +8,9 @@ export interface ConnectorHealth {
   lastSyncedAt: string | null;
   lastFailure: string | null;
   lastFailureAt: string | null;
+  /** Repository | LocalFolder (#211): the list's Local badge and the form's recents read this. */
+  codeSource: string;
+  localPath: string | null;
 }
 
 export type HealthState = "healthy" | "failing" | "neverSynced" | "notConfigured";
