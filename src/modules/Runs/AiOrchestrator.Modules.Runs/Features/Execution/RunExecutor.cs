@@ -1,3 +1,4 @@
+using System.Text;
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Contracts;
@@ -25,6 +26,7 @@ sealed class RunExecutor(
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
+    ILocalCodeWorkspace localWorkspace,
     Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopes,
     TimeProvider clock,
     ILogger<RunExecutor> logger
@@ -287,11 +289,17 @@ sealed class RunExecutor(
             return new Outcome(Failure($"No runtime named '{automation.Runtime}' is registered."));
         }
 
-        string vendorToken;
+        var vendorToken = string.Empty;
         var aiKey = string.Empty;
         try
         {
-            vendorToken = await secrets.Resolve(connector.SecretName, cancellationToken);
+            // A Local run never resolves the vendor credential (#210, design D5): the folder
+            // may point at a different remote entirely, and the host's own tooling already
+            // holds whatever identity its owner uses. The transcript states this below.
+            if (run.Locus != RunLocus.Local)
+            {
+                vendorToken = await secrets.Resolve(connector.SecretName, cancellationToken);
+            }
             if (selection.CredentialSecretName is { } credentialName)
             {
                 aiKey = await secrets.Resolve(credentialName, cancellationToken);
@@ -315,6 +323,69 @@ sealed class RunExecutor(
             return new Outcome(Failure(refusal));
         }
 
+        // What the orchestrator still says, and it is only ever framing: which story, which phase,
+        // and the approved plan when there is one. What to *do* is entirely the project's prompt.
+        var instruction = planning
+            ? $"{body}\n\n{context}\n\nThis is a planning phase: a human will review what you "
+                + "produce before any work is carried out."
+            : $"{body}\n\n{context}\n\n{PlanSection(run.Plan)}".TrimEnd();
+
+        // The workspace is the locus decision (#210, design D1): same queue, same worker, same
+        // runtime — a Local run works in the Connector's folder, a Pod run in a fresh clone.
+        if (run.Locus == RunLocus.Local)
+        {
+            // Said where a reader will look for it: the transcript (BR-016's companion promise).
+            onOutput(
+                $"Running as a local process against '{connector.LocalPath}' — the host's own "
+                    + "credentials; no vendor token was resolved for this run."
+            );
+
+            var branch = $"ai/{run.VendorStoryId}-{Slug(story.Title)}";
+            var local = await localWorkspace.Prepare(
+                connector.LocalPath!,
+                branch,
+                cancellationToken
+            );
+            if (local.IsError)
+            {
+                return new Outcome(Failure(local.FirstError.Description));
+            }
+
+            // Recorded when the workspace actually exists, never predicted — and saved now,
+            // not with the terminal state: the outer flow reloads the row to give a human's
+            // cancellation the last word (design D3), and an unsaved fact would not survive
+            // that reload. A crash mid-run keeps the audit too (BR-014).
+            run.RecordLocalExecution(connector.LocalPath!, branch);
+            await database.SaveChangesAsync(cancellationToken);
+
+            var localResult = await selection.Runtime.Execute(
+                new AgentInstruction(
+                    instruction,
+                    automation.Action,
+                    automation.Timeout,
+                    local.Value.Path,
+                    new AgentCredentials(vendorToken, aiKey),
+                    onOutput
+                ),
+                cancellationToken
+            );
+
+            // Success leaves the branch checked out — it IS the output; failure restores the
+            // owner's checkout. A commit that fails turns a claimed success into the truth.
+            var concluded = await localWorkspace.Conclude(
+                local.Value,
+                $"ai: {story.Title}",
+                localResult.Succeeded,
+                cancellationToken
+            );
+            if (localResult.Succeeded && concluded.IsError)
+            {
+                return new Outcome(Failure(concluded.FirstError.Description));
+            }
+
+            return new Outcome(localResult);
+        }
+
         var prepared = await workspace.Prepare(
             new CodeCoordinates(connector.Owner, connector.Repository),
             run.Id,
@@ -326,13 +397,6 @@ sealed class RunExecutor(
             // Stage-named refusal (design D4): the reason says "clone", not "something".
             return new Outcome(Failure(prepared.FirstError.Description));
         }
-
-        // What the orchestrator still says, and it is only ever framing: which story, which phase,
-        // and the approved plan when there is one. What to *do* is entirely the project's prompt.
-        var instruction = planning
-            ? $"{body}\n\n{context}\n\nThis is a planning phase: a human will review what you "
-                + "produce before any work is carried out."
-            : $"{body}\n\n{context}\n\n{PlanSection(run.Plan)}".TrimEnd();
 
         var agentResult = await selection.Runtime.Execute(
             new AgentInstruction(
@@ -350,6 +414,34 @@ sealed class RunExecutor(
         // whole of #162, and the reason the second cancellation boundary went with it: there is no
         // longer a consequence sitting between the spend and the record.
         return new Outcome(agentResult);
+    }
+
+    /// <summary>
+    /// The story's title as a branch-safe fragment: lowercase alphanumerics and dashes, bounded.
+    /// Deterministic on purpose — re-running the same story overwrites nothing (each branch also
+    /// carries the story id) but reads as the same work.
+    /// </summary>
+    static string Slug(string title)
+    {
+        var builder = new StringBuilder(capacity: 40);
+        foreach (var character in title.ToLowerInvariant())
+        {
+            if (builder.Length >= 40)
+            {
+                break;
+            }
+
+            if (char.IsAsciiLetterOrDigit(character))
+            {
+                builder.Append(character);
+            }
+            else if (builder.Length > 0 && builder[^1] != '-')
+            {
+                builder.Append('-');
+            }
+        }
+
+        return builder.ToString().Trim('-') is { Length: > 0 } slug ? slug : "story";
     }
 
     /// <summary>

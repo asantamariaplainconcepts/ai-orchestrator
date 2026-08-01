@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace AiOrchestrator.Modules.Backlog.Features.Backlog.UseCases;
 
@@ -45,7 +46,9 @@ sealed class ConfigureConnector : IUseCase
                         request.Vendor,
                         request.CodeRepository,
                         request.AccessToken,
-                        request.PromptDirectory
+                        request.PromptDirectory,
+                        request.CodeSource,
+                        request.LocalPath
                     );
                     var result = await sender.Send(command, cancellationToken);
 
@@ -61,6 +64,8 @@ sealed class ConfigureConnector : IUseCase
     //
     // AccessToken is the second path (#124): supply the value and the product names and stores
     // it. Exactly one of it and SecretName arrives; the Validator refuses neither and both.
+    // CodeSource is optional the same way Vendor is: absent means Repository, which is what
+    // every Connector configured before #210 was. LocalPath travels with LocalFolder only.
     internal sealed record Request(
         string Owner,
         string Repository,
@@ -68,7 +73,9 @@ sealed class ConfigureConnector : IUseCase
         string? Vendor = null,
         string? CodeRepository = null,
         string? AccessToken = null,
-        string? PromptDirectory = null
+        string? PromptDirectory = null,
+        string? CodeSource = null,
+        string? LocalPath = null
     );
 
     /// <summary>
@@ -83,7 +90,9 @@ sealed class ConfigureConnector : IUseCase
         string SecretName,
         string? CodeRepository,
         DateTimeOffset? SecretSetAt,
-        string? PromptDirectory
+        string? PromptDirectory,
+        string CodeSource,
+        string? LocalPath
     );
 
     // Admin, declared rather than checked (#13, design D1). This use case is where the product's
@@ -99,7 +108,9 @@ sealed class ConfigureConnector : IUseCase
         string? Vendor = null,
         string? CodeRepository = null,
         string? AccessToken = null,
-        string? PromptDirectory = null
+        string? PromptDirectory = null,
+        string? CodeSource = null,
+        string? LocalPath = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -152,6 +163,26 @@ sealed class ConfigureConnector : IUseCase
             RuleFor(command => command.PromptDirectory!)
                 .MaximumLength(200)
                 .When(command => command.PromptDirectory is not null);
+
+            // Same shape as Vendor: absent means Repository, misspelled must not silently mean it.
+            RuleFor(command => command.CodeSource!)
+                .Must(value => Enum.TryParse<CodeSource>(value, ignoreCase: true, out _))
+                .When(command => !string.IsNullOrWhiteSpace(command.CodeSource))
+                .WithMessage(
+                    $"CodeSource must be one of: {string.Join(", ", Enum.GetNames<CodeSource>())}."
+                );
+
+            // A local folder without a path is not a configuration; a relative path would move
+            // with the worker's working directory, which nobody chose.
+            RuleFor(command => command.LocalPath!)
+                .NotEmpty()
+                .MaximumLength(500)
+                .Must(Path.IsPathFullyQualified)
+                .When(command =>
+                    Enum.TryParse<CodeSource>(command.CodeSource, ignoreCase: true, out var parsed)
+                    && parsed == CodeSource.LocalFolder
+                )
+                .WithMessage("A local folder code source needs an absolute path on the host.");
         }
     }
 
@@ -160,6 +191,7 @@ sealed class ConfigureConnector : IUseCase
         IEnumerable<IBacklogConnector> connectors,
         ISecretResolver secrets,
         ISecretStore store,
+        IConfiguration configuration,
         TimeProvider clock
     ) : IAppCommandHandler<Command, ErrorOr<Response>>
     {
@@ -173,6 +205,18 @@ sealed class ConfigureConnector : IUseCase
             var vendor = string.IsNullOrWhiteSpace(command.Vendor)
                 ? BacklogVendor.GitHub
                 : Enum.Parse<BacklogVendor>(command.Vendor);
+
+            // Absent means Repository — what every Connector was before #210.
+            var codeSource = string.IsNullOrWhiteSpace(command.CodeSource)
+                ? CodeSource.Repository
+                : Enum.Parse<CodeSource>(command.CodeSource, ignoreCase: true);
+
+            // Refused before anything is stored or verified: on a deployment that is not
+            // somebody's own machine the code-source surface does not exist (#210, DEC-049).
+            if (codeSource == CodeSource.LocalFolder && !IdentityHabitat.IsSelfHost(configuration))
+            {
+                return BacklogErrors.CodeSourceUnavailable();
+            }
 
             // Loaded before the credential is chosen (design D3): reuse needs this Connector's own
             // stored name, and that is not knowable from the request. This replaces the later lookup
@@ -299,6 +343,17 @@ sealed class ConfigureConnector : IUseCase
                     : command.PromptDirectory.Trim().Trim('/')
             );
 
+            // Set on both paths, like the fields above: reconfiguring without naming a code
+            // source is choosing Repository, and a stale local path must not survive that.
+            if (codeSource == CodeSource.LocalFolder)
+            {
+                connector.UseLocalFolder(command.LocalPath!.Trim());
+            }
+            else
+            {
+                connector.UseRepositorySource();
+            }
+
             await database.SaveChangesAsync(cancellationToken);
 
             return new Response(
@@ -309,7 +364,9 @@ sealed class ConfigureConnector : IUseCase
                 connector.SecretName,
                 connector.CodeRepository,
                 connector.SecretSetAt,
-                connector.PromptDirectory
+                connector.PromptDirectory,
+                connector.CodeSource.ToString(),
+                connector.LocalPath
             );
         }
     }

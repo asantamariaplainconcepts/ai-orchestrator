@@ -66,4 +66,15 @@ static class RunsErrors
             "Run.NotAFailure",
             $"Run '{runId}' is {state}, not Failed. Only a failure can be dismissed."
         );
+
+    /// <summary>The Vendor lesson (#210): misspelled must not silently mean the default.</summary>
+    public static Error UnknownLocus(string locus) =>
+        Error.Validation("Runs.UnknownLocus", $"Locus must be 'Pod' or 'Local', not '{locus}'.");
+
+    /// <summary>
+    /// #210 — a locus precondition refused the dispatch before any write: BR-016's dirty tree,
+    /// or a physically impossible pairing. The sentence was written where the check ran.
+    /// </summary>
+    public static Error LocusRefused(string reason) =>
+        Error.Validation("Runs.LocusRefused", reason);
 }

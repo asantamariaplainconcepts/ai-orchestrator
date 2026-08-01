@@ -78,4 +78,16 @@ static partial class MatchingLog
         Message = "Run {RunId} was created but could not be enqueued — it remains Queued with no message; re-trigger manually"
     )]
     public static partial void DispatchFailed(ILogger logger, Exception exception, Guid runId);
+
+    [LoggerMessage(
+        EventId = 3004,
+        Level = LogLevel.Warning,
+        Message = "No Run created for story {VendorStoryId} in project {ProjectId}: {Reason}"
+    )]
+    public static partial void PreconditionRefused(
+        ILogger logger,
+        Guid projectId,
+        string vendorStoryId,
+        string reason
+    );
 }

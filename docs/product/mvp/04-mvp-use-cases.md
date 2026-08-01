@@ -16,7 +16,9 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 - **UC-004 — Admin configures the Connector.** Vendor choice (GitHub | AzDO), org/repo
   or org/project coordinates, and the Key Vault reference of the project PAT
   ([DEC-030](10-locked-mvp-decisions.md)). Saving verifies the credential with a live
-  Connector call (reality check, never assumed).
+  Connector call (reality check, never assumed). Since #210 the Connector also carries a
+  **code source** — the vendor's repository (default), or a folder on the host in the
+  self-host flavour ([BR-016](05-business-rules.md)); Stories always come from the vendor.
 - **UC-005 — Admin creates an Automation.** Trigger label/state + action
   ([DEC-026](10-locked-mvp-decisions.md)) + runtime + `requiresApproval` + timeout.
   Save fails on trigger overlap ([BR-003](05-business-rules.md)).
@@ -54,6 +56,8 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
   `requiresApproval` routes the Run into the plan phase, otherwise straight to dispatch.
 - **UC-012 — Member triggers Run now.** Chosen Story + Automation, bypassing detection,
   honoring every rule ([BR-013](05-business-rules.md)). Also the re-run path for failures.
+  May name the execution locus (#210) where a genuine choice exists; the default follows
+  the project's code source, and [BR-016](05-business-rules.md) refuses a dirty folder.
 - **UC-013 — Member/Admin reviews a Plan.** Reads the Agent's proposal on the run detail
   page and approves (→ execution is dispatched) or rejects (→ Run ends `Cancelled`),
   mirroring spec review ([DEC-040](10-locked-mvp-decisions.md)).
@@ -65,7 +69,9 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 - **UC-015 — Agent produces a Plan (phase 1).** For approval-gated Runs: reads the
   Story, writes a plan proposal onto the Run, pauses it at `AwaitingApproval`.
 - **UC-016 — Agent implements a Story → PR.** Clones the project code repo with the
-  project PAT, implements, opens a PR, links it on the Run and the Story.
+  project PAT, implements, opens a PR, links it on the Run and the Story. On a Local run
+  (#210) the working copy is the host's configured folder instead: the output is a local
+  branch — committed, never pushed, no PR ([BR-016](05-business-rules.md)).
 - **UC-017 — Agent refines/comments a Story.** Analysis, refinement questions, or
   acceptance-criteria draft posted as a story comment.
 - **UC-018 — Agent transitions a Story's state.** Via the Connector, per Automation config.
@@ -76,7 +82,9 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 ## Observation (BC-003/BC-004)
 
 - **UC-021 — Member views Runs.** Per project and per story: state, timestamps,
-  runtime, output link, logs (fetched), cost ([DEC-031](10-locked-mvp-decisions.md)).
+  runtime, output link, logs (fetched), cost ([DEC-031](10-locked-mvp-decisions.md)) —
+  and, since #210, where each Run executed: locus, working folder and branch for Local
+  runs ([BR-016](05-business-rules.md), BR-014's audit extended).
 
 ## Post-MVP use cases
 

@@ -55,7 +55,13 @@ sealed class ListRuns : IUseCase
         long? OutputTokens,
         decimal? CostUsd,
         /// <summary>When a human decided this failure needs no re-run (#145); null until they do.</summary>
-        DateTimeOffset? DismissedAt
+        DateTimeOffset? DismissedAt,
+        /// <summary>Pod | Local (#210) — where this Run executes, fixed at creation.</summary>
+        string Locus,
+        /// <summary>The host folder a Local run worked in; null for Pod runs.</summary>
+        string? WorkingFolder,
+        /// <summary>The branch a Local run left behind — its output, where Pod runs carry a PR.</summary>
+        string? BranchName
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -97,7 +103,10 @@ sealed class ListRuns : IUseCase
                     run.UsageInputTokens,
                     run.UsageOutputTokens,
                     run.CostUsd,
-                    run.DismissedAt
+                    run.DismissedAt,
+                    run.Locus.ToString(),
+                    run.WorkingFolder,
+                    run.BranchName
                 )),
             ];
         }

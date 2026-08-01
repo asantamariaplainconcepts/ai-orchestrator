@@ -20,6 +20,7 @@ builder.AddServiceDefaults();
 builder.AddSecretResolution();
 builder.AddAgentRuntime();
 builder.AddCodeWorkspace();
+builder.AddLocalCodeWorkspace();
 
 // The warm part. Singleton because the container IS the conversation: the first message pays the
 // clone and every later one does not, which is the whole reason this shape was chosen over a job

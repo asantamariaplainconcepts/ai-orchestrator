@@ -40,7 +40,10 @@ sealed class GetBacklog : IUseCase
         string? PromptDirectory,
         DateTimeOffset? LastSyncedAt,
         string? LastFailure,
-        DateTimeOffset? LastFailureAt
+        DateTimeOffset? LastFailureAt,
+        /// <summary>Repository | LocalFolder (#210); the path travels only with the latter.</summary>
+        string CodeSource,
+        string? LocalPath
     );
 
     internal sealed record StoryView(
@@ -71,7 +74,9 @@ sealed class GetBacklog : IUseCase
                     entity.PromptDirectory,
                     entity.LastSyncedAt,
                     entity.LastFailure,
-                    entity.LastFailureAt
+                    entity.LastFailureAt,
+                    entity.CodeSource.ToString(),
+                    entity.LocalPath
                 ))
                 .FirstOrDefaultAsync(cancellationToken);
 
