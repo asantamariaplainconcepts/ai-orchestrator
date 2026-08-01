@@ -28,6 +28,26 @@ resource "azurerm_container_app_environment" "main" {
   location                   = azurerm_resource_group.main.location
   log_analytics_workspace_id = azurerm_log_analytics_workspace.main.id
   tags                       = local.tags
+
+  # Workload profiles, not Consumption-only — because dynamic sessions require it (#200):
+  # `EnvironmentTypeInvalid: Session does not support 'Consumption only' environments`. Azure does
+  # not convert an environment's type in place, so **adding this block replaces the environment**,
+  # and with it the portal and both jobs, which take their environment id from here. The data
+  # survives — Postgres, Key Vault, the registry, the storage account and the Data Protection key
+  # ring are all separate resources — but the portal's hostname changes, because it is derived from
+  # the environment's default domain.
+  #
+  # The profile is Consumption, so per-app billing is unchanged: what changes is the environment's
+  # *type*, which is what the session pool checks. A dedicated profile would be a second standing
+  # cost on top of DEC-063's warm session, and nothing has asked for one.
+  #
+  # After a replacement, re-run `entra-app.sh` with the new origin. Entra matches redirect URIs to
+  # the character, so sign-in fails until it is registered against the new hostname — which is the
+  # kind of breakage that looks like a bug in the portal rather than a consequence of a deploy.
+  workload_profile {
+    name                  = "Consumption"
+    workload_profile_type = "Consumption"
+  }
 }
 
 # ---- PostgreSQL -----------------------------------------------------------------------------

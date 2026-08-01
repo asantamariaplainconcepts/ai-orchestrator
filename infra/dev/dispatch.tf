@@ -105,6 +105,7 @@ resource "azurerm_container_app_job" "dispatch" {
   resource_group_name          = azurerm_resource_group.main.name
   location                     = azurerm_resource_group.main.location
   container_app_environment_id = azurerm_container_app_environment.main.id
+  workload_profile_name        = "Consumption"
   tags                         = local.tags
 
   # THREE SITES, ONE CONTRACT (#144, DEC-054). This must be at least the phase-timeout ceiling plus
