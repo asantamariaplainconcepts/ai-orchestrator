@@ -2502,3 +2502,46 @@ times in the project this framework came from.
 - **ADR:** none. Sixth occurrence this session of "a green gate that does not exercise the artifact
   proves nothing" (ADR-0004). The rule is not missing; the gates are, and #202 and #207 are the two
   places that is being fixed.
+
+## 2026-08-01 — the session pool reached a real environment (session close-out)
+
+Not a change of its own — the record of what it took, because the count is the finding.
+
+**Seven faults stood between #166's declared session pool and a running one**, each reachable only
+once the previous cleared:
+
+1. The azapi provider's embedded schema rejected environment variable names ARM accepts (#193).
+2. `deploy.sh` never rolled the pool's image, and the pool was absent from the running-image
+   assertion #92 exists to enforce (#193).
+3. A duplicate `AcrPull` grant returned 409 and stopped every apply (#196).
+4. `readySessionInstances = 0` — a *stated decision*, DEC-061 — is not a value Azure accepts (#198).
+5. The environment was Consumption-only; sessions require workload profiles, and Azure does not
+   convert in place, so the fix was a rebuild (#200).
+6. The rebuild took eighteen minutes and the OIDC client assertion lasts five, leaving the release
+   unauthenticated (#205).
+7. An embedded resource outside the project directory was absent from all four Docker build
+   contexts (#207) — mine, from #190, shipped the same day.
+
+**Every one was reachable on the day it merged**, from a `terraform plan`, an apply, or a two-minute
+`docker build`. None was caught by spec review, code review, 399 functional tests, 29 E2E tests, the
+design gate, or CI — because not one of those exercises the artifact against Azure or builds a
+container.
+
+**What actually found them:** the owner asking "so the dev deploy will run this?". Five red deploy
+runs had accumulated while every PR reported green, because `/aio:sync` watched PR checks and
+stopped there.
+
+**The two changes that make it structural rather than a lesson:** #202 put the deploy watch into
+`/aio:sync`, and it paid within the hour — fault 6 was seen immediately instead of at the next
+question. #207 left "CI must build the images" open as the remaining hole, which is where fault 7
+would have been caught.
+
+**Verified now, in the artifact:** portal, dispatch worker and session pool all running
+`…:54403658a6bc3eb31346dc925dc13e665bede74a`; `/api/health` → 200; the portal carries
+`Conversations__SessionPoolEndpoint`, so conversations and the prompt scratchpad execute in a session
+container holding the project's credential rather than in the portal — which is what DEC-030 and the
+whole session boundary exist for, and the first time it has actually been true.
+
+**Still open and owner-only:** #183 (a Key Vault Crypto Officer grant), and re-registering the Entra
+redirect URIs against the new hostname — sign-in is broken until then, and that is the rebuild's
+documented consequence rather than a fault.
