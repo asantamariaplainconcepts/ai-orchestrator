@@ -2619,3 +2619,25 @@ typed-local form immediately rather than discovering the overload ambiguity per 
 the telemetry gap has now cost three consecutive changes — ADR-0011 records it as the graduation
 point the `local-code-source` entry called for, with the fix owed to whichever change next
 touches the telemetry plumbing.
+
+## 2026-08-02 — install-starter-prompt
+
+**Time (manual — the same broken worktree telemetry ADR-0011 now records; three failing checks,
+unchanged since the previous entry):** one session, riding directly on the seam widened above.
+
+**What worked:** reusing the Run ceremony's publish pipeline rather than writing a second one.
+The install path is clone → write one file → commit → push → draft PR, and every stage-named
+refusal (`Workspace.CloneFailed`, `PushFailed`, `PullRequestFailed`) came for free with the voice
+implement already speaks. Re-checking presence through `IDocumentReader.ReadPrompt` — the same
+read a Run resolves prompts with — meant the path the refusal names is provably the path a Run
+would read, rather than two implementations agreeing by inspection.
+
+**What didn't:** the e2e suite encoded #190's "no writes" absolute as
+`TheSurface_Should_OfferNoWayToWriteAny`, and it failed on CI *after* the PR was marked ready —
+the local functional tier never runs it. A deliberately reversed invariant is exactly the kind a
+test asserts somewhere the implementer does not look; the narrowing had to be written into the
+test as well as the spec.
+
+**One change next time:** when a change reverses a stated absolute, grep the e2e tier for the old
+wording before pushing — the spec delta and the assertion that guards it live in different trees,
+and only one of them is in the change bundle.
