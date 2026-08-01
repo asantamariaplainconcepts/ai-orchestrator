@@ -53,6 +53,18 @@ Three reasons, in order of weight:
 3. **The test can read what ships.** Embedded resources are what the endpoint serves, so a test
    asserting "every starter loads and has a body" is asserting it about the shipped bytes.
 
+## D3a — Where the catalogue lives (corrected, #207)
+
+Originally `prompts/starter/` at the repository root, embedded with a `..\..\..\..` glob. That was
+wrong in a way nothing in this bundle could catch: all four container images build the Projects
+module, every Dockerfile copies `src/`, and none copies `prompts/` — so the resource was absent from
+every build context and broke all four images at `dotnet publish`. The solution build passed, and no
+workflow builds the images, so it surfaced at the release.
+
+The catalogue now lives at `src/modules/Projects/AiOrchestrator.Modules.Projects/Starter/`, inside
+the project that embeds it. Resource names are unchanged. Four Dockerfiles each remembering to copy
+a directory is the failure mode, not the fix.
+
 ## D4 — The workflow tier is a copy, and the cost is stated
 
 The workflow tier's content is this repository's own `.claude/commands/aio/*.md` — literally the

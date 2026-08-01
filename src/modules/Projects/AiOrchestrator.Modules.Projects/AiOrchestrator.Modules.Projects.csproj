@@ -10,9 +10,14 @@
   <ItemGroup>
     <!-- The starter catalogue (#190). Embedded rather than copied to output so the bytes a test
          loads are the bytes the endpoint serves — the "behaves the same outside this product"
-         criterion is only checkable if there is one artifact. -->
-    <EmbeddedResource Include="..\..\..\..\prompts\starter\manifest.json" LinkBase="Starter" />
-    <EmbeddedResource Include="..\..\..\..\prompts\starter\**\*.md" LinkBase="Starter" />
+         criterion is only checkable if there is one artifact.
+
+         Inside the project rather than at the repository root (#207): all four images build this
+         module and every Dockerfile copies src/, so a catalogue living outside it was absent from
+         every build context and broke all four. Four Dockerfiles each remembering to copy a
+         directory is the failure mode, not the fix. -->
+    <EmbeddedResource Include="Starter\manifest.json" />
+    <EmbeddedResource Include="Starter\**\*.md" />
   </ItemGroup>
 
   <ItemGroup>
