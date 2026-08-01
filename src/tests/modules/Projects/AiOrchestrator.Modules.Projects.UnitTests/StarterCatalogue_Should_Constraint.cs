@@ -115,4 +115,46 @@ public class StarterCatalogue_Should_Constraint
                 .ShouldBe(tier.Prompts.Count, tier.Id);
         }
     }
+
+    [Fact]
+    public void TheWiring_Should_BeConsistentCatalogueContent()
+    {
+        // #212 — the default Automations set-up-defaults creates. Two rules keep the wiring
+        // honest: no two wired starters may share a trigger under BR-003's case-insensitive
+        // identity, and no wiring may hand work to its own trigger (the self-firing loop the
+        // create endpoint refuses one at a time).
+        var wired = StarterCatalogue
+            .Tiers.SelectMany(tier => tier.Prompts)
+            .Where(prompt => prompt.Automation is not null)
+            .ToList();
+
+        wired.ShouldNotBeEmpty();
+
+        wired
+            .Select(prompt => prompt.Automation!.Trigger)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Count()
+            .ShouldBe(wired.Count);
+
+        foreach (var prompt in wired)
+        {
+            prompt.Automation!.OutputLabels.ShouldAllBe(label =>
+                !string.Equals(
+                    label,
+                    prompt.Automation!.Trigger,
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
+        }
+
+        // The pipeline is wired via output labels: every label handed on that is meant to chain
+        // must name another wired trigger, so the board draws the flow the catalogue promised.
+        var triggers = new HashSet<string>(
+            wired.Select(prompt => prompt.Automation!.Trigger),
+            StringComparer.OrdinalIgnoreCase
+        );
+        wired
+            .SelectMany(prompt => prompt.Automation!.OutputLabels)
+            .ShouldAllBe(label => triggers.Contains(label));
+    }
 }

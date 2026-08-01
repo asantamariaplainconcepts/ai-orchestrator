@@ -53,7 +53,14 @@ static class StarterCatalogue
                         prompt.SaveAs,
                         prompt.Purpose,
                         prompt.Assumes,
-                        Text($"{Prefix}{tier.Id}.{prompt.File}")
+                        Text($"{Prefix}{tier.Id}.{prompt.File}"),
+                        prompt.Automation is { } wiring
+                            ? new StarterAutomation(
+                                wiring.Trigger,
+                                wiring.RequiresApproval,
+                                wiring.OutputLabels
+                            )
+                            : null
                     )),
                 ]
             )),
@@ -88,7 +95,19 @@ static class StarterCatalogue
         IReadOnlyList<ManifestPrompt> Prompts
     );
 
-    sealed record ManifestPrompt(string File, string SaveAs, string Purpose, string Assumes);
+    sealed record ManifestPrompt(
+        string File,
+        string SaveAs,
+        string Purpose,
+        string Assumes,
+        ManifestAutomation? Automation = null
+    );
+
+    sealed record ManifestAutomation(
+        string Trigger,
+        bool RequiresApproval,
+        IReadOnlyList<string> OutputLabels
+    );
 }
 
 /// <summary>
@@ -119,7 +138,20 @@ sealed record StarterPrompt(
     string SaveAs,
     string Purpose,
     string Assumes,
-    string Content
+    string Content,
+    /// <summary>
+    /// The default wiring set-up-defaults creates (#212), or null for a prompt that is content
+    /// only. Catalogue data beside the prompt it belongs to — the product hardcodes no
+    /// methodology, and a fork that wants different defaults edits the manifest.
+    /// </summary>
+    StarterAutomation? Automation = null
+);
+
+/// <summary>One wired starter: what the created Automation triggers on, gates, and hands on.</summary>
+sealed record StarterAutomation(
+    string Trigger,
+    bool RequiresApproval,
+    IReadOnlyList<string> OutputLabels
 );
 
 /// <summary>

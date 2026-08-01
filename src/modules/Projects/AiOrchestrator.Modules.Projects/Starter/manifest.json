@@ -1,5 +1,5 @@
 {
-  "$comment": "The starter catalogue (#190). One manifest read by the endpoint and by the tests, so a starter that ships uncovered is not possible. 'file' is the source in this repository; 'saveAs' is the name it takes in a project, and the two differ where they must: portable/implement.md and workflow/implement.md would otherwise both land on ai/prompts/implement.md and only one could be taken. Tiers are ordered; prompts within a tier are ordered.",
+  "$comment": "The starter catalogue (#190). One manifest read by the endpoint and by the tests, so a starter that ships uncovered is not possible. 'file' is the source in this repository; 'saveAs' is the name it takes in a project, and the two differ where they must: portable/implement.md and workflow/implement.md would otherwise both land on ai/prompts/implement.md and only one could be taken. Tiers are ordered; prompts within a tier are ordered. 'automation' (#212) is the default wiring set-up-defaults creates: trigger, approval, output labels — the pipeline is catalogue content, portable tier only.",
   "tiers": [
     {
       "id": "portable",
@@ -11,31 +11,60 @@
           "file": "triage.md",
           "purpose": "Say what is missing from a story before anybody writes code.",
           "assumes": "Nothing beyond the story.",
-          "saveAs": "triage.md"
+          "saveAs": "triage.md",
+          "automation": {
+            "trigger": "ai:triage",
+            "requiresApproval": false,
+            "outputLabels": []
+          }
         },
         {
           "file": "explain.md",
           "purpose": "Explain how the part of the code a story touches actually works.",
           "assumes": "Nothing beyond the cloned repository.",
-          "saveAs": "explain.md"
+          "saveAs": "explain.md",
+          "automation": {
+            "trigger": "ai:explain",
+            "requiresApproval": false,
+            "outputLabels": []
+          }
         },
         {
           "file": "implement.md",
           "purpose": "Implement the story on a branch and open a pull request.",
           "assumes": "Push access, and a command line the agent can open a pull request with.",
-          "saveAs": "implement.md"
+          "saveAs": "implement.md",
+          "automation": {
+            "trigger": "ai:implement",
+            "requiresApproval": true,
+            "outputLabels": [
+              "ai:tests"
+            ]
+          }
         },
         {
           "file": "tests.md",
           "purpose": "Write the tests a story's change needs, and run them.",
           "assumes": "A test command the agent can discover from the repository.",
-          "saveAs": "tests.md"
+          "saveAs": "tests.md",
+          "automation": {
+            "trigger": "ai:tests",
+            "requiresApproval": false,
+            "outputLabels": [
+              "ai:review"
+            ]
+          }
         },
         {
           "file": "review.md",
           "purpose": "Review the change a story produced and report what is wrong with it.",
           "assumes": "An existing branch or pull request to review.",
-          "saveAs": "review.md"
+          "saveAs": "review.md",
+          "automation": {
+            "trigger": "ai:review",
+            "requiresApproval": false,
+            "outputLabels": []
+          }
         }
       ]
     },
