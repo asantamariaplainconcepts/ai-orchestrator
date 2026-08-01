@@ -190,6 +190,21 @@ nothing: the repository stays the only place a prompt lives, and the Run path ne
 Each attempt starts a *fresh* conversation, because reusing one would hand the agent the previous
 draft and its own reply, and a trial contaminated by the draft it replaced predicts nothing.
 
+**A project with no prompts is offered a starter set (#190), and the product writes none of it.** The
+catalogue is versioned markdown in this repository, embedded so the bytes a test loads are the bytes
+the endpoint serves, and shown against a project: where each file would go, resolved by the same
+`PromptPath` a Run uses, and which ones that project already has. Nothing scaffolds, commits or opens
+a pull request — this is the first change since #162 that could have reintroduced an orchestrator
+repository write, and it declines to for the same reason. Where there is no Connector, presence reads
+**unknown** rather than absent, because nothing looked.
+
+The set is tiered by prerequisite, and the tiering is the decision rather than presentation: a
+portable tier that names no document outside the project's own repository, and the spec-first
+workflow this product runs on, offered as a bundle that states what it needs. Measured against a
+fresh repository, five of the six workflow prompts read documents that will not be there — presented
+as one list, somebody takes a `sync` prompt into a project with no `openspec/` and learns the
+prerequisite from an agent's confusion.
+
 That fidelity is why **a Story is described to an agent in exactly one way**, by a single helper both
 `RunExecutor` and the conversation use: number, title, state, labels, and a description bounded at
 8,000 characters. Before #189 the two disagreed — a conversation sent title and body, unbounded —

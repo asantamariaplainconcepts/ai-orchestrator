@@ -8,6 +8,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The starter catalogue (#190). Embedded rather than copied to output so the bytes a test
+         loads are the bytes the endpoint serves — the "behaves the same outside this product"
+         criterion is only checkable if there is one artifact. -->
+    <EmbeddedResource Include="..\..\..\..\prompts\starter\manifest.json" LinkBase="Starter" />
+    <EmbeddedResource Include="..\..\..\..\prompts\starter\**\*.md" LinkBase="Starter" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
     <!-- Contracts only, never the implementation: the Projects module ensures trigger labels
          exist at the vendor without knowing which vendor that is (MOD002). -->

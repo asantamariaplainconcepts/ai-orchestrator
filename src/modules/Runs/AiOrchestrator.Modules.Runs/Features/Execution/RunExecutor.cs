@@ -374,7 +374,7 @@ sealed class RunExecutor(
             return (null, document.Failure);
         }
 
-        var body = StripFrontmatter(document.Content ?? string.Empty);
+        var body = PromptText.WithoutFrontmatter(document.Content ?? string.Empty);
 
         // An empty prompt is a configuration mistake, not an instruction. Sending it would spend a
         // pass to ask an agent nothing, and no fallback is substituted: an Automation told to run the
@@ -385,36 +385,6 @@ sealed class RunExecutor(
                 $"The prompt at '{document.ResolvedPath}' has no body once its frontmatter is removed."
             )
             : (body, null);
-    }
-
-    /// <summary>
-    /// Drops a leading YAML frontmatter block. That block is how <i>another</i> runner is told what to
-    /// do with the file, and this product's wiring is the Automation — so honouring a
-    /// <c>model:</c> line would let a file in somebody's repository choose what this product spends,
-    /// and a <c>tools:</c> line would let it grant itself powers the Automation withheld.
-    /// </summary>
-    internal static string StripFrontmatter(string content)
-    {
-        var lines = content.Replace("\r\n", "\n").Split('\n');
-        var opening = Array.FindIndex(lines, line => line.Trim().Length > 0);
-
-        if (opening < 0 || lines[opening].Trim() != "---")
-        {
-            return content.Trim();
-        }
-
-        for (var index = opening + 1; index < lines.Length; index++)
-        {
-            if (lines[index].Trim() is "---" or "...")
-            {
-                return string.Join('\n', lines.Skip(index + 1)).Trim();
-            }
-        }
-
-        // An opening delimiter that never closes is not frontmatter. Treating it as such would
-        // swallow the entire file and then refuse it as empty — a confusing lie about a file whose
-        // real problem is a missing '---'.
-        return content.Trim();
     }
 
     static AgentResult Failure(string log) =>
