@@ -2229,3 +2229,40 @@ times in the project this framework came from.
 - **ADR:** none new. This is the second consecutive change where the mutation check caught something
   reading did not (#162's three false reds, this one's false green) — ADR-0004 already carries that
   rule, and applying it is what worked both times, so it graduates nothing new.
+
+## 2026-08-01 — starter-prompts (#190)
+
+- **Worked: measuring the reference implementation instead of citing it.** The issue named
+  `ds-connect`'s six commands as the model. Grepping them for what they read showed five of six
+  depend on documents a fresh repository does not have — a definition of ready, a retro log, the
+  `openspec/` layout. That measurement turned "ship the six" into a real product decision (tier them,
+  label them by prerequisite) and it took one command to find. The issue had been open with the wrong
+  premise; nobody had opened the files.
+- **Worked: settling the stated difficulty by argument, then checking it.** The issue called
+  agent-writes-versus-portal-offers "the whole difficulty". Three checkable facts settled it — the
+  content is deterministic and already held, the no-overwrite criterion is structural in one shape
+  and an unenforceable prompt instruction in the other, and an agent's pull request is not less human
+  work than a commit. Posted with the argument and confirmed rather than assumed.
+- **Didn't — I nearly shipped a second vacuous assertion, one change after learning the lesson.**
+  The first "asking for the set writes nothing" test asserted an empty document dictionary, which is
+  just "nobody seeded one". Caught while rereading, not by a mutation. The real position is that the
+  guarantee is held by the type — the handler's only seam has no write on it — so the test asserts
+  what a type cannot: the reads are one per starter and nothing else. #189's retro said to ask "what
+  value would fail under the old behaviour"; the generalisation is **ask what state would make this
+  assertion false, and if none would, delete it.**
+- **Didn't — the catalogue had a collision I only found while writing its test.** Both tiers ship an
+  `implement.md`, so they resolved to one path: taking both was impossible and the presence report
+  would have marked two entries for one file. The manifest carries an explicit saved name now, and a
+  test pins that no two starters land on the same path — the fix is the invariant, not the rename.
+- **Also: the frontmatter stripper moved to BuildingBlocks.** The criterion is that a starter behaves
+  identically run by this product or a local agent CLI; that is only testable against the *same*
+  routine the Run path calls. Second time in two changes that a promise about fidelity forced a
+  private helper to become shared — #189 did it for the Story description.
+- **Next time:** when an issue names a reference implementation, read it before writing the proposal.
+  Both of this change's real decisions came out of the six files the issue pointed at, and neither
+  was visible from the issue's own description of them.
+- **Time invested:** not measured (source: **manual** — eighty-eighth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. The vacuous-assertion finding is the second occurrence and would normally
+  graduate — but ADR-0004 already carries "assert the artifact", and what is new is a sharper test
+  for it, recorded here rather than as a fourth restatement of the same rule.
