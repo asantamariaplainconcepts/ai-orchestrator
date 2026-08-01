@@ -24,4 +24,17 @@ public static class IdentityHabitat
 
     public static bool CallersSignIn(IConfiguration configuration) =>
         !string.IsNullOrWhiteSpace(configuration[ProviderClientIdKey]);
+
+    /// <summary>Set to <c>LocalOwner</c> on a machine one person owns. Absent everywhere else.</summary>
+    public const string ModeKey = "Identity:Mode";
+
+    /// <summary>
+    /// The second habitat question (#210), asked the same way and for the same reason as
+    /// <see cref="CallersSignIn"/>: the host composes the LocalOwner principal from this value,
+    /// and the Backlog module has to know whether a folder on this machine is something an Admin
+    /// may name as a code source. Both read one key, so they cannot disagree — a deployment
+    /// whose identity is not the local owner has no business reading the host's disk.
+    /// </summary>
+    public static bool IsSelfHost(IConfiguration configuration) =>
+        string.Equals(configuration[ModeKey], "LocalOwner", StringComparison.OrdinalIgnoreCase);
 }

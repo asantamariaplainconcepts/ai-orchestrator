@@ -28,6 +28,7 @@ builder.AddIntegrationEvents();
 builder.AddRunDispatchReader();
 builder.AddAgentRuntime();
 builder.AddCodeWorkspace();
+builder.AddLocalCodeWorkspace();
 
 var modules = ModuleRegistration.Discover();
 builder.Services.AddModules(modules, builder.Configuration);

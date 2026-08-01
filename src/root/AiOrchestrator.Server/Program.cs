@@ -62,6 +62,7 @@ builder.AddAgentRuntime();
 // owns, not a degraded mode.
 builder.AddConversationRuntime();
 builder.AddCodeWorkspace();
+builder.AddLocalCodeWorkspace();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

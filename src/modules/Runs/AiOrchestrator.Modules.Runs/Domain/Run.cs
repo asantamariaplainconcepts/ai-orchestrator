@@ -15,11 +15,18 @@ sealed class Run : Aggregate
 {
     Run() { }
 
-    Run(Guid projectId, string vendorStoryId, Guid automationId, DateTimeOffset createdAt)
+    Run(
+        Guid projectId,
+        string vendorStoryId,
+        Guid automationId,
+        RunLocus locus,
+        DateTimeOffset createdAt
+    )
     {
         ProjectId = projectId;
         VendorStoryId = vendorStoryId;
         AutomationId = automationId;
+        Locus = locus;
         State = RunState.Queued;
         CreatedAt = createdAt;
     }
@@ -44,10 +51,30 @@ sealed class Run : Aggregate
         Guid projectId,
         string vendorStoryId,
         Guid automationId,
+        RunLocus locus,
         DateTimeOffset createdAt
-    ) => new(projectId, vendorStoryId, automationId, createdAt);
+    ) => new(projectId, vendorStoryId, automationId, locus, createdAt);
 
     public void MarkDispatched(DateTimeOffset at) => DispatchedAt = at;
+
+    /// <summary>
+    /// Where this Run executes (#210) — fixed at creation, because the workspace it needs and
+    /// the preconditions it was checked against (BR-016) are decided there, not claimed later.
+    /// </summary>
+    public RunLocus Locus { get; private set; }
+
+    /// <summary>The host folder a Local run worked in (BR-014's audit, extended). Null for Pod.</summary>
+    public string? WorkingFolder { get; private set; }
+
+    /// <summary>The branch a Local run left behind — its output, where Pod runs carry a PR link.</summary>
+    public string? BranchName { get; private set; }
+
+    /// <summary>Stamped at execution, when the workspace actually existed — never predicted.</summary>
+    public void RecordLocalExecution(string workingFolder, string branchName)
+    {
+        WorkingFolder = workingFolder;
+        BranchName = branchName;
+    }
 
     /// <summary>When execution actually began — the claim, not the enqueue (BR-014).</summary>
     public DateTimeOffset? StartedAt { get; private set; }
@@ -221,6 +248,17 @@ enum RunState
     /// mid-conversation must not start a second Run — and untimed like approval (BR-006).
     /// </summary>
     AwaitingInput = 8,
+}
+
+/// <summary>
+/// Where a Run executes (#210). Not a routing fact — the queue and the worker are identical for
+/// both — but a workspace fact: <see cref="Pod"/> clones fresh, <see cref="Local"/> works in the
+/// Connector's configured folder on the host (self-host flavour, DEC-049).
+/// </summary>
+enum RunLocus
+{
+    Pod = 1,
+    Local = 2,
 }
 
 /// <summary>

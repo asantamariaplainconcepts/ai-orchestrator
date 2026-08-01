@@ -85,7 +85,7 @@ public class Pulse_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
-        var run = Run.Create(_projectId, story, _refineId, created);
+        var run = Run.Create(_projectId, story, _refineId, RunLocus.Pod, created);
         shape(run);
         database.Runs.Add(run);
         await database.SaveChangesAsync();
