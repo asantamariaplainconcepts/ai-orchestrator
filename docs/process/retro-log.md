@@ -2573,3 +2573,24 @@ never batched with a terminal state that a reload can precede (applied here; wor
 pattern). And wire worktree sessions into telemetry — endpoint + SessionStart hook — before the
 next change is built in one; if a second worktree change loses its measurements the same way,
 that is the graduation point for an ADR.
+
+## 2026-08-01 — default-automations-setup
+
+**Time (manual — same broken worktree telemetry as local-code-source, same session, same three
+failing checks):** a short session; the change is one use case, one manifest extension and three
+tests.
+
+**What worked:** putting the wiring in the manifest instead of the handler — the "which
+Automations, wired how" question became catalogue content the existing enumeration test could
+guard, and the handler shrank to convergence mechanics. Convergence-not-insertion as the
+contract made every hard case (odd-cased existing trigger, lost uniqueness race, second
+invocation) the same answer: skip and say so.
+
+**What didn't:** nothing structural; the only friction was remembering that a lost
+`DbUpdateException` race leaves the loser in the change tracker — it has to be detached or the
+next `SaveChanges` in the same loop replays the failure.
+
+**One change next time:** this is the second change in one session whose measurements were lost
+to the worktree telemetry gap named in the previous entry — by that entry's own graduation rule,
+the ADR is now due. Writing it should ride with whichever change next touches the telemetry
+plumbing rather than blocking this one.
