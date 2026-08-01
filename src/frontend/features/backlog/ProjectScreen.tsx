@@ -6,6 +6,7 @@ import { StarterPromptsSection } from "@/features/automations/StarterPromptsSect
 import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
+import { RunNowDialog } from "@/features/runs/RunNowDialog";
 import { RunsSection } from "@/features/runs/RunsSection";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { useRunNow } from "@/features/runs/useRunNow";
@@ -22,11 +23,14 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   useBacklog,
+  useCodeSourceSurface,
   useConfigureConnector,
   useRefreshBacklog,
   useTestConnector,
   useWriteStoryLabel,
 } from "./useBacklog";
+import { CodeSourceSection } from "./CodeSourceSection";
+import { CloseTheLoopChecklist } from "./CloseTheLoopChecklist";
 import { ApiError } from "@/shared/http/client";
 import { useRememberedPreference } from "@/shared/lib/useRememberedPreference";
 import { useProjectRole } from "@/shared/identity/useCurrentPrincipal";
@@ -128,6 +132,13 @@ export function ProjectScreen() {
         {/* The docked tab bar would otherwise sit on top of the last row. */}
         <div className="pb-16 md:pb-0">
           <TabsContent value="operate" className="flex flex-col gap-6">
+            {/* Mock 3d: above the pulse strip, only while the loop has never closed. */}
+            <CloseTheLoopChecklist
+              projectId={projectId}
+              connector={connector}
+              onConfigure={() => selectTab("settings")}
+              onAutomations={() => selectTab("automations")}
+            />
             {connector ? (
               <OperateStrip projectId={projectId} onShowRuns={() => selectTab("runs")} />
             ) : null}
@@ -233,6 +244,10 @@ function BacklogPanel({
   const refresh = useRefreshBacklog(projectId);
   const writeLabel = useWriteStoryLabel(projectId);
   const runNow = useRunNow(projectId);
+  // Mock 3b (#211): the dialog exists only where a genuine choice does — a project with no local
+  // folder dispatches exactly as before, with no dialog at all.
+  const localPath = connector?.codeSource === "LocalFolder" ? connector.localPath : null;
+  const [runNowStory, setRunNowStory] = useState<string | null>(null);
 
   // UC-012: chosen Story + Automation. UC-008's UI scope (design D4 of backlog): only enabled
   // Automations' trigger labels are actionable.
@@ -408,7 +423,11 @@ function BacklogPanel({
                       automations={enabledAutomations}
                       pending={runNow.isPending}
                       onRun={(automationId) =>
-                        runNow.mutate({ vendorStoryId: story.vendorId, automationId })
+                        // With a local folder the choice is real, so the gesture opens the
+                        // dialog instead of dispatching; without one, nothing changes.
+                        localPath
+                          ? setRunNowStory(story.vendorId)
+                          : runNow.mutate({ vendorStoryId: story.vendorId, automationId })
                       }
                     />
                   </div>
@@ -418,6 +437,31 @@ function BacklogPanel({
           </CardContent>
         </Card>
       )}
+
+      {/* Mounted only while a choice is being made — mock 3b. */}
+      {runNowStory && localPath ? (
+        <RunNowDialog
+          open
+          onOpenChange={(next) => {
+            if (!next) {
+              setRunNowStory(null);
+              runNow.reset();
+            }
+          }}
+          vendorStoryId={runNowStory}
+          automations={enabledAutomations}
+          localPath={localPath}
+          pending={runNow.isPending}
+          error={runNow.error}
+          onRun={(automationId, locus) =>
+            runNow.mutate(
+              { vendorStoryId: runNowStory, automationId, locus },
+              // A refusal keeps the dialog open with its reason; a success closes it.
+              { onSuccess: () => setRunNowStory(null) },
+            )
+          }
+        />
+      ) : null}
     </div>
   );
 }
@@ -487,6 +531,11 @@ function ConnectorPanel({
   // Where this project keeps its prompt files (#150). Blank means the convention, so the
   // placeholder shows the default rather than pre-filling a value nobody chose.
   const [promptDirectory, setPromptDirectory] = useState(connector?.promptDirectory ?? "");
+  // The code source (#210/#211, mock 3a). The section renders only where the deployment offers
+  // the surface — a cloud deployment answers 404 and no code-source UI exists at all.
+  const surface = useCodeSourceSurface(projectId);
+  const [codeSource, setCodeSource] = useState(connector?.codeSource ?? "Repository");
+  const [localPath, setLocalPath] = useState(connector?.localPath ?? "");
 
   // Pasting is the default (#124), because the operator who already manages secrets knows to
   // switch and the first-time user does not know a vault exists. A Connector whose secret this
@@ -529,6 +578,13 @@ function ConnectorPanel({
         vendor,
         codeRepository: needsCodeRepository && codeRepository.trim() ? codeRepository : null,
         promptDirectory: promptDirectory.trim() ? promptDirectory.trim() : null,
+        // Sent only where the surface exists: a cloud deployment never renders the control, and
+        // null keeps the API's default so pre-#210 behaviour is untouched.
+        codeSource: surface.data?.offered ? codeSource : null,
+        localPath:
+          surface.data?.offered && codeSource === "LocalFolder" && localPath.trim()
+            ? localPath.trim()
+            : null,
       },
       {
         onSuccess: () => {
@@ -675,6 +731,18 @@ function ConnectorPanel({
                 />
               </div>
             </div>
+
+            {/* Mock 3a (#211): only where the deployment offers the surface — on cloud, nothing
+                renders here, not even a disabled control. */}
+            {surface.data?.offered ? (
+              <CodeSourceSection
+                projectId={projectId}
+                codeSource={codeSource}
+                onCodeSource={setCodeSource}
+                localPath={localPath}
+                onLocalPath={setLocalPath}
+              />
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" disabled={configure.isPending}>

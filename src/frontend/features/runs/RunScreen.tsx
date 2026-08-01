@@ -10,6 +10,7 @@ import { cn } from "@/shared/lib/utils";
 import { AppShell } from "@/shared/ui/AppShell";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { LocusChip } from "@/shared/ui/locus";
 import { Card } from "@/shared/ui/card";
 import { RunChanges } from "./RunChanges";
 import { parseTranscript } from "./transcript";
@@ -189,6 +190,8 @@ export function RunScreen() {
               <Badge variant="outline" className={STATE_STYLE[run.state]}>
                 {t(STATE_COPY[run.state])}
               </Badge>
+              {/* Mock 3c: locus beside the state, in the vocabulary the projects list uses. */}
+              <LocusChip locus={run.locus} />
             </div>
 
             <RunStepper run={run} />
@@ -346,6 +349,45 @@ export function RunScreen() {
                         value={<span className="text-destructive">{run.failureReason}</span>}
                       />
                     ) : null}
+                  </div>
+                </Card>
+
+                {/* Mock 3c (#211): where it executed, between Details and Changes. Both kinds
+                    read the same page — a local run names its folder and branch where a pod run
+                    carries the job's fresh clone and a PR. */}
+                <Card className="gap-0 py-0">
+                  <div className="border-b px-4 py-3">
+                    <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                      {t("run.section.execution")}
+                    </h2>
+                  </div>
+                  <div className="flex flex-col gap-2.5 px-4 py-3">
+                    <DetailRow
+                      label={t("run.field.runtimeKind")}
+                      value={
+                        run.locus === "Local"
+                          ? t("run.execution.localProcess")
+                          : t("run.execution.containerJob")
+                      }
+                    />
+                    {run.locus === "Local" ? (
+                      <DetailRow
+                        label={t("run.field.workingFolder")}
+                        value={run.workingFolder}
+                        mono
+                      />
+                    ) : null}
+                    <DetailRow label={t("run.field.branchCreated")} value={run.branchName} mono />
+                    <DetailRow
+                      label={t("run.field.output")}
+                      value={
+                        run.locus === "Local"
+                          ? t("run.execution.localOutput")
+                          : run.outputLink
+                            ? t("run.execution.podOutput")
+                            : null
+                      }
+                    />
                   </div>
                 </Card>
 

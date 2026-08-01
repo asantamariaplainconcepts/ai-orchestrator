@@ -109,6 +109,69 @@ export const en = {
   "connector.promptDirectoryPlaceholder": "ai/prompts",
   "connector.promptDirectoryHint":
     "Where this project keeps the prompt files an Automation can name. Leave it blank for ai/prompts.",
+
+  // The code source (#210/#211, mock 3a). "Local folder" is a code source, not a vendor —
+  // Stories still come from issues; only where the Agent's working copy comes from changes.
+  "connector.codeSource": "Code source",
+  "connector.codeSource.repository": "Repository",
+  "connector.codeSource.localFolder": "Local folder",
+  "connector.codeSource.hint": "Stories still come from issues — only the code is local.",
+  "connector.codeSource.folder": "Folder on this machine",
+  "connector.codeSource.folderPlaceholder": "/home/you/repos/portal",
+  "connector.codeSource.validating": "Checking the folder…",
+  "connector.codeSource.notADirectory": "Not a directory on this machine.",
+  "connector.codeSource.notAGitRepository": "Not a git repository.",
+  "connector.codeSource.valid": "Git repository · branch",
+  "connector.codeSource.cleanTree": "clean working tree",
+  "connector.codeSource.dirtyTree": "uncommitted changes — a Local Run will refuse to start",
+  "connector.codeSource.recent": "Recent folders",
+  "connector.codeSource.usedBy": "used by",
+  "connector.codeSource.podConstraint":
+    "A local folder only works with the Local runtime — an Agent in a pod cannot see this machine's disk. Runs of this project default to Local.",
+
+  // Where code executes (#211): one vocabulary for the projects list badge and the Run chip.
+  "locus.local": "Local",
+  "locus.pod": "Agent pod",
+
+  // Run now's locus choice (#211, mock 3b) — each card states its consequences, and the primary
+  // button repeats the choice so nobody is surprised about where work executed.
+  "runs.runNow.dialogTitle": "Run now —",
+  "runs.runNow.dialogHint": "Choose the Automation and where the Agent executes.",
+  "runs.runNow.automation": "Automation",
+  "runs.runNow.whereItExecutes": "Where it executes",
+  "runs.locus.local.title": "On this machine",
+  "runs.locus.local.description":
+    "Runs the Agent as a local process against this folder. Fast, no image pull; uses your local CLI credentials:",
+  "runs.locus.pod.title": "In an Agent pod",
+  "runs.locus.pod.unavailable":
+    "Container job with the repository cloned fresh. Requires a repository code source — unavailable for a local folder.",
+  "runs.runNow.confirmLocal": "Run on this machine",
+  "runs.runNow.confirmPod": "Run in a pod",
+
+  // Run detail's Execution block (#211, mock 3c) — both kinds read the same page.
+  "run.section.execution": "Execution",
+  "run.field.runtimeKind": "Runtime",
+  "run.field.workingFolder": "Working folder",
+  "run.field.branchCreated": "Branch created",
+  "run.execution.localProcess": "Local process on this machine",
+  "run.execution.containerJob": "Container job in an Agent pod",
+  "run.execution.localOutput": "Local branch — no pull request; review it in your editor.",
+  "run.execution.podOutput": "Pull request — see Details.",
+
+  // The self-host posture, stated on every screen while it applies (#211, mock 3d).
+  "shell.localOwner":
+    "Running as local owner — every action is administrator, no sign-in. Trusted networks only.",
+
+  // Close the loop (#211, mock 3d): three derived steps, gone once any Run reaches terminal.
+  "onboarding.title": "Close the loop on this machine",
+  "onboarding.explainer": "Three steps and a labelled Story becomes a Run you can watch.",
+  "onboarding.step.connect": "Connect a backlog",
+  "onboarding.step.code": "Point at your code — a repository, or a folder on this machine",
+  "onboarding.step.automations": "Set up the Automations, then label a Story",
+  "onboarding.state.done": "done",
+  "onboarding.state.current": "next",
+  "onboarding.state.later": "later",
+  "onboarding.go": "Go",
   "connector.codeRepositoryHint":
     "Azure DevOps keeps code in repositories inside the project. Name the one Agents should open pull requests against; leave it empty if no Automation touches code.",
   "connector.secretHint":

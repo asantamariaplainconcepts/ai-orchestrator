@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
+import { LocusChip } from "@/shared/ui/locus";
 import { useCreateProject, useProjects } from "./useProjects";
 import { healthOf, useConnectorHealth } from "./useConnectorHealth";
 import type { ConnectorHealth, HealthState } from "./useConnectorHealth";
@@ -111,6 +112,11 @@ export function ProjectsScreen() {
                       </Link>
                       {project.archivedAt ? (
                         <Badge variant="outline">{t("projects.archived.badge")}</Badge>
+                      ) : null}
+                      {/* Mock 3e (#211): the same chip vocabulary as the Run locus chip, so
+                          "local" looks identical everywhere it appears. */}
+                      {byProject.get(project.id)?.codeSource === "LocalFolder" ? (
+                        <LocusChip locus="Local" />
                       ) : null}
                     </span>
                     <span className="flex shrink-0 items-center gap-2">

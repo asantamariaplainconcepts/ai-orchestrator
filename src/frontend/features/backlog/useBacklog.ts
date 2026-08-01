@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/shared/http/client";
+import { ApiError, api } from "@/shared/http/client";
 import type {
   BacklogView,
   ConfigureConnectorRequest,
   ConnectorTestView,
+  PathValidation,
   StoryDetail,
   StoryDocumentContent,
   StoryDocuments,
@@ -101,6 +102,46 @@ export function useWriteStoryLabel(projectId: string) {
       void queryClient.invalidateQueries({ queryKey: backlogKey(projectId) });
       void queryClient.invalidateQueries({ queryKey: ["runs", projectId] });
     },
+  });
+}
+
+/**
+ * Whether this deployment offers the code-source surface at all (#210/#211, mock 3a). The spec's
+ * rule is posture-shaped: a cloud deployment answers **404 for the whole surface**, so the probe
+ * asks the surface itself — one deliberately-invalid validate call — and reads only the status.
+ * 404 means absent (render nothing); any other answer, the 400 included, means the surface
+ * exists. Probed once per project page (staleTime: the posture cannot change under a running
+ * deployment).
+ */
+export function useCodeSourceSurface(projectId: string) {
+  return useQuery({
+    queryKey: ["code-source-surface", projectId] as const,
+    staleTime: Infinity,
+    queryFn: async () => {
+      try {
+        await api.post<unknown>(`/api/projects/${projectId}/connector/validate-path`, {
+          path: "",
+        });
+        return { offered: true };
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 404) {
+          return { offered: false };
+        }
+        return { offered: true };
+      }
+    },
+  });
+}
+
+/**
+ * #210 — the live path check the form runs on idle (mock 3a). A mutation rather than a query:
+ * the answer is about the host's disk at this moment, and caching "clean working tree" would
+ * happily contradict the dispatch-time refusal it exists to preview.
+ */
+export function useValidateLocalPath(projectId: string) {
+  return useMutation({
+    mutationFn: (path: string) =>
+      api.post<PathValidation>(`/api/projects/${projectId}/connector/validate-path`, { path }),
   });
 }
 

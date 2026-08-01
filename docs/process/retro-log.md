@@ -2641,3 +2641,24 @@ test as well as the spec.
 **One change next time:** when a change reverses a stated absolute, grep the e2e tier for the old
 wording before pushing — the spec delta and the assertion that guards it live in different trees,
 and only one of them is in the change bundle.
+
+## 2026-08-02 — local-execution-ui
+
+**Time (manual — the worktree telemetry gap of ADR-0011, unchanged):** one session across five
+surfaces, all frontend on already-landed endpoints.
+
+**What worked:** reading the mocks from the design project itself rather than from memory. The
+five screens (3a–3e) and their three written specs pinned every detail the issue summarised —
+target sizes, which control is a radiogroup, that the pod card is *disabled with its reason*
+rather than hidden, that presence is unknown rather than absent without a Connector. Building
+`LocusChip` as one shared component is what makes "local" identical on the projects list and the
+Run page, which the spec asks for in words and a shared component enforces.
+
+**What didn't:** the posture probe has no dedicated endpoint. The spec's rule is "404 for the
+whole surface", so the probe asks the surface itself with a deliberately invalid validate-path
+call and reads only the status — correct, but it spends a request to learn a fact the deployment
+already knows. A `GET /api/capabilities` would say it once.
+
+**One change next time:** when a spec expresses a capability as "this whole surface 404s", give
+the frontend something to *ask* rather than something to *infer* — the inference works and reads
+like a trick, which is a cost paid by every future reader of that hook.

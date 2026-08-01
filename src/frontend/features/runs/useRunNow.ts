@@ -16,11 +16,18 @@ export function useRunNow(projectId: string) {
     mutationFn: ({
       vendorStoryId,
       automationId,
+      locus,
     }: {
       vendorStoryId: string;
       automationId: string;
+      /** #211: absent means the project's default — Local for a local-folder project. */
+      locus?: "Local" | "Pod";
     }) =>
-      api.post<RunNowResult>(`/api/projects/${projectId}/runs`, { vendorStoryId, automationId }),
+      api.post<RunNowResult>(`/api/projects/${projectId}/runs`, {
+        vendorStoryId,
+        automationId,
+        locus: locus ?? null,
+      }),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
   });
 }

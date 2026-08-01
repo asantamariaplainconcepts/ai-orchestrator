@@ -89,6 +89,9 @@ const run = (
   outputTokens: null,
   costUsd: null,
   dismissedAt: null,
+  locus: "Local",
+  workingFolder: "/home/ana/repos/portal",
+  branchName: `ai/${story}-story`,
   ...extra,
 });
 
@@ -120,6 +123,10 @@ const connector = {
   lastSyncedAt: at(2),
   lastFailure: null,
   lastFailureAt: null,
+  // #211: a local-folder project, so mock mode exercises the code-source surface, the Run now
+  // dialog and the locus chip rather than only the repository path.
+  codeSource: "LocalFolder",
+  localPath: "/home/ana/repos/portal",
 };
 
 type Handler = (match: RegExpMatchArray, body: unknown, params: URLSearchParams) => unknown;
@@ -177,6 +184,8 @@ const routes: [string, RegExp, Handler][] = [
         lastSyncedAt: at(2),
         lastFailure: null,
         lastFailureAt: null,
+        codeSource: "LocalFolder",
+        localPath: "/home/ana/repos/portal",
       },
       {
         projectId: projectBeta,
@@ -184,6 +193,8 @@ const routes: [string, RegExp, Handler][] = [
         lastSyncedAt: at(300),
         lastFailure: "Credential rejected by the vendor.",
         lastFailureAt: at(10),
+        codeSource: "Repository",
+        localPath: null,
       },
     ],
   ],
@@ -222,6 +233,20 @@ const routes: [string, RegExp, Handler][] = [
         })),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/backlog$/, () => ({ connector, stories })],
+  // #210/#211 — the self-host posture answers; a cloud deployment would 404 the whole surface.
+  [
+    "POST",
+    /^\/api\/projects\/[^/]+\/connector\/validate-path$/,
+    (_match, body) => {
+      const path = (body as { path: string }).path ?? "";
+      return {
+        isDirectory: path.startsWith("/") || path.startsWith("~"),
+        isGitRepository: path.includes("repos") || path.includes("work"),
+        branch: "main",
+        isClean: true,
+      };
+    },
+  ],
   // #132 — one capability allowed and one refused, so the panel's two branches are both visible
   // in mock mode rather than only the happy one.
   [
