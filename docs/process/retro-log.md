@@ -2330,3 +2330,31 @@ times in the project this framework came from.
   at the *pipeline* level rather than the command level — ADR-0004 covers the command. If the sync
   change above lands, that is where the rule belongs; recording the second occurrence here so the
   graduation rule has its count.
+
+## 2026-08-01 — one-warm-session (#198)
+
+- **Worked: watching the deploy this time.** #196's retro said a merge that lands a red deploy is not
+  a finished change. Doing it immediately is what surfaced this: the apply got past the duplicate
+  role assignment and ARM refused `readySessionInstances = 0` on the next line. Three faults stood
+  between the committed pool and a working one, each reachable only once the previous cleared, and
+  batching them would have taken three more days of red.
+- **Worked: escalating a decision rather than defaulting it.** Zero was a *stated* decision with a
+  cost argument (DEC-061). The platform refusing it is not a licence to pick a number — an
+  always-billed container in dev is ongoing money. Asked, with the smaller-box and no-pool
+  alternatives priced honestly, and the owner chose the full size for a reason worth recording: an
+  agent cloning a repository and running a model is not a small workload.
+- **Didn't — I have been trusting `terraform plan` as though it validated against Azure.** It does
+  not. azapi's embedded schema accepted `readySessionInstances = 0`; only the PUT refused it. In the
+  same week the same schema *rejected* env var names ARM would have accepted (#193). It is wrong in
+  both directions, and I treated a green plan as evidence twice.
+- **Next time:** for `azapi` resources specifically, say "the plan passed" and never "this will
+  apply". The escape hatch's validation is a convenience, not a contract, and `ARCHITECTURE.md` now
+  says so where the seam is described.
+- **Also:** DEC-063 revises DEC-061's cost clause only. One conversation is still one container is
+  still one project's PAT — the isolation argument the shape was chosen for is untouched, and it is
+  worth stating that a revision is narrow rather than letting a reader assume it reopened everything.
+- **Time invested:** not measured (source: **manual** — ninety-first consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. The plan-is-not-a-promise finding is specific to one provider and lives in
+  `ARCHITECTURE.md` beside the seam; promoting it to an ADR would generalise a claim that only holds
+  for `azapi`.
