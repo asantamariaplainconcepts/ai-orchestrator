@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
 
 export interface StarterPrompt {
@@ -29,5 +29,27 @@ export function useStarterPrompts(projectId: string) {
   return useQuery({
     queryKey: ["starter-prompts", projectId] as const,
     queryFn: () => api.get<StarterTier[]>(`/api/projects/${projectId}/starter-prompts`),
+  });
+}
+
+export interface InstallResult {
+  url: string;
+  path: string;
+  branch: string;
+}
+
+/**
+ * #214 — one click writes the starter to a branch and opens a draft PR; a human merges. The
+ * offer's presence reporting refreshes on settle, because a merged install is what flips
+ * `alreadyPresent` — and a failed one changes nothing worth caching.
+ */
+export function useInstallStarter(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (saveAs: string) =>
+      api.post<InstallResult>(`/api/projects/${projectId}/starter-prompts/install`, { saveAs }),
+    onSettled: () =>
+      void queryClient.invalidateQueries({ queryKey: ["starter-prompts", projectId] }),
   });
 }

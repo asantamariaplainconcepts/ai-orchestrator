@@ -1,6 +1,8 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Persistence;
 using AiOrchestrator.SharedFunctionalTests;
+using ErrorOr;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -22,6 +24,12 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
     /// </summary>
     internal StubDocumentReader Documents { get; } = new();
 
+    /// <summary>The Connector as installs read it (#214) — stubbed at the same Contracts seam.</summary>
+    internal StubConnectorReader Connector { get; } = new();
+
+    /// <summary>The publish ceremony faked at its seam, exactly as the Runs tests fake it.</summary>
+    internal StubInstallWorkspace Workspace { get; } = new();
+
     /// <summary>
     /// Mutable stub in a shared fixture, so it is restored here — the leak this hook exists for
     /// (#13). A document one class seeded and never cleared would make another class's "you do not
@@ -30,6 +38,8 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
     public override async Task ResetDatabase()
     {
         Documents.Reset();
+        Connector.Reset();
+        Workspace.Reset();
         await base.ResetDatabase();
     }
 
@@ -41,7 +51,127 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
         {
             services.RemoveAll<IDocumentReader>();
             services.AddSingleton<IDocumentReader>(Documents);
+            services.RemoveAll<IConnectorReader>();
+            services.AddSingleton<IConnectorReader>(Connector);
+            services.RemoveAll<ICodeWorkspace>();
+            services.AddSingleton<ICodeWorkspace>(Workspace);
+            services.RemoveAll<BuildingBlocks.Secrets.ISecretResolver>();
+            services.AddSingleton<BuildingBlocks.Secrets.ISecretResolver>(new StubSecretResolver());
         });
+    }
+}
+
+/// <summary>Resolves every name to the same in-memory value — BR-010's seam, faked at it.</summary>
+sealed class StubSecretResolver : BuildingBlocks.Secrets.ISecretResolver
+{
+    public Task<string> Resolve(string secretName, CancellationToken cancellationToken = default) =>
+        Task.FromResult("stub-token");
+}
+
+/// <summary>A Connector snapshot the test decides; null is the no-Connector project.</summary>
+sealed class StubConnectorReader : IConnectorReader
+{
+    public ConnectorSnapshot? Snapshot { get; set; }
+
+    public void Reset() =>
+        Snapshot = new ConnectorSnapshot(
+            "GitHub",
+            "acme",
+            "portal",
+            "acme-pat",
+            "Repository",
+            null
+        );
+
+    public Task<ConnectorSnapshot?> Find(
+        Guid projectId,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(Snapshot);
+}
+
+/// <summary>
+/// The install's workspace, scripted: no git, no vendor — what the tests are about is the use
+/// case's refusals and its one write, not how a branch is pushed.
+/// </summary>
+sealed class StubInstallWorkspace : ICodeWorkspace
+{
+    public Error? PrepareError { get; set; }
+
+    public Error? PublishError { get; set; }
+
+    public string PullRequestUrl { get; set; } = "https://github.com/acme/portal/pull/7";
+
+    /// <summary>The branch the install asked for — determinism is asserted on this.</summary>
+    public string? PreparedBranch { get; private set; }
+
+    /// <summary>Whether the PR was opened as a draft — the spec's whole point.</summary>
+    public bool? PublishedAsDraft { get; private set; }
+
+    /// <summary>Files present in the workspace at publish time, relative to its root.</summary>
+    public List<string> PublishedFiles { get; } = [];
+
+    public void Reset()
+    {
+        PrepareError = null;
+        PublishError = null;
+        PreparedBranch = null;
+        PublishedAsDraft = null;
+        PublishedFiles.Clear();
+        PullRequestUrl = "https://github.com/acme/portal/pull/7";
+    }
+
+    public Task<ErrorOr<PreparedWorkspace>> Prepare(
+        CodeCoordinates coordinates,
+        Guid runId,
+        string token,
+        CancellationToken cancellationToken
+    ) => Prepare(coordinates, $"run/{runId}", token, cancellationToken);
+
+    public Task<ErrorOr<PreparedWorkspace>> Prepare(
+        CodeCoordinates coordinates,
+        string branch,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (PrepareError is { } error)
+        {
+            return Task.FromResult<ErrorOr<PreparedWorkspace>>(error);
+        }
+
+        PreparedBranch = branch;
+        return Task.FromResult<ErrorOr<PreparedWorkspace>>(
+            new PreparedWorkspace(
+                coordinates,
+                Directory.CreateTempSubdirectory("install-ws-").FullName,
+                branch
+            )
+        );
+    }
+
+    public Task<ErrorOr<PublishedChange>> Publish(
+        PreparedWorkspace workspace,
+        string title,
+        string body,
+        string token,
+        CancellationToken cancellationToken,
+        bool draft = false
+    )
+    {
+        PublishedAsDraft = draft;
+        PublishedFiles.Clear();
+        if (Directory.Exists(workspace.Path))
+        {
+            PublishedFiles.AddRange(
+                Directory
+                    .EnumerateFiles(workspace.Path, "*", SearchOption.AllDirectories)
+                    .Select(file => Path.GetRelativePath(workspace.Path, file).Replace('\\', '/'))
+            );
+        }
+
+        return Task.FromResult<ErrorOr<PublishedChange>>(
+            PublishError is { } error ? error : new PublishedChange(PullRequestUrl)
+        );
     }
 }
 

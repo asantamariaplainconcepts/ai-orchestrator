@@ -519,6 +519,13 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
         Guid runId,
         string token,
         CancellationToken cancellationToken
+    ) => Prepare(coordinates, $"run/{runId}", token, cancellationToken);
+
+    public Task<ErrorOr<PreparedWorkspace>> Prepare(
+        CodeCoordinates coordinates,
+        string branch,
+        string token,
+        CancellationToken cancellationToken
     ) =>
         Task.FromResult<ErrorOr<PreparedWorkspace>>(
             PrepareError is { } error
@@ -527,7 +534,7 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
                     new PreparedWorkspace(
                         coordinates,
                         Directory.CreateTempSubdirectory("fake-ws-").FullName,
-                        $"run/{runId}"
+                        branch
                     )
                 )
         );
@@ -543,7 +550,8 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
         string title,
         string body,
         string token,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool draft = false
     )
     {
         Published = true;

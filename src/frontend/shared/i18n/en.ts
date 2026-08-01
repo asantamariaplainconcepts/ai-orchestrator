@@ -327,7 +327,7 @@ export const en = {
   // needed is the whole difference between a starter set and a methodology somebody took by mistake.
   "starters.title": "Starter prompts",
   "starters.explainer":
-    "Prompts you can put in your repository to get going. Nothing here is written for you \u2014 copy the file in, then name it on an Automation.",
+    "Prompts you can put in your repository to get going. Copy the file in yourself, or install one \u2014 it opens a draft pull request you review and merge.",
   "starters.requires": "Requires:",
   "starters.assumes": "Assumes:",
   "starters.saveTo": "Save as",
@@ -337,6 +337,11 @@ export const en = {
   "starters.hide": "Hide",
   "starters.copy": "Copy",
   "starters.copied": "Copied",
+  // Install (#214): verb-first, and the outcome names the human's next step — review the PR.
+  "starters.install": "Install",
+  "starters.installing": "Opening a pull request…",
+  "starters.installed": "Draft pull request opened — review and merge it:",
+  "starters.installFailed": "Could not install the starter.",
   "project.tab.ask": "Ask",
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
