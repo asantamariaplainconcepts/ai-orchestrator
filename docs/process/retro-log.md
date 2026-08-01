@@ -2358,3 +2358,32 @@ times in the project this framework came from.
 - **ADR:** none new. The plan-is-not-a-promise finding is specific to one provider and lives in
   `ARCHITECTURE.md` beside the seam; promoting it to an ADR would generalise a claim that only holds
   for `azapi`.
+
+## 2026-08-01 — named-operators (#195)
+
+- **Worked: the decision was already made, one variable over.** The issue offered two shapes for
+  "who may reach the dispatch queue by hand" — a list variable, or move it out of Terraform. This
+  repository had already answered the general question: `bootstrap_admins` carries a comma-separated
+  list of object ids from a repository variable, with "empty is a real and honest state, not a safe
+  default" written into its own description. Reading the neighbouring variable settled it in one
+  step, with an argument stronger than a preference: consistency with a shape this codebase already
+  defends.
+- **Worked: keeping the lists separate, and saying why in the code.** Reusing `bootstrap_admins`
+  would have been fewer moving parts and wrong — adding a portal administrator would silently grant
+  them Azure data-plane access. Two different powers, two lists, and the comment states that so the
+  next person to notice the duplication does not "simplify" it.
+- **Didn't — nothing, and that is worth recording as the exception.** This change had no false
+  green, no vacuous assertion and no mid-flight discovery. What made the difference is that it was
+  scoped by an issue written *after* the fault was measured in a real plan, rather than from a guess
+  about what might be wrong. A well-measured issue is most of an easy change.
+- **Also: the wiring is deliberately incomplete.** `deploy.yml` does not pass
+  `TF_VAR_operator_object_ids`, because putting an empty repository variable behind a deliberate
+  empty default would look like configuration and behave like nothing. The PR says exactly what the
+  two lines are when somebody wants the grant.
+- **Next time:** before proposing options for "how should this fact be carried", grep for the fact's
+  nearest neighbour. This repository answers most such questions somewhere, and matching it is a
+  better argument than reasoning from first principles about a value nobody disputes.
+- **Time invested:** not measured (source: **manual** — ninety-second consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none. Applying an existing convention is what an ADR is *for* — recording one here would
+  restate `bootstrap_admins`' own reasoning in a second place.
