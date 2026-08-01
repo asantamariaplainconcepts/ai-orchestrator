@@ -78,6 +78,20 @@ change. **Merge = archive = sync = retro**, one commit.
    the step-7 `[skip ci]` subject, and GitHub scans subject **and** body, so an auto-body would
    suppress the main-push pipeline. `main` gets one clean commit; subject = the PR title.
 10. Only once the merge has completed, invoke **`set-issue-status`** → `status:done`.
+11. **Watch the deploy the merge triggered.** The squash-merge pushes to the default branch, which
+    starts `deploy.yml` — plan, apply, release, verify. Resolve the run for the merge commit
+    (`gh run list --workflow deploy.yml`, matched on the merge SHA), wait for it, and report its
+    conclusion and, on failure, the step that failed.
+    - **This is a report, not a gate.** The merge is irreversible and the issue is already
+      `status:done`; what a red deploy needs is to be *seen*, with a next action, never a silent
+      success. Say plainly that the change is merged and the deploy failed — both are true.
+    - Bound the wait. A timeout reads as "still running, here is the link", not as failure.
+    - If the repository has no deploy workflow, say so and finish normally rather than waiting for
+      something that will never appear.
+    - Why this exists (#202): five consecutive merges landed a failing deploy while every PR
+      reported green, because PR checks are pre-merge and this workflow runs after. The faults were
+      sequential — each only reachable once the previous cleared — so not watching cost four extra
+      days of red.
 
 **Guardrails**
 - **Gate CI green *before* the close-out commit, never after** (step 6). Refuse on a draft, a red
@@ -94,6 +108,8 @@ change. **Merge = archive = sync = retro**, one commit.
 - `/aio:sync` is the **sole owner** of the accurate-subject guarantee: never squash-merge while
   the title still describes the proposal. Whatever set the title upstream, verify it here.
 - Never set `status:done` before the merge has actually completed.
+- **Never report a change as finished without the deploy's result** where a deploy workflow exists.
+  Green PR checks are evidence about the code, not about what is running.
 - Retro time comes from `collect-usage`; if telemetry is missing, the entry says so (manual).
   The retro log is append-only.
 - A genuinely post-merge finding is appended afterwards with `/aio:refine` — never by rewriting
