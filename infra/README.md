@@ -42,12 +42,17 @@ partway through, which is a bad moment to find out.
 ./infra/deploy.sh          # TAG defaults to the short commit sha
 ```
 
-Pushes all three images, runs the migration job, waits for it to succeed, then moves the dispatch
-worker and the portal revision. **A failed migration stops the deploy with the previous revision
-still serving.** It finishes by reading back the *running* image of the portal and the worker and
-refusing to report success unless both carry the tag just deployed — #92 shipped a worker three
-days stale precisely because every command returned zero and nothing compared the result to the
-intent.
+Pushes all four images, runs the migration job, waits for it to succeed, then moves the dispatch
+worker, the conversation session pool and the portal revision, in that order. **A failed migration
+stops the deploy with the previous revision still serving.** It finishes by reading back the
+*running* image of all three and refusing to report success unless each carries the tag just
+deployed — #92 shipped a worker three days stale precisely because every command returned zero and
+nothing compared the result to the intent, and the session pool was left out of both the roll and
+the check until #193.
+
+Nothing here needs a `terraform apply`. Every workload's image is Terraform's only at bootstrap;
+each carries `ignore_changes` on it and this script owns it afterwards, so a release never touches
+the infrastructure and an apply never rolls back a deploy.
 
 Verify a release by its artifact, not by the script's exit code (ADR-0004):
 
