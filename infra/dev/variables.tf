@@ -120,3 +120,21 @@ variable "session_image" {
   type        = string
   default     = "mcr.microsoft.com/k8se/quickstart:latest"
 }
+
+variable "operator_object_ids" {
+  description = <<-EOT
+    Provider object ids that may exercise the dispatch queue by hand (#195). Comma-separated, the
+    same shape and for the same reason as `bootstrap_admins`: a repository variable is what
+    Terraform reads a list of people from.
+
+    Empty is the default and a real state, not a placeholder: nobody holds Storage Queue Data
+    Contributor, which is correct until somebody needs to enqueue a test message. It is deliberately
+    separate from `bootstrap_admins` — administering the portal and reaching Azure's data plane are
+    different powers, and one list for both would make adding an administrator grant the other
+    silently.
+
+    Not a secret. An object id identifies a person in a tenant; it authenticates nobody.
+  EOT
+  type        = string
+  default     = ""
+}
