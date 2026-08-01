@@ -2444,3 +2444,30 @@ times in the project this framework came from.
 - **ADR:** none new, but the count is worth stating: this is the fourth occurrence this session of
   "a green gate that does not exercise the artifact proves nothing" (ADR-0004). #202 turned it into
   a workflow step rather than a fifth restatement.
+
+## 2026-08-01 — refresh-oidc-before-release (#205)
+
+- **Worked: watching the deploy caught it the same hour.** #202 landed one merge before the rebuild,
+  so the failure was seen immediately instead of at the next person's next question. That is the
+  first return on the change, and it arrived within the hour of shipping it.
+- **Worked: reading the error rather than assuming it was mine.** `deploy.sh` had two commands in it
+  I had written without verifying against a live pool, and the natural guess was that one of them
+  broke. It was neither — `AADSTS700024`, the job's own sign-in had expired mid-run. Checking the
+  log before touching the suspect saved a wrong fix, and the pool then confirmed both commands were
+  right.
+- **Didn't — five faults, and every one of them was reachable from a plan or an apply on the day
+  #166 merged.** The provider schema, a duplicate role assignment, a ready-instance count, the
+  environment type, and now a job outliving its credential. None was found by spec review, code
+  review or CI, because none of those exercises the artifact against Azure. The deployed pool was
+  reviewed carefully and wrong five times.
+- **Also: the pool exists, and two things I had written unverified turned out correct.** The
+  read-back query path in `deploy.sh`, and the ARM shape of the container template. Recorded in
+  `conversations.tf` rather than left as a comment saying "unverified" that nobody would revisit —
+  a caveat that outlives its uncertainty is its own kind of stale.
+- **Next time:** an environment rebuild is not just slow, it is long enough to cross timeouts nobody
+  measured. Before a change that replaces infrastructure, ask what in the pipeline is bounded in
+  minutes — credentials, job timeouts, health-check retries — and whether the new duration fits.
+- **Time invested:** not measured (source: **manual** — ninety-fifth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none. This is a workflow fix with its reason at the site; the general lesson is the same
+  "exercise the artifact" ADR-0004 already carries, now with a workflow step (#202) enforcing it.
