@@ -49,11 +49,13 @@ public class StarterPrompts_Should_Constraint(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task TheSurface_Should_OfferNoWayToWriteAny()
+    public async Task TheSurface_Should_OfferOnlyTheBoundedInstall()
     {
-        // The decision, asserted where it could be reversed. Copy and show are the whole interaction;
-        // anything that scaffolds, commits, or opens a pull request would be #162's ceremony coming
-        // back for one feature.
+        // #190's "no writes" was deliberately narrowed by #214: the offer still writes nothing,
+        // and the one write that exists is Install — a draft PR a human merges. Asserted where it
+        // could regress in either direction: no scaffolding ceremony returns, and Install is not
+        // offered where it cannot act (this fresh project has no Connector, so presence is
+        // unknown and the button must be absent).
         var page = await fixture.Browser.NewPageAsync();
         var projectId = await CreateProject(page, $"No writes — {Guid.NewGuid():N}");
 
@@ -68,8 +70,13 @@ public class StarterPrompts_Should_Constraint(AppHostFixture fixture)
             ).ShouldBe(0, forbidden);
         }
 
-        // And the copy says plainly that nothing is written.
-        (await page.Locator("main").TextContentAsync())!.ShouldContain("Nothing here is written");
+        // No Connector → no target path → Install has nowhere to write, so it is not offered.
+        (await page.GetByRole(AriaRole.Button, new() { Name = "Install" }).CountAsync()).ShouldBe(
+            0
+        );
+
+        // And the copy says a human reviews and merges what an install opens.
+        (await page.Locator("main").TextContentAsync())!.ShouldContain("draft pull request");
     }
 
     async Task<Guid> CreateProject(IPage page, string name)

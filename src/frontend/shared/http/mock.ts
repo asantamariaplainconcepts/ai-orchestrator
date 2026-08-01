@@ -251,6 +251,50 @@ const routes: [string, RegExp, Handler][] = [
     }),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
+  // The starter set (#190), with one of each presence state so the section exercises them all.
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/starter-prompts$/,
+    () => [
+      {
+        id: "portable",
+        title: "Starters",
+        summary:
+          "Prompts that assume a cloned repository and, where the Automation names one, a Story.",
+        requires: null,
+        prompts: [
+          {
+            file: "triage.md",
+            saveAs: "triage.md",
+            purpose: "Say what is missing from a story before anybody writes code.",
+            assumes: "Nothing beyond the story.",
+            content: "---\ndescription: triage\n---\nSay what is missing.",
+            targetPath: "ai/prompts/triage.md",
+            alreadyPresent: false,
+          },
+          {
+            file: "estimate.md",
+            saveAs: "estimate.md",
+            purpose: "Estimate a story and explain the number.",
+            assumes: "Nothing beyond the story.",
+            content: "---\ndescription: estimate\n---\nEstimate the story.",
+            targetPath: "ai/prompts/estimate.md",
+            alreadyPresent: true,
+          },
+        ],
+      },
+    ],
+  ],
+  // Install (#214): the draft PR a human goes to review.
+  [
+    "POST",
+    /^\/api\/projects\/[^/]+\/starter-prompts\/install$/,
+    (_match, body) => ({
+      url: "https://github.com/acme/portal/pull/7",
+      path: `ai/prompts/${(body as { saveAs: string }).saveAs}`,
+      branch: `starter/${(body as { saveAs: string }).saveAs.replace(/\.md$/i, "")}`,
+    }),
+  ],
   [
     "POST",
     /^\/api\/projects\/[^/]+\/automations\/defaults$/,

@@ -19,15 +19,29 @@ public interface ICodeWorkspace
     );
 
     /// <summary>
-    /// Commits whatever changed, pushes the run branch, and opens the pull request. An empty
-    /// change set is a refusal, not an empty PR (design D3).
+    /// The same clone-and-checkout for an explicitly named branch — the install path's
+    /// deterministic branch (#214). <c>Prepare(runId)</c> stays the Run ceremony's spelling of
+    /// the same act.
+    /// </summary>
+    Task<ErrorOr<PreparedWorkspace>> Prepare(
+        CodeCoordinates coordinates,
+        string branch,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>
+    /// Commits whatever changed, pushes the run branch, and opens the pull request — as a draft
+    /// when <paramref name="draft"/> says so (#214: a human merges an installed starter). An
+    /// empty change set is a refusal, not an empty PR (design D3).
     /// </summary>
     Task<ErrorOr<PublishedChange>> Publish(
         PreparedWorkspace workspace,
         string title,
         string body,
         string token,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool draft = false
     );
 }
 

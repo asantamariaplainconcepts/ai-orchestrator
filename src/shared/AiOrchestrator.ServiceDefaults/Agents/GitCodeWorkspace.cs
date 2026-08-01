@@ -16,15 +16,21 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// </summary>
 public sealed class GitCodeWorkspace : ICodeWorkspace
 {
-    public async Task<ErrorOr<PreparedWorkspace>> Prepare(
+    public Task<ErrorOr<PreparedWorkspace>> Prepare(
         CodeCoordinates coordinates,
         Guid runId,
+        string token,
+        CancellationToken cancellationToken
+    ) => Prepare(coordinates, $"run/{runId}", token, cancellationToken);
+
+    public async Task<ErrorOr<PreparedWorkspace>> Prepare(
+        CodeCoordinates coordinates,
+        string branch,
         string token,
         CancellationToken cancellationToken
     )
     {
         var path = Directory.CreateTempSubdirectory("workspace-").FullName;
-        var branch = $"run/{runId}";
 
         var clone = await Git(
             null,
@@ -50,7 +56,8 @@ public sealed class GitCodeWorkspace : ICodeWorkspace
         string title,
         string body,
         string token,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        bool draft = false
     )
     {
         var status = await Git(workspace.Path, ["status", "--porcelain"], cancellationToken);
@@ -106,6 +113,7 @@ public sealed class GitCodeWorkspace : ICodeWorkspace
                 new NewPullRequest(title, workspace.Branch, repository.DefaultBranch)
                 {
                     Body = body,
+                    Draft = draft,
                 }
             );
 
