@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { PromptScratchpad } from "@/features/automations/PromptScratchpad";
+import { StarterPromptsSection } from "@/features/automations/StarterPromptsSection";
 import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
@@ -160,6 +161,9 @@ export function ProjectScreen() {
             {/* Beside the field that names a prompt file, because this is how you find out what
                 that file will do before there is a file (#189). */}
             <PromptScratchpad projectId={projectId} />
+            {/* Last on the tab: it is the thing you need before you have anything, and the thing you
+                stop needing once you do (#190). */}
+            <StarterPromptsSection projectId={projectId} />
           </TabsContent>
 
           {/* Its own tab, because a conversation is its own thing (#166): not a Run, so not

@@ -315,6 +315,20 @@ export const en = {
   "scratchpad.passFailed": "This pass failed",
   "scratchpad.costUnknown": "cost unknown",
   "scratchpad.failed": "Could not reach the agent.",
+  // The starter set (#190). The copy carries the tiering, because a prerequisite read before it is
+  // needed is the whole difference between a starter set and a methodology somebody took by mistake.
+  "starters.title": "Starter prompts",
+  "starters.explainer":
+    "Prompts you can put in your repository to get going. Nothing here is written for you \u2014 copy the file in, then name it on an Automation.",
+  "starters.requires": "Requires:",
+  "starters.assumes": "Assumes:",
+  "starters.saveTo": "Save as",
+  "starters.pathUnknown": "Configure a Connector to see where this goes in your repository.",
+  "starters.alreadyPresent": "You already have this",
+  "starters.show": "Show",
+  "starters.hide": "Hide",
+  "starters.copy": "Copy",
+  "starters.copied": "Copied",
   "project.tab.ask": "Ask",
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
