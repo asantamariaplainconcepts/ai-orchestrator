@@ -152,7 +152,18 @@ sealed class HoldConversation : IUseCase
 
     internal sealed class SayValidator : AbstractValidator<Say>
     {
-        public SayValidator() => RuleFor(command => command.Body).NotEmpty().MaximumLength(10_000);
+        /// <summary>
+        /// 40,000 rather than the 10,000 this started at (#189, design D6). A message is how a
+        /// prompt is tried now, and the largest real prompt measured — the sibling repository's
+        /// sync command — is 9,741 characters, so the old bound sat at 97% of what the product
+        /// exists to author and would have refused it as a validation error on somebody's paste.
+        /// Four times the largest observed, so it does not need revisiting every time a prompt
+        /// grows a section, and still a bound.
+        /// </summary>
+        internal const int BodyLimit = 40_000;
+
+        public SayValidator() =>
+            RuleFor(command => command.Body).NotEmpty().MaximumLength(BodyLimit);
     }
 
     internal sealed class StartValidator : AbstractValidator<Start>
@@ -264,6 +275,11 @@ sealed class HoldConversation : IUseCase
         /// The Story as the mirror holds it (BR-008). A Story the mirror no longer has is not a
         /// failure: the conversation carries on about the project, which is what it would have been
         /// had nobody named a subject.
+        /// <para>
+        /// Described the way a Run describes it (#189, design D3) — with its number, state, labels
+        /// and a bounded body, where this once sent title and body unbounded. Sharing the framing is
+        /// what makes trying a prompt here predict running it from an Automation.
+        /// </para>
         /// </summary>
         static async Task<string?> StoryContext(
             IStoryReader stories,
@@ -277,7 +293,7 @@ sealed class HoldConversation : IUseCase
                 cancellationToken
             );
 
-            return story is null ? null : $"{story.Title}\n\n{story.Body}";
+            return story is null ? null : StoryDescription.Of(story);
         }
     }
 

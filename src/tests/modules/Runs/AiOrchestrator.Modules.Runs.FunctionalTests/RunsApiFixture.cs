@@ -560,8 +560,16 @@ sealed class FakeConversationRuntime : IConversationRuntime
     public ConversationReply Next { get; set; } =
         new(true, "Because the connector's token expired.", new AgentUsage(120, 80, 0.004m));
 
+    /// <summary>
+    /// Every pass, whole. The context alone was enough while a message was only a question; a
+    /// scratchpad attempt is the prompt itself (#189), so what was said and which conversation said
+    /// it are both assertable now — the second is how "each attempt is tried afresh" is checked.
+    /// </summary>
+    public List<(Guid ConversationId, ConversationContext Context, string Message)> Calls { get; } =
+    [];
+
     /// <summary>Every context the module handed over — what the assertions about grounding read.</summary>
-    public List<ConversationContext> Contexts { get; } = [];
+    public List<ConversationContext> Contexts => [.. Calls.Select(call => call.Context)];
 
     public Task<ConversationReply> Answer(
         Guid conversationId,
@@ -571,14 +579,14 @@ sealed class FakeConversationRuntime : IConversationRuntime
     )
     {
         Interlocked.Increment(ref _passes);
-        Contexts.Add(context);
+        Calls.Add((conversationId, context, message));
         return Task.FromResult(Next);
     }
 
     public void Reset()
     {
         _passes = 0;
-        Contexts.Clear();
+        Calls.Clear();
         Next = new(true, "Because the connector's token expired.", new AgentUsage(120, 80, 0.004m));
     }
 }

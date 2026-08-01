@@ -295,6 +295,26 @@ export const en = {
   "conversation.costUnknown": "cost unknown",
   "conversation.atLeast": "at least",
   "conversation.failed": "Could not reach the agent.",
+  // Trying a prompt before committing it (#189). The copy carries two things nothing else can:
+  // that the text is not saved, and what a trial does not reproduce (design D4). Both would
+  // otherwise be learned from a surprise.
+  "scratchpad.title": "Try a prompt",
+  "scratchpad.prompt": "Prompt",
+  "scratchpad.promptPlaceholder": "Paste or write the prompt you are about to commit\u2026",
+  "scratchpad.subject": "Story (optional)",
+  "scratchpad.subjectPlaceholder": "leave empty to try it against the project",
+  "scratchpad.run": "Run once",
+  "scratchpad.running": "Running\u2026",
+  "scratchpad.explainer":
+    "Run prompt text once against this project's repository and read what comes back. One agent pass, and it costs what that pass costs.",
+  "scratchpad.notSaved":
+    "This text is not saved anywhere. When it does what you want, commit it as a file in the project's prompts directory and name that file on an Automation.",
+  "scratchpad.limits":
+    "A trial is not quite a Run: an Automation that requires approval runs its prompt in a planning phase this does not reproduce, and a timeout belongs to an Automation this does not have.",
+  "scratchpad.answer": "Answer",
+  "scratchpad.passFailed": "This pass failed",
+  "scratchpad.costUnknown": "cost unknown",
+  "scratchpad.failed": "Could not reach the agent.",
   "project.tab.ask": "Ask",
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
