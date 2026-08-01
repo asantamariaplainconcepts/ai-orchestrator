@@ -2387,3 +2387,31 @@ times in the project this framework came from.
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none. Applying an existing convention is what an ADR is *for* — recording one here would
   restate `bootstrap_admins`' own reasoning in a second place.
+
+## 2026-08-01 — sync-watches-the-deploy (#202)
+
+- **Worked: the retro from #196 became a change rather than a sentence.** It said "a merge that lands
+  a red deploy is not a finished change, and the current loop cannot tell the difference" and named
+  the fix. That fix is now step 11. A retro finding that stays a finding is a finding nobody acts on.
+- **Worked: making it a report rather than a gate.** By the time sync could watch a deploy, the merge
+  is irreversible and the issue is already `status:done` — a gate there would block nothing and
+  imply the change could be held back. What a red deploy needs is to be *seen*, so sync says both
+  true things: the change merged, and the deploy failed.
+- **Didn't — #190's design D4 was tested within the hour and I overrode it.** The starter set's copy
+  of this workflow is uncoupled from the command on purpose, with drift as the accepted cost and no
+  match test. The first edit after that decision was one where the drift mattered: a starter that
+  teaches the weaker loop is worth less than the two-file edit saved. Synced by hand, with the
+  reasoning in the commit. D4 is not wrong — it is about not coupling them *mechanically* — but "the
+  cost is acceptable" was easier to write before it arrived, and it arrived immediately.
+- **Also, the measurement worth keeping:** the four session-pool faults were sequential, each only
+  reachable once the previous cleared. That is the real argument for watching, stronger than
+  "failures should be visible" — a red pipeline does not just hide one fault, it hides the queue of
+  faults behind it.
+- **Next time:** when a decision accepts a cost, note what the first occurrence of that cost would
+  look like. D4 said drift was acceptable without saying how anyone would notice it, and the answer
+  turned out to be "when somebody edits the original for a reason that also applies to the copy".
+- **Time invested:** not measured (source: **manual** — ninety-third consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none. This is ADR-0004's "assert the artifact" applied to the pipeline rather than a new
+  rule, and the third occurrence of that shape — recorded so the graduation count is honest, but the
+  rule already exists and is already cited.
