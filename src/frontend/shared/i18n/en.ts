@@ -174,6 +174,8 @@ export const en = {
   "automations.promptFilePlaceholder": "estimate.md",
   "automations.promptFileHint":
     "A file name inside this project's prompts directory, which is set on the Settings tab.",
+  "automations.promptSuggestionsUnavailable": "Suggestions unavailable",
+  "automations.promptSuggestionsEmpty": "No prompt files yet in",
   "automations.outputLabel": "Output labels",
   "automations.outputLabelPlaceholder": "the next step\u2019s trigger",
   "automations.outputLabelAdd": "Add",

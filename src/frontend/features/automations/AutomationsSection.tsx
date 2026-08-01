@@ -16,6 +16,7 @@ import {
   useAutomations,
   useCreateAutomation,
   useDeleteAutomation,
+  useProjectPrompts,
   useSetAutomationEnabled,
   useUpdateAutomation,
 } from "./useAutomations";
@@ -50,6 +51,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [outputDraft, setOutputDraft] = useState("");
   // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
+  // The prompt picker's listing (#215) is fetched only once the form is open — a form keystroke,
+  // not a page load, is what justifies a vendor read. Degradation arrives as data (`reason`) and
+  // the field falls back to the plain input it always was.
+  const prompts = useProjectPrompts(projectId, creating || editing !== null);
 
   /** The chosen set plus whatever is still in the input, deduped the way the vendor compares. */
   function withDraft() {
@@ -324,14 +329,32 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                     the directory is the project's, on the Settings tab. */}
                 <div className="flex flex-col gap-2">
                   <Label htmlFor="prompt-path">{t("automations.promptFile")}</Label>
+                  {/* A datalist for the same reason the output labels use one (#165): suggest what
+                      exists — the repository's own prompts, read live (#215) — while accepting a
+                      name that is still on its way in a pending PR. */}
                   <Input
                     id="prompt-path"
                     required
+                    list="prompt-file-suggestions"
                     value={promptPath}
                     onChange={(event) => setPromptPath(event.target.value)}
                     placeholder={t("automations.promptFilePlaceholder")}
                   />
-                  <p className="text-xs text-muted-foreground">{t("automations.promptFileHint")}</p>
+                  <datalist id="prompt-file-suggestions">
+                    {(prompts.data?.names ?? []).map((name) => (
+                      <option key={name} value={name} />
+                    ))}
+                  </datalist>
+                  {/* Degradation is a readable reason, never a blocked form: the field above is
+                      already the plain input, so discovery failing costs suggestions and nothing
+                      else. */}
+                  <p className="text-xs text-muted-foreground">
+                    {prompts.data?.reason
+                      ? `${t("automations.promptSuggestionsUnavailable")} — ${prompts.data.reason}`
+                      : prompts.data && prompts.data.names.length === 0
+                        ? `${t("automations.promptSuggestionsEmpty")} ${prompts.data.directory}`
+                        : t("automations.promptFileHint")}
+                  </p>
                 </div>
                 {/* Visible in both modes (design D2): an edit resends this value, and a value
                     resent on somebody's behalf is one they are entitled to see. Blank is BR-005's

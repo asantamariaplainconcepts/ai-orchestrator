@@ -373,6 +373,28 @@ sealed class StubBacklogConnector : IBacklogConnector
         );
     }
 
+    /// <summary>The listing the picker reads (#215); null means the directory is absent.</summary>
+    public List<string>? DirectoryFiles { get; set; }
+
+    /// <summary>Set to make the listing fail as the vendor would refuse it.</summary>
+    public Error? ListDirectoryError { get; set; }
+
+    public Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+        BacklogCoordinates coordinates,
+        string path,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        if (ListDirectoryError is { } error)
+        {
+            return Task.FromResult<ErrorOr<IReadOnlyList<string>?>>(error);
+        }
+
+        IReadOnlyList<string>? files = DirectoryFiles is null ? null : [.. DirectoryFiles];
+        return Task.FromResult(ErrorOrFactory.From(files));
+    }
+
     Task<ErrorOr<Success>> Write(string vendorStoryId, Func<VendorStory, VendorStory> mutate)
     {
         if (WriteError is { } error)

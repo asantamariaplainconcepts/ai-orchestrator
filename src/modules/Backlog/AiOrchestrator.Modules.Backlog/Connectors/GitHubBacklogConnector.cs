@@ -440,6 +440,43 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
+    public async Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+        BacklogCoordinates coordinates,
+        string path,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            // No ref: the contents API answers from the default branch, which is exactly the
+            // branch the picker promises to read (#215).
+            var contents = await client.Repository.Content.GetAllContents(
+                coordinates.Owner,
+                coordinates.Repository,
+                path
+            );
+
+            return ErrorOrFactory.From<IReadOnlyList<string>?>([
+                .. contents
+                    .Where(entry => entry.Type == ContentType.File)
+                    .Select(entry => entry.Name),
+            ]);
+        }
+        catch (NotFoundException)
+        {
+            // An absent directory is an ordinary outcome, not a refusal — the seam's null.
+            IReadOnlyList<string>? absent = null;
+            return ErrorOrFactory.From(absent);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
     public async Task<ErrorOr<VendorStory?>> FetchStory(
         BacklogCoordinates coordinates,
         string vendorStoryId,

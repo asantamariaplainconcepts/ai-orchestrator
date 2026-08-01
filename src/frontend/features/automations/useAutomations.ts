@@ -4,6 +4,26 @@ import type { Automation, CreateAutomationRequest } from "./types";
 
 const automationsKey = (projectId: string) => ["automations", projectId] as const;
 
+export interface ProjectPrompts {
+  directory: string;
+  names: string[];
+  /** Null when the listing worked; a sentence when discovery degraded (#215). */
+  reason: string | null;
+}
+
+/**
+ * The prompts that actually exist, for the picker (#215). Fetched only once the field is used
+ * (`enabled`), read live server-side — degradation arrives as data (`reason`), never as an error,
+ * so the form can fall back to the plain textbox without treating discovery as load-bearing.
+ */
+export function useProjectPrompts(projectId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ["project-prompts", projectId] as const,
+    queryFn: () => api.get<ProjectPrompts>(`/api/projects/${projectId}/prompts`),
+    enabled,
+  });
+}
+
 export function useAutomations(projectId: string) {
   return useQuery({
     queryKey: automationsKey(projectId),
