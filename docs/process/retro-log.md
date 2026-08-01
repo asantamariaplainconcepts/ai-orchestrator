@@ -2594,3 +2594,28 @@ next `SaveChanges` in the same loop replays the failure.
 to the worktree telemetry gap named in the previous entry — by that entry's own graduation rule,
 the ADR is now due. Writing it should ride with whichever change next touches the telemetry
 plumbing rather than blocking this one.
+
+## 2026-08-02 — prompt-picker
+
+**Time (manual — worktree telemetry still broken; `node .config/otel/verify-telemetry.mjs` fails
+three checks: the exporter is enabled but `OTEL_EXPORTER_OTLP_ENDPOINT` is unset, `usage.jsonl`
+has never received bytes, and the SessionStart mapping hook has never fired in a real session):**
+one session; a seam read, a query use case, a form field and their tests.
+
+**What worked:** modelling degradation as *data* rather than as an error (design D3) — "no
+Connector", "the vendor refused" and "nothing there yet" all arrive as a `reason` on a 200, and
+the form renders the plain textbox it always was. That kept discovery non-load-bearing by
+construction: no try/catch in the component, no way for a picker failure to block configuration.
+Distinguishing an absent directory (`null`) from a vendor refusal (the error) at the seam meant
+the caller never had to guess which of the two it was holding.
+
+**What didn't:** `ErrorOr`'s two `From` overloads are ambiguous for a nullable reference type —
+`ErrorOrFactory.From<IReadOnlyList<string>?>(null)` does not compile, and the fix (a typed local,
+then `From(local)`) had to be applied at four sites across two connectors and two fixtures. Also:
+adding one seam method touches every fake, including two in modules that never call it.
+
+**One change next time:** when a seam gains a method whose success value is nullable, write the
+typed-local form immediately rather than discovering the overload ambiguity per call site. And
+the telemetry gap has now cost three consecutive changes — ADR-0011 records it as the graduation
+point the `local-code-source` entry called for, with the fix owed to whichever change next
+touches the telemetry plumbing.

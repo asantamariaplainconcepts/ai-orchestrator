@@ -18,6 +18,15 @@ never run, and a configurable thing that silently never executes is the trap thi
 forbids. The refusal SHALL land where the Admin is looking — at save — rather than at the first Run,
 in front of somebody who did not configure it.
 
+**The prompt-name input SHALL be a picker that also accepts a freely typed value (#215).** It SHALL
+offer the `.md` files currently in the project's prompts directory, read live from the repository's
+default branch through the Connector at the moment the field is used — never cached and never
+mirrored. Names SHALL be offered relative to the prompts directory, one directory level deep,
+because that is what the Automation stores. Free text SHALL remain accepted, because a prompt may
+be arriving in a pending pull request. When the directory does not exist, the listing fails, or the
+project has no Connector, the field SHALL degrade to the plain text input with the reason readable —
+configuration SHALL never be blocked by discovery.
+
 The output labels input SHALL be a picker that also accepts a freely typed value. It SHALL suggest
 the trigger labels of the project's **other enabled** Automations, because wiring the next step of a
 sequential workflow is what this field is most often for, and SHALL NOT suggest the Automation's own
@@ -25,7 +34,9 @@ trigger. Accepting free text SHALL remain possible, because a label may be a mar
 nothing, or a trigger that does not exist yet.
 
 A suggestion SHALL be a convenience only: every refusal SHALL also be enforced where the Automation
-is saved, so a caller that does not use the portal is refused identically.
+is saved, so a caller that does not use the portal is refused identically — and the prompt picker
+SHALL follow the same rule: a name not among the suggestions saves exactly as a typed one, and the
+missing-prompt refusal stays where it always was, at Run time (#150).
 
 #### Scenario: creating an Automation
 
@@ -62,6 +73,24 @@ is saved, so a caller that does not use the portal is refused identically.
 
 - **WHEN** an Automation is saved naming any of the retired actions
 - **THEN** it is refused, because they are not actions any more
+
+#### Scenario: the prompt field offers what the repository holds
+
+- **WHEN** an Admin opens the prompt-name input on a project whose prompts directory holds markdown
+  files on the default branch
+- **THEN** those file names are offered, relative to the prompts directory
+
+#### Scenario: a prompt not yet merged can still be named
+
+- **WHEN** an Admin types a prompt name that the listing did not offer
+- **THEN** it saves exactly as a listed one would, and a Run finding no such file fails with the
+  resolved path, as #150 specified
+
+#### Scenario: discovery failure does not block configuration
+
+- **WHEN** the prompts directory does not exist, the listing fails, or the project has no Connector
+- **THEN** the field renders as the plain text input with the reason readable, and the Automation
+  can still be saved
 
 ### Requirement: overlapping triggers are rejected when saved
 
