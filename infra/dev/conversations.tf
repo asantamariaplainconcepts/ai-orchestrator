@@ -59,11 +59,18 @@ resource "azapi_resource" "conversation_sessions" {
       containerType      = "CustomContainer"
 
       scaleConfiguration = {
-        # Ready sessions cost money while nobody is talking, so there are none: the first message of
-        # a conversation pays the start (~10s, and it is the only non-instant reply), and every later
-        # one is warm. That is the trade ADR-0008's revision is about.
+        # One ready session, because the platform allows nothing less. DEC-061 chose zero on the
+        # argument that ready sessions cost money while nobody is talking; ARM refuses it —
+        # `SessionPoolInvalidReadySessionInstances`, "supported values should be greater than 0 and
+        # smaller than maxConcurrentSessions". Discovered at apply, not at plan: the provider's
+        # schema accepts zero and the service does not.
+        #
+        # So one container idles continuously at the size below, and that is a standing cost this
+        # environment carries rather than a choice it made. What the decision buys back: the first
+        # conversation of the day answers without a cold start, which was the only thing zero gave
+        # away.
         maxConcurrentSessions = 20
-        readySessionInstances = 0
+        readySessionInstances = 1
       }
 
       dynamicPoolConfiguration = {
