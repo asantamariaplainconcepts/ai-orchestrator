@@ -2793,3 +2793,42 @@ later. And the worktree friction is now three-dimensional, not just telemetry: `
 had no `autoPort`, so a second worktree session could not start a preview at all. Fixed here;
 ADR-0011's premise — a worktree session inherits nothing the main checkout arranged — keeps
 finding new surfaces, and the next one should be looked for rather than tripped over.
+
+## 2026-08-03 — guided-automation-form (#231)
+
+- **Didn't — I ran a frontend mutation check against a stale bundle and read the green as proof.**
+  The E2E suite serves `wwwroot`, not the source, so mutating `.tsx` and re-running the tests
+  exercises the *previous* build. The first mutation "passed" and I nearly recorded that as the
+  check being done. Rebuilding with `pnpm build` turned it red immediately. New rule, and it
+  generalises past this repo: **a mutation check is only valid against the artifact the test
+  actually loads** — for a compiled frontend that means rebuilding, not editing.
+- **Didn't — the payload test was a false green of exactly the #189 kind, three months on.** It
+  typed no label before choosing "stop", so `withDraft()` returned `[]` under both the new and the
+  old behaviour: an assertion the code it replaced also satisfied. #189's retro said "assert the edge
+  the number moved to, not a value that sat inside the old one as well", and I wrote the same shape
+  again in a different guise. What caught it was the mutation check, not re-reading — which is the
+  argument for running one on *every* behavioural claim rather than the ones that feel risky.
+- **Worked: the browser found what no test asked for.** Choosing "hand to the next step" before
+  naming a label left the sentence reading "the chain stops there" — the single gap D2's
+  name-what-is-missing rule failed to name. Nothing in the criteria covered it; opening the page and
+  clicking did.
+- **Worked: checking the sketch against current `main` before proposing.** The design bundle's
+  turn 4 was written against an older tree. One of its three issues had partly landed in #229, and
+  the `action` field it wanted regrouped turned out to be a one-option select ADR-0006 forbids
+  removing. Both would have been discovered mid-implementation.
+- **Also: the request-shape criterion had nowhere to live.** There is no frontend test runner in this
+  repository — no vitest, no jest, no test files. Rather than tick it or invent a harness inside an
+  unrelated change, it moved to an E2E that reads the stored Automation back from the API, which
+  witnesses more than a component assertion would have.
+- **Also — the archive tool caught a content loss I would have shipped.** My MODIFIED block was
+  written from the requirement as it stood when the design bundle was authored, and refusing to
+  archive told me it would drop ten scenarios added since by #215 and others. Rewriting a whole
+  requirement to add prose to it is a delete-by-default operation; the delta should be refreshed
+  from the live spec at write time, not at archive time.
+- **Next time:** when a change is frontend-only and its evidence is E2E, put `pnpm build` in the
+  mutation loop explicitly. The gap between "I edited the source" and "the test can see it" is
+  invisible and silently converts a check into a formality.
+- **Time invested:** not measured (source: **manual** — ninety-seventh consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. Both findings are ADR-0004's "assert the artifact" — now with the sharpest
+  statement of it yet: the artifact is what the test *loads*, not what you edited.
