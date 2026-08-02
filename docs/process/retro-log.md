@@ -2832,3 +2832,41 @@ finding new surfaces, and the next one should be looked for rather than tripped 
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none new. Both findings are ADR-0004's "assert the artifact" — now with the sharpest
   statement of it yet: the artifact is what the test *loads*, not what you edited.
+
+## 2026-08-03 — vertical-workflow-canvas (#232)
+
+- **Didn't — `rtk pnpm build` told me a failed build had succeeded, and I believed it.** The
+  mutation broke TypeScript, the build errored, `wwwroot` kept the previous bundle, and the wrapper
+  still exited 0 — so a chained `&& echo "built"` printed. The E2E then exercised the old artifact
+  and passed, and the green read as "this test does not cover the behaviour". Three separate
+  explanations were plausible and I chased two of them before checking whether the build had run at
+  all. This is the same masking already recorded for `rtk git commit`, which means it is a property
+  of the wrapper and not a quirk: **when a command's success is load-bearing, run it unwrapped and
+  assert the artifact.** Saved to memory, since it outlives this repository.
+- **Didn't — I repeated #231's finding one change later, having written it down.** The E2E serves
+  `wwwroot`, so a `.tsx` edit is invisible until `pnpm build` runs. Recording a lesson in a retro did
+  not stop me making it again within the hour; only putting the build into the loop will.
+- **Didn't — a test asserted a scenario the product deliberately does not render.** A lone Automation
+  never appears on the canvas ("No Automation hands work to another yet"), so seeding one and waiting
+  for a node waited thirty seconds for something that was never coming. I had skim-read
+  `workflowGraph.ts` and concluded a single node forms an orphan chain; the surface says otherwise.
+  Dumping the rendered DOM answered in one run what three rounds of guessing had not.
+- **Worked: measuring instead of eyeballing.** `shrink-0` on the node wrapper was correct for a
+  scrolling row and wrong for a column — it stopped the card shrinking and reintroduced the exact
+  horizontal scroll this change removes. Nothing in the diff looked wrong; comparing `scrollWidth`
+  to `clientWidth` in a browser found it immediately.
+- **Worked: sharing by meaning, then noticing what does not transfer.** Extracting `GateChip` was
+  right; shipping the board's "dropping here starts a plan…" tooltip onto a canvas nothing is
+  dropped onto was not. The hint became a prop. The general form: when two surfaces share a
+  component, the parts that differ by *surface* must be parameterised, not inherited.
+- **Also: the overflow assertion is scoped deliberately.** The page really does overflow at 375px —
+  the project tab strip is 528px wide — but that predates this change, so the test asserts the canvas
+  and the tab strip is filed separately. A test that fails for somebody else's defect is a test about
+  the wrong thing.
+- **Next time:** for any frontend change verified by E2E, the loop is edit → `rtk proxy pnpm build`
+  → grep the bundle → run. Three of this change's four false signals came from skipping a step in
+  that sequence.
+- **Time invested:** not measured (source: **manual** — ninety-eighth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. ADR-0004 again, and the sharpest form yet: the artifact is what the test loads,
+  and you have not verified a build until you have looked at its output.

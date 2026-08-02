@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { MoreHorizontal, ShieldCheck, UserRound, UserRoundPlus } from "lucide-react";
+import { MoreHorizontal, UserRound, UserRoundPlus } from "lucide-react";
 import { Link } from "react-router";
 import { useRuns } from "@/features/runs/useRuns";
 import type { RunView } from "@/features/runs/types";
 import { t } from "@/shared/i18n";
+// Shared with the workflow canvas (#232): one chip, one meaning.
+import { GateChip } from "@/shared/ui/gate-chip";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -595,17 +597,6 @@ function StoryCard({
  * The approval gate as a chip on the thing that is gated — the column header or a move target —
  * instead of a badge competing with the run badges the cards wear.
  */
-function GateChip() {
-  return (
-    <span
-      title={t("board.gated.hint")}
-      className="inline-flex shrink-0 items-center gap-1 rounded border border-info/40 bg-info/10 px-1.5 text-[10px] font-semibold text-info"
-    >
-      <ShieldCheck className="size-2.5" aria-hidden="true" />
-      {t("board.gated")}
-    </span>
-  );
-}
 
 /** What the Story's latest Run is doing, and a way in when it is worth watching. */
 function RunBadge({ projectId, run }: { projectId: string; run: RunView }) {

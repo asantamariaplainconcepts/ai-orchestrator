@@ -2,9 +2,9 @@ import { CornerDownRight, GripVertical, UserRound, UserRoundPlus } from "lucide-
 import { useState } from "react";
 import { t, tCount } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
+import { GateChip } from "@/shared/ui/gate-chip";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
@@ -32,7 +32,7 @@ export function HumanStepBlock() {
         event.dataTransfer.setData(HUMAN_BLOCK, "new");
         event.dataTransfer.effectAllowed = "move";
       }}
-      className="hidden items-center gap-2 self-start rounded-md border border-dashed border-warning px-3 py-2 text-xs text-warning xl:flex"
+      className="flex items-center gap-2 self-start rounded-md border border-dashed border-warning px-3 py-2 text-xs text-warning"
     >
       <GripVertical className="size-3.5 shrink-0" aria-hidden="true" />
       <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
@@ -181,10 +181,16 @@ export function WorkflowCanvas({
         {chains.map((chain) => (
           <div
             key={chain.nodes[0]?.automation.id}
-            // Inside its own container, deliberately: a row that lets the page scroll sideways
-            // breaks every other screen on a phone. flex-nowrap so a long chain scrolls rather
-            // than folding into a grid whose rows mean nothing (design D3).
-            className="flex flex-col items-stretch gap-0 xl:flex-row xl:flex-nowrap xl:overflow-x-auto xl:pb-2"
+            // One layout at every width (#232). It used to flip horizontal at xl and scroll
+            // sideways, which meant two interaction models and a codepath forked throughout — and
+            // below xl the drag was hidden entirely, so a phone could not reorder a pipeline at
+            // all. A chain reads top-down, which is the direction it actually flows.
+            className={cn(
+              "flex max-w-[520px] flex-col items-stretch gap-0",
+              // A branch indents under the step it leaves, so the picture says which it came from
+              // as well as the chip does.
+              chain.branchedFrom && "pl-8",
+            )}
             onDragOver={(event) => {
               // Only our own block: any other drag passing over the flow is none of its business.
               if (event.dataTransfer.types.includes(HUMAN_BLOCK)) setDragging(true);
@@ -209,9 +215,13 @@ export function WorkflowCanvas({
               </div>
             ) : null}
             {chain.nodes.map((node) => (
-              <div key={node.automation.id} className="flex shrink-0 items-stretch">
+              // No shrink-0: that belonged to the horizontal layout, where a step had to keep
+              // its width and let the row scroll. In a column it stops the card shrinking below
+              // its content and reintroduces the sideways scroll this change removed.
+              <div key={node.automation.id} className="flex min-w-0 items-stretch">
                 <AutomationNode
                   automation={node.automation}
+                  connected={node.next !== null}
                   onToggleApproval={() =>
                     change(node.automation, {
                       requiresApproval: !node.automation.requiresApproval,
@@ -264,23 +274,62 @@ export function WorkflowCanvas({
 
 function AutomationNode({
   automation,
+  connected,
   onToggleApproval,
   onToggleEnabled,
 }: {
   automation: Automation;
+  /** Whether an edge leaves this step. Only the graph knows; the node cannot infer it. */
+  connected: boolean;
   onToggleApproval: () => void;
   onToggleEnabled: () => void;
 }) {
-  return (
-    <Card className={cn("w-60", !automation.enabled && "opacity-60")}>
-      <CardContent className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <Badge variant="secondary">{automation.triggerLabel}</Badge>
-          {automation.triggerState ? (
-            <Badge variant="outline">{automation.triggerState}</Badge>
-          ) : null}
-        </div>
+  // An output label pointing at no Automation, announced on the step that owns it (#232). It used
+  // to be said at the connector below, which is where the reader is looking at a *gap* — the label
+  // belongs to this node, and naming it here is what makes it fixable. Same condition as before,
+  // moved: not connected, yet carrying labels the vendor will apply and nobody will answer.
+  const dangling = !connected && automation.outputLabels.length > 0;
 
+  return (
+    <Card className={cn("w-full", !automation.enabled && "opacity-60")}>
+      {/* Header: what fires it, whether a person gates it, and what can be done to it. The card
+          used to stack two full-width buttons under the content, which made every node taller than
+          the information it carried and put a yellow button next to the warning badges it competed
+          with. */}
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3.5 py-2.5">
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="truncate font-mono text-xs font-semibold text-primary">
+            {automation.triggerLabel}
+          </span>
+          {/* The board's chip, not one that looks like it (#232). */}
+          {automation.requiresApproval ? <GateChip hint={t("canvas.approval.on")} /> : null}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground">
+            {automation.triggerState ?? t("automations.anyState")}
+          </span>
+          {/* Compact and labelled, so both capabilities stay reachable without a button the width
+              of the card (ADR-0006 is about reachability, not prominence). */}
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            onClick={onToggleApproval}
+            aria-label={
+              automation.requiresApproval ? t("canvas.approval.on") : t("canvas.approval.off")
+            }
+            title={automation.requiresApproval ? t("canvas.approval.on") : t("canvas.approval.off")}
+            className={cn(automation.requiresApproval && "text-warning")}
+          >
+            <UserRound className="size-3.5" aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="sm" type="button" onClick={onToggleEnabled}>
+            {automation.enabled ? t("automations.disable") : t("automations.enable")}
+          </Button>
+        </span>
+      </div>
+
+      <CardContent className="flex flex-col gap-1 py-2.5">
         <span className="truncate text-sm font-medium">{automation.action}</span>
         <span className="truncate text-xs text-muted-foreground">
           {automation.runtime}
@@ -288,23 +337,12 @@ function AutomationNode({
             ? ""
             : ` · ${t("automations.actionNotExecutable")}`}
         </span>
-
-        {/* The balloon, on a node: approval. Same word and same colour as the one on an edge,
-            because to the reader they mean one thing — a person is required here. */}
-        <Button
-          variant={automation.requiresApproval ? "default" : "outline"}
-          size="sm"
-          type="button"
-          onClick={onToggleApproval}
-          className={cn(automation.requiresApproval && "bg-warning text-warning-foreground")}
-        >
-          <UserRound className="size-3.5" />
-          {automation.requiresApproval ? t("canvas.approval.on") : t("canvas.approval.off")}
-        </Button>
-
-        <Button variant="ghost" size="sm" type="button" onClick={onToggleEnabled}>
-          {automation.enabled ? t("automations.disable") : t("automations.enable")}
-        </Button>
+        {dangling ? (
+          <span className="text-xs text-destructive">
+            {t("canvas.dangling")}{" "}
+            <span className="font-mono">{automation.outputLabels.join(", ")}</span>
+          </span>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -334,9 +372,12 @@ function Connector({
   /** The gap the block came from, or null for one out of the catalogue. */
   onDropBlock: (movedFrom: string | null) => void;
 }) {
-  // An output label pointing at no Automation: the vendor will carry the label and nobody will
-  // answer it. Said plainly rather than drawn as a chain that does not exist.
-  const dangling = !connected && automation.outputLabels.length > 0;
+  // The dangling warning moved to the node that owns the label (#232) — it was announced here, at
+  // the gap, which is not where the label lives or where it gets fixed.
+
+  // Local and deliberately not lifted: which gap is being connected is this connector's own
+  // business, and nothing above it needs to know.
+  const [choosing, setChoosing] = useState(false);
 
   const rule = cn(
     "w-0 flex-1 border-l-2",
@@ -364,8 +405,8 @@ function Connector({
         onDropBlock(payload === "new" ? null : payload);
       }}
       className={cn(
-        "flex w-full shrink-0 flex-col items-center gap-2 self-stretch py-2",
-        connected ? "px-2 xl:w-16" : "px-3 xl:w-48",
+        "flex w-full min-w-0 flex-col items-center gap-2 self-stretch py-2",
+        connected ? "px-2" : "px-3",
         dragging &&
           connected &&
           "rounded-md bg-warning/10 outline-2 outline-dashed outline-warning",
@@ -403,27 +444,39 @@ function Connector({
             <UserRound className="size-3.5 shrink-0" aria-hidden="true" />
             {t("canvas.human")}
           </span>
-          {dangling ? (
-            <span className="text-center text-xs text-destructive">
-              {t("canvas.dangling")}{" "}
-              <span className="font-mono">{automation.outputLabels.join(", ")}</span>
-            </span>
-          ) : null}
-          <NativeSelect
-            className="h-8 text-xs"
-            aria-label={t("canvas.handsTo")}
-            value=""
-            onChange={(event) => {
-              if (event.target.value) onConnect(event.target.value);
-            }}
-          >
-            <option value="">{t("canvas.handsTo")}</option>
-            {candidates.map((candidate) => (
-              <option key={candidate.id} value={candidate.triggerLabel}>
-                {candidate.triggerLabel}
-              </option>
-            ))}
-          </NativeSelect>
+          {/* Revealed, not permanent (#232): a select at every open gap is a control offered to
+              somebody who is not connecting anything, and the flow reads as a form. Still one
+              click away, because ADR-0006 asks that the capability be reachable — not that it be
+              on screen at all times. */}
+          {choosing ? (
+            <NativeSelect
+              autoFocus
+              className="h-8 text-xs"
+              aria-label={t("canvas.handsTo")}
+              value=""
+              onChange={(event) => {
+                if (event.target.value) onConnect(event.target.value);
+              }}
+              onBlur={() => setChoosing(false)}
+            >
+              <option value="">{t("canvas.handsTo")}</option>
+              {candidates.map((candidate) => (
+                <option key={candidate.id} value={candidate.triggerLabel}>
+                  {candidate.triggerLabel}
+                </option>
+              ))}
+            </NativeSelect>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              className="h-7 text-xs"
+              onClick={() => setChoosing(true)}
+            >
+              {t("canvas.handsTo")}
+            </Button>
+          )}
         </div>
       )}
 
