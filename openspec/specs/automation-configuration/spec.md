@@ -38,6 +38,27 @@ is saved, so a caller that does not use the portal is refused identically — an
 SHALL follow the same rule: a name not among the suggestions saves exactly as a typed one, and the
 missing-prompt refusal stays where it always was, at Run time (#150).
 
+**The form SHALL be organised as three questions, in the Automation's own execution order:** when it
+fires, what it does, and what happens after. The grouping SHALL be visible, so that a reader who has
+not been told the model can acquire it from the form rather than needing it beforehand.
+
+**The form SHALL restate its own configuration in prose as it is filled**, in the vocabulary the
+workflow surface uses. That restatement SHALL NOT be a second validation channel: an incomplete
+configuration SHALL yield an incomplete sentence naming what is missing, and the field-level
+refusals SHALL remain the only place a value is rejected.
+
+**The approval control SHALL state its consequence** — that the Agent plans, stops, and waits for a
+human, and that nothing executes until someone approves — and SHALL sit with the execution it gates
+rather than with the form's submission.
+
+**Ending the chain SHALL be an answer, not an absence.** The Admin SHALL choose between handing on
+and stopping; choosing to stop SHALL store what an empty label set stores today, so nothing
+downstream learns a new concept. A label named and then abandoned by choosing to stop SHALL NOT be
+sent: the later, explicit answer wins over the field.
+
+Regrouping SHALL NOT change what is sent: for every configuration the form can express, the request
+SHALL be identical to the one the ungrouped form produced.
+
 #### Scenario: creating an Automation
 
 - **WHEN** an Admin submits a valid trigger label, action, runtime and approval flag
@@ -91,6 +112,35 @@ missing-prompt refusal stays where it always was, at Run time (#150).
 - **WHEN** the prompts directory does not exist, the listing fails, or the project has no Connector
 - **THEN** the field renders as the plain text input with the reason readable, and the Automation
   can still be saved
+
+#### Scenario: the form teaches its own model
+
+- **WHEN** an Admin opens the New Automation form
+- **THEN** its fields are grouped as when-it-fires, what-it-does and what-happens-after, and the
+  grouping is visible without opening documentation
+
+#### Scenario: a mistake is visible before saving
+
+- **WHEN** an Admin fills the form
+- **THEN** a sentence restates the configuration as prose and updates as the fields change
+
+#### Scenario: an incomplete form is not an error
+
+- **WHEN** required fields are still empty
+- **THEN** the sentence names what is missing, and no rejection is raised outside the field-level
+  refusals that already exist
+
+#### Scenario: approval says what it does
+
+- **WHEN** an Admin reads the approval control
+- **THEN** it states that the Agent plans, stops and waits, and that nothing executes until someone
+  approves
+
+#### Scenario: stopping the chain is chosen, not left blank
+
+- **WHEN** an Admin names a label and then chooses to stop rather than hand on
+- **THEN** the label control is not offered, and the Automation is stored with the empty label set
+  that has always meant this
 
 ### Requirement: overlapping triggers are rejected when saved
 
@@ -688,7 +738,6 @@ fails to load is worse than none, because it is offered as working.
 - **THEN** every starter the endpoint would serve is loaded and asserted to have a body after
   frontmatter is stripped
 
-
 ### Requirement: bulk creation converges instead of colliding
 
 The one bulk-creation path (default-automations setup) SHALL reuse the single-Automation
@@ -812,3 +861,4 @@ gaps are one decision, and four reviews of one decision is the cost this consoli
 
 - **WHEN** more than one step needs its starter installed
 - **THEN** a single pull request carries them all
+

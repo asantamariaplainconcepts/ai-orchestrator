@@ -1,0 +1,172 @@
+using System.Text.Json;
+using Microsoft.Playwright;
+using Shouldly;
+
+namespace AiOrchestrator.EndToEndTests;
+
+/// <summary>
+/// #231 — the New Automation form asks three questions instead of presenting eight peer fields.
+/// <para>
+/// What only a browser can check: that the grouping is actually visible, that the approval control
+/// states its consequence where a reader will meet it, and that answering "stop" removes the label
+/// control rather than merely ignoring it. The request-shape guarantee is asserted in the functional
+/// suite, where the payload can be read.
+/// </para>
+/// </summary>
+[Collection(AppHostCollection.Name)]
+[Trait("Category", "E2E")]
+public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
+{
+    async Task<IPage> OpenForm(string name)
+    {
+        var page = await fixture.Browser.NewPageAsync();
+        var projectId = await CreateProject(page, name);
+
+        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}?tab=automations");
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" })
+            .ClickAsync(new() { Timeout = 30_000 });
+
+        return page;
+    }
+
+    [Fact]
+    public async Task TheForm_Should_AskThreeQuestionsInExecutionOrder()
+    {
+        var page = await OpenForm($"Guided — {Guid.NewGuid():N}");
+
+        // The order is the Automation's own: matching reads the trigger, the executor reads the
+        // prompt, HandOn applies the labels. A reader filling it top to bottom has walked a Run.
+        var headings = await page.GetByRole(AriaRole.Heading, new() { Level = 3 })
+            .AllInnerTextsAsync();
+        var questions = headings.Where(heading => heading.Contains('?')).ToList();
+
+        questions.Count.ShouldBe(3);
+        questions[0].ShouldContain("When does it fire");
+        questions[1].ShouldContain("What does it do");
+        questions[2].ShouldContain("What happens after");
+    }
+
+    [Fact]
+    public async Task TheApprovalControl_Should_StateItsConsequence()
+    {
+        // It was a bare checkbox beside Save. The word "approval" does not tell a reader that the
+        // Agent stops and waits, which is the thing they are actually deciding.
+        var page = await OpenForm($"Approval — {Guid.NewGuid():N}");
+
+        await page.Locator("#requires-approval").WaitForAsync(new() { Timeout = 15_000 });
+
+        var text = await page.Locator("main").TextContentAsync();
+        text.ShouldNotBeNull();
+        text.ShouldContain("Nothing executes until someone approves");
+    }
+
+    [Fact]
+    public async Task EndingTheChain_Should_BeAnAnswerRatherThanAnEmptyControl()
+    {
+        var page = await OpenForm($"After — {Guid.NewGuid():N}");
+
+        var stop = page.Locator("#after-stop");
+        await stop.WaitForAsync(new() { Timeout = 15_000 });
+
+        // Stopping is the default and it is *chosen*: the label control is absent, so there is no
+        // empty field to mistake for "I have not got there yet".
+        (await stop.GetAttributeAsync("data-state")).ShouldBe("checked");
+        (await page.Locator("#output-label").CountAsync()).ShouldBe(0);
+
+        await page.Locator("#after-hand-on").ClickAsync();
+
+        await page.Locator("#output-label").WaitForAsync(new() { Timeout = 15_000 });
+    }
+
+    [Fact]
+    public async Task TheSentence_Should_RestateTheFormAndNameWhatIsMissing()
+    {
+        // Not a second validation channel (design D2): an incomplete form yields an incomplete
+        // sentence naming the gap, and raises nothing.
+        var page = await OpenForm($"Sentence — {Guid.NewGuid():N}");
+
+        var main = page.Locator("main");
+        (await main.TextContentAsync())!.ShouldContain("name a trigger label");
+
+        await page.Locator("#trigger-label").FillAsync("ai:review");
+
+        // The trigger is now stated, and only the still-missing prompt is flagged.
+        var afterTyping = await main.TextContentAsync();
+        afterTyping.ShouldNotBeNull();
+        afterTyping.ShouldContain("ai:review");
+        afterTyping.ShouldNotContain("name a trigger label");
+        afterTyping.ShouldContain("name a prompt file");
+    }
+
+    [Fact]
+    public async Task Stopping_Should_StoreTheEmptyLabelSetItHasAlwaysMeant()
+    {
+        // The criterion regrouping must not break: "stop" is not a new concept downstream, it is the
+        // empty array it has always been. Asserted on what the API stored, not on what the form
+        // showed — the frontend has no test runner, so the artifact is the only honest witness.
+        var page = await fixture.Browser.NewPageAsync();
+        var projectId = await CreateProject(page, $"Payload — {Guid.NewGuid():N}");
+
+        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}?tab=automations");
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" })
+            .ClickAsync(new() { Timeout = 30_000 });
+
+        await page.Locator("#trigger-label").FillAsync("ai:review");
+        await page.Locator("#prompt-path").FillAsync("review.md");
+
+        // Type a label, THEN choose to stop. This is the only path where the two behaviours differ:
+        // with no label typed, "stop" and "hand on" both produce an empty array, so a test that
+        // skipped this would pass against the code this change replaced — the false green #189's
+        // retro is about, and the mutation check caught it here.
+        await page.Locator("#after-hand-on").ClickAsync();
+        await page.Locator("#output-label").FillAsync("ai:merge");
+        await page.Locator("#after-stop").ClickAsync();
+        (await page.Locator("#output-label").CountAsync()).ShouldBe(0);
+
+        // The Automation form's own submit. Scoped by the field it owns: "Add" is also the
+        // output-label button's text, the submit reads "Add Automation", and the page carries a
+        // second form (the workflow setup card) with a submit of its own.
+        await page.Locator("form:has(#trigger-label) button[type=submit]").ClickAsync();
+
+        // The form closes on success, which is the signal the mutation landed. Waited for rather
+        // than slept through — reading the API before the POST settles is a race that passes
+        // locally and fails in CI.
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" })
+            .WaitForAsync(new() { Timeout = 15_000 });
+
+        var listed = await page.APIRequest.GetAsync(
+            $"{fixture.ServerBaseUrl}api/projects/{projectId}/automations"
+        );
+        listed.Status.ShouldBe(200, await listed.TextAsync());
+
+        using var document = JsonDocument.Parse(await listed.TextAsync());
+        var automation = document.RootElement.EnumerateArray().Single();
+
+        automation.GetProperty("triggerLabel").GetString().ShouldBe("ai:review");
+        automation.GetProperty("promptPath").GetString().ShouldBe("review.md");
+        // Empty despite a label having been typed: the radio is the later, more explicit answer,
+        // and honouring a value the Admin then said not to use would obey the field over the person.
+        automation.GetProperty("outputLabels").GetArrayLength().ShouldBe(0);
+        // Default-off, and now chosen rather than left blank.
+        automation.GetProperty("requiresApproval").GetBoolean().ShouldBeFalse();
+    }
+
+    async Task<Guid> CreateProject(IPage page, string name)
+    {
+        var response = await page.APIRequest.PostAsync(
+            $"{fixture.ServerBaseUrl}api/projects",
+            new APIRequestContextOptions { DataObject = new { name } }
+        );
+
+        if (response.Status is not (200 or 201))
+        {
+            throw new InvalidOperationException(
+                $"Could not seed a project: {response.Status} {await response.TextAsync()}\n\n"
+                    + fixture.ServerLogTail(lines: 100)
+            );
+        }
+
+        using var document = JsonDocument.Parse(await response.TextAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+}
