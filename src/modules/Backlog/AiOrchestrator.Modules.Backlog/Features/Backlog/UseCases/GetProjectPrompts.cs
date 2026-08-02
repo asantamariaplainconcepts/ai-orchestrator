@@ -74,7 +74,7 @@ sealed class GetProjectPrompts : IUseCase
             return new Response(
                 directory,
                 [
-                    .. (listing.Value ?? []).Where(name =>
+                    .. (listing.Value?.Files ?? []).Where(name =>
                         name.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
                     ),
                 ],

@@ -115,22 +115,30 @@ public class AzureDevOpsTranslation_Should_Constraint
     public void ADirectoryListing_Should_BecomeNamesRelativeToTheDirectory()
     {
         // The Items API answers repository-absolute paths and marks folders; the seam speaks
-        // file names only (#215) — folders skipped, paths cut to their last segment.
+        // names relative to the directory (#215) — paths cut to their last segment, files and
+        // subdirectories kept apart (#229), and the scope's own entry dropped.
         using var document = JsonDocument.Parse(
             """
             {
               "value": [
                 { "path": "/ai/prompts", "isFolder": true },
                 { "path": "/ai/prompts/estimate.md" },
-                { "path": "/ai/prompts/triage.md", "isFolder": false }
+                { "path": "/ai/prompts/triage.md", "isFolder": false },
+                { "path": "/ai/prompts/ds", "isFolder": true }
               ]
             }
             """
         );
 
-        AzureDevOpsBacklogConnector
-            .ParseDirectoryFileNames(document.RootElement)
-            .ShouldBe(["estimate.md", "triage.md"]);
+        var entries = AzureDevOpsBacklogConnector.ParseDirectoryEntries(
+            document.RootElement,
+            "ai/prompts"
+        );
+
+        entries.Files.ShouldBe(["estimate.md", "triage.md"]);
+        // Not ["prompts", "ds"]: the listed directory is not its own subdirectory, and treating
+        // it as one would make discovery re-read the path it just read.
+        entries.Subdirectories.ShouldBe(["ds"]);
     }
 
     [Fact]
@@ -138,7 +146,13 @@ public class AzureDevOpsTranslation_Should_Constraint
     {
         using var document = JsonDocument.Parse("""{"count": 0}""");
 
-        AzureDevOpsBacklogConnector.ParseDirectoryFileNames(document.RootElement).ShouldBeEmpty();
+        var entries = AzureDevOpsBacklogConnector.ParseDirectoryEntries(
+            document.RootElement,
+            "ai/prompts"
+        );
+
+        entries.Files.ShouldBeEmpty();
+        entries.Subdirectories.ShouldBeEmpty();
     }
 
     [Fact]

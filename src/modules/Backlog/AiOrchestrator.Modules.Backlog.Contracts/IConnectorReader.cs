@@ -21,4 +21,12 @@ public sealed record ConnectorSnapshot(
     string SecretName,
     string CodeSource,
     string? LocalPath
-);
+)
+{
+    /// <summary>
+    /// Where this project's prompts live, or null for the convention (#150). Not positional:
+    /// discovery (#229) is the only caller that wants it, and widening the constructor would make
+    /// every other call site mention a directory it has no use for.
+    /// </summary>
+    public string? PromptDirectory { get; init; }
+}

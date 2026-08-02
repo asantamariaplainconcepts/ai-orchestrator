@@ -84,6 +84,7 @@ public sealed class BacklogModule : ModuleBase
         services.AddScoped<ILabelWriter, LabelWriter>();
         services.AddScoped<IConversationReader, ConversationReader>();
         services.AddScoped<IDocumentReader, DocumentReader>();
+        services.AddScoped<IPromptDirectoryWriter, PromptDirectoryWriter>();
 
         var gitHubBaseAddress = configuration.GetValue<string?>("Backlog:GitHub:BaseAddress");
         var options = new BacklogOptions

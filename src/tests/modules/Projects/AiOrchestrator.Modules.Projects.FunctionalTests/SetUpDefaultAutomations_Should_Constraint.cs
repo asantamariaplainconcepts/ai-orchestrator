@@ -98,7 +98,7 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
         result
             .GetProperty("skipped")
             .EnumerateArray()
-            .Select(trigger => trigger.GetString())
+            .Select(entry => entry.GetProperty("trigger").GetString())
             .ShouldContain("ai:implement");
         result
             .GetProperty("created")

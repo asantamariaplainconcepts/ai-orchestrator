@@ -2762,3 +2762,34 @@ Widen it: grep for any **name a change makes disappear** — an AppHost resource
 artifact, a configuration key. Three of the four CI failures this session were the same shape,
 "the change is right and something declared elsewhere still says otherwise", and the names are
 what make them greppable.
+
+## 2026-08-03 — wire-existing-pipeline
+
+**Time (manual — the worktree telemetry gap of ADR-0011, unchanged; `verify-telemetry.mjs`
+still fails on `OTEL_EXPORTER_OTLP_ENDPOINT` unset, `usage.jsonl` empty, and no session
+mapping):** one session; discovery, adoption, gap-filling, and the surface for all three.
+
+**What worked:** the catalogue stayed the single source of methodology. A pipeline step is a
+manifest entry that carries wiring, so recognising `grill.md` is a data read — and the rule that
+kept an opt-in tier from being installed unprompted is `Requires is null`, catalogue content, not
+a branch in the handler. A fork that wants a different pipeline edits the manifest and this change
+follows it. Extracting `StarterInstaller` rather than copying the publish path was the other one:
+the second caller wanted the same ceremony for four files, and one seam means one set of
+stage-named refusals instead of two that drift.
+
+**What didn't:** I narrowed a seam in #215 and paid for it here. `ListDirectoryFiles` returned
+file names because the picker only wanted file names — but the vendor response already
+distinguished files from folders, and one change later discovery needed the folder names to find
+`.claude/commands/ds`. Widening it cost six compile errors across two vendor implementations, two
+test stubs and two consumers, and I found the need by writing code against a member that did not
+exist rather than by reading the seam first. Separately, three Projects tests failed on a missing
+`wwwroot` — the SPA had never been built in this worktree — which read as a regression for a few
+minutes before it read as an environment gap.
+
+**One change next time:** when a seam projects a vendor response, do not drop a distinction the
+vendor already makes unless there is a reason to, and if you drop one, say so in the seam's own
+doc comment. "Only the current caller needs this" is how a seam acquires a second shape a change
+later. And the worktree friction is now three-dimensional, not just telemetry: `.claude/launch.json`
+had no `autoPort`, so a second worktree session could not start a preview at all. Fixed here;
+ADR-0011's premise — a worktree session inherits nothing the main checkout arranged — keeps
+finding new surfaces, and the next one should be looked for rather than tripped over.

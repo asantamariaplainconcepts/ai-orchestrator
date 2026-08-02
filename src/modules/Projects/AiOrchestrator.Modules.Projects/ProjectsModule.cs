@@ -62,6 +62,8 @@ public sealed class ProjectsModule : ModuleBase
         // cached copy, which would keep polling a Project an Admin just retired.
         services.AddScoped<Contracts.IProjectCatalog, Features.Projects.ProjectCatalog>();
         services.AddScoped<OverlapGuard>();
+        services.AddScoped<PipelineDiscovery>();
+        services.AddScoped<StarterInstaller>();
 
         // Who may do what, and where (#13). The rows live in this module's schema because a role is
         // a fact about a person's relationship to a Project, so the module that owns Projects owns

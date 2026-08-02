@@ -1,5 +1,5 @@
 {
-  "$comment": "The starter catalogue (#190). One manifest read by the endpoint and by the tests, so a starter that ships uncovered is not possible. 'file' is the source in this repository; 'saveAs' is the name it takes in a project, and the two differ where they must: portable/implement.md and workflow/implement.md would otherwise both land on ai/prompts/implement.md and only one could be taken. Tiers are ordered; prompts within a tier are ordered. 'automation' (#212) is the default wiring set-up-defaults creates: trigger, approval, output labels — the pipeline is catalogue content, portable tier only.",
+  "$comment": "The starter catalogue (#190). One manifest read by the endpoint and by the tests, so a starter that ships uncovered is not possible. 'file' is the source in this repository; 'saveAs' is the name it takes in a project, and the two differ where they must: portable/implement.md and workflow/implement.md would otherwise both land on ai/prompts/implement.md and only one could be taken. Tiers are ordered; prompts within a tier are ordered. 'automation' (#212) is the wiring for a pipeline step: trigger, approval, output labels — the pipeline is catalogue content, never code. A wired prompt in a tier with a 'requires' (#229) is recognisable but not installable: adoption wires a repository's own grill.md, and no button ever writes one into a repository whose team did not choose the methodology. The workflow tier's implement.md carries no wiring on purpose — it is the same step as the portable implement, and two entries cannot own one trigger.",
   "tiers": [
     {
       "id": "portable",
@@ -78,13 +78,23 @@
           "file": "grill.md",
           "purpose": "Interrogate a raw idea until it meets the definition of ready.",
           "assumes": "A definition-of-ready document, and product context to grill against.",
-          "saveAs": "aio-grill.md"
+          "saveAs": "aio-grill.md",
+          "automation": {
+            "trigger": "ai:grill",
+            "requiresApproval": false,
+            "outputLabels": []
+          }
         },
         {
           "file": "propose.md",
           "purpose": "Turn a ready issue into an OpenSpec proposal on a branch, as a draft pull request.",
           "assumes": "OpenSpec, and the spec-review gate as a lifecycle label.",
-          "saveAs": "aio-propose.md"
+          "saveAs": "aio-propose.md",
+          "automation": {
+            "trigger": "ai:propose",
+            "requiresApproval": true,
+            "outputLabels": []
+          }
         },
         {
           "file": "implement.md",
@@ -96,19 +106,34 @@
           "file": "sync.md",
           "purpose": "Close out an approved change: retro, archive, spec sync, then one squashed commit.",
           "assumes": "OpenSpec's specs and archive directories, and a retro log.",
-          "saveAs": "aio-sync.md"
+          "saveAs": "aio-sync.md",
+          "automation": {
+            "trigger": "ai:sync",
+            "requiresApproval": true,
+            "outputLabels": []
+          }
         },
         {
           "file": "refine.md",
           "purpose": "Record a finding that arrived after a change had already merged.",
           "assumes": "A retro log.",
-          "saveAs": "aio-refine.md"
+          "saveAs": "aio-refine.md",
+          "automation": {
+            "trigger": "ai:refine",
+            "requiresApproval": false,
+            "outputLabels": []
+          }
         },
         {
           "file": "status.md",
           "purpose": "Report where every in-flight change actually is.",
           "assumes": "Lifecycle labels on issues.",
-          "saveAs": "aio-status.md"
+          "saveAs": "aio-status.md",
+          "automation": {
+            "trigger": "ai:status",
+            "requiresApproval": false,
+            "outputLabels": []
+          }
         }
       ]
     }

@@ -541,7 +541,7 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
     /// one-level scope path lists a folder's entries; a 404 on the scope path is an absent
     /// directory, the seam's null. Unexercised against a real organisation.
     /// </summary>
-    public async Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+    public async Task<ErrorOr<DirectoryEntries?>> ListDirectoryFiles(
         BacklogCoordinates coordinates,
         string path,
         string token,
@@ -550,7 +550,7 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
     {
         var client = clientFactory.Create(coordinates.Owner, token);
 
-        return await Guarded<IReadOnlyList<string>?>(
+        return await Guarded<DirectoryEntries?>(
             coordinates,
             async () =>
             {
@@ -564,7 +564,7 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    IReadOnlyList<string>? absent = null;
+                    DirectoryEntries? absent = null;
                     return ErrorOrFactory.From(absent);
                 }
 
@@ -577,44 +577,58 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
                     await response.Content.ReadAsStringAsync(cancellationToken)
                 );
 
-                return ErrorOrFactory.From<IReadOnlyList<string>?>(
-                    ParseDirectoryFileNames(document.RootElement)
+                return ErrorOrFactory.From<DirectoryEntries?>(
+                    ParseDirectoryEntries(document.RootElement, path)
                 );
             }
         );
     }
 
     /// <summary>
-    /// The Items response's files as names relative to the listed directory — the API answers
+    /// The Items response as names relative to the listed directory — the API answers
     /// repository-absolute paths and marks folders, and nothing outside here learns either (D4).
+    /// <para>
+    /// <paramref name="scopePath"/> is the directory that was asked for. A OneLevel listing
+    /// includes that directory as its own first entry, and reporting it as a subdirectory would
+    /// send discovery (#229) reading the same path a second time (and a third, and so on).
+    /// </para>
     /// </summary>
-    public static IReadOnlyList<string> ParseDirectoryFileNames(JsonElement root)
+    public static DirectoryEntries ParseDirectoryEntries(JsonElement root, string scopePath)
     {
         if (!root.TryGetProperty("value", out var entries))
         {
-            return [];
+            return new DirectoryEntries([], []);
         }
 
-        var names = new List<string>();
+        var scope = $"/{scopePath.Trim('/')}";
+
+        var files = new List<string>();
+        var directories = new List<string>();
+
         foreach (var entry in entries.EnumerateArray())
         {
-            var isFolder = entry.TryGetProperty("isFolder", out var folder) && folder.GetBoolean();
-            if (isFolder)
+            if (!entry.TryGetProperty("path", out var entryPath))
             {
                 continue;
             }
 
-            if (entry.TryGetProperty("path", out var entryPath))
+            var value = entryPath.GetString();
+            if (string.IsNullOrEmpty(value))
             {
-                var value = entryPath.GetString();
-                if (!string.IsNullOrEmpty(value))
-                {
-                    names.Add(value[(value.LastIndexOf('/') + 1)..]);
-                }
+                continue;
             }
+
+            if (string.Equals(value.TrimEnd('/'), scope, StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var name = value[(value.LastIndexOf('/') + 1)..];
+            var isFolder = entry.TryGetProperty("isFolder", out var folder) && folder.GetBoolean();
+            (isFolder ? directories : files).Add(name);
         }
 
-        return names;
+        return new DirectoryEntries(files, directories);
     }
 
     /// <summary>Tags are one semicolon-delimited string, which nothing outside here learns (D4).</summary>

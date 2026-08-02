@@ -376,6 +376,53 @@ const routes: [string, RegExp, Handler][] = [
       },
     ],
   ],
+  // Discovery (#229): the motivating shape — a pipeline kept one level under `.claude/commands`,
+  // beside a conventional directory, so the surface exercises "two candidates, pick one".
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/automations\/discover-pipeline$/,
+    () => ({
+      candidates: [
+        {
+          directory: "ai/prompts",
+          files: ["triage.md", "explain.md"],
+          steps: ["ai:triage", "ai:explain"],
+          unmatched: [],
+        },
+        {
+          directory: ".claude/commands/ds",
+          files: ["grill.md", "propose.md", "implement.md", "sprint-notes.md"],
+          steps: ["ai:grill", "ai:propose", "ai:implement"],
+          unmatched: ["sprint-notes.md"],
+        },
+      ],
+      searchedIn: ["ai/prompts", ".claude/commands"],
+      reason: null,
+    }),
+  ],
+  [
+    "POST",
+    /^\/api\/projects\/[^/]+\/automations\/set-up-defaults$/,
+    (_match, body) => {
+      const input = body as { promptDirectory?: string; installMissing?: boolean };
+      const directory = input.promptDirectory ?? "ai/prompts";
+      return {
+        directory,
+        created: ["ai:grill", "ai:propose", "ai:implement"],
+        skipped: [{ trigger: "ai:triage", reason: "an Automation already uses this trigger" }],
+        foundNotWired: ["sprint-notes.md"],
+        installed: input.installMissing
+          ? {
+              files: [`${directory}/tests.md`, `${directory}/review.md`],
+              pullRequestUrl: "https://github.com/acme/portal/pull/8",
+              branch: "starter/pipeline",
+              failure: null,
+            }
+          : null,
+        missingPrompts: [{ saveAs: "tests.md", resolvedPath: `${directory}/tests.md` }],
+      };
+    },
+  ],
   // Install (#214): the draft PR a human goes to review.
   [
     "POST",

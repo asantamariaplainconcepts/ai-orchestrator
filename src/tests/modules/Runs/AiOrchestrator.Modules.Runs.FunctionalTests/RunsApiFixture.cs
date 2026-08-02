@@ -347,7 +347,7 @@ sealed class StubBacklogConnector : IBacklogConnector
                 : AiOrchestrator.Modules.Backlog.Domain.BacklogErrors.DocumentNotFound(path)
         );
 
-    public Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+    public Task<ErrorOr<DirectoryEntries?>> ListDirectoryFiles(
         BacklogCoordinates coordinates,
         string path,
         string token,
@@ -356,7 +356,7 @@ sealed class StubBacklogConnector : IBacklogConnector
     {
         // The Runs tests never list prompts; the seam member exists so the fake stays a
         // complete connector.
-        IReadOnlyList<string>? none = null;
+        DirectoryEntries? none = null;
         return Task.FromResult(ErrorOr.ErrorOrFactory.From(none));
     }
 }
