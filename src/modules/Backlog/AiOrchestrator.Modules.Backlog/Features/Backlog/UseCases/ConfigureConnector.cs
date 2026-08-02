@@ -292,7 +292,7 @@ sealed class ConfigureConnector : IUseCase
             var coordinates = new BacklogCoordinates(command.Owner, command.Repository);
             var access = await implementation.VerifyAccess(
                 coordinates,
-                ConnectorProbe.DocumentPath,
+                ConnectorCapabilities.For(codeSource),
                 token,
                 cancellationToken
             );

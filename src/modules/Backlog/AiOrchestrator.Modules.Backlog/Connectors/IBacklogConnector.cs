@@ -29,7 +29,7 @@ interface IBacklogConnector
     /// </summary>
     Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
-        string documentPath,
+        IReadOnlyList<ConnectorCapability> capabilities,
         string token,
         CancellationToken cancellationToken
     );

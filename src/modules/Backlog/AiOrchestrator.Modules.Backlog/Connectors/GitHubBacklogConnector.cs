@@ -22,37 +22,106 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
 
     public async Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
-        string documentPath,
+        IReadOnlyList<ConnectorCapability> capabilities,
         string token,
         CancellationToken cancellationToken
     )
     {
         var client = clientFactory.Create(token);
 
-        // The reads this product performs, made early (design D1). Repository.Get used to stand in
-        // for all of them and proved only that the coordinates resolve — it succeeds on the
-        // metadata permission every fine-grained token is created with, which is how a credential
-        // refused the repository's contents was stored as verified.
-        var stories = await Probe(
-            Capabilities.Stories,
-            coordinates,
-            () =>
-                client.Issue.GetAllForRepository(
-                    coordinates.Owner,
-                    coordinates.Repository,
-                    new RepositoryIssueRequest { State = ItemStateFilter.Open },
-                    new ApiOptions { PageSize = 1, PageCount = 1 }
-                )
-        );
+        // The writes are answered from the repository's own permission grant rather than by
+        // performing them (#226, design D3): verification writes nothing, in any habitat, so a
+        // probe that applied a label to find out would be exactly the debris that rule forbids.
+        // One read, reused for every write capability the configuration names.
+        var granted = await Granted(coordinates, client);
 
-        var documents = await Probe(
-            Capabilities.Documents,
+        var results = new List<CapabilityResult>(capabilities.Count);
+        foreach (var capability in capabilities)
+        {
+            results.Add(await Answer(capability, coordinates, client, granted));
+        }
+
+        return new CredentialVerdict(results);
+    }
+
+    /// <summary>
+    /// What the repository says this credential may do, or null when the repository itself could
+    /// not be read — in which case the reads below will produce the real refusal, and inventing
+    /// one here would report the wrong capability.
+    /// </summary>
+    static async Task<RepositoryPermissions?> Granted(
+        BacklogCoordinates coordinates,
+        IGitHubClient client
+    )
+    {
+        try
+        {
+            var repository = await client.Repository.Get(coordinates.Owner, coordinates.Repository);
+            return repository.Permissions;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    async Task<CapabilityResult> Answer(
+        ConnectorCapability capability,
+        BacklogCoordinates coordinates,
+        IGitHubClient client,
+        RepositoryPermissions? granted
+    )
+    {
+        if (capability.IsWrite)
+        {
+            // Push covers both writes GitHub distinguishes for our purposes: labelling an issue
+            // and pushing a branch both require write access to the repository.
+            if (granted is null)
+            {
+                return CapabilityResult.NotVerifiable(
+                    capability.Name,
+                    "the repository's permissions could not be read"
+                );
+            }
+
+            return granted.Push
+                ? CapabilityResult.Passed(capability.Name)
+                : CapabilityResult.Refused(
+                    capability.Name,
+                    BacklogErrors.CredentialRefused(
+                        capability.Name,
+                        "the credential has read-only access to this repository"
+                    )
+                );
+        }
+
+        // The reads this product performs, made for real (design D1). Repository.Get used to
+        // stand in for all of them and proved only that the coordinates resolve — it succeeds on
+        // the metadata permission every fine-grained token is created with, which is how a
+        // credential refused the repository's contents was stored as verified.
+        if (capability == ConnectorCapability.ReadStories)
+        {
+            return await Probe(
+                capability.Name,
+                coordinates,
+                () =>
+                    client.Issue.GetAllForRepository(
+                        coordinates.Owner,
+                        coordinates.Repository,
+                        new RepositoryIssueRequest { State = ItemStateFilter.Open },
+                        new ApiOptions { PageSize = 1, PageCount = 1 }
+                    )
+            );
+        }
+
+        return await Probe(
+            capability.Name,
             coordinates,
             () =>
                 client.Repository.Content.GetAllContentsByRef(
                     coordinates.Owner,
                     coordinates.Repository,
-                    documentPath,
+                    ConnectorCapability.DocumentPath,
                     "HEAD"
                 ),
             // Absence is not refusal (design D6): a path that does not exist says this repository
@@ -60,14 +129,14 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
             // would refuse almost every repository this product is pointed at.
             absenceIsSuccess: true
         );
-
-        return CredentialVerdict.Of(stories, documents);
     }
 
     /// <summary>
-    /// One capability, attempted for real. Nothing is inferred from declared scopes — GitHub
-    /// exposes those unevenly between classic and fine-grained tokens, so a check built on them
-    /// would be reliable for one kind of credential and misleading for the other.
+    /// One read capability, attempted for real. Nothing is inferred from declared scopes for the
+    /// reads — GitHub exposes those unevenly between classic and fine-grained tokens, so a check
+    /// built on them would be reliable for one kind of credential and misleading for the other.
+    /// The writes are different: they are answered from the repository's permission grant, because
+    /// verification may not perform them (#226).
     /// </summary>
     async Task<CapabilityResult> Probe<T>(
         string capability,

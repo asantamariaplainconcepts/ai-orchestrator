@@ -293,6 +293,22 @@ const routes: [string, RegExp, Handler][] = [
       };
     },
   ],
+  // #226 — what to grant, for the shape being configured. A local code source asks for less.
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/connector\/required-permissions$/,
+    (_match, _body, params) => ({
+      scopes:
+        params.get("codeSource") === "LocalFolder"
+          ? ["Issues: read", "Contents: read", "Issues: write"]
+          : [
+              "Issues: read",
+              "Contents: read",
+              "Issues: write",
+              "Contents: write, Pull requests: write",
+            ],
+    }),
+  ],
   [
     "GET",
     /^\/api\/projects\/[^/]+\/connector\/test$/,
@@ -300,6 +316,12 @@ const routes: [string, RegExp, Handler][] = [
       satisfied: false,
       capabilities: [
         { capability: "reading the backlog's Stories", succeeded: true, reason: null },
+        {
+          capability: "pushing a branch and opening a pull request",
+          succeeded: true,
+          reason: null,
+          notVerifiable: "this connector claims no way to ask without performing the write",
+        },
         {
           capability: "reading the repository's files",
           succeeded: false,

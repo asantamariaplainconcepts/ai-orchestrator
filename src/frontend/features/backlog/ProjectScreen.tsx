@@ -24,6 +24,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   useBacklog,
   useDeploymentCapabilities,
+  useRequiredPermissions,
   useConfigureConnector,
   useRefreshBacklog,
   useTestConnector,
@@ -547,6 +548,9 @@ function ConnectorPanel({
   // writable store would refuse every paste, so the option is not offered there and naming —
   // which works in every habitat — becomes the credential field rather than a link beside it.
   const canStore = capabilities.data?.canStoreSecret ?? true;
+  // What to grant for the shape being configured (#226) — a local code source asks for less,
+  // because nothing will push or open a pull request with this credential.
+  const required = useRequiredPermissions(projectId, codeSource);
   const pasting = canStore && credentialMode === "paste";
 
   // The two coordinates mean different things per vendor — organisation/project on Azure
@@ -745,6 +749,14 @@ function ConnectorPanel({
                       ? t("connector.accessTokenHint")
                       : t("connector.secretHint")}
                 </p>
+                {/* Stated where the token is supplied, in the vendor's own words — the names a
+                    person selects while minting one (#226, design D4). */}
+                {required.data && required.data.scopes.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {t("connector.requiredPermissions")}{" "}
+                    <span className="font-mono">{required.data.scopes.join(" · ")}</span>
+                  </p>
+                ) : null}
                 {canStore ? (
                   /* The other path as a link, under the field it would replace — a peer control
                      would be the second credential input #220 removed. */
@@ -913,13 +925,30 @@ function CredentialTest({ projectId }: { projectId: string }) {
         <ul className="flex flex-col gap-1">
           {result.capabilities.map((capability) => (
             <li key={capability.capability} className="flex flex-wrap items-baseline gap-2 text-sm">
-              <Badge variant={capability.succeeded ? "secondary" : "destructive"}>
-                {capability.succeeded ? t("connector.test.ok") : t("connector.test.no")}
+              {/* Three outcomes since #226: allowed, refused, and "this vendor will not say
+                  without me doing it" — which is neither, and rendering it as a pass would claim
+                  something nobody checked. */}
+              <Badge
+                variant={
+                  capability.notVerifiable
+                    ? "outline"
+                    : capability.succeeded
+                      ? "secondary"
+                      : "destructive"
+                }
+              >
+                {capability.notVerifiable
+                  ? t("connector.test.unknown")
+                  : capability.succeeded
+                    ? t("connector.test.ok")
+                    : t("connector.test.no")}
               </Badge>
               <span>{capability.capability}</span>
               {/* The vendor's own sentence, which names the missing permission better than we can. */}
-              {capability.reason ? (
-                <span className="text-xs text-muted-foreground">{capability.reason}</span>
+              {(capability.reason ?? capability.notVerifiable) ? (
+                <span className="text-xs text-muted-foreground">
+                  {capability.reason ?? capability.notVerifiable}
+                </span>
               ) : null}
             </li>
           ))}

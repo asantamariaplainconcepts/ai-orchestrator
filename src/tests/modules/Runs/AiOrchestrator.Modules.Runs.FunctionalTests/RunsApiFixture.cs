@@ -191,15 +191,16 @@ sealed class StubBacklogConnector : IBacklogConnector
     // (#132). What they exercise is execution, and a credential question there would be noise.
     public Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
-        string documentPath,
+        IReadOnlyList<ConnectorCapability> capabilities,
         string token,
         CancellationToken cancellationToken
     ) =>
+        // The Runs suite never verifies a credential; the member exists so the fake stays a
+        // complete connector, and it answers for whatever set it is handed (#226).
         Task.FromResult(
-            CredentialVerdict.Of(
-                CapabilityResult.Passed(Capabilities.Stories),
-                CapabilityResult.Passed(Capabilities.Documents)
-            )
+            new CredentialVerdict([
+                .. capabilities.Select(capability => CapabilityResult.Passed(capability.Name)),
+            ])
         );
 
     public Task<ErrorOr<BacklogSnapshot>> FetchStories(

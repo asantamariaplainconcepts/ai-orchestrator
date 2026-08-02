@@ -39,8 +39,21 @@ sealed class TestConnector : IUseCase
             .WithName(nameof(TestConnector))
             .WithTags("Backlog");
 
-    /// <summary>One entry per capability, each with the vendor's reason when it was refused.</summary>
-    internal sealed record CapabilityView(string Capability, bool Succeeded, string? Reason);
+    /// <summary>
+    /// One entry per capability, each with the vendor's reason when it was refused.
+    /// <para>
+    /// <paramref name="NotVerifiable"/> is the third outcome (#226): the vendor cannot say whether
+    /// this is permitted without performing it, and verification writes nothing. It is not a
+    /// failure — <paramref name="Succeeded"/> stays true — but rendering it as a plain pass would
+    /// claim something nobody checked, so it travels with its reason.
+    /// </para>
+    /// </summary>
+    internal sealed record CapabilityView(
+        string Capability,
+        bool Succeeded,
+        string? Reason,
+        string? NotVerifiable
+    );
 
     internal sealed record Response(bool Satisfied, IReadOnlyList<CapabilityView> Capabilities);
 
@@ -70,18 +83,15 @@ sealed class TestConnector : IUseCase
             // check that no longer decides anything.
             var verdict = await connector.VerifyAccess(
                 coordinates,
-                ConnectorProbe.DocumentPath,
+                ConnectorCapabilities.For(context.Value.CodeSource),
                 token,
                 cancellationToken
             );
 
-            return new Response(
-                verdict.Satisfied,
-                [Describe(verdict.Stories), Describe(verdict.Documents)]
-            );
+            return new Response(verdict.Satisfied, [.. verdict.Capabilities.Select(Describe)]);
         }
 
         static CapabilityView Describe(CapabilityResult result) =>
-            new(result.Name, result.Succeeded, result.Failure?.Description);
+            new(result.Name, result.Succeeded, result.Failure?.Description, result.Unverifiable);
     }
 }

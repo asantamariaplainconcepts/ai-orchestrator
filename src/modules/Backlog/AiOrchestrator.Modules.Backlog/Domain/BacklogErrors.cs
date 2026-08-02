@@ -23,6 +23,17 @@ static class BacklogErrors
         );
 
     /// <summary>
+    /// The vendor answered, and the answer is that this credential may not do what the
+    /// configuration needs (#226). Distinct from a rejected credential: the token is valid, the
+    /// permission is not there — and the fix is to widen the grant, not to mint a new token.
+    /// </summary>
+    public static Error CredentialRefused(string capability, string reason) =>
+        Error.Validation(
+            "Connector.CredentialRefused",
+            $"The credential may not perform '{capability}': {reason}."
+        );
+
+    /// <summary>
     /// This habitat cannot accept a pasted value (#124). Carries the store's own remedy, because
     /// what to do instead differs per habitat and the caller cannot know which one they are in.
     /// </summary>
