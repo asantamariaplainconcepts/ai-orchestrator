@@ -86,24 +86,8 @@ var database = builder
 // and the compose output must contact zero Azure (#99 AC4). The connection string below is
 // Azurite's PUBLISHED well-known dev credential, the same constant every Azurite quickstart
 // carries — a documented emulator constant, not a secret (BR-010 untouched).
-IResourceBuilder<Aspire.Hosting.Azure.AzureQueueStorageResource>? queues = null;
-if (builder.ExecutionContext.IsRunMode)
-{
-    queues = builder.AddAzureStorage("storage").RunAsEmulator().AddQueues("queues");
-}
-
-const string AzuriteComposeConnection =
-    "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;"
-    + "AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;"
-    + "QueueEndpoint=http://storage:10001/devstoreaccount1;";
-
-if (builder.ExecutionContext.IsPublishMode)
-{
-    builder
-        .AddContainer("storage", "mcr.microsoft.com/azure-storage/azurite")
-        .WithArgs("azurite-queue", "--queueHost", "0.0.0.0")
-        .WithEndpoint(targetPort: 10001, name: "queue");
-}
+// Neither shape composes one any more (#225, DEC-054): with no queue connection string the
+// Server's AddRunDispatch composes the outbox pair and consumes in its own process.
 
 // The Vite dev server exists only in run mode: published/deployed, the SPA is a build artifact
 // served same-origin by the Server from wwwroot, so the compose output must not carry it (#99).
@@ -121,39 +105,9 @@ var migrations = builder
     .WithReference(database)
     .WaitFor(database);
 
-// The dispatch worker. Since #18 it composes the modules, so it needs the database as much as
-// the queue — without it the process throws at startup, which nobody saw because the resource
-// used to require an explicit start and nobody pressed it.
-//
-// It drains the queue and exits by design (#16), so Aspire restarts it and a queued Run is
-// picked up within seconds. That is NOT KEDA: KEDA scales on queue length and can scale to
-// zero; this restarts unconditionally and burns a little idle CPU. What the AppHost proves is
-// the queue contract and the agent loop — never the scale rule.
-var dispatch = builder
-    .AddProject<Projects.AiOrchestrator_DispatchWorker>("dispatch")
-    .WithReference(database)
-    .WaitFor(database)
-    .WaitForCompletion(migrations);
-
-if (queues is not null)
-{
-    dispatch.WithReference(queues).WaitFor(queues);
-}
-else
-{
-    dispatch
-        .WithEnvironment("ConnectionStrings__queues", AzuriteComposeConnection)
-        // No KEDA in compose: the worker is a long-lived drainer on a timer, the same divergence
-        // the local loop documents — WHAT starts a pass differs, the pass is identical.
-        .WithEnvironment("Dispatch__LocalPollSeconds", "5");
-}
-
-if (builder.ExecutionContext.IsRunMode)
-{
-    // A timer starts each drain pass locally, because nothing else will. Deployed, this is
-    // unset and the job drains once and exits — the pass itself is identical either way.
-    dispatch.WithEnvironment("Dispatch__LocalPollSeconds", "5");
-}
+// No dispatch worker here. It exists to drain a queue, and this habitat has none: the Server
+// consumes the outbox in its own process, which is the container this change removes. The
+// project still builds and still deploys — the Azure template composes it from its own file.
 
 // The server's endpoints come from its launchSettings "http" profile — without that profile the
 // resource has no named endpoint and nothing can resolve it. ASPNETCORE_ENVIRONMENT is left out
@@ -166,14 +120,8 @@ var server = builder
     .WaitForCompletion(migrations)
     .WithExternalHttpEndpoints();
 
-if (queues is not null)
-{
-    server.WithReference(queues).WaitFor(queues);
-}
-else
-{
-    server.WithEnvironment("ConnectionStrings__queues", AzuriteComposeConnection);
-}
+// Deliberately no queue connection string on the Server: its absence is the configuration that
+// composes the outbox substrate and its in-process consumer (ADR-0010 — asked, never inferred).
 
 if (frontend is not null)
 {
@@ -212,11 +160,11 @@ if (builder.ExecutionContext.IsRunMode)
     // Both processes, not just the one with the form: the worker resolves the same credential
     // when it executes a Run, and a store only the Server can read would make a pasted token
     // work in the portal and fail at the first dispatch.
-    foreach (var resource in new[] { server, dispatch })
-    {
-        resource.WithEnvironment("Secrets__LocalStorePath", values);
-        resource.WithEnvironment("Secrets__LocalKeyRingPath", keys);
-    }
+    // One process now (#225): the Server holds the form and executes the Run, so the store it
+    // writes is the store it reads. This configured the worker too, for a reason that no longer
+    // exists — there is no second process to disagree with.
+    server.WithEnvironment("Secrets__LocalStorePath", values);
+    server.WithEnvironment("Secrets__LocalKeyRingPath", keys);
 }
 else
 {
