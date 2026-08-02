@@ -119,7 +119,14 @@ public class CredentialCapabilities_Should_Constraint(BacklogApiFixture fixture)
         var result = await response.Content.ReadFromJsonAsync<TestResponse>();
         result.ShouldNotBeNull();
         result.Satisfied.ShouldBeTrue();
-        result.Capabilities.Count.ShouldBe(2);
+        // Every capability this configuration will exercise, not a fixed pair (#226): the two
+        // reads plus the writes a Repository code source performs. Asserted as a count *and* by
+        // name, so widening the set on purpose stays a deliberate edit here rather than a number
+        // somebody bumps.
+        result.Capabilities.Count.ShouldBe(4);
+        result
+            .Capabilities.Select(capability => capability.Capability)
+            .ShouldContain("pushing a branch and opening a pull request");
         result.Capabilities.ShouldAllBe(capability => capability.Succeeded);
     }
 

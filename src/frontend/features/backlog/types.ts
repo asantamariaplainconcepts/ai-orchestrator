@@ -43,6 +43,11 @@ export interface CapabilityView {
   succeeded: boolean;
   /** The vendor's own reason when it refused; null when it did not. */
   reason: string | null;
+  /**
+   * #226 — the third outcome: the vendor cannot say whether this is permitted without performing
+   * it, and verification writes nothing. Not a failure, and not a pass either; it carries why.
+   */
+  notVerifiable: string | null;
 }
 
 export interface ConnectorTestView {

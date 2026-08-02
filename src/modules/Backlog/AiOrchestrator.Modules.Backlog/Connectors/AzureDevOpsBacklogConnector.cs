@@ -46,7 +46,7 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
 
     public async Task<CredentialVerdict> VerifyAccess(
         BacklogCoordinates coordinates,
-        string documentPath,
+        IReadOnlyList<ConnectorCapability> capabilities,
         string token,
         CancellationToken cancellationToken
     )
@@ -54,20 +54,57 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
         // Same shape as the GitHub implementation and, deliberately, not the same calls: this
         // vendor's permission model is its own, which is exactly what a verdict per capability
         // keeps inside this file (#132, design D2).
-        var stories = await Probe(
-            Capabilities.Stories,
-            () => FetchStories(coordinates, token, cancellationToken)
-        );
+        var results = new List<CapabilityResult>(capabilities.Count);
 
-        var documents = await Probe(
-            Capabilities.Documents,
-            () => ReadDocument(coordinates, documentPath, "HEAD", token, cancellationToken),
-            // Absence is not refusal (design D6). This connector reports a missing document as
-            // DocumentNotFound, so that code — and only that one — passes.
-            absent: BacklogErrors.DocumentNotFound(documentPath).Code
-        );
+        foreach (var capability in capabilities)
+        {
+            if (capability.IsWrite)
+            {
+                // Declared rather than guessed (#226, design D3). This project claims no
+                // permission-introspection call for Azure DevOps: no such call has ever been
+                // exercised here (ADR-0005), and verification writes nothing, so performing the
+                // write to find out is not available either. Reporting a pass would manufacture
+                // confidence nobody earned; reporting a refusal would block a correct credential.
+                results.Add(
+                    CapabilityResult.NotVerifiable(
+                        capability.Name,
+                        "this connector claims no way to ask Azure DevOps what a credential may "
+                            + "write without performing the write"
+                    )
+                );
+                continue;
+            }
 
-        return CredentialVerdict.Of(stories, documents);
+            if (capability == ConnectorCapability.ReadStories)
+            {
+                results.Add(
+                    await Probe(
+                        capability.Name,
+                        () => FetchStories(coordinates, token, cancellationToken)
+                    )
+                );
+                continue;
+            }
+
+            results.Add(
+                await Probe(
+                    capability.Name,
+                    () =>
+                        ReadDocument(
+                            coordinates,
+                            ConnectorCapability.DocumentPath,
+                            "HEAD",
+                            token,
+                            cancellationToken
+                        ),
+                    // Absence is not refusal (design D6). This connector reports a missing
+                    // document as DocumentNotFound, so that code — and only that one — passes.
+                    absent: BacklogErrors.DocumentNotFound(ConnectorCapability.DocumentPath).Code
+                )
+            );
+        }
+
+        return new CredentialVerdict(results);
     }
 
     /// <summary>

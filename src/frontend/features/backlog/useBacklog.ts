@@ -131,6 +131,21 @@ export function useDeploymentCapabilities() {
 }
 
 /**
+ * What a credential must be granted for the shape currently in the form (#226). Asked for the
+ * *proposed* configuration rather than the stored one, because the question is answered while
+ * somebody is still changing the fields that decide it — a local code source needs no push.
+ */
+export function useRequiredPermissions(projectId: string, codeSource: string) {
+  return useQuery({
+    queryKey: ["required-permissions", projectId, codeSource] as const,
+    queryFn: () =>
+      api.get<{ scopes: string[] }>(
+        `/api/projects/${projectId}/connector/required-permissions?codeSource=${encodeURIComponent(codeSource)}`,
+      ),
+  });
+}
+
+/**
  * #210 — the live path check the form runs on idle (mock 3a). A mutation rather than a query:
  * the answer is about the host's disk at this moment, and caching "clean working tree" would
  * happily contradict the dispatch-time refusal it exists to preview.

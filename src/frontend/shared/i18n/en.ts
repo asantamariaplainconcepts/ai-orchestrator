@@ -196,6 +196,9 @@ export const en = {
   "connector.test.failed": "Could not test the credential.",
   "connector.test.ok": "Allowed",
   "connector.test.no": "Refused",
+  // #226 — neither allowed nor refused: the vendor will not answer without us performing it.
+  "connector.test.unknown": "Not checkable",
+  "connector.requiredPermissions": "Grant this token:",
 
   "connector.healthy": "Connected",
   "connector.unhealthy": "Last poll failed",

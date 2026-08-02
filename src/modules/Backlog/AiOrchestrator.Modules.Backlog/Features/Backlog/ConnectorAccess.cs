@@ -54,6 +54,7 @@ sealed class ConnectorAccess(
             )
             {
                 PromptDirectory = connector.PromptDirectory,
+                CodeSource = connector.CodeSource,
             };
         }
         catch (SecretNotFoundException)
@@ -76,4 +77,12 @@ sealed record ConnectorContext(
     /// would have made every one of them mention a directory it has no use for.
     /// </summary>
     public string? PromptDirectory { get; init; }
+
+    /// <summary>
+    /// Which capabilities this Connector's configuration will exercise depends on it (#226): a
+    /// local folder's working copy is the host's own, so nothing here pushes or opens a pull
+    /// request. Carried for the same reason the directory is — a positional parameter would make
+    /// every call site mention a value most of them have no use for.
+    /// </summary>
+    public CodeSource CodeSource { get; init; }
 }

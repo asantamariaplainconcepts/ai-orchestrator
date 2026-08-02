@@ -25,6 +25,17 @@ Then close the loop:
    must exist as a configuration value: add `Secrets__<name>=<your PAT>` to the `server` and
    `dispatch` services' environment (an `.env` reference works). Names in the app, values in the
    environment — that split holds everywhere this product runs (BR-010).
+
+   **Grant it only what your configuration uses (#226).** The form states the list for the shape
+   you are configuring, and a fine-grained token needs no more than that:
+
+   | Configuration | Repository permissions |
+   |---|---|
+   | Repository code source | Issues: read, Contents: read, Issues: write, Contents: write, Pull requests: write |
+   | Local folder code source | Issues: read, Contents: read, Issues: write |
+
+   A local folder's working copy is your own and git runs with your own credentials, so nothing
+   here clones, pushes or opens a pull request with this token.
 3. Label an issue `ai:estimate` (or `ai:grill`, and answer its questions). Watch the Run's
    output live on its page.
 

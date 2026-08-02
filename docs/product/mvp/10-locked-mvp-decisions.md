@@ -353,3 +353,18 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   and running a model is not a small workload and a warm session that then thrashes on memory would
   buy nothing. **What it buys back:** the first conversation of the day answers without a cold
   start — the one thing zero ever gave away. Decided 2026-08-01 with #198.
+
+- **DEC-053 — a Connector asks for the permissions its configuration will use** *(revises
+  DEC-030's one-PAT-covering-everything)*: DEC-030 gave each project a single token covering
+  backlog read/write and code clone/push/PR, and said finer scoping was post-MVP. Two later
+  changes made that breadth costly rather than simple. A LocalFolder project (#210) never uses
+  the code half — its working copy is the host's own and git runs with the host's credentials —
+  so those scopes are granted and unused. And since #162 the agent holds the token and runs
+  unbounded, which makes what the token *can* do the containment that remains. Breadth therefore
+  follows configuration: one capability set, computed once, used both to say what to grant and to
+  decide what to verify, so the two cannot drift. **An unverifiable capability is reported, never
+  assumed:** verification still writes nothing in any habitat, so a write is checked by asking the
+  vendor what the credential may do — GitHub answers from the repository's permission grant, and
+  Azure DevOps declares that it has no such call rather than passing a check nobody performed
+  (ADR-0005). Not-verifiable does not block a save; a pass nobody earned would be worse than a
+  stated gap.
