@@ -562,6 +562,39 @@ function ConnectorPanel({
   // change a path is what trained people to keep PATs lying around.
   const keepingStored = Boolean(connector) && (pasting ? !accessToken.trim() : !secretName.trim());
 
+  // A local folder makes the code repository inapplicable: a local Run leaves a branch and opens
+  // no pull request (#220, design D3). Hidden and cleared are one act — see submit().
+  const codeIsLocal = Boolean(surface.data?.offered) && codeSource === "LocalFolder";
+
+  /**
+   * The disclosure's open state is derived, never remembered (design D1): open where the stored
+   * Connector already carries one of these values, and **locked** open while a local folder needs
+   * its path — the API requires it, and a required field behind a disclosure is a save that fails
+   * against something invisible.
+   */
+  const advancedLocked = codeIsLocal;
+  const storesAdvanced = Boolean(
+    connector?.promptDirectory || connector?.codeRepository || connector?.localPath,
+  );
+  const [advancedOpened, setAdvancedOpened] = useState(storesAdvanced);
+  const advancedOpen = advancedLocked || advancedOpened;
+  const setAdvancedOpen = setAdvancedOpened;
+
+  /**
+   * Swapping the credential path **discards** the value it replaces, so the two can never both
+   * carry one (design D2). Keeping both in state and sending the active one would put the
+   * exclusive-or invariant in the submit handler, one refactor away from being lost.
+   */
+  function swapCredentialMode() {
+    if (pasting) {
+      setAccessToken("");
+      setCredentialMode("name");
+    } else {
+      setSecretName("");
+      setCredentialMode("paste");
+    }
+  }
+
   function submit(event: React.FormEvent) {
     event.preventDefault();
     if (!owner.trim() || !repository.trim()) return;
@@ -576,7 +609,10 @@ function ConnectorPanel({
         secretName: keepingStored || pasting ? null : secretName,
         accessToken: keepingStored || !pasting ? null : accessToken,
         vendor,
-        codeRepository: needsCodeRepository && codeRepository.trim() ? codeRepository : null,
+        // Cleared, not merely hidden (design D3): a stale value that still travelled would
+        // persist configuration nobody can see, and the API does not forbid the combination.
+        codeRepository:
+          needsCodeRepository && !codeIsLocal && codeRepository.trim() ? codeRepository : null,
         promptDirectory: promptDirectory.trim() ? promptDirectory.trim() : null,
         // Sent only where the surface exists: a cloud deployment never renders the control, and
         // null keeps the API's default so pre-#210 behaviour is untouched.
@@ -675,20 +711,14 @@ function ConnectorPanel({
                   placeholder={t("connector.repositoryPlaceholder")}
                 />
               </div>
+              {/* One credential input, not two (#220, design D2): pasting is the default path
+                  and naming a vault secret is a link that *swaps* it. The two never both carry a
+                  value, so the API's not-both refusal cannot be composed here. */}
               <div className="flex flex-col gap-2">
-                <Label htmlFor="credential-mode">{t("connector.credential")}</Label>
-                <NativeSelect
-                  id="credential-mode"
-                  value={credentialMode}
-                  onChange={(event) => setCredentialMode(event.target.value as "paste" | "name")}
-                >
-                  <option value="paste">{t("connector.credential.paste")}</option>
-                  <option value="name">{t("connector.credential.name")}</option>
-                </NativeSelect>
-              </div>
-              {pasting ? (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="access-token">{t("connector.accessToken")}</Label>
+                <Label htmlFor={pasting ? "access-token" : "secret-name"}>
+                  {pasting ? t("connector.accessToken") : t("connector.secretName")}
+                </Label>
+                {pasting ? (
                   <Input
                     id="access-token"
                     type="password"
@@ -697,52 +727,111 @@ function ConnectorPanel({
                     onChange={(event) => setAccessToken(event.target.value)}
                     placeholder={t("connector.accessTokenPlaceholder")}
                   />
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="secret-name">{t("connector.secretName")}</Label>
+                ) : (
                   <Input
                     id="secret-name"
                     value={secretName}
                     onChange={(event) => setSecretName(event.target.value)}
                     placeholder={t("connector.secretNamePlaceholder")}
                   />
-                </div>
-              )}
-              {needsCodeRepository ? (
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="code-repository">{t("connector.codeRepository")}</Label>
-                  <Input
-                    id="code-repository"
-                    value={codeRepository}
-                    onChange={(event) => setCodeRepository(event.target.value)}
-                    placeholder={t("connector.codeRepositoryPlaceholder")}
-                  />
-                </div>
-              ) : null}
-              {/* Every vendor has one: prompts live in the repository whatever hosts it. */}
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="prompt-directory">{t("connector.promptDirectory")}</Label>
-                <Input
-                  id="prompt-directory"
-                  value={promptDirectory}
-                  onChange={(event) => setPromptDirectory(event.target.value)}
-                  placeholder={t("connector.promptDirectoryPlaceholder")}
-                />
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {keepingStored
+                    ? t("connector.keepsStoredCredential")
+                    : pasting
+                      ? t("connector.accessTokenHint")
+                      : t("connector.secretHint")}
+                </p>
+                {/* The other path as a link, under the field it would replace — a peer control
+                    would be the second credential input this change exists to remove. */}
+                <button
+                  type="button"
+                  className="self-start text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                  onClick={() => swapCredentialMode()}
+                >
+                  {pasting ? t("connector.credential.useName") : t("connector.credential.usePaste")}
+                </button>
               </div>
             </div>
 
-            {/* Mock 3a (#211): only where the deployment offers the surface — on cloud, nothing
-                renders here, not even a disabled control. */}
-            {surface.data?.offered ? (
-              <CodeSourceSection
-                projectId={projectId}
-                codeSource={codeSource}
-                onCodeSource={setCodeSource}
-                localPath={localPath}
-                onLocalPath={setLocalPath}
-              />
-            ) : null}
+            {/* Everything with a default or a minority audience lives here (#220, design D1).
+                Open by itself when the Connector already stores one of these, and locked open
+                while a local folder needs its required path. */}
+            <details
+              className="rounded-md border border-border px-3 py-2"
+              open={advancedOpen}
+              onToggle={(event) =>
+                setAdvancedOpen((event.currentTarget as HTMLDetailsElement).open)
+              }
+            >
+              <summary
+                className="cursor-pointer text-sm font-medium"
+                aria-disabled={advancedLocked}
+                // Refused at the gesture, not corrected after it: a controlled <details> whose
+                // state is already `true` re-renders nothing, so a toggle back to open would be
+                // a no-op and the panel would close anyway.
+                onClick={(event) => {
+                  if (advancedLocked) event.preventDefault();
+                }}
+              >
+                {t("connector.advanced")}
+              </summary>
+
+              <div className="mt-3 flex flex-col gap-4">
+                {advancedLocked ? (
+                  <p className="text-xs text-muted-foreground">{t("connector.advanced.locked")}</p>
+                ) : null}
+
+                {/* Every vendor has one: prompts live in the repository whatever hosts it. */}
+                <div className="flex flex-col gap-2">
+                  <Label htmlFor="prompt-directory">{t("connector.promptDirectory")}</Label>
+                  <Input
+                    id="prompt-directory"
+                    value={promptDirectory}
+                    onChange={(event) => setPromptDirectory(event.target.value)}
+                    placeholder={t("connector.promptDirectoryPlaceholder")}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    {t("connector.promptDirectoryHint")}
+                  </p>
+                </div>
+
+                {/* Inapplicable under a local folder — a local Run leaves a branch and opens no
+                    pull request — so it is neither shown nor sent (design D3). */}
+                {needsCodeRepository ? (
+                  codeIsLocal ? (
+                    <p className="text-xs text-muted-foreground">
+                      {t("connector.codeRepository.notApplicable")}
+                    </p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="code-repository">{t("connector.codeRepository")}</Label>
+                      <Input
+                        id="code-repository"
+                        value={codeRepository}
+                        onChange={(event) => setCodeRepository(event.target.value)}
+                        placeholder={t("connector.codeRepositoryPlaceholder")}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {t("connector.codeRepositoryHint")}
+                      </p>
+                    </div>
+                  )
+                ) : null}
+
+                {/* Mock 3a (#211): only where the deployment offers the surface — on cloud,
+                    nothing renders here, not even a disabled control. */}
+                {surface.data?.offered ? (
+                  <CodeSourceSection
+                    projectId={projectId}
+                    codeSource={codeSource}
+                    onCodeSource={setCodeSource}
+                    localPath={localPath}
+                    onLocalPath={setLocalPath}
+                  />
+                ) : null}
+              </div>
+            </details>
 
             <div className="flex flex-wrap items-center gap-2">
               <Button type="submit" disabled={configure.isPending}>
@@ -755,18 +844,7 @@ function ConnectorPanel({
               ) : null}
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              {keepingStored
-                ? t("connector.keepsStoredCredential")
-                : pasting
-                  ? t("connector.accessTokenHint")
-                  : t("connector.secretHint")}
-            </p>
-            {needsCodeRepository ? (
-              <p className="text-xs text-muted-foreground">{t("connector.codeRepositoryHint")}</p>
-            ) : null}
-            <p className="text-xs text-muted-foreground">{t("connector.promptDirectoryHint")}</p>
-
+            {/* The hints that used to pool here now sit with their fields (#220). */}
             {configure.isError && (
               <p className="text-sm text-destructive" role="alert">
                 {/* The API's own reason when it gave one: a refusal that names the remedy is

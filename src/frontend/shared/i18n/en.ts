@@ -112,6 +112,16 @@ export const en = {
 
   // The code source (#210/#211, mock 3a). "Local folder" is a code source, not a vendor —
   // Stories still come from issues; only where the Agent's working copy comes from changes.
+  // The essentials-first form (#220): everything with a default or a minority audience folds
+  // behind one disclosure, and the credential's second path is a link rather than a peer field.
+  "connector.advanced": "Advanced",
+  "connector.advanced.locked":
+    "A local folder needs its path, so these settings stay open while one is chosen.",
+  "connector.credential.useName": "Name an existing secret instead",
+  "connector.credential.usePaste": "Paste a token instead",
+  "connector.codeRepository.notApplicable":
+    "No code repository: a local Run leaves a branch on this machine and opens no pull request.",
+
   "connector.codeSource": "Code source",
   "connector.codeSource.repository": "Repository",
   "connector.codeSource.localFolder": "Local folder",

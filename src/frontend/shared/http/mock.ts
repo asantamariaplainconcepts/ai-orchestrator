@@ -17,6 +17,9 @@ const at = (minutesAgo: number) => new Date(now - minutesAgo * 60_000).toISOStri
 const projectAlpha = "00000000-0000-7000-8000-00000000000a";
 const projectBeta = "00000000-0000-7000-8000-00000000000b";
 
+/** The projects that ship configured; anything created at runtime starts empty. */
+const seeded = new Set([projectAlpha, projectBeta]);
+
 const projects: { id: string; name: string; archivedAt: string | null }[] = [
   { id: projectAlpha, name: "Alpha portal", archivedAt: null },
   { id: projectBeta, name: "Beta warehouse", archivedAt: null },
@@ -232,8 +235,35 @@ const routes: [string, RegExp, Handler][] = [
           waitingSince: r.createdAt,
         })),
   ],
-  ["GET", /^\/api\/projects\/[^/]+\/backlog$/, () => ({ connector, stories })],
+  [
+    "GET",
+    /^\/api\/projects\/([^/]+)\/backlog$/,
+    // A project created in this session has no Connector yet — the state the settings form's
+    // essentials-first shape (#220) and the onboarding checklist (#211) both exist for.
+    (match) =>
+      seeded.has(match[1] ?? "") ? { connector, stories } : { connector: null, stories: [] },
+  ],
   // #210/#211 — the self-host posture answers; a cloud deployment would 404 the whole surface.
+  // Saving reflects what the form actually sent — without this, mock mode silently discards a
+  // configure and the screen keeps showing the old Connector (#220).
+  [
+    "PUT",
+    /^\/api\/projects\/([^/]+)\/connector$/,
+    (match, body) => {
+      const sent = body as Partial<typeof connector> & { accessToken?: string | null };
+      seeded.add(match[1] ?? "");
+      Object.assign(connector, {
+        vendor: sent.vendor ?? connector.vendor,
+        owner: sent.owner ?? connector.owner,
+        repository: sent.repository ?? connector.repository,
+        codeRepository: sent.codeRepository ?? null,
+        promptDirectory: sent.promptDirectory ?? null,
+        codeSource: sent.codeSource ?? "Repository",
+        localPath: sent.localPath ?? null,
+      });
+      return {};
+    },
+  ],
   [
     "POST",
     /^\/api\/projects\/[^/]+\/connector\/validate-path$/,
