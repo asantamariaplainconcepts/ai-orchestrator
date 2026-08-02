@@ -15,9 +15,11 @@ carry the mode string, a vault URI, or any other value a client could re-derive 
 client that learns what it may offer stays correct when the underlying condition changes, and one
 that learns the mode reimplements the rules and drifts.
 
-Each capability SHALL be derived from the condition that actually makes it succeed. "A secret can
-be named" SHALL follow the presence of a secret store, not the posture, because they are different
-facts that merely coincide today.
+Each capability SHALL be derived from the condition that actually makes it succeed, which is not
+always the posture. "A secret can be stored" SHALL follow whether this deployment composed a store
+that accepts writes — a self-host deployment configured with one stores perfectly well, so
+deriving it from the posture would remove a working option from the habitat it was meant to
+serve.
 
 The read SHALL disclose nothing about projects, people or configuration values, and SHALL
 therefore be answerable before anyone signs in — a sign-in screen has to know what kind of
@@ -34,10 +36,15 @@ deployment it is on.
 - **THEN** the answer states what may be offered, and carries no mode string, vault URI or other
   value from which a client could re-derive the rules
 
-#### Scenario: naming a secret follows the store, not the posture
+#### Scenario: storing a secret follows the store, not the posture
 
-- **WHEN** a deployment composes no secret store
-- **THEN** naming an existing secret is reported as unavailable, whatever the posture is
+- **WHEN** a deployment composes no store that accepts writes
+- **THEN** storing a secret is reported as unavailable, whatever the posture is
+
+#### Scenario: a self-host deployment with a store can still store
+
+- **WHEN** a self-host deployment composes a store that accepts writes
+- **THEN** storing a secret is reported as available
 
 #### Scenario: readable before sign-in
 

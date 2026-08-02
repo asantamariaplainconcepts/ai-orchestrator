@@ -5,10 +5,15 @@ Issue #222. The posture is a startup fact — `Identity:Mode=LocalOwner`, read t
 it infers the posture by sending a deliberately invalid `validate-path` and reading the 404. That
 works, reads like a trick, and #211's own retro recorded it as owed.
 
-An answer settles a second thing the form gets wrong. Naming an existing secret presupposes a
-vault somebody else manages, and a self-host deployment composes none — `AddSecretResolution`
-falls back when `Secrets:KeyVaultUri` is absent. Offering a local owner the *name* of a secret in
-a vault they do not have is an option that cannot succeed.
+An answer settles a second thing the form gets wrong — and the asymmetry runs the opposite way to
+the obvious guess. **Naming an existing secret works in every habitat:** some resolver is always
+composed (Key Vault, the protected-file store, or `ConfigurationSecretResolver` reading
+`Secrets__<name>` from the environment). **Pasting is what can fail.** It needs an `ISecretStore`
+that accepts writes, and a deployment with no store configured gets `UnavailableSecretStore`,
+whose every write throws — `ConfigureConnector` already turns that into a refusal, which is a
+refusal the form could have avoided offering.
+
+So the condition is not the posture at all: it is whether this deployment can *store* a value.
 
 What does **not** change: the token itself is offered in both postures. The backlog is remote
 wherever the code lives, so reading Stories, verifying the Connector and writing labels need a
@@ -22,10 +27,13 @@ backlog. Whether that could ever change is its own decision (#223, OPN-006).
   cannot disagree about the habitat.
 - The portal **asks** it instead of provoking a 404. The probe added by #211 is removed, not
   bypassed.
-- **Self-host hides what cannot succeed:** naming an existing secret is not offered, because there
-  is no vault to name one in. The token input stays.
-- **Cloud is unchanged:** both credential paths, and no code-source UI anywhere (#211's rule, now
-  read from the answer rather than inferred).
+- **A deployment that cannot store a secret does not offer to store one:** pasting is absent, and
+  naming — which always works — becomes the credential field rather than a secondary link. The
+  remedy `UnavailableSecretStore` already carries is what the form says instead.
+- **A deployment that can store one is unchanged:** pasting leads, naming is the link beside it
+  (#220's shape).
+- **Cloud keeps its rule:** no code-source UI anywhere, now read from the answer rather than
+  inferred.
 
 ## Capabilities
 
@@ -36,8 +44,8 @@ backlog. Whether that could ever change is its own decision (#223, OPN-006).
 
 ### Modified Capabilities
 
-- `connector-configuration`: the credential's two paths become posture-dependent — naming an
-  existing secret is offered only where a vault exists.
+- `connector-configuration`: the credential's two paths become capability-dependent — pasting is
+  offered only where the deployment can store a value; naming is always available.
 
 ## Impact
 

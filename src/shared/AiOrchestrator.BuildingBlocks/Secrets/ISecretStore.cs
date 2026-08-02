@@ -54,9 +54,16 @@ public sealed class SecretStoreUnavailableException : Exception
 /// </summary>
 public sealed class UnavailableSecretStore(string remedy) : ISecretStore
 {
+    /// <summary>
+    /// How to gain the ability, readable without provoking the refusal (#222). The capabilities
+    /// read reports it so a form can state the remedy instead of offering a control whose only
+    /// outcome is the exception below.
+    /// </summary>
+    public string Remedy { get; } = remedy;
+
     public Task Store(
         string secretName,
         string value,
         CancellationToken cancellationToken = default
-    ) => throw new SecretStoreUnavailableException(remedy);
+    ) => throw new SecretStoreUnavailableException(Remedy);
 }

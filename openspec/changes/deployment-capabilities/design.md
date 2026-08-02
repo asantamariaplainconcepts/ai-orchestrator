@@ -37,10 +37,16 @@ that learns *what it may offer* stays correct if the underlying condition change
 learns *the mode* re-derives the same rules on the client and drifts. *Alternative rejected:*
 returning the raw posture string — it invites `if (mode === "LocalOwner")` in three components.
 
-**D3 — "a secret can be named" is derived from the vault's presence, not from the posture.** They
-coincide today (self-host composes no Key Vault) but they are different facts, and the honest
-condition is the one that makes the option succeed or fail. A future self-host with a vault would
-then simply offer it.
+**D3 — the credential capability is "can this deployment *store* a value", and it is not the
+posture.** Reading the composition rather than guessing from it inverted the original premise:
+naming a secret works everywhere, because a resolver is always composed — Key Vault, the
+protected-file store, or `ConfigurationSecretResolver` over `Secrets__<name>`. Pasting is the
+fragile one: it needs an `ISecretStore` that writes, and without one the composition registers
+`UnavailableSecretStore`, whose every write throws. So the capability reported is
+`canStoreSecret`, derived from whether that store accepts writes, and the form hides **pasting**
+where it is false. *Alternative rejected:* deriving it from `IsSelfHost` — a self-host deployment
+with `Secrets:Directory` configured stores perfectly well, and gating on the posture would remove
+a working option from exactly the habitat this change is for.
 
 **D4 — anonymous-readable, like `/api/me`'s shape question.** It discloses no project, no name and
 no configuration value: it says which controls a form should render. Gating it behind a permission
@@ -54,6 +60,10 @@ would mean the sign-in screen cannot know what kind of deployment it is on.
   rather than layering on it; the tasks make that explicit.
 - [A capability list grows into a dumping ground] → it holds only what a *rendering decision*
   needs; anything requiring a permission belongs on the resource it guards.
+- [`canStoreSecret` asserted by construction rather than by trying a write] → it reports which
+  store was composed, not a live probe: a probe would have to write something. The refusal path in
+  `ConfigureConnector` remains, so a store that is present but broken still fails honestly at
+  save — the capability removes an option that can *never* work, not one that might fail today.
 
 ## Migration Plan
 
