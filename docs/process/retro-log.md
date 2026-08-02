@@ -2713,3 +2713,26 @@ composition that decides X before writing the acceptance criteria. The premise h
 grill, an issue body and a proposal — three documents — because nobody had opened
 `AddSecretResolution`, and ADR-0009's rule ("a claim about existing behaviour cites where it
 lives") is exactly the discipline that would have caught it at the first of the three.
+
+## 2026-08-02 — least-privilege-connector
+
+**Time (manual — the worktree telemetry gap of ADR-0011, same three failing checks):** one
+session; one capability set, both connectors, a new read, and the surfaces that state it.
+
+**What worked:** making the capability set a single function that *both* consumers read. The
+question "what do we ask for" and the question "what do we verify" had drifted apart for as long
+as they were separate lists — verification probed two reads while DEC-030 granted five scopes —
+and one function makes the drift impossible rather than merely unlikely. Pairing each capability
+with its vendor scope name in the same type means a capability without a scope does not compile,
+so the documentation cannot rot away from the code.
+
+**What didn't:** two self-inflicted test failures, both instructive. I added two properties to a
+shared stub and forgot `Reset()`, so state leaked between tests in the same class — the exact trap
+the Projects fixture documents in a comment I had read earlier the same session. And a regex
+rewrite of a stub method was greedy across method boundaries and silently ate two others; the
+build caught it, but a narrower edit would not have needed catching.
+
+**One change next time:** when a change widens a shared test stub, add to `Reset()` in the same
+edit as the property — not as a follow-up when a test goes red. And prefer an anchored
+string replacement over a regex when editing code: `re.search(..., re.S)` across a method body
+will happily match to the end of the file.
