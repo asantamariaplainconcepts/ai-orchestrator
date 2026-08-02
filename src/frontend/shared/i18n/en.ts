@@ -317,6 +317,34 @@ export const en = {
   // Honest about the catalogue: three actions are configurable and cannot execute yet, and
   // saying so is the whole reason for shipping the catalogue whole (design D3).
   "automations.actionNotExecutable": "Not executable yet",
+  // The three questions (#231). Numbered in the Automation's own execution order — matching reads
+  // the trigger, the executor reads the prompt, HandOn applies the labels — so filling the form top
+  // to bottom walks a Run.
+  "automations.q1": "When does it fire?",
+  "automations.q2": "What does it do?",
+  "automations.q3": "What happens after?",
+  // The restatement, not a second validation channel (design D2): an incomplete form yields an
+  // incomplete sentence naming what is missing, and the field refusals stay the only rejection.
+  "automations.sentence.prefix": "When a story is labelled",
+  "automations.sentence.anyState": "in any state",
+  "automations.sentence.inState": "in state",
+  "automations.sentence.runs": "an agent runs",
+  "automations.sentence.on": "on",
+  "automations.sentence.gated": "waits for a human to approve the plan, then",
+  "automations.sentence.handsOn": "and hands on to",
+  "automations.sentence.stops": "and the chain stops there",
+  "automations.sentence.missingTrigger": "\u2026 (name a trigger label)",
+  "automations.sentence.missingLabel": "\u2026 (name a label to hand on to)",
+  "automations.sentence.missingPrompt": "\u2026 (name a prompt file)",
+  // Approval states its consequence beside the execution it gates, not beside Save.
+  "automations.approvalExplainer":
+    "The agent plans, stops, and waits in the Inbox. Nothing executes until someone approves.",
+  // An absence made into an answer (design D4): the stored value is the same empty set as before.
+  "automations.after.handOn": "Hand to the next step",
+  "automations.after.handOnHint":
+    "Apply labels when this succeeds, so the next Automation picks it up.",
+  "automations.after.stop": "Stop \u2014 a person takes over",
+  "automations.after.stopHint": "Nothing is applied; the chain ends here.",
   "automations.catalogueHint":
     "All four actions execute: Implement \u2192 PR opens a pull request; Refine comments on the Story; Transition changes its state; Estimate labels it and explains itself.",
   "automations.table.trigger": "Trigger",

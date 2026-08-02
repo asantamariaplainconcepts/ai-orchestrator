@@ -4,7 +4,9 @@ import { t, tCount } from "@/shared/i18n";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Checkbox } from "@/shared/ui/checkbox";
+import { AutomationSentence } from "./AutomationSentence";
+import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
+import { Switch } from "@/shared/ui/switch";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -48,6 +50,9 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
   // because they are two things: what is chosen, and what is half-written.
   const [outputLabels, setOutputLabels] = useState<string[]>([]);
+  // An answer, not an absence (#231, design D4). Stored as the same empty array "stop" has
+  // always meant — what changes is that the Admin said which they meant.
+  const [handsOn, setHandsOn] = useState(false);
   const [outputDraft, setOutputDraft] = useState("");
   // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
@@ -98,6 +103,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setRequiresApproval(false);
     setPromptPath("");
     setOutputLabels([]);
+    setHandsOn(false);
     setOutputDraft("");
     setTimeoutMinutes("");
   }
@@ -117,6 +123,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setRequiresApproval(automation.requiresApproval);
     setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
+    setHandsOn(automation.outputLabels.length > 0);
     setOutputDraft("");
     setTimeoutMinutes(String(automation.timeoutMinutes));
   }
@@ -146,7 +153,11 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       promptPath: promptPath.trim() ? promptPath.trim() : null,
       // The half-typed value counts: an Admin who typed a label and pressed Save meant it, and
       // silently dropping it is the kind of loss a form should never inflict.
-      outputLabels: withDraft(),
+      // "Stop" is stored as the empty set it has always been (#231, design D4) — nothing
+      // downstream learns a new concept. Typed-then-stopped resolves to stopped: the radio is the
+      // later and more explicit answer, and honouring a label the Admin then said not to use would
+      // be obeying the field over the person.
+      outputLabels: handsOn ? withDraft() : [],
     };
 
     if (editing) {
@@ -274,171 +285,245 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         <Card>
           <CardContent>
             <form className="flex flex-col gap-4" onSubmit={submit}>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="trigger-label">{t("automations.trigger")}</Label>
-                  <Input
-                    id="trigger-label"
-                    value={triggerLabel}
-                    onChange={(event) => setTriggerLabel(event.target.value)}
-                    placeholder={t("automations.triggerPlaceholder")}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="trigger-state">{t("automations.state")}</Label>
-                  <Input
-                    id="trigger-state"
-                    value={triggerState}
-                    onChange={(event) => setTriggerState(event.target.value)}
-                    placeholder={t("automations.statePlaceholder")}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="action">{t("automations.action")}</Label>
-                  <NativeSelect
-                    id="action"
-                    value={action}
-                    onChange={(event) => setAction(event.target.value as AutomationAction)}
-                  >
-                    {AUTOMATION_ACTIONS.map((candidate) => (
-                      <option key={candidate} value={candidate}>
-                        {candidate}
-                        {EXECUTABLE_ACTIONS.includes(candidate)
-                          ? ""
-                          : ` — ${t("automations.actionNotExecutable")}`}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="runtime">{t("automations.runtime")}</Label>
-                  <NativeSelect
-                    id="runtime"
-                    value={runtime}
-                    onChange={(event) => setRuntime(event.target.value as AgentRuntime)}
-                  >
-                    {AGENT_RUNTIMES.map((candidate) => (
-                      <option key={candidate} value={candidate}>
-                        {candidate}
-                      </option>
-                    ))}
-                  </NativeSelect>
-                </div>
-                {/* The prompt is the Automation now (#162): what it does is this file's
-                    business, so the field is required and always visible. A name, not a path —
-                    the directory is the project's, on the Settings tab. */}
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="prompt-path">{t("automations.promptFile")}</Label>
-                  {/* A datalist for the same reason the output labels use one (#165): suggest what
-                      exists — the repository's own prompts, read live (#215) — while accepting a
-                      name that is still on its way in a pending PR. */}
-                  <Input
-                    id="prompt-path"
-                    required
-                    list="prompt-file-suggestions"
-                    value={promptPath}
-                    onChange={(event) => setPromptPath(event.target.value)}
-                    placeholder={t("automations.promptFilePlaceholder")}
-                  />
-                  <datalist id="prompt-file-suggestions">
-                    {(prompts.data?.names ?? []).map((name) => (
-                      <option key={name} value={name} />
-                    ))}
-                  </datalist>
-                  {/* Degradation is a readable reason, never a blocked form: the field above is
-                      already the plain input, so discovery failing costs suggestions and nothing
-                      else. */}
-                  <p className="text-xs text-muted-foreground">
-                    {prompts.data?.reason
-                      ? `${t("automations.promptSuggestionsUnavailable")} — ${prompts.data.reason}`
-                      : prompts.data && prompts.data.names.length === 0
-                        ? `${t("automations.promptSuggestionsEmpty")} ${prompts.data.directory}`
-                        : t("automations.promptFileHint")}
-                  </p>
-                </div>
-                {/* Visible in both modes (design D2): an edit resends this value, and a value
-                    resent on somebody's behalf is one they are entitled to see. Blank is BR-005's
-                    default, which is also why create never needed it until now. */}
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="timeout-minutes">{t("automations.timeout")}</Label>
-                  <Input
-                    id="timeout-minutes"
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={timeoutMinutes}
-                    onChange={(event) => setTimeoutMinutes(event.target.value)}
-                    placeholder={t("automations.timeoutPlaceholder")}
-                  />
-                </div>
-                <div className="flex flex-col gap-2">
-                  <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
-                  {/* Chosen first, each removable: the set is the answer, and the input below is how
-                      it grows. Chips rather than a comma-separated string, because a string makes
-                      the reader parse what the product already knows. */}
-                  {outputLabels.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {outputLabels.map((label) => (
-                        <Badge key={label} variant="secondary" className="gap-1 font-mono">
-                          {label}
-                          <button
-                            type="button"
-                            aria-label={`${t("automations.outputLabelRemove")} ${label}`}
-                            onClick={() =>
-                              setOutputLabels(outputLabels.filter((kept) => kept !== label))
-                            }
-                          >
-                            <X className="size-3" aria-hidden="true" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : null}
-                  <div className="flex gap-2">
-                    {/* A datalist, so one control both suggests and accepts anything — a select
-                        would refuse the label that does not exist yet, which is a legitimate way
-                        to build a workflow forwards. */}
+              <AutomationSentence
+                triggerLabel={triggerLabel}
+                triggerState={triggerState}
+                promptPath={promptPath}
+                runtime={runtime}
+                requiresApproval={requiresApproval}
+                handsOn={handsOn}
+                outputLabels={handsOn ? withDraft() : []}
+              />
+
+              <section className="flex flex-col gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="grid size-5 shrink-0 place-content-center rounded-full bg-primary/10 text-[11px] text-primary">
+                    1
+                  </span>
+                  {t("automations.q1")}
+                </h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="trigger-label">{t("automations.trigger")}</Label>
                     <Input
-                      id="output-label"
-                      list="output-label-suggestions"
-                      value={outputDraft}
-                      onChange={(event) => setOutputDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          // Enter adds a label; without this it would submit the whole form, which
-                          // is the wrong thing to do while somebody is still listing destinations.
-                          event.preventDefault();
-                          addOutputLabel();
-                        }
-                      }}
-                      placeholder={t("automations.outputLabelPlaceholder")}
+                      id="trigger-label"
+                      value={triggerLabel}
+                      onChange={(event) => setTriggerLabel(event.target.value)}
+                      placeholder={t("automations.triggerPlaceholder")}
                     />
-                    <datalist id="output-label-suggestions">
-                      {outputSuggestions.map((suggestion) => (
-                        <option key={suggestion} value={suggestion} />
-                      ))}
-                    </datalist>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={addOutputLabel}
-                      disabled={!outputDraft.trim()}
-                    >
-                      {t("automations.outputLabelAdd")}
-                    </Button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="trigger-state">{t("automations.state")}</Label>
+                    <Input
+                      id="trigger-state"
+                      value={triggerState}
+                      onChange={(event) => setTriggerState(event.target.value)}
+                      placeholder={t("automations.statePlaceholder")}
+                    />
                   </div>
                 </div>
-              </div>
+              </section>
 
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="requires-approval"
-                    checked={requiresApproval}
-                    onCheckedChange={(checked) => setRequiresApproval(checked === true)}
-                  />
-                  <Label htmlFor="requires-approval">{t("automations.approval")}</Label>
+              <section className="flex flex-col gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="grid size-5 shrink-0 place-content-center rounded-full bg-primary/10 text-[11px] text-primary">
+                    2
+                  </span>
+                  {t("automations.q2")}
+                </h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="action">{t("automations.action")}</Label>
+                    <NativeSelect
+                      id="action"
+                      value={action}
+                      onChange={(event) => setAction(event.target.value as AutomationAction)}
+                    >
+                      {AUTOMATION_ACTIONS.map((candidate) => (
+                        <option key={candidate} value={candidate}>
+                          {candidate}
+                          {EXECUTABLE_ACTIONS.includes(candidate)
+                            ? ""
+                            : ` — ${t("automations.actionNotExecutable")}`}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="prompt-path">{t("automations.promptFile")}</Label>
+                    {/* A datalist for the same reason the output labels use one (#165): suggest what
+                        exists — the repository's own prompts, read live (#215) — while accepting a
+                        name that is still on its way in a pending PR. */}
+                    <Input
+                      id="prompt-path"
+                      required
+                      list="prompt-file-suggestions"
+                      value={promptPath}
+                      onChange={(event) => setPromptPath(event.target.value)}
+                      placeholder={t("automations.promptFilePlaceholder")}
+                    />
+                    <datalist id="prompt-file-suggestions">
+                      {(prompts.data?.names ?? []).map((name) => (
+                        <option key={name} value={name} />
+                      ))}
+                    </datalist>
+                    {/* Degradation is a readable reason, never a blocked form: the field above is
+                        already the plain input, so discovery failing costs suggestions and nothing
+                        else. */}
+                    <p className="text-xs text-muted-foreground">
+                      {prompts.data?.reason
+                        ? `${t("automations.promptSuggestionsUnavailable")} — ${prompts.data.reason}`
+                        : prompts.data && prompts.data.names.length === 0
+                          ? `${t("automations.promptSuggestionsEmpty")} ${prompts.data.directory}`
+                          : t("automations.promptFileHint")}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="runtime">{t("automations.runtime")}</Label>
+                    <NativeSelect
+                      id="runtime"
+                      value={runtime}
+                      onChange={(event) => setRuntime(event.target.value as AgentRuntime)}
+                    >
+                      {AGENT_RUNTIMES.map((candidate) => (
+                        <option key={candidate} value={candidate}>
+                          {candidate}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="timeout-minutes">{t("automations.timeout")}</Label>
+                    <Input
+                      id="timeout-minutes"
+                      type="number"
+                      min={1}
+                      max={60}
+                      value={timeoutMinutes}
+                      onChange={(event) => setTimeoutMinutes(event.target.value)}
+                      placeholder={t("automations.timeoutPlaceholder")}
+                    />
+                  </div>
+
+                  {/* The consequence beside the execution it gates (design D1). It was a bare checkbox
+                      next to Save, which read as a submission option rather than a property of the Run. */}
+                  <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-warning/50 bg-warning/10 p-3 md:col-span-2">
+                    <Switch
+                      id="requires-approval"
+                      checked={requiresApproval}
+                      onCheckedChange={setRequiresApproval}
+                    />
+                    <span className="flex flex-col gap-0.5">
+                      <span className="text-xs font-semibold">{t("automations.approval")}</span>
+                      <span className="text-[11px] leading-snug text-muted-foreground">
+                        {t("automations.approvalExplainer")}
+                      </span>
+                    </span>
+                  </label>
                 </div>
+              </section>
+
+              <section className="flex flex-col gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="grid size-5 shrink-0 place-content-center rounded-full bg-primary/10 text-[11px] text-primary">
+                    3
+                  </span>
+                  {t("automations.q3")}
+                </h3>
+                <div className="grid gap-4 grid-cols-1">
+                  <RadioGroup
+                    value={handsOn ? "hand-on" : "stop"}
+                    onValueChange={(value) => setHandsOn(value === "hand-on")}
+                  >
+                    {[
+                      {
+                        value: "hand-on",
+                        label: t("automations.after.handOn"),
+                        hint: t("automations.after.handOnHint"),
+                      },
+                      {
+                        value: "stop",
+                        label: t("automations.after.stop"),
+                        hint: t("automations.after.stopHint"),
+                      },
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-input p-3"
+                      >
+                        <RadioGroupItem value={option.value} id={`after-${option.value}`} />
+                        <span className="flex flex-col gap-0.5">
+                          <span className="text-xs font-semibold">{option.label}</span>
+                          <span className="text-[11px] leading-snug text-muted-foreground">
+                            {option.hint}
+                          </span>
+                        </span>
+                      </label>
+                    ))}
+                  </RadioGroup>
+                  {handsOn ? (
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
+                      {/* Chosen first, each removable: the set is the answer, and the input below is how
+                          it grows. Chips rather than a comma-separated string, because a string makes
+                          the reader parse what the product already knows. */}
+                      {outputLabels.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
+                          {outputLabels.map((label) => (
+                            <Badge key={label} variant="secondary" className="gap-1 font-mono">
+                              {label}
+                              <button
+                                type="button"
+                                aria-label={`${t("automations.outputLabelRemove")} ${label}`}
+                                onClick={() =>
+                                  setOutputLabels(outputLabels.filter((kept) => kept !== label))
+                                }
+                              >
+                                <X className="size-3" aria-hidden="true" />
+                              </button>
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div className="flex gap-2">
+                        {/* A datalist, so one control both suggests and accepts anything — a select
+                            would refuse the label that does not exist yet, which is a legitimate way
+                            to build a workflow forwards. */}
+                        <Input
+                          id="output-label"
+                          list="output-label-suggestions"
+                          value={outputDraft}
+                          onChange={(event) => setOutputDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              // Enter adds a label; without this it would submit the whole form, which
+                              // is the wrong thing to do while somebody is still listing destinations.
+                              event.preventDefault();
+                              addOutputLabel();
+                            }
+                          }}
+                          placeholder={t("automations.outputLabelPlaceholder")}
+                        />
+                        <datalist id="output-label-suggestions">
+                          {outputSuggestions.map((suggestion) => (
+                            <option key={suggestion} value={suggestion} />
+                          ))}
+                        </datalist>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={addOutputLabel}
+                          disabled={!outputDraft.trim()}
+                        >
+                          {t("automations.outputLabelAdd")}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              </section>
+
+              <div className="flex flex-wrap items-center justify-end gap-3">
                 <Button type="submit" disabled={saving}>
                   {saving
                     ? editing
