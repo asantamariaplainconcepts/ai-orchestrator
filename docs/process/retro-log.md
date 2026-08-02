@@ -2736,3 +2736,29 @@ build caught it, but a narrower edit would not have needed catching.
 edit as the property — not as a follow-up when a test goes red. And prefer an anchored
 string replacement over a regex when editing code: `re.search(..., re.S)` across a method body
 will happily match to the end of the file.
+
+## 2026-08-02 — local-dispatch
+
+**Time (manual — the worktree telemetry gap of ADR-0011, unchanged):** one session; a second
+substrate, the composition that chooses between them, and the habitat that drops a container.
+
+**What worked:** the seam. `IRunDispatcher` is one method taking a Run id, so a whole second
+substrate was a composition change — no module learned anything. And separating the two
+registrations (`AddRunDispatch` for the producer, `AddRunDispatchConsumer` for the consumer) is
+what let the dangerous half be refused where it would be made: composing a consumer in a habitat
+that has a queue throws, naming the credential boundary it would erase. That refusal is a test,
+not a comment.
+
+**What didn't:** two stale declarations, both caught by CI rather than by me. The compose file is
+*generated* from the AppHost and committed — changing the AppHost without regenerating it is
+exactly what its drift gate exists to catch, and it did. Then the e2e suite waited two minutes for
+a `dispatch` resource this change removes; 28 of 29 tests passed, so the habitat worked and only
+the assertion was obsolete. Also self-inflicted: a `re.search(..., re.S)` rewrite of one method ate
+two others, and a slice-based replacement swallowed an `if` block's opening brace. Both were caught
+by the compiler, but a narrower edit would not have needed catching.
+
+**One change next time:** #220's retro said to grep the e2e tier for a *label* a change removes.
+Widen it: grep for any **name a change makes disappear** — an AppHost resource, a generated
+artifact, a configuration key. Three of the four CI failures this session were the same shape,
+"the change is right and something declared elsewhere still says otherwise", and the names are
+what make them greppable.
