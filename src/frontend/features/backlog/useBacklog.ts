@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ApiError, api } from "@/shared/http/client";
+import { api } from "@/shared/http/client";
 import type {
   BacklogView,
   ConfigureConnectorRequest,
@@ -105,31 +105,28 @@ export function useWriteStoryLabel(projectId: string) {
   });
 }
 
+export interface DeploymentCapabilities {
+  /** Whether a folder on this machine can be named as a code source (#210). */
+  hasCodeSource: boolean;
+  /** Whether this deployment composes a store that accepts writes — pasting needs one (#222). */
+  canStoreSecret: boolean;
+  /** Non-null exactly when it cannot: how to gain the ability, in the store's own words. */
+  storeRemedy: string | null;
+}
+
 /**
- * Whether this deployment offers the code-source surface at all (#210/#211, mock 3a). The spec's
- * rule is posture-shaped: a cloud deployment answers **404 for the whole surface**, so the probe
- * asks the surface itself — one deliberately-invalid validate call — and reads only the status.
- * 404 means absent (render nothing); any other answer, the 400 included, means the surface
- * exists. Probed once per project page (staleTime: the posture cannot change under a running
- * deployment).
+ * What this deployment can offer (#222). It replaces #211's inference — a deliberately invalid
+ * validate-path whose 404 meant "no surface" — with an answer derived from the same habitat
+ * question the modules ask.
+ *
+ * Never stale: a deployment's capabilities are fixed at its startup, so one read serves the
+ * session.
  */
-export function useCodeSourceSurface(projectId: string) {
+export function useDeploymentCapabilities() {
   return useQuery({
-    queryKey: ["code-source-surface", projectId] as const,
+    queryKey: ["deployment-capabilities"] as const,
     staleTime: Infinity,
-    queryFn: async () => {
-      try {
-        await api.post<unknown>(`/api/projects/${projectId}/connector/validate-path`, {
-          path: "",
-        });
-        return { offered: true };
-      } catch (error) {
-        if (error instanceof ApiError && error.status === 404) {
-          return { offered: false };
-        }
-        return { offered: true };
-      }
-    },
+    queryFn: () => api.get<DeploymentCapabilities>("/api/capabilities"),
   });
 }
 

@@ -23,7 +23,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import {
   useBacklog,
-  useCodeSourceSurface,
+  useDeploymentCapabilities,
   useConfigureConnector,
   useRefreshBacklog,
   useTestConnector,
@@ -531,9 +531,8 @@ function ConnectorPanel({
   // Where this project keeps its prompt files (#150). Blank means the convention, so the
   // placeholder shows the default rather than pre-filling a value nobody chose.
   const [promptDirectory, setPromptDirectory] = useState(connector?.promptDirectory ?? "");
-  // The code source (#210/#211, mock 3a). The section renders only where the deployment offers
-  // the surface — a cloud deployment answers 404 and no code-source UI exists at all.
-  const surface = useCodeSourceSurface(projectId);
+  // What this deployment can offer (#222), asked once rather than inferred from a refusal.
+  const capabilities = useDeploymentCapabilities();
   const [codeSource, setCodeSource] = useState(connector?.codeSource ?? "Repository");
   const [localPath, setLocalPath] = useState(connector?.localPath ?? "");
 
@@ -544,7 +543,11 @@ function ConnectorPanel({
     connector && !connector.secretSetAt ? "name" : "paste",
   );
   const [accessToken, setAccessToken] = useState("");
-  const pasting = credentialMode === "paste";
+  // Pasting needs somewhere to put the value (#222, design D3): a deployment that composed no
+  // writable store would refuse every paste, so the option is not offered there and naming —
+  // which works in every habitat — becomes the credential field rather than a link beside it.
+  const canStore = capabilities.data?.canStoreSecret ?? true;
+  const pasting = canStore && credentialMode === "paste";
 
   // The two coordinates mean different things per vendor — organisation/project on Azure
   // DevOps, owner/repository on GitHub. Labelling both "Owner" would ask an Admin to translate.
@@ -564,7 +567,7 @@ function ConnectorPanel({
 
   // A local folder makes the code repository inapplicable: a local Run leaves a branch and opens
   // no pull request (#220, design D3). Hidden and cleared are one act — see submit().
-  const codeIsLocal = Boolean(surface.data?.offered) && codeSource === "LocalFolder";
+  const codeIsLocal = Boolean(capabilities.data?.hasCodeSource) && codeSource === "LocalFolder";
 
   /**
    * The disclosure's open state is derived, never remembered (design D1): open where the stored
@@ -616,9 +619,9 @@ function ConnectorPanel({
         promptDirectory: promptDirectory.trim() ? promptDirectory.trim() : null,
         // Sent only where the surface exists: a cloud deployment never renders the control, and
         // null keeps the API's default so pre-#210 behaviour is untouched.
-        codeSource: surface.data?.offered ? codeSource : null,
+        codeSource: capabilities.data?.hasCodeSource ? codeSource : null,
         localPath:
-          surface.data?.offered && codeSource === "LocalFolder" && localPath.trim()
+          capabilities.data?.hasCodeSource && codeSource === "LocalFolder" && localPath.trim()
             ? localPath.trim()
             : null,
       },
@@ -742,15 +745,26 @@ function ConnectorPanel({
                       ? t("connector.accessTokenHint")
                       : t("connector.secretHint")}
                 </p>
-                {/* The other path as a link, under the field it would replace — a peer control
-                    would be the second credential input this change exists to remove. */}
-                <button
-                  type="button"
-                  className="self-start text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
-                  onClick={() => swapCredentialMode()}
-                >
-                  {pasting ? t("connector.credential.useName") : t("connector.credential.usePaste")}
-                </button>
+                {canStore ? (
+                  /* The other path as a link, under the field it would replace — a peer control
+                     would be the second credential input #220 removed. */
+                  <button
+                    type="button"
+                    className="self-start text-xs text-muted-foreground underline underline-offset-4 hover:text-foreground"
+                    onClick={() => swapCredentialMode()}
+                  >
+                    {pasting
+                      ? t("connector.credential.useName")
+                      : t("connector.credential.usePaste")}
+                  </button>
+                ) : (
+                  /* No writable store: pasting could only ever end in the store's own refusal, so
+                     it is not offered — and the remedy the store already names is stated, so an
+                     operator learns how to gain the option (#222). */
+                  <p className="text-xs text-muted-foreground">
+                    {t("connector.credential.cannotStore")} {capabilities.data?.storeRemedy ?? ""}
+                  </p>
+                )}
               </div>
             </div>
 
@@ -821,7 +835,7 @@ function ConnectorPanel({
 
                 {/* Mock 3a (#211): only where the deployment offers the surface — on cloud,
                     nothing renders here, not even a disabled control. */}
-                {surface.data?.offered ? (
+                {capabilities.data?.hasCodeSource ? (
                   <CodeSourceSection
                     projectId={projectId}
                     codeSource={codeSource}

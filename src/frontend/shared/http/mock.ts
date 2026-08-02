@@ -279,6 +279,20 @@ const routes: [string, RegExp, Handler][] = [
   ],
   // #132 — one capability allowed and one refused, so the panel's two branches are both visible
   // in mock mode rather than only the happy one.
+  // #222 — what this deployment can offer. `?noStore` flips the second shape so both branches of
+  // the credential control are reachable in mock mode without a second fixture.
+  [
+    "GET",
+    /^\/api\/capabilities$/,
+    () => {
+      const noStore = new URLSearchParams(window.location.search).has("noStore");
+      return {
+        hasCodeSource: true,
+        canStoreSecret: !noStore,
+        storeRemedy: noStore ? "Set Secrets:Directory to store values here." : null,
+      };
+    },
+  ],
   [
     "GET",
     /^\/api\/projects\/[^/]+\/connector\/test$/,

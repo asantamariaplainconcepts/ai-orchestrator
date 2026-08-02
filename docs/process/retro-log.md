@@ -2687,3 +2687,29 @@ questions" nor "the hidden field is also cleared" was observable until both were
 pushing caught five tests driving a select this change deleted, plus one filling a field it moved
 behind a disclosure. Keep doing it, and extend it: when a change removes or relocates a *labelled
 control*, grep the e2e tier for that label, not just for the invariant's wording.
+
+## 2026-08-02 — deployment-capabilities
+
+**Time (manual — the worktree telemetry gap of ADR-0011, same three failing checks):** one
+session; one query use case, its tests, and the portal's switch away from the probe.
+
+**What worked:** reading the composition before writing the spec. The issue — and my own grill of
+it — claimed that self-host should hide "name an existing secret", because there is no vault.
+`AddSecretResolution` says the opposite: a resolver is composed in every habitat (Key Vault, the
+protected-file store, or `ConfigurationSecretResolver` over `Secrets__<name>`), while *storing*
+needs an `ISecretStore` that writes, and without one the composition registers
+`UnavailableSecretStore` whose every write throws. So the capability is `canStoreSecret`, the
+hidden control is **pasting**, and the condition is not the posture at all — a self-host
+deployment with `Secrets:Directory` stores perfectly well. Catching that before implementing cost
+one read; catching it after would have shipped a form that hides the working option.
+
+**What didn't:** nothing structural. The functional tests deliberately assert the two capabilities
+*independently* — they coincide in every habitat we run, and a test that only ever saw them
+together would not notice one being derived from the other, which is exactly the mistake the
+proposal made in prose.
+
+**One change next time:** when a grill's premise is "X is unavailable in habitat Y", read the
+composition that decides X before writing the acceptance criteria. The premise here survived a
+grill, an issue body and a proposal — three documents — because nobody had opened
+`AddSecretResolution`, and ADR-0009's rule ("a claim about existing behaviour cites where it
+lives") is exactly the discipline that would have caught it at the first of the three.

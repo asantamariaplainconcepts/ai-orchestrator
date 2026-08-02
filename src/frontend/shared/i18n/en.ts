@@ -119,6 +119,8 @@ export const en = {
     "A local folder needs its path, so these settings stay open while one is chosen.",
   "connector.credential.useName": "Name an existing secret instead",
   "connector.credential.usePaste": "Paste a token instead",
+  "connector.credential.cannotStore":
+    "This deployment cannot store a pasted token, so name one it can already resolve.",
   "connector.codeRepository.notApplicable":
     "No code repository: a local Run leaves a branch on this machine and opens no pull request.",
 
