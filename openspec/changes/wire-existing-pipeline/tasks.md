@@ -33,5 +33,5 @@
 
 - [x] 5.1 Browser-preview verification of both shapes: a repository whose pipeline is adopted, and
       an empty one whose gaps are filled
-- [ ] 5.2 Full gates — build, tests, lint, spec validation, design validator — plus a grep of the
+- [x] 5.2 Full gates — build, tests, lint, spec validation, design validator — plus a grep of the
       e2e tier for any name this change moves
