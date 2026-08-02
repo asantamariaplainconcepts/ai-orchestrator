@@ -2662,3 +2662,28 @@ already knows. A `GET /api/capabilities` would say it once.
 **One change next time:** when a spec expresses a capability as "this whole surface 404s", give
 the frontend something to *ask* rather than something to *infer* — the inference works and reads
 like a trick, which is a cost paid by every future reader of that hook.
+
+## 2026-08-02 — connector-form-essentials
+
+**Time (manual — the worktree telemetry gap of ADR-0011, same three failing checks):** one
+session; a form restructure, no backend.
+
+**What worked:** letting the API's *conditional* validation decide the shape. The question "what
+may be folded away?" had an answer already written down — `LocalPath` is required-and-absolute
+under LocalFolder, the credential is exclusive-or — so the disclosure's lock and the credential's
+destructive swap are enforcements of rules that already existed rather than new invariants to
+maintain. Making the swap discard the replaced value put the exclusive-or in the state
+transition, where it cannot be lost, instead of in the submit handler where it could.
+
+**What didn't:** the controlled `<details>` bug. `open={state}` plus an `onToggle` that sets the
+state back to `true` does nothing when it is already `true` — React re-renders nothing and the
+panel closes anyway. Refusing the gesture (`preventDefault` on the summary) is the fix; correcting
+after the fact cannot work for any controlled element whose native behaviour mutates the DOM.
+Separately, verification kept hitting fixture gaps: mock mode had no route to save a Connector at
+all, and returned the same Connector for every project, so neither "a fresh project asks four
+questions" nor "the hidden field is also cleared" was observable until both were added.
+
+**One change next time:** the previous entry's rule paid off — grepping the e2e tier before
+pushing caught five tests driving a select this change deleted, plus one filling a field it moved
+behind a disclosure. Keep doing it, and extend it: when a change removes or relocates a *labelled
+control*, grep the e2e tier for that label, not just for the invariant's wording.

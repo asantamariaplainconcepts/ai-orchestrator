@@ -115,7 +115,8 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
 
         await page.GetByLabel("Owner").FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
-        await page.GetByLabel("Access token").SelectOptionAsync("name");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Name an existing secret instead" })
+            .ClickAsync();
         await page.GetByLabel("Secret name").FillAsync("no-such-secret-in-this-environment");
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 
@@ -161,7 +162,8 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         await page.GetByLabel("Repository").FillAsync("portal");
         // Pasting is the form's default (#124); this habitat has no writable store, so these
         // tests take the path that names a secret the environment already supplies.
-        await page.GetByLabel("Access token").SelectOptionAsync("name");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Name an existing secret instead" })
+            .ClickAsync();
         await page.GetByLabel("Secret name").FillAsync(AppHostFixture.SecretName);
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 
@@ -213,7 +215,8 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         await page.GetByLabel("Repository").FillAsync("portal");
         // Pasting is the form's default (#124); this habitat has no writable store, so these
         // tests take the path that names a secret the environment already supplies.
-        await page.GetByLabel("Access token").SelectOptionAsync("name");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Name an existing secret instead" })
+            .ClickAsync();
         await page.GetByLabel("Secret name").FillAsync(AppHostFixture.SecretName);
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 

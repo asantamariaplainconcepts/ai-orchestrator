@@ -49,9 +49,11 @@ public class KeptCredential_Should_Constraint(AppHostFixture fixture)
         // the only state that exercises the reuse path. In the naming mode the form re-sends the
         // Connector's own secret name, so it would never send "neither" and this test would pass
         // without the change it exists to cover.
-        await page.GetByLabel("Access token").SelectOptionAsync("paste");
 
         // The only thing touched. The Token field stays empty, which is the whole point.
+        // Since #220 the prompts directory lives behind the Advanced disclosure — a field with a
+        // default is not a first-connect question.
+        await page.GetByText("Advanced", new() { Exact = true }).ClickAsync();
         await page.GetByLabel("Prompts directory").FillAsync("prompts/ours");
         await page.GetByRole(AriaRole.Button, new() { Name = "Configure connector" }).ClickAsync();
 
