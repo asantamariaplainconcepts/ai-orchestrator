@@ -162,7 +162,7 @@ interface IBacklogConnector
     /// with the vendor's reason. Neither throws.
     /// </para>
     /// </summary>
-    Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+    Task<ErrorOr<DirectoryEntries?>> ListDirectoryFiles(
         BacklogCoordinates coordinates,
         string path,
         string token,
@@ -223,3 +223,10 @@ sealed record VendorStory(
     /// <summary>The issue body as the vendor holds it — never sanitised at rest (design D2).</summary>
     string? Body = null
 );
+
+/// <summary>
+/// What one directory holds, one level deep: its files and its immediate subdirectories. The
+/// subdirectories exist because discovery (#229) has to find a pipeline kept one level down —
+/// `.claude/commands/ds` — and guessing the name instead would be a probe per guess.
+/// </summary>
+sealed record DirectoryEntries(IReadOnlyList<string> Files, IReadOnlyList<string> Subdirectories);

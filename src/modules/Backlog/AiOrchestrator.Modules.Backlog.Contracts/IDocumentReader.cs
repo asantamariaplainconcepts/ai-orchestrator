@@ -27,7 +27,41 @@ public interface IDocumentReader
         string name,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// The prompt files a directory holds, read live from the repository's default branch (#229).
+    /// Exists so setting a project up can find the pipeline it already has rather than installing
+    /// a second copy of one — which is the same reason the grill reads its rubric from the project
+    /// (DEC-048), one level up.
+    /// <para>
+    /// <see cref="DirectoryListing.Absent"/> distinguishes "nothing there" from a refusal, because
+    /// a caller probing several candidate locations must not read an empty directory as a failure.
+    /// </para>
+    /// </summary>
+    Task<DirectoryListing> ListPromptFiles(
+        Guid projectId,
+        string directory,
+        CancellationToken cancellationToken = default
+    );
 }
+
+/// <summary>
+/// What one candidate directory holds. <paramref name="Absent"/> is true when the directory is not
+/// there at all — an ordinary answer while searching, and a different fact from
+/// <paramref name="Failure"/>, which is the vendor refusing.
+/// <para>
+/// <paramref name="Subdirectories"/> is here because a pipeline is often kept one level down —
+/// `ds-connect` keeps its commands in `.claude/commands/ds` — and a searcher that could not see
+/// the child names would have to guess them, one repository read per guess.
+/// </para>
+/// </summary>
+public sealed record DirectoryListing(
+    string Directory,
+    IReadOnlyList<string> Files,
+    IReadOnlyList<string> Subdirectories,
+    bool Absent,
+    string? Failure
+);
 
 /// <summary>
 /// <paramref name="ResolvedPath"/> is where the document was actually looked for. Present so a

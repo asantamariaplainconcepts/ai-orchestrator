@@ -509,7 +509,7 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
-    public async Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+    public async Task<ErrorOr<DirectoryEntries?>> ListDirectoryFiles(
         BacklogCoordinates coordinates,
         string path,
         string token,
@@ -528,16 +528,25 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
                 path
             );
 
-            return ErrorOrFactory.From<IReadOnlyList<string>?>([
-                .. contents
-                    .Where(entry => entry.Type == ContentType.File)
-                    .Select(entry => entry.Name),
-            ]);
+            return ErrorOrFactory.From<DirectoryEntries?>(
+                new DirectoryEntries(
+                    [
+                        .. contents
+                            .Where(entry => entry.Type == ContentType.File)
+                            .Select(entry => entry.Name),
+                    ],
+                    [
+                        .. contents
+                            .Where(entry => entry.Type == ContentType.Dir)
+                            .Select(entry => entry.Name),
+                    ]
+                )
+            );
         }
         catch (NotFoundException)
         {
             // An absent directory is an ordinary outcome, not a refusal — the seam's null.
-            IReadOnlyList<string>? absent = null;
+            DirectoryEntries? absent = null;
             return ErrorOrFactory.From(absent);
         }
         catch (Exception exception)

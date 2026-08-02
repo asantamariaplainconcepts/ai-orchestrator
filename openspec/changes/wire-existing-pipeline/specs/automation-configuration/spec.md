@@ -71,6 +71,27 @@ the convergence rule this action already follows, so BR-003 can never fire from 
 - **WHEN** a step's trigger is already used by an enabled Automation
 - **THEN** it is skipped and named in the report, and nothing collides
 
+### Requirement: a step from an opt-in tier is adopted but never installed
+
+A pipeline step belonging to a starter tier that declares a prerequisite SHALL be recognised and
+wired when the repository already holds its file, and SHALL NOT be installed by this action when
+it does not.
+
+Reading a file a team wrote is not the same act as writing one they did not ask for. A tier that
+declares what it assumes is opt-in by construction, and a button that installed it unprompted
+would push a methodology into a repository whose team never chose it — the failure the tiering
+was introduced to prevent.
+
+#### Scenario: an opt-in step with a file is wired
+
+- **WHEN** the chosen directory holds a file named for a step from a tier with a prerequisite
+- **THEN** an Automation is created on that step's trigger, naming that file
+
+#### Scenario: an opt-in step with no file is not installed
+
+- **WHEN** a step from a tier with a prerequisite has no file in the chosen directory
+- **THEN** no starter is written for it and it does not appear in the installed pull request
+
 ### Requirement: the setup reports what it did, in one place
 
 The action SHALL report, in one summary: the directory chosen, the Automations created, the

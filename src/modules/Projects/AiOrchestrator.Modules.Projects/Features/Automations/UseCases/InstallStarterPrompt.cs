@@ -1,9 +1,7 @@
-using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Api;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
-using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using ErrorOr;
 using FluentValidation;
@@ -64,12 +62,8 @@ sealed class InstallStarterPrompt : IUseCase
         }
     }
 
-    internal sealed class Handler(
-        IDocumentReader documents,
-        IConnectorReader connectors,
-        ISecretResolver secrets,
-        ICodeWorkspace workspace
-    ) : IAppCommandHandler<Command, ErrorOr<Response>>
+    internal sealed class Handler(IDocumentReader documents, StarterInstaller installer)
+        : IAppCommandHandler<Command, ErrorOr<Response>>
     {
         public async Task<ErrorOr<Response>> Handle(
             Command command,
@@ -109,88 +103,24 @@ sealed class InstallStarterPrompt : IUseCase
                 return StarterInstallErrors.AlreadyPresent(presence.ResolvedPath);
             }
 
-            var connector = await connectors.Find(command.ProjectId, cancellationToken);
-            if (connector is null)
-            {
-                return StarterInstallErrors.NoConnector("this project has no Connector");
-            }
-
-            string token;
-            try
-            {
-                token = await secrets.Resolve(connector.SecretName, cancellationToken);
-            }
-            catch (SecretNotFoundException exception)
-            {
-                return StarterInstallErrors.NoConnector(exception.Message);
-            }
-
             // Deterministic and starter-scoped (design D2): one branch per starter at most,
             // named for what it carries rather than for a Run that never happened.
-            var branch = $"starter/{BranchSlug(starter.SaveAs)}";
+            var branch = $"starter/{StarterInstaller.BranchSlug(starter.SaveAs)}";
 
-            var prepared = await workspace.Prepare(
-                new CodeCoordinates(connector.Owner, connector.Repository),
+            var published = await installer.Install(
+                command.ProjectId,
                 branch,
-                token,
+                [new StarterInstaller.File(presence.ResolvedPath, starter.Content)],
+                $"docs(prompts): install the {starter.SaveAs} starter",
+                $"Installs the `{starter.SaveAs}` starter prompt at `{presence.ResolvedPath}` "
+                    + "so an Automation can name it. Installed from the portal (#214); "
+                    + "review and merge to make it available.",
                 cancellationToken
             );
-            if (prepared.IsError)
-            {
-                // Stage-named already: WorkspaceErrors.CloneFailed says "clone", not "something".
-                return prepared.Errors;
-            }
 
-            try
-            {
-                var target = Path.Combine(
-                    prepared.Value.Path,
-                    presence.ResolvedPath.Replace('/', Path.DirectorySeparatorChar)
-                );
-                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                await File.WriteAllTextAsync(target, starter.Content, cancellationToken);
-
-                var published = await workspace.Publish(
-                    prepared.Value,
-                    $"docs(prompts): install the {starter.SaveAs} starter",
-                    $"Installs the `{starter.SaveAs}` starter prompt at `{presence.ResolvedPath}` "
-                        + "so an Automation can name it. Installed from the portal (#214); "
-                        + "review and merge to make it available.",
-                    token,
-                    cancellationToken,
-                    draft: true
-                );
-
-                return published.IsError
-                    ? published.Errors
-                    : new Response(published.Value.PullRequestUrl, presence.ResolvedPath, branch);
-            }
-            finally
-            {
-                try
-                {
-                    Directory.Delete(prepared.Value.Path, recursive: true);
-                }
-                catch (IOException)
-                {
-                    // A temp directory that outlives the request is a leak, not a failure.
-                }
-            }
-        }
-
-        /// <summary>`estimate.md` → `estimate`; anything path-ish flattens to one safe segment.</summary>
-        static string BranchSlug(string saveAs)
-        {
-            var name = saveAs.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
-                ? saveAs[..^3]
-                : saveAs;
-            return string.Join(
-                '-',
-                name.Split(
-                    ['/', '\\', ' '],
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-                )
-            );
+            return published.IsError
+                ? published.Errors
+                : new Response(published.Value, presence.ResolvedPath, branch);
         }
     }
 }

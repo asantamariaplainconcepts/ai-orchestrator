@@ -127,6 +127,11 @@ sealed class StubBacklogConnector : IBacklogConnector
         StoryComments.Clear();
         RepositoryLabels.Clear();
         EnsureLabelError = null;
+        // The listing knobs, cleared for the same reason as everything above — #215 added them
+        // without a line here, which is the leak this method exists to prevent.
+        DirectoryFiles = null;
+        DirectorySubdirectories.Clear();
+        ListDirectoryError = null;
         Interlocked.Exchange(ref _fetches, 0);
     }
 
@@ -398,10 +403,13 @@ sealed class StubBacklogConnector : IBacklogConnector
     /// <summary>The listing the picker reads (#215); null means the directory is absent.</summary>
     public List<string>? DirectoryFiles { get; set; }
 
+    /// <summary>The listing's child directories (#229) — empty unless a test needs one.</summary>
+    public List<string> DirectorySubdirectories { get; } = [];
+
     /// <summary>Set to make the listing fail as the vendor would refuse it.</summary>
     public Error? ListDirectoryError { get; set; }
 
-    public Task<ErrorOr<IReadOnlyList<string>?>> ListDirectoryFiles(
+    public Task<ErrorOr<DirectoryEntries?>> ListDirectoryFiles(
         BacklogCoordinates coordinates,
         string path,
         string token,
@@ -410,11 +418,13 @@ sealed class StubBacklogConnector : IBacklogConnector
     {
         if (ListDirectoryError is { } error)
         {
-            return Task.FromResult<ErrorOr<IReadOnlyList<string>?>>(error);
+            return Task.FromResult<ErrorOr<DirectoryEntries?>>(error);
         }
 
-        IReadOnlyList<string>? files = DirectoryFiles is null ? null : [.. DirectoryFiles];
-        return Task.FromResult(ErrorOrFactory.From(files));
+        DirectoryEntries? entries = DirectoryFiles is null
+            ? null
+            : new DirectoryEntries([.. DirectoryFiles], [.. DirectorySubdirectories]);
+        return Task.FromResult(ErrorOrFactory.From(entries));
     }
 
     Task<ErrorOr<Success>> Write(string vendorStoryId, Func<VendorStory, VendorStory> mutate)

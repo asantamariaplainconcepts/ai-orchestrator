@@ -31,15 +31,25 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
     internal StubInstallWorkspace Workspace { get; } = new();
 
     /// <summary>
+    /// Saving the confirmed prompts directory (#229), faked at the same Contracts seam — the real
+    /// write is a Connector column this module does not own.
+    /// </summary>
+    internal StubPromptDirectoryWriter Directories { get; }
+
+    /// <summary>
     /// Mutable stub in a shared fixture, so it is restored here — the leak this hook exists for
     /// (#13). A document one class seeded and never cleared would make another class's "you do not
     /// have this starter yet" quietly wrong.
     /// </summary>
+    public ProjectsApiFixture() =>
+        Directories = new StubPromptDirectoryWriter(Documents, Connector);
+
     public override async Task ResetDatabase()
     {
         Documents.Reset();
         Connector.Reset();
         Workspace.Reset();
+        Directories.Reset();
         await base.ResetDatabase();
     }
 
@@ -53,6 +63,8 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
             services.AddSingleton<IDocumentReader>(Documents);
             services.RemoveAll<IConnectorReader>();
             services.AddSingleton<IConnectorReader>(Connector);
+            services.RemoveAll<IPromptDirectoryWriter>();
+            services.AddSingleton<IPromptDirectoryWriter>(Directories);
             services.RemoveAll<ICodeWorkspace>();
             services.AddSingleton<ICodeWorkspace>(Workspace);
             services.RemoveAll<BuildingBlocks.Secrets.ISecretResolver>();
@@ -66,6 +78,38 @@ sealed class StubSecretResolver : BuildingBlocks.Secrets.ISecretResolver
 {
     public Task<string> Resolve(string secretName, CancellationToken cancellationToken = default) =>
         Task.FromResult("stub-token");
+}
+
+/// <summary>
+/// Records the confirmed directory and makes the rest of the fixture agree with it, because that
+/// is what the real save does: everything read afterwards resolves under the directory just saved,
+/// and a stub that stored the value without moving the reads would prove nothing about adoption.
+/// </summary>
+sealed class StubPromptDirectoryWriter(StubDocumentReader documents, StubConnectorReader connector)
+    : IPromptDirectoryWriter
+{
+    /// <summary>Every directory confirmed, in order — "nothing was saved" is asserted on this.</summary>
+    public List<string> Saved { get; } = [];
+
+    public void Reset() => Saved.Clear();
+
+    public Task<bool> UseDirectory(
+        Guid projectId,
+        string directory,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (connector.Snapshot is null)
+        {
+            return Task.FromResult(false);
+        }
+
+        var normalized = directory.Trim().Trim('/');
+        Saved.Add(normalized);
+        documents.Directory = normalized;
+        connector.Snapshot = connector.Snapshot with { PromptDirectory = normalized };
+        return Task.FromResult(true);
+    }
 }
 
 /// <summary>A Connector snapshot the test decides; null is the no-Connector project.</summary>
@@ -175,6 +219,15 @@ sealed class StubInstallWorkspace : ICodeWorkspace
     }
 }
 
+/// <summary>One candidate directory's contents, as a test arranges them (#229).</summary>
+sealed record StubDirectory(List<string> Files, List<string> Subdirectories)
+{
+    public static StubDirectory Of(params string[] files) => new([.. files], []);
+
+    public static StubDirectory Holding(params string[] subdirectories) =>
+        new([], [.. subdirectories]);
+}
+
 /// <summary>
 /// A reader whose answers a test decides. <see cref="Connected"/> false is the no-Connector case:
 /// the real reader returns a failure with <b>no resolved path</b>, because resolving one needs the
@@ -192,12 +245,57 @@ sealed class StubDocumentReader : IDocumentReader
     /// <summary>Every prompt name asked for, in order — what bounds the reads is asserted on this.</summary>
     public List<string> Reads { get; } = [];
 
+    /// <summary>
+    /// What each candidate directory holds (#229). Cleared below in the same edit that added it —
+    /// the lesson from the stub whose two new properties leaked between tests two changes ago.
+    /// </summary>
+    public Dictionary<string, StubDirectory> Directories { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>Every directory a discovery probed, in order.</summary>
+    public List<string> Listed { get; } = [];
+
     public void Reset()
     {
         Connected = true;
         Directory = "ai/prompts";
         Documents.Clear();
         Reads.Clear();
+        Directories.Clear();
+        Listed.Clear();
+    }
+
+    public Task<DirectoryListing> ListPromptFiles(
+        Guid projectId,
+        string directory,
+        CancellationToken cancellationToken = default
+    )
+    {
+        Listed.Add(directory);
+
+        if (!Connected)
+        {
+            return Task.FromResult(
+                new DirectoryListing(
+                    directory,
+                    [],
+                    [],
+                    Absent: false,
+                    "this project has no connector"
+                )
+            );
+        }
+
+        return Task.FromResult(
+            Directories.TryGetValue(directory, out var entries)
+                ? new DirectoryListing(
+                    directory,
+                    entries.Files,
+                    entries.Subdirectories,
+                    Absent: false,
+                    Failure: null
+                )
+                : new DirectoryListing(directory, [], [], Absent: true, Failure: null)
+        );
     }
 
     public Task<DocumentResult> Read(

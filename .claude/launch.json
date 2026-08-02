@@ -5,7 +5,8 @@
       "name": "frontend-mock",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--dir", "src/frontend", "dev:mock"],
-      "port": 5173
+      "port": 5173,
+      "autoPort": true
     }
   ]
 }

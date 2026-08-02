@@ -71,4 +71,62 @@ sealed class DocumentReader(ConnectorAccess access) : IDocumentReader
             ? new DocumentResult(null, content.FirstError.Description, resolvedPath)
             : new DocumentResult(content.Value, Failure: null, resolvedPath);
     }
+
+    /// <summary>
+    /// One candidate directory, read live (#229). Absence is an answer rather than a failure: the
+    /// caller is probing several conventional locations, and treating "not there" as a refusal
+    /// would make the common case look broken.
+    /// </summary>
+    public async Task<DirectoryListing> ListPromptFiles(
+        Guid projectId,
+        string directory,
+        CancellationToken cancellationToken = default
+    )
+    {
+        var context = await access.Resolve(projectId, cancellationToken);
+        if (context.IsError)
+        {
+            return new DirectoryListing(
+                directory,
+                [],
+                [],
+                Absent: false,
+                context.FirstError.Description
+            );
+        }
+
+        var (connector, coordinates, token) = context.Value;
+
+        var listing = await connector.ListDirectoryFiles(
+            coordinates,
+            directory,
+            token,
+            cancellationToken
+        );
+
+        if (listing.IsError)
+        {
+            return new DirectoryListing(
+                directory,
+                [],
+                [],
+                Absent: false,
+                listing.FirstError.Description
+            );
+        }
+
+        return listing.Value is null
+            ? new DirectoryListing(directory, [], [], Absent: true, Failure: null)
+            : new DirectoryListing(
+                directory,
+                [
+                    .. listing.Value.Files.Where(name =>
+                        name.EndsWith(".md", StringComparison.OrdinalIgnoreCase)
+                    ),
+                ],
+                listing.Value.Subdirectories,
+                Absent: false,
+                Failure: null
+            );
+    }
 }

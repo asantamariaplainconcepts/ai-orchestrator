@@ -26,6 +26,9 @@ sealed class ConnectorReader(BacklogDbContext database) : IConnectorReader
                 connector.SecretName,
                 connector.CodeSource.ToString(),
                 connector.LocalPath
-            );
+            )
+            {
+                PromptDirectory = connector.PromptDirectory,
+            };
     }
 }

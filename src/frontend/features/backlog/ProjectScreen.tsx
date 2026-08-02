@@ -3,6 +3,7 @@ import { Link, useParams, useSearchParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { PromptScratchpad } from "@/features/automations/PromptScratchpad";
 import { StarterPromptsSection } from "@/features/automations/StarterPromptsSection";
+import { WorkflowSetupSection } from "@/features/automations/WorkflowSetupSection";
 import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
@@ -169,6 +170,9 @@ export function ProjectScreen() {
           </TabsContent>
 
           <TabsContent value="automations" className="flex flex-col gap-6">
+            {/* First on the tab: the one press that answers "what should this project have?"
+                before the forms below ask you to answer it a step at a time (#229). */}
+            <WorkflowSetupSection projectId={projectId} />
             <AutomationsSection projectId={projectId} />
             {/* Beside the field that names a prompt file, because this is how you find out what
                 that file will do before there is a file (#189). */}
