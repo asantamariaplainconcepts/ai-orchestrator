@@ -368,3 +368,18 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   Azure DevOps declares that it has no such call rather than passing a check nobody performed
   (ADR-0005). Not-verifiable does not block a save; a pass nobody earned would be worse than a
   stated gap.
+
+- **DEC-054 — the dispatch substrate follows the habitat, and the local one gives up the
+  worker/portal separation** *(extends DEC-013)*: DEC-013 chose a Storage Queue with KEDA, which
+  is right where there is something to scale. On a machine one person owns there is no KEDA,
+  nothing to scale to zero and no second consumer, so the queue costs a container and buys
+  nothing. A queueless habitat therefore dispatches through the **same Postgres outbox integration
+  events already use** — durability from the outbox, not the transport, so BR-004's crash story
+  holds across a process death. Chosen by configuration presence and refusing ambiguity at startup
+  (ADR-0010), so the deployed habitat structurally cannot acquire the in-process consumer.
+  **The trade, stated:** CAP's in-memory transport requires publisher and consumer in one process,
+  so locally the portal resolves project PATs and clones repositories — the separation
+  `infra/dev/dispatch.tf` exists to keep. This is the same trade #166's design D2 already
+  made for the in-process conversation runtime: correct on a machine one person owns, not a
+  degraded mode, and local only. **Second consequence:** CAP has no SQLite storage provider, so
+  this couples the local habitat to Postgres and constrains any future embedded database.

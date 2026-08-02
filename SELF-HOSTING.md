@@ -1,9 +1,8 @@
 # Self-hosting
 
 Run the whole system on any machine with **Docker and git**. No .NET SDK, no Azure, no registry:
-every image builds locally from this repository's Dockerfiles, the queue is
-[Azurite](https://github.com/Azure/Azurite), the database is a Postgres container, and the
-default agent runtime is opencode's **free model** (DEC-044) — the demo costs nothing and needs
+every image builds locally from this repository's Dockerfiles, the database is a Postgres
+container, and the default agent runtime is opencode's **free model** (DEC-044) — the demo costs nothing and needs
 no AI key. The only credential anywhere is your own GitHub PAT.
 
 ## Quickstart
@@ -54,10 +53,18 @@ Then close the loop:
 
 ## The three habitats
 
-| | starts it | queue | secrets |
+| | starts it | dispatch substrate | secrets |
 |---|---|---|---|
-| `aspire run` | Aspire (dev) | Azurite (emulator resource) | user secrets / config |
-| **this compose** | Docker | Azurite (container) | `.env` |
-| Azure dev | GitHub Actions | Storage Queue + KEDA | Key Vault |
+| `aspire run` | Aspire (dev) | the Postgres outbox, in one process | user secrets / config |
+| **this compose** | Docker | the Postgres outbox, in one process | `.env` |
+| Azure dev | GitHub Actions | Storage Queue + KEDA, worker in its own job | Key Vault |
+
+There is no queue in the first two (#225, DEC-054): on a machine one person owns there is no KEDA,
+nothing to scale to zero and no second consumer, so a queue container would cost a container and
+buy nothing. Dispatch goes through the same Postgres outbox integration events use, which is why
+a Run still survives the process dying. **The trade, stated:** publisher and consumer share a
+process there, so the portal resolves project PATs and clones repositories — the separation the
+deployed habitat keeps between the portal and the worker. Local only, and refused by composition
+anywhere a queue exists.
 
 One composition, one behaviour, three places to run it (DEC-049).

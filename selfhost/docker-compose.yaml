@@ -34,16 +34,6 @@ services:
       timeout: "5s"
       retries: 15
       start_period: "5s"
-  storage:
-    image: "mcr.microsoft.com/azure-storage/azurite:latest"
-    command:
-      - "azurite-queue"
-      - "--queueHost"
-      - "0.0.0.0"
-    expose:
-      - "10001"
-    networks:
-      - "aspire"
   migrations:
     build:
       context: ".."
@@ -66,32 +56,6 @@ services:
         condition: "service_healthy"
     networks:
       - "aspire"
-  dispatch:
-    build:
-      context: ".."
-      dockerfile: "src/root/AiOrchestrator.DispatchWorker/Dockerfile"
-    environment:
-      OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
-      ConnectionStrings__aiorchestratordb: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=aiorchestratordb"
-      AIORCHESTRATORDB_HOST: "postgres"
-      AIORCHESTRATORDB_PORT: "5432"
-      AIORCHESTRATORDB_USERNAME: "postgres"
-      AIORCHESTRATORDB_PASSWORD: "${POSTGRES_PASSWORD}"
-      AIORCHESTRATORDB_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/aiorchestratordb"
-      AIORCHESTRATORDB_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/aiorchestratordb"
-      AIORCHESTRATORDB_DATABASENAME: "aiorchestratordb"
-      ConnectionStrings__queues: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://storage:10001/devstoreaccount1;"
-      Dispatch__LocalPollSeconds: "5"
-      OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
-      OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
-      OTEL_SERVICE_NAME: "dispatch"
-    depends_on:
-      postgres:
-        condition: "service_healthy"
-      migrations:
-        condition: "service_completed_successfully"
-    networks:
-      - "aspire"
   server:
     build:
       context: ".."
@@ -108,7 +72,6 @@ services:
       AIORCHESTRATORDB_URI: "postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/aiorchestratordb"
       AIORCHESTRATORDB_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/aiorchestratordb"
       AIORCHESTRATORDB_DATABASENAME: "aiorchestratordb"
-      ConnectionStrings__queues: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;QueueEndpoint=http://storage:10001/devstoreaccount1;"
       Identity__Mode: "LocalOwner"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"

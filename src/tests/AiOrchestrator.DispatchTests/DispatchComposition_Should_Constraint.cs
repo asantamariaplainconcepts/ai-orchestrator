@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Dispatch;
 using AiOrchestrator.ServiceDefaults.Dispatch;
+using AiOrchestrator.ServiceDefaults.IntegrationEvents;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Shouldly;
@@ -53,13 +54,67 @@ public class DispatchComposition_Should_Constraint
     }
 
     [Fact]
-    public void Composition_Should_RefuseToStartWithoutAQueue()
+    public void NoQueue_Should_ComposeTheOutboxSubstrate()
     {
-        // Failing at startup beats failing on the first Run, when a human is no longer watching.
+        // #225: the absence of a queue is a habitat, not a misconfiguration. It says "dispatch
+        // through the outbox this database already holds", which is how self-hosting drops a
+        // container.
+        // The real composition order, not a convenient subset: the outbox substrate publishes
+        // through the CAP that integration events compose, and a test that skipped that would
+        // prove the registration exists rather than that the habitat works.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration["ConnectionStrings:aiorchestratordb"] =
+            "Host=localhost;Database=aio;Username=u;Password=p";
+        builder.AddIntegrationEvents();
+
+        builder.AddRunDispatch();
+
+        builder
+            .Build()
+            .Services.GetRequiredService<IRunDispatcher>()
+            .ShouldBeOfType<OutboxRunDispatcher>();
+    }
+
+    [Fact]
+    public void NeitherSubstrate_Should_RefuseToStart()
+    {
+        // Failing at startup beats failing on the first Run, when a human is no longer watching —
+        // and naming *both* contracts is what stops the reader guessing which one was meant.
         var builder = Host.CreateApplicationBuilder();
 
-        Should
+        var message = Should
             .Throw<InvalidOperationException>(() => builder.AddRunDispatch())
-            .Message.ShouldContain("queues");
+            .Message;
+
+        message.ShouldContain("queues");
+        message.ShouldContain("aiorchestratordb");
+    }
+
+    [Fact]
+    public void AQueueHabitat_Should_RefuseAnInProcessConsumer()
+    {
+        // The dangerous composition, refused where it would be made (design D2): a host holding
+        // both sides puts the portal's identity and the worker's on the same process, which is
+        // the boundary `infra/dev/dispatch.tf` exists to keep.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration["ConnectionStrings:queues"] = AzuriteConnectionString;
+
+        Should
+            .Throw<InvalidOperationException>(() => builder.AddRunDispatchConsumer())
+            .Message.ShouldContain("compromise cannot reach both");
+    }
+
+    [Fact]
+    public void AQueuelessHabitat_Should_ComposeTheConsumer()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration["ConnectionStrings:aiorchestratordb"] =
+            "Host=localhost;Database=aio;Username=u;Password=p";
+
+        builder.AddRunDispatchConsumer();
+
+        builder
+            .Services.Any(service => service.ServiceType == typeof(OutboxRunSubscriber))
+            .ShouldBeTrue();
     }
 }
