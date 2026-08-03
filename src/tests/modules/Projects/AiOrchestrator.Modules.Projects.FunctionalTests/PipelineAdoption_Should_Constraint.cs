@@ -234,6 +234,55 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
         found.GetProperty("reason").GetString().ShouldNotBeNull().ShouldContain("Connector");
     }
 
+    [Fact]
+    public async Task Discovery_Should_SayWhatTheButtonWouldCreate()
+    {
+        // #233 — the plan, before the press. It used to exist only as a report afterwards, which is
+        // the wrong side of an action that writes to somebody's repository.
+        ArrangeDsConnect();
+
+        var candidate = (await Discover())
+            .GetProperty("candidates")
+            .EnumerateArray()
+            .Single(entry => entry.GetProperty("directory").GetString() == ".claude/commands/ds");
+
+        var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
+        plan.ShouldNotBeEmpty();
+
+        // Every step the repository already has a file for is wired to *that* file and marked as
+        // present — not as something to install.
+        var adopted = plan.Single(step => step.GetProperty("trigger").GetString() == "ai:grill");
+        adopted.GetProperty("exists").GetBoolean().ShouldBeTrue();
+        adopted.GetProperty("promptFile").GetString().ShouldBe("grill.md");
+
+        // And a step with no file in this directory says a starter would be written for it, which
+        // is the distinction the checkbox used to stand in for.
+        plan.ShouldContain(step => !step.GetProperty("exists").GetBoolean());
+        plan.Where(step => !step.GetProperty("exists").GetBoolean())
+            .ShouldAllBe(step => step.GetProperty("installable").GetBoolean());
+
+        // Reading the plan writes nothing: discovery proposes and never picks (design D1).
+        fixture.Directories.Saved.ShouldBeEmpty();
+        (await Automations()).GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ThePlan_Should_NameTheStepThatWaitsForAPerson()
+    {
+        // The gate is a property of the step, and the plan is where somebody decides whether they
+        // want it. Naming it only in the report means learning it after it exists.
+        ArrangeDsConnect();
+
+        var candidate = (await Discover())
+            .GetProperty("candidates")
+            .EnumerateArray()
+            .Single(entry => entry.GetProperty("directory").GetString() == ".claude/commands/ds");
+
+        var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
+
+        plan.ShouldContain(step => step.GetProperty("gated").GetBoolean());
+    }
+
     async Task<JsonElement> Discover()
     {
         var response = await _client.GetStringAsync(

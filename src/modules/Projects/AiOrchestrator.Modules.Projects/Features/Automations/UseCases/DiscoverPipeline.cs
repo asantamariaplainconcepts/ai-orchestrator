@@ -48,7 +48,27 @@ sealed class DiscoverPipeline : IUseCase
         string Directory,
         IReadOnlyList<string> Files,
         IReadOnlyList<string> Steps,
-        IReadOnlyList<string> Unmatched
+        IReadOnlyList<string> Unmatched,
+        IReadOnlyList<PlannedStep> Plan
+    );
+
+    /// <summary>
+    /// One row of what pressing the button would create (#233), computed from the listing already
+    /// read — no second endpoint and no extra vendor call.
+    /// <para>
+    /// <paramref name="Exists"/> distinguishes "this repository already has the file" from "a
+    /// starter would be installed", which is the difference between a wiring and a repository
+    /// write. <paramref name="Installable"/> is false for a step whose tier requires something this
+    /// project may not have: it can be wired to a file that exists, but no starter will be written
+    /// for it.
+    /// </para>
+    /// </summary>
+    internal sealed record PlannedStep(
+        string Trigger,
+        string PromptFile,
+        bool Exists,
+        bool Gated,
+        bool Installable
     );
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -83,6 +103,42 @@ sealed class DiscoverPipeline : IUseCase
                         .Files.Select(file => (File: file, Step: PipelineSteps.Match(file)))
                         .ToList();
 
+                    // The plan the button would carry out, said before it is pressed rather than
+                    // reported after (#233). Every step the catalogue knows appears: the ones this
+                    // directory already has a file for, and the ones a starter would be installed
+                    // for. A step that is neither is not silently dropped — it is listed as not
+                    // installable, because "nothing will happen for this" is also an answer.
+                    var present = matched
+                        .Where(pair => pair.Step is not null)
+                        .ToDictionary(
+                            pair => pair.Step!.Trigger,
+                            pair => pair.File,
+                            StringComparer.OrdinalIgnoreCase
+                        );
+
+                    var plan = PipelineSteps
+                        .All.Select(step =>
+                        {
+                            var exists = present.TryGetValue(step.Trigger, out var file);
+                            var installable = PipelineSteps.Installable.Any(candidate =>
+                                string.Equals(
+                                    candidate.Trigger,
+                                    step.Trigger,
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                            );
+
+                            return new PlannedStep(
+                                step.Trigger,
+                                exists ? file! : step.Prompt.SaveAs,
+                                exists,
+                                step.Wiring.RequiresApproval,
+                                installable
+                            );
+                        })
+                        .Where(step => step.Exists || step.Installable)
+                        .ToList();
+
                     return new Candidate(
                         listing.Directory,
                         listing.Files,
@@ -92,7 +148,8 @@ sealed class DiscoverPipeline : IUseCase
                                 .Select(pair => pair.Step!.Trigger)
                                 .Distinct(StringComparer.OrdinalIgnoreCase),
                         ],
-                        [.. matched.Where(pair => pair.Step is null).Select(pair => pair.File)]
+                        [.. matched.Where(pair => pair.Step is null).Select(pair => pair.File)],
+                        plan
                     );
                 })
                 .ToList();
