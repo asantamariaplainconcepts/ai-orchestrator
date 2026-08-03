@@ -65,6 +65,33 @@ public class VerticalWorkflowCanvas_Should_Constraint(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task EachConnector_Should_SitBelowItsStep()
+    {
+        // The outcome, not a proxy for it (#238). #232 asserted that the *chain* was a column and
+        // did not overflow — both true while every connector rendered in a lane beside the steps,
+        // because the wrapper holding a step and its connector was still a row. A picture caught
+        // what two green assertions did not, so this one measures the geometry.
+        var page = await Canvas(1280, "Vertical — geometry");
+
+        var offset = await page.EvaluateAsync<int>(
+            @"() => {
+                const chain = [...document.querySelectorAll('div')].find(
+                  (node) => typeof node.className === 'string' && node.className.includes('max-w-[520px]'));
+                if (!chain || chain.children.length === 0) return -1;
+                const row = chain.children[0];
+                if (row.children.length < 2) return -1;
+                const step = row.children[0].getBoundingClientRect();
+                const connector = row.children[1].getBoundingClientRect();
+                // Positive when the connector starts at or below the step's bottom edge; negative
+                // when it sits alongside, which is the bug.
+                return Math.round(connector.top - step.bottom);
+            }"
+        );
+
+        offset.ShouldBeGreaterThanOrEqualTo(0, "the connector must follow its step, not flank it");
+    }
+
+    [Fact]
     public async Task AnOpenGap_Should_OfferNoSelectUntilSomebodyIsConnecting()
     {
         // A select at every gap is a control offered to somebody who is not connecting anything.

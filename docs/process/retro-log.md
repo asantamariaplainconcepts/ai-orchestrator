@@ -2902,3 +2902,32 @@ finding new surfaces, and the next one should be looked for rather than tripped 
 - **ADR:** none new. The recurring finding across all three of this batch is one sentence —
   *verify the harness can reach the state before asserting on it* — which is ADR-0004's family and
   now has three occurrences in a day. If it recurs once more it is worth its own record.
+
+## 2026-08-03 — connector-below-the-step (#238)
+
+- **Didn't — #232 shipped a visibly broken layout past four green assertions.** The chain container
+  became a column; the wrapper holding a step and its connector stayed a row. Every rail and
+  human-review marker rendered in a lane beside the steps. The tests asserted the *chain* was a
+  column and did not scroll sideways — both true the entire time the bug was present. They were
+  proxies for the outcome, and a proxy is exactly what a regression walks past.
+- **What found it: a screenshot taken for a different task.** Capturing the Automations tab for the
+  product manual (#237) put the thing on screen at full size, and it was wrong at a glance. Not a
+  test, not a diff review, not the browser checks I *did* run during #232 — those queried
+  `flexDirection` and `scrollWidth`, which is the same proxy in a different tool.
+- **The pattern, now four for four this batch.** A payload asserted where old and new agree; a lone
+  Automation the canvas never draws; a card state the E2E stub cannot reach; and now geometry
+  asserted as a class name. Every one is *asserting something adjacent to the claim instead of the
+  claim*. The rule that would have caught all four: **write the assertion as the sentence a reader
+  would use to describe the outcome, then find the measurement that says exactly that.** "The chain
+  is a column" is not "each connector sits below its step".
+- **Worked: fixing it before documenting it.** The manual was one commit from shipping a screenshot
+  of the defect, which would have made it canonical. Stopping to fix cost twenty minutes; a picture
+  of a broken layout in `docs/` would have cost the next reader their trust in the manual.
+- **Also: the new test measures pixels, deliberately.** `connector.top - step.bottom >= 0` is uglier
+  than a class assertion and it is the only one that could not have passed while the bug existed.
+- **Time invested:** not measured (source: **manual** — hundredth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** this is the fourth occurrence of the assert-the-proxy shape in a single day, which is past
+  the graduation rule. **ADR-0011 is owed**: an assertion must be the outcome stated as a
+  measurement, not a property that correlates with it. Writing it is the next change, not a note
+  appended here.
