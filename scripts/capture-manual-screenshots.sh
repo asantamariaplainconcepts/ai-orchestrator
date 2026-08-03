@@ -40,5 +40,12 @@ shot 05-ask            "${BASE}/projects/${PROJECT}?tab=ask"
 shot 06-settings       "${BASE}/projects/${PROJECT}?tab=settings"
 shot 07-inbox          "${BASE}/inbox"
 
+# Two surfaces are deliberately absent, and the manual says so rather than shipping a picture taken
+# under different conditions:
+#   * the code-source control (Settings → Edit Connector → advanced) needs a click, and this CLI can
+#     only navigate;
+#   * a Run's detail page has no stable URL in the mock, whose run ids are generated per page load.
+# Adding a console project to click one disclosure was judged disproportionate to one screenshot.
+
 echo
 echo "Captured into ${OUT}. Check no real names crept in before committing."

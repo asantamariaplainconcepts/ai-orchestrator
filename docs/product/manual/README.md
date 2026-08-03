@@ -118,10 +118,63 @@ message costs one agent pass, and the conversation says what it has cost.
 
 ---
 
+## 8. Running it locally
+
+Two things in every screenshot above belong to the **local habitat**, and they are worth naming.
+
+The banner — _running as local owner, every action is administrator, no sign-in_ — is the deployment
+telling you what it is. Where no sign-in is configured the product says so rather than pretending
+there is security it does not have. The projects list's **Local** badge on _Alpha portal_ is the
+other: that project's code does not come from a clone.
+
+### A folder instead of a clone
+
+A project can point at a directory on this machine rather than a repository the product clones. The
+backlog still comes from the vendor — stories, labels, comments — but the code an agent works in is a
+checkout you already have, with your branches and your uncommitted work.
+
+The control is on **Settings → Edit Connector**, under the advanced disclosure. For a project that is
+already local the disclosure is locked open: the folder is not an advanced detail once it is the
+answer, and hiding it would hide the only place the path can be corrected.
+
+Pointing at a folder asks the vendor for **less**: reading issues and contents plus writing issues,
+without the write access that opening a pull request needs. The permissions panel asks for the shape
+you are actually configuring rather than the widest one.
+
+### Where each Run executed
+
+Every Run records where it ran, and says so with one vocabulary wherever it appears — a monitor for
+_this machine_, a container for _an agent pod_, always beside the word and never colour alone.
+
+It matters because the two are not equivalent. A Run on this machine works in your checkout and can
+see work you have not pushed; a Run in a pod works in a fresh clone and cannot. When a result
+surprises you, this is the first thing to check.
+
+### What the habitat is
+
+One process, one database, no queue container — the dispatch queue lives in the outbox the database
+already has, so a Run survives the process dying and is redelivered on restart. The default agent
+runtime is a free model, so trying the whole loop costs nothing and needs no AI key. The only
+credential anywhere is your own vendor token.
+
+The trade, stated because it is real: with one process, the portal resolves project credentials and
+clones repositories itself. That is correct on a machine one person owns and wrong anywhere shared —
+which is why a deployment with a session host does it on the other side of that boundary instead.
+
+See [SELF-HOSTING.md](../../../SELF-HOSTING.md) for getting it running.
+
+> Two local surfaces have no picture here, deliberately. The code-source control needs a click the
+> screenshot CLI cannot perform, and a Run's detail page has no stable URL in the mock — its run ids
+> are generated per page load. Prose rather than a screenshot captured under different conditions and
+> quietly inconsistent with the rest.
+
+---
+
 ## Where to go next
 
-| You want                                | Go to                                           |
-| --------------------------------------- | ----------------------------------------------- |
-| What the product must do, in stable IDs | [docs/product/mvp/](../mvp/00-product-brief.md) |
-| How the code is arranged and why        | [ARCHITECTURE.md](../../../ARCHITECTURE.md)     |
-| To run the whole thing yourself         | [SELF-HOSTING.md](../../../SELF-HOSTING.md)     |
+| You want                                | Go to                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| What the product must do, in stable IDs | [docs/product/mvp/](../mvp/00-product-brief.md)                                                  |
+| How the code is arranged and why        | [ARCHITECTURE.md](../../../ARCHITECTURE.md)                                                      |
+| To run the whole thing yourself         | [SELF-HOSTING.md](../../../SELF-HOSTING.md)                                                      |
+| What the local habitat trades away      | [ADR-0010](../../adr/0010-a-habitat-contract-is-asked-never-inferred.md) — asked, never inferred |
