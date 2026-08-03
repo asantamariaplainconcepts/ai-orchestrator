@@ -461,6 +461,18 @@ export const en = {
   "workflowSetup.notWired": "Found, not wired:",
   "workflowSetup.choose": "Use this",
   "workflowSetup.chosen": "Using this",
+  // The plan, said before the button (#233). It replaces a checkbox that was standing in for a
+  // preview: the rows say which files get installed, so the toggle had nothing left to communicate.
+  "workflowSetup.planTitle": "What this will create",
+  "workflowSetup.wireTo": "wires",
+  "workflowSetup.foundInRepo": "already in the repository",
+  "workflowSetup.installStarter": "installs a starter",
+  "workflowSetup.exists": "In repo",
+  "workflowSetup.gate": "a person approves",
+  "workflowSetup.planMore": "more",
+  "workflowSetup.planFewer": "Show fewer",
+  "workflowSetup.draftSafety":
+    "Starters land on a branch as a draft pull request \u2014 nothing is committed to your default branch.",
   "workflowSetup.installMissing": "Install starters for the steps with no file",
   "workflowSetup.build": "Build the workflow",
   "workflowSetup.building": "Building\u2026",

@@ -2,6 +2,17 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
 
 /** One directory that holds prompt files, with the steps its names were recognised as. */
+/** One row of what the button would create, computed at read time from the same listing (#233). */
+export interface PlannedStep {
+  trigger: string;
+  /** The file it wires: an existing one, or the starter that would be installed. */
+  promptFile: string;
+  exists: boolean;
+  gated: boolean;
+  /** False where a starter cannot be written — the step is listed, not silently dropped. */
+  installable: boolean;
+}
+
 export interface PipelineCandidate {
   directory: string;
   files: string[];
@@ -9,6 +20,8 @@ export interface PipelineCandidate {
   steps: string[];
   /** Files matching no step. Reported, never interpreted into a trigger nobody applies. */
   unmatched: string[];
+  /** What pressing the button would create — before it is pressed. */
+  plan: PlannedStep[];
 }
 
 export interface PipelineDiscovery {

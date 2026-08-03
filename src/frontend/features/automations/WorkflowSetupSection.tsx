@@ -4,12 +4,11 @@ import { t } from "@/shared/i18n";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
-import { Checkbox } from "@/shared/ui/checkbox";
-import { Label } from "@/shared/ui/label";
 import {
   usePipelineDiscovery,
   useSetUpWorkflow,
   type PipelineCandidate,
+  type PlannedStep,
   type WorkflowSetupReport,
 } from "./useWorkflowSetup";
 
@@ -24,7 +23,6 @@ import {
 export function WorkflowSetupSection({ projectId }: { projectId: string }) {
   const [looking, setLooking] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
-  const [installMissing, setInstallMissing] = useState(true);
 
   const discovery = usePipelineDiscovery(projectId, looking);
   const setUp = useSetUpWorkflow(projectId);
@@ -69,30 +67,29 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
 
         {discovery.data && !discovery.data.reason ? (
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="workflow-install-missing"
-                checked={installMissing}
-                onCheckedChange={(checked) => setInstallMissing(checked === true)}
-              />
-              {/* A second consent on purpose: creating Automations here and writing files into
-                  somebody's repository are different decisions (design D4). */}
-              <Label htmlFor="workflow-install-missing">{t("workflowSetup.installMissing")}</Label>
-            </div>
+            {/* The plan, before the button (#233). It replaces a checkbox that was doing a
+                preview's job: the rows say which steps install a starter, so a toggle asking
+                whether to install them had nothing left to communicate that the list does not. */}
+            <Plan steps={planFor(discovery.data.candidates, chosen)} />
 
-            <div>
+            <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
                 disabled={setUp.isPending}
                 onClick={() =>
                   setUp.mutate({
                     promptDirectory: chosen ?? undefined,
-                    installMissing,
+                    // The rows already said which files would be written, so the decision is the
+                    // press. A second consent for a preview somebody just read is a confirmation
+                    // of a confirmation.
+                    installMissing: true,
                   })
                 }
               >
                 {setUp.isPending ? t("workflowSetup.building") : t("workflowSetup.build")}
               </Button>
+              {/* Beside the button, where the decision is taken — not in a paragraph above it. */}
+              <p className="text-xs text-muted-foreground">{t("workflowSetup.draftSafety")}</p>
             </div>
           </div>
         ) : null}
@@ -233,5 +230,68 @@ function Fact({ label, values }: { label: string; values: string[] }) {
     <p className="text-sm text-muted-foreground">
       <Badge variant="secondary">{label}</Badge> {values.join(", ")}
     </p>
+  );
+}
+
+/**
+ * Which candidate's plan to show: the chosen directory, or the first offered when nobody has
+ * chosen yet — the same directory the button would use, so the preview and the press agree.
+ */
+function planFor(candidates: PipelineCandidate[], chosen: string | null): PlannedStep[] {
+  const candidate = chosen ? candidates.find((entry) => entry.directory === chosen) : candidates[0];
+
+  return candidate?.plan ?? [];
+}
+
+/**
+ * One row per step the build would create (#233). It replaced prose and a checkbox: what the click
+ * would do was a surprise, and the per-step detail existed only in the report afterwards — which is
+ * the wrong side of an action that writes to somebody's repository.
+ */
+function Plan({ steps }: { steps: PlannedStep[] }) {
+  const [expanded, setExpanded] = useState(false);
+
+  if (steps.length === 0) return null;
+
+  // Long pipelines collapse: a plan that fills the screen stops being read, which defeats it.
+  const visible = expanded ? steps : steps.slice(0, 3);
+  const hidden = steps.length - visible.length;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 className="text-sm font-semibold">{t("workflowSetup.planTitle")}</h3>
+      <ul className="divide-y divide-border rounded-lg border border-border">
+        {visible.map((step) => (
+          <li key={step.trigger} className="flex flex-wrap items-center gap-2.5 px-3.5 py-2">
+            <span className="w-28 shrink-0 font-mono text-[11.5px] font-semibold text-primary">
+              {step.trigger}
+            </span>
+            <span className="min-w-0 flex-1 text-xs text-muted-foreground">
+              {t("workflowSetup.wireTo")} <span className="font-mono">{step.promptFile}</span>
+              {step.gated ? (
+                <>
+                  {" · "}
+                  <b className="text-warning-foreground">{t("workflowSetup.gate")}</b>
+                </>
+              ) : null}
+            </span>
+            <Badge variant={step.exists ? "secondary" : "outline"}>
+              {step.exists ? t("workflowSetup.exists") : t("workflowSetup.installStarter")}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+      {hidden > 0 || expanded ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="self-start"
+          onClick={() => setExpanded(!expanded)}
+        >
+          {expanded ? t("workflowSetup.planFewer") : `+ ${hidden} ${t("workflowSetup.planMore")}`}
+        </Button>
+      ) : null}
+    </div>
   );
 }
