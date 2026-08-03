@@ -215,10 +215,13 @@ export function WorkflowCanvas({
               </div>
             ) : null}
             {chain.nodes.map((node) => (
-              // No shrink-0: that belonged to the horizontal layout, where a step had to keep
-              // its width and let the row scroll. In a column it stops the card shrinking below
-              // its content and reintroduces the sideways scroll this change removed.
-              <div key={node.automation.id} className="flex min-w-0 items-stretch">
+              // A column, not a row (#238). The step and the connector that follows it are stacked
+              // for the same reason the chain is: in the horizontal layout the connector sat to the
+              // right of its step, and #232 turned the *outer* container vertical while leaving
+              // this one a row — so the rail rendered in a lane beside the steps instead of between
+              // them. min-w-0 so a card still shrinks below its content rather than forcing a
+              // sideways scroll.
+              <div key={node.automation.id} className="flex min-w-0 flex-col items-stretch">
                 <AutomationNode
                   automation={node.automation}
                   connected={node.next !== null}
