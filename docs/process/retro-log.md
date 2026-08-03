@@ -2870,3 +2870,35 @@ finding new surfaces, and the next one should be looked for rather than tripped 
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none new. ADR-0004 again, and the sharpest form yet: the artifact is what the test loads,
   and you have not verified a build until you have looked at its output.
+
+## 2026-08-03 — setup-plan-before-build (#233)
+
+- **Worked: checking the sketch against `main` before proposing, again.** The design bundle's
+  issue-11 predated #229, which had already landed candidate discovery and most of the data a plan
+  needs. Filing it as written would have asked somebody to rebuild #229. Grilling it against current
+  code turned a large sketch into a narrow, true change — the second time in this batch that reading
+  the repository beat reading the artefact describing it.
+- **Worked: putting the plan where the data already was.** Discovery had every candidate's file list
+  and the canonical steps are compile-time from the embedded catalogue, so the plan is a projection
+  of a read that already happened — no new endpoint, no extra vendor call. A separate preview
+  endpoint would have created a *second* place deciding what the build does, which is the bug this
+  change fixes one level up.
+- **Worked: deleting a test rather than weakening it.** The safety sentence only renders after
+  discovery succeeds, which needs a Connector serving directory listings; this tier's GitHub stub
+  answers issues only. My first draft asserted it anyway and failed — correctly. The choice was to
+  extend the stub (its own change), weaken the assertion into something vacuous, or delete it and
+  say why. Deleted, with the reason in the test's own summary and in the design.
+- **Didn't — I wrote that test before checking what state the tier could reach.** Third time this
+  batch that a test asserted a scenario the system does not produce: a lone Automation that the
+  canvas never draws (#232), and now a card state the stub cannot reach. The pattern is writing the
+  assertion from the criteria and only then asking whether the harness can get there. **Ask what the
+  fixture can produce before writing what to assert.**
+- **Also: removing #229's consent checkbox is a decision, not tidying.** It was right while the
+  writing was invisible; the plan names the files now, and a consent restating a preview trains
+  people past both. The safety property moved to the sentence beside the button rather than
+  disappearing.
+- **Time invested:** not measured (source: **manual** — ninety-ninth consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none new. The recurring finding across all three of this batch is one sentence —
+  *verify the harness can reach the state before asserting on it* — which is ADR-0004's family and
+  now has three occurrences in a day. If it recurs once more it is worth its own record.
