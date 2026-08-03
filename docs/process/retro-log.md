@@ -2959,3 +2959,29 @@ finding new surfaces, and the next one should be looked for rather than tripped 
   four proxy-assertion failures were all caught by *looking at the artifact* — a screenshot, a DOM
   measurement, a bundle grep. That is the same rule ADR-0004 states for commands, and it now wants
   stating for assertions.
+
+## 2026-08-03 — manual-local-flavour (#241)
+
+- **Didn't — I shipped a manual whose pictures said something its words did not.** Every screenshot
+  carried the local-owner banner and the projects list wore a **Local** badge, because the mock's
+  first project points at a folder rather than a clone. I captured all seven, read them closely
+  enough to catch a layout regression in one, and still did not notice that the flavour on screen was
+  never explained. Looking *for a defect* is not the same as reading as a newcomer would.
+- **Worked: the owner's one-line correction was the whole finding.** "Don't forget the local version"
+  named a gap I had looked straight at. Worth remembering that a reader who has not been inside the
+  change sees the omission first.
+- **Worked: declining to build tooling for one screenshot.** Two local surfaces cannot be captured —
+  the code-source control needs a click the screenshot CLI cannot perform, and a Run's detail page has
+  no stable URL because mock run ids are per-load. The options were a console project to drive clicks,
+  a screenshot taken by hand under different conditions, or prose plus a recorded reason. The third is
+  the only one that stays true: hand-captured images drift from the scripted seven in size, theme and
+  timing, and nothing would flag it.
+- **Also: the section states the local trade rather than selling it.** One process means the portal
+  resolves credentials and clones repositories itself — right on a machine one person owns, wrong
+  anywhere shared. A manual that only lists what a habitat gives you is marketing.
+- **Next time:** after writing documentation, re-read it against its own screenshots and ask what a
+  newcomer would see that the text never mentions. The gap is visible in seconds from that angle and
+  invisible from inside the change.
+- **Time invested:** not measured (source: **manual** — hundred-and-second consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none. ADR-0011 remains owed from #238 and is untouched by this.
