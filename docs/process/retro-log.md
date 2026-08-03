@@ -2931,3 +2931,31 @@ finding new surfaces, and the next one should be looked for rather than tripped 
   the graduation rule. **ADR-0011 is owed**: an assertion must be the outcome stated as a
   measurement, not a property that correlates with it. Writing it is the next change, not a note
   appended here.
+
+## 2026-08-03 — product-manual (#237)
+
+- **Worked, and this is the finding: looking at whole screens found a bug four assertions missed.**
+  The first capture of the Automations tab showed every connector in a lane beside the steps —
+  #232's regression, green in CI, invisible to the browser checks I had run during that change
+  because those queried `flexDirection` and `scrollWidth` rather than looking. Nothing in this
+  repository had ever rendered a full surface and *looked at it* until a manual needed pictures.
+- **Worked: fixing before documenting.** The manual was one commit from canonising a broken layout.
+  Twenty minutes to stop, file #238, fix it, and recapture; a wrong picture in `docs/` would have
+  been believed for months.
+- **Worked: a capture script rather than seven hand-made images.** Screenshots are the part of
+  documentation that rots silently — the text is reviewed when it changes, the pictures are not.
+  `scripts/capture-manual-screenshots.sh` makes refreshing them one command, and it records the two
+  things that are not obvious: the dev server's HMR websocket means network-idle never fires, and
+  the tabs are deep-linkable so no click sequence is needed.
+- **Didn't — I burned five minutes on a headless-Chrome invocation that could never work.** Same
+  websocket cause, but I tried three variants before diagnosing it instead of asking why the *first*
+  one hung. Playwright's own CLI was in the E2E build output the whole time.
+- **Also: the manual uses the mock preview on purpose.** Real-tenant screenshots would carry project
+  names, repositories and object ids into a public repository, and would need reviewing for that
+  every time they were refreshed. The mock has none, so refreshing is safe by construction.
+- **Time invested:** not measured (source: **manual** — hundred-and-first consecutive). Unchanged:
+  `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
+- **ADR:** none of its own, but this strengthens the case for the ADR-0011 owed by #238's retro. The
+  four proxy-assertion failures were all caught by *looking at the artifact* — a screenshot, a DOM
+  measurement, a bundle grep. That is the same rule ADR-0004 states for commands, and it now wants
+  stating for assertions.
