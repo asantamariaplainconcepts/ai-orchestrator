@@ -62,13 +62,14 @@ names in the fixtures.
 
 ## Where things live
 
-| You want | Go to |
-|---|---|
-| What the product is and must do | [docs/product/mvp/](docs/product/mvp/00-product-brief.md) — stable IDs (ACT/BC/UC/BR/DEC/OPN) |
-| How the code is arranged and why | [ARCHITECTURE.md](ARCHITECTURE.md) |
-| Current behaviour, as specs | `openspec/specs/` |
-| Work in flight | `openspec/changes/` |
-| Bootstrap state and locked decisions | [BOOTSTRAP.md](BOOTSTRAP.md) · [BOOTSTRAP-CHECKLIST.md](BOOTSTRAP-CHECKLIST.md) |
+| You want                                   | Go to                                                                                         |
+| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| What the screens are and how they are used | [docs/product/manual/](docs/product/manual/README.md) — the tour, with screenshots            |
+| What the product is and must do            | [docs/product/mvp/](docs/product/mvp/00-product-brief.md) — stable IDs (ACT/BC/UC/BR/DEC/OPN) |
+| How the code is arranged and why           | [ARCHITECTURE.md](ARCHITECTURE.md)                                                            |
+| Current behaviour, as specs                | `openspec/specs/`                                                                             |
+| Work in flight                             | `openspec/changes/`                                                                           |
+| Bootstrap state and locked decisions       | [BOOTSTRAP.md](BOOTSTRAP.md) · [BOOTSTRAP-CHECKLIST.md](BOOTSTRAP-CHECKLIST.md)               |
 
 ## How work happens
 
