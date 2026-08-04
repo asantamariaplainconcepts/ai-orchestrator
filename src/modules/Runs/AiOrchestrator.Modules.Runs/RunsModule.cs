@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Dispatch;
 using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Modules;
@@ -9,6 +10,7 @@ using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AiOrchestrator.Modules.Runs;
 
@@ -103,6 +105,12 @@ public sealed class RunsModule : ModuleBase
         {
             services.AddHostedService<AbandonedRunReaper>();
         }
+
+        // The pods panel's default answer (design review 5b): not hosted here. TryAdd so the
+        // host that actually launches pods overrides it in composition — modules register first,
+        // and the last registration is the one that resolves. The module itself never learns
+        // whether this habitat has docker; it only guarantees the question is answerable.
+        services.TryAddSingleton<IAgentPodsMonitor, UnhostedAgentPodsMonitor>();
 
         // The worker-facing execution surface (agent-execution spec).
         services.AddScoped<IRunExecutor, RunExecutor>();

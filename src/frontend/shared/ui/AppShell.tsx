@@ -1,4 +1,4 @@
-import { FolderKanban, Inbox, Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { FolderKanban, Inbox, Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { Link, NavLink } from "react-router";
 import { t, tCount } from "@/shared/i18n";
@@ -10,7 +10,23 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/sh
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { ApiError } from "@/shared/http/client";
 import { useInbox } from "@/features/inbox/useInbox";
+import { EnvironmentChip } from "@/features/pods/EnvironmentChip";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
+
+/**
+ * Loopback in the browser's own vocabulary. The hazard the exposed banner names is "reachable
+ * from other machines with no sign-in", and the address bar is the evidence: a page loaded via
+ * anything but loopback was, demonstrably, reached over a network interface.
+ */
+function loopbackHost(hostname: string): boolean {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname === "[::1]" ||
+    hostname.endsWith(".localhost")
+  );
+}
 
 export interface Crumb {
   label: string;
@@ -58,6 +74,15 @@ export function AppShell({
   );
   const collapsed = sidebar === "collapsed";
 
+  // The one hazard that still earns a banner (design review 5a): the local-owner posture,
+  // reached from another machine. Dismissible for the session — it is a warning about a
+  // standing condition, not a gate — and per session rather than forever, because the
+  // condition outlives any single acknowledgement.
+  const exposed = me.data?.id === "local-owner" && !loopbackHost(window.location.hostname);
+  const [exposedDismissed, setExposedDismissed] = useState(
+    () => sessionStorage.getItem("aio:exposed-dismissed") === "true",
+  );
+
   return (
     <div
       className={cn(
@@ -98,8 +123,13 @@ export function AppShell({
           <NavItems waiting={waiting} collapsed={collapsed} />
         </div>
         {/* Identity is a label, and a label is what a rail has no room for — so it goes rather than
-            being truncated into something unreadable. Nothing is lost: it is not a destination. */}
-        {collapsed ? null : <UserBlock me={me} />}
+            being truncated into something unreadable. Nothing is lost: it is not a destination.
+            The environment chip stays in both widths (5a): the posture must survive the fold,
+            which is the same rule that keeps the inbox count on the rail. */}
+        <div className={cn("flex flex-col", collapsed ? "gap-2" : "gap-3")}>
+          <EnvironmentChip collapsed={collapsed} />
+          {collapsed ? null : <UserBlock me={me} />}
+        </div>
       </aside>
 
       <div className="flex min-w-0 flex-col">
@@ -119,8 +149,12 @@ export function AppShell({
                 <NavItems waiting={waiting} onNavigate={() => setNavOpen(false)} />
                 {/* One identity, two containers (#178): the sheet IS the phone's sidebar, and a
                     phone user who cannot see who they are cannot end a session either — which is
-                    exactly what the owner hit on the first mobile sign-in. */}
-                <UserBlock me={me} />
+                    exactly what the owner hit on the first mobile sign-in. The environment facts
+                    render inline (5a): a popover inside a drawer would be a flyout on a flyout. */}
+                <div className="flex flex-col gap-4">
+                  <EnvironmentChip inline />
+                  <UserBlock me={me} />
+                </div>
               </div>
             </SheetContent>
           </Sheet>
@@ -138,18 +172,31 @@ export function AppShell({
           ) : null}
         </header>
 
-        {/* Mock 3d (#211): the posture stated where it applies — every screen, while the
-            principal is the local-owner sentinel. Persistent because it is a security stance,
-            not a notification: it never dismisses and never animates. */}
-        {me.data?.id === "local-owner" ? (
+        {/* The banner that remains (design review 5a): not the posture — that lives in the
+            environment chip now — but the hazard. Rendered only when this page was reached over
+            a non-loopback address while every caller is the administrator. */}
+        {exposed && !exposedDismissed ? (
           <div
-            role="status"
-            className="border-warning/40 bg-warning/10 flex items-start gap-2 border-b px-4 py-2.5 md:px-8"
+            role="alert"
+            className="flex items-start gap-2 border-b border-destructive/40 bg-destructive/10 px-4 py-2.5 md:px-8"
           >
-            <span aria-hidden="true" className="text-warning text-sm leading-none">
+            <span aria-hidden="true" className="text-sm leading-none text-destructive">
               ⚠
             </span>
-            <span className="text-sm">{t("shell.localOwner")}</span>
+            <span className="flex-1 text-sm">{t("env.exposedBanner")}</span>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              type="button"
+              aria-label={t("env.exposedDismiss")}
+              title={t("env.exposedDismiss")}
+              onClick={() => {
+                sessionStorage.setItem("aio:exposed-dismissed", "true");
+                setExposedDismissed(true);
+              }}
+            >
+              <X className="size-3.5" />
+            </Button>
           </div>
         ) : null}
 

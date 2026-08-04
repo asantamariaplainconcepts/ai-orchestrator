@@ -163,6 +163,35 @@ dispatched past the cap SHALL wait and then execute — delayed, never dropped.
 - **WHEN** three Runs dispatch with the cap at 2
 - **THEN** at most two containers run concurrently and the third executes when a slot frees
 
+### Requirement: the pod host is observable where it runs
+
+A process that executes Runs in pods SHALL keep a record of the pods it holds — each claimed
+Run, waiting for a slot or executing, with when it entered that phase — and SHALL probe docker
+on a stated cadence, distinguishing an unreachable daemon from a missing image (their remedies
+differ). The record SHALL be readable at `GET /api/pods` joined to each Run's Story, trigger
+label and runtime, filtered to the caller's visible projects; the machine's facts — docker
+health, image presence, last-checked time, the probe's cadence, the concurrency cap — travel
+unfiltered. A process that does not execute pods SHALL answer that pods are not hosted there,
+because "no pods here" and "pods run somewhere this process cannot see" are different
+sentences. Absent infrastructure SHALL change nothing about the Run: it stays Queued and the
+cause lives on the panel and the environment chip, never as destructive styling on the Run.
+
+#### Scenario: a slot wait is visible
+
+- **WHEN** more Runs are claimed than the machine's cap admits
+- **THEN** the excess appear as waiting for a slot while their Runs stay Queued
+
+#### Scenario: an unhosted process says so
+
+- **WHEN** the read is served by a process that does not execute pods
+- **THEN** the answer says pods are not hosted there rather than showing an empty machine
+
+#### Scenario: docker down is a state, not a Run failure
+
+- **WHEN** the daemon stops answering while a Run is Queued
+- **THEN** the panel names the cause with the last-checked time and retry cadence, and the Run's
+  own screen points at it without turning destructive
+
 ### Requirement: the host's sessions enter the pod by deliberate default
 
 Where the pod substrate is active, the host's agent-CLI configuration SHALL be provided to the

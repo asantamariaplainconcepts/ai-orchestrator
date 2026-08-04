@@ -150,6 +150,23 @@ export function useRequiredPermissions(projectId: string, codeSource: string) {
 }
 
 /**
+ * Whether a secret name resolves on this deployment (design review 5d) — existence only, the
+ * value never travels. Asked through the same seam every real resolution uses, so this answer
+ * and the poller's first read cannot disagree. A query, unlike the path check: the environment
+ * changes on a restart, not under a keystroke, so a cached verdict per typed name is honest.
+ */
+export function useSecretResolves(projectId: string, name: string) {
+  return useQuery({
+    queryKey: ["secret-resolves", projectId, name] as const,
+    enabled: name.trim().length > 0,
+    queryFn: () =>
+      api.get<{ resolves: boolean }>(
+        `/api/projects/${projectId}/connector/secret-resolves?name=${encodeURIComponent(name.trim())}`,
+      ),
+  });
+}
+
+/**
  * #210 — the live path check the form runs on idle (mock 3a). A mutation rather than a query:
  * the answer is about the host's disk at this moment, and caching "clean working tree" would
  * happily contradict the dispatch-time refusal it exists to preview.

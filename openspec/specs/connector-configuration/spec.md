@@ -170,6 +170,33 @@ created while the application is running.
 - **WHEN** a secret's value is rotated in the store
 - **THEN** the next resolution uses the new value, with no restart and no cache to invalidate
 
+### Requirement: a typed secret name answers whether it resolves
+
+While a Connector's secret name is being typed, the product SHALL answer whether that name
+resolves on this deployment — `GET
+/api/projects/{id}/connector/secret-resolves?name=` — through the same seam every real
+resolution uses, so the preview and the poller's first read cannot disagree. The answer SHALL
+be existence only: one boolean, never the value, whatever the verdict. On the self-host
+posture the form SHALL render the exact environment line the name implies
+(`Secrets__<name>=`) beside the field, and SHALL warn — without blocking — when the typed
+name is shaped like a token rather than a name (BR-010's split, said where it is typed).
+
+#### Scenario: a name that resolves to nothing says not yet
+
+- **WHEN** the typed name resolves to no value on this deployment
+- **THEN** the field says so and names the remedy, before anything is saved
+
+#### Scenario: the answer carries no value
+
+- **WHEN** the typed name resolves
+- **THEN** the response says only that it does; the value appears nowhere in it
+
+#### Scenario: the token pasted where the name goes is caught
+
+- **WHEN** the typed name matches a vendor token shape
+- **THEN** the form warns that the name goes here and the value in the environment, and still
+  allows the save
+
 ### Requirement: the host owns secret-store wiring, not the modules
 
 Registration of any secret-store client SHALL happen in the host composition root. A module SHALL
