@@ -45,11 +45,18 @@ database is the truth; a failed Run is a completed execution. Non-zero means the
 not happen (no database, unknown Run) — the same distinction the queue worker already draws, and
 BR-004 forbids anything from retrying on it.
 
-**D5 — sessions by default, observed before fixed.** The pod gets the host's CLI config mounted
-read-only (`~/.config/opencode`, the Claude config dir) unless the operator disables it. The
-first implementation task exercises a real CLI in a pod: if it needs to write (token refresh),
-the mechanism switches to copy-in at start with no write-back, and the observation is recorded
-in this design. Consequence stated plainly: pod Runs act and bill as the operator's sessions.
+**D5 — sessions by default, observed before fixed.** The pod gets the host's CLI state mounted
+read-only unless the operator disables it. Consequence stated plainly: pod Runs act and bill as
+the operator's sessions.
+
+*Observed (2026-08-04, opencode 1.18.6 in the worker image):* the credential file is
+`~/.local/share/opencode/auth.json` — `~/.config/opencode` holds agents/commands only — so the
+mount set is `.config/opencode`, `.local/share/opencode` and `.claude`, all read-only; `auth
+list` works against the ro mount, so copy-in was not needed for reading. Also observed: macOS
+Docker Desktop refused the `.local/share` bind outright (Permission denied as root in the
+container), so the default cannot pretend to be universal — a host where the mounts fail turns
+sessions off (`Dispatch:PodSessions=false`) and uses named secrets, and the refusal arrives
+named in the Run's failure rather than as silent credential absence.
 
 **D6 — the cap is a semaphore in the launcher, default 2.** Configurable
 (`Dispatch:MaxConcurrentPods`). A dispatched Run past the cap WAITS (the outbox consumer holds

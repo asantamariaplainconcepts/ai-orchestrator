@@ -13,8 +13,38 @@ hand-edit it — CI's drift gate compares the two.
 
 - **Identity**: the operator who ran `docker compose up` is the owner (`LocalOwner`) — every
   action is administrator, no sign-in. Trusted networks only.
-- **Runs** execute against a **repository** code source: the pod clones with the Connector's
-  credential, exactly as the cloud habitat does.
+- **Runs execute in pods** (#246): each dispatched Run starts its own container from the
+  DispatchWorker image and exits with it. Two things are yours to provide, deliberately:
+
+  1. **The image**: `docker build -f src/root/AiOrchestrator.DispatchWorker/Dockerfile -t aio-dispatch-worker:latest .`
+     (from the repository root). The compose names `aio-dispatch-worker:latest`
+     (`Dispatch__PodImage`); nothing pulls or builds it for you.
+  2. **The docker socket** — your explicit grant, in a `selfhost/docker-compose.override.yaml`
+     you write:
+
+     ```yaml
+     services:
+       server:
+         # Root inside the container: holding the socket already IS root on this machine,
+         # and the socket's group differs across hosts — this is the honest spelling.
+         user: "0"
+         volumes:
+           - /var/run/docker.sock:/var/run/docker.sock
+         environment:
+           Dispatch__PodSessionsHome: "/home/<you>"
+     ```
+
+     **The socket is root-equivalent on this machine.** Whoever can reach it can do anything
+     your docker daemon can. That is why the generated compose never mounts it: until you do,
+     every Run fails naming exactly this grant — a named failure, never a silent fallback.
+
+  - **Your CLI sessions enter the pods by default**: `~/.config/opencode` and `~/.claude` are
+    mounted read-only from `Dispatch__PodSessionsHome`. Pod Runs act and bill as those
+    sessions. Turn it off with `Dispatch__PodSessions: "false"`.
+  - At most **2 pods** run concurrently (`Dispatch__MaxConcurrentPods`); a Run past the cap
+    waits — delayed, never dropped.
+  - Runs against a **repository** code source clone with the Connector's credential inside the
+    pod, exactly as the cloud habitat does.
 - **Local folders are not available here** (#247). The Server runs in a container, and a folder
   on this machine is not visible to it. The compose declares this
   (`Habitat__LocalFolderUnavailableReason` on the `server` service), the portal withholds the
