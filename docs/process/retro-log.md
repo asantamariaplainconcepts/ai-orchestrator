@@ -3149,3 +3149,25 @@ scenario) instead of failing fast — switched to a nonexistent run id, which ex
 "every X"), enumerate the category mechanically at GRILL time — the count is a claim like any
 other, and the cheapest gate is the earliest one. And a transport proof picks the
 fastest-exiting failure mode available, never one that depends on a retry policy elsewhere.
+
+## 2026-08-05 — deploy-sdk-images (#260, spec-less)
+
+**Time (telemetry, session-level):** same driving session as sdk-built-images — the hotfix took
+roughly 20 minutes of agent time from red deploy to green PR inside it; per-change split still
+unavailable until #256's mapping fix lands.
+
+**What worked:** the #202 rule — watch the deploy the merge triggers — caught the breakage in
+minutes, on the first run after the merge, with the failing step naming the exact file. And the
+remedy was already half-built: the publish-images workflow written for #257 was the template the
+deploy script needed (same pnpm-then-PublishContainer order, same explicit-platform lesson).
+
+**What didn't:** "the Azure path is out of scope" was read as "the Azure path is unaffected" —
+but out-of-scope surfaces can still CONSUME what a change retires. The retired-names grep swept
+src/, docs and panel copy and never infra/, which is where the consumer lived. #257's own retro
+had just said "enumerate the category mechanically" — the enumeration ran, but over a subset of
+the tree.
+
+**One change next time:** a retired-names grep runs over the WHOLE repository — `git grep` from
+the root, no directory list — because the next consumer will also live in the one directory
+nobody thought to include. Out-of-scope means "this change doesn't modify it", never "this
+change cannot break it".
