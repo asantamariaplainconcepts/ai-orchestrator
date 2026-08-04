@@ -55,6 +55,9 @@
     <!-- Aspire dev orchestration. Azure.Storage is the queue substrate (Azurite locally) that
          carries Run dispatch (DEC-013); present from day 0 so the queue contract is never mocked. -->
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.6" />
+    <!-- The pod launcher's transport (#257): the docker socket spoken directly, replacing the
+         docker CLI binary the old Dockerfile copied in — the image needs no CLI at all. -->
+    <PackageVersion Include="Docker.DotNet" Version="3.125.15" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.JavaScript" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.Azure.Storage" Version="13.4.6" />

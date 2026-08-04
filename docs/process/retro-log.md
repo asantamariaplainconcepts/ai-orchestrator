@@ -3123,3 +3123,29 @@ to a log file plus a monitor from the first attempt, and a short-timeout `docker
 base image as preflight before any compose build, so a daemon-level hang fails in seconds
 instead of half an hour. The credential-helper failure mode is worth remembering: host network
 fine + daemon pulls hanging = check `docker-credential-desktop` before restarting anything.
+
+## 2026-08-05 — sdk-built-images (#257)
+
+**Time (telemetry, session-level):** the driving session totals $80.86, 157 min agent, 167k
+output tokens — but it spans three changes (compose-per-resource's close-out claimed $17.61/51
+min of it earlier); the ~$63/106 min delta is mostly this change plus the telemetry-worktrees
+fix. Session→change mapping still reads `(none)`: the UserPromptSubmit re-mapping fix rides
+PR #256, unmerged while this change was built — consistent, and self-measuring once it lands.
+
+**What worked:** the evidence gate (design D1) dissolved the scariest dependency in fifteen
+minutes — probing the installed Aspire DLLs plus one real `/t:PublishContainer` beat reading
+docs: no Aspire upgrade, no JS publish API needed, because CI's pnpm-build-then-publish order
+puts the SPA in wwwroot for free. And the retired-names grep as a proof gate earned its place:
+it caught a fourth Dockerfile nobody had counted (ConversationSession, Azure path) and turned it
+into a documented exception instead of a silent survivor.
+
+**What didn't:** the "three Dockerfiles" premise survived grill, proposal and design unchallenged
+— `find -name Dockerfile` costs seconds and ran only at the proof gate. Smaller: zsh's `:l`
+modifier silently mangled `$n:latest` into `$n` + "atest" when tagging images (braces fix it),
+and the first transport proof wedged on the worker's indefinite database retries (wrong-password
+scenario) instead of failing fast — switched to a nonexistent run id, which exits promptly.
+
+**One change next time:** when a change claims to retire a category ("the N Dockerfiles",
+"every X"), enumerate the category mechanically at GRILL time — the count is a claim like any
+other, and the cheapest gate is the earliest one. And a transport proof picks the
+fastest-exiting failure mode available, never one that depends on a retry policy elsewhere.

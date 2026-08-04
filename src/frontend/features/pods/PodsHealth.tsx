@@ -106,7 +106,7 @@ export function PodsUnavailableCard({
         <span className="text-[11px] font-semibold tracking-wide text-muted-foreground uppercase">
           {t("pods.try")}
         </span>
-        <CopyLine text={down ? t("pods.tryCommand.compose") : t("pods.tryCommand.build")} />
+        <CopyLine text={down ? t("pods.tryCommand.compose") : t("pods.tryCommand.pull")} />
         {!compact && view.checkedAt ? (
           <span className="text-[11px] text-muted-foreground">
             {t("pods.checked")} {formatAgo(view.checkedAt)} · {t("pods.retries")}{" "}

@@ -218,14 +218,14 @@ export const en = {
   "pods.unavailableTitle": "Agent pods unavailable — Docker isn't reachable",
   "pods.unavailableBody":
     "The Run stays Queued and dispatches on its own once pods are back. Nothing is lost.",
-  "pods.imageMissingTitle": "The pod image isn't built yet",
+  "pods.imageMissingTitle": "The pod image isn't pulled yet",
   "pods.imageMissingBody":
-    "Docker answers, but the Agent image is missing. Runs stay Queued until it exists — build it once and they dispatch on their own.",
+    "Docker answers, but the Agent image is missing. Runs stay Queued until it exists — pull it once and they dispatch on their own.",
   "pods.try": "Try",
   // The commands are copy so the panel and the self-hosting guide cannot drift apart silently.
   "pods.tryCommand.compose": "docker compose up -d",
-  "pods.tryCommand.build":
-    "docker build -f src/root/AiOrchestrator.DispatchWorker/Dockerfile -t aio-dispatch-worker:latest .",
+  "pods.tryCommand.pull":
+    "docker pull ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest",
   // Composed: "Checked 20s · retries every 30s".
   "pods.checked": "Checked",
   "pods.retries": "retries every",
