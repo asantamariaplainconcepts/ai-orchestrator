@@ -3009,3 +3009,30 @@ absence when the read model has a default shape; the store itself was the honest
 branch *after* every hook call by default and let the comment say why it sits low — the natural
 reading position (top) is exactly where it breaks. And assert absence against the store, not
 against a read model whose empty answer has a shape.
+
+## 2026-08-04 — docker-run-pods
+
+**Time (manual — the worktree telemetry gap of ADR-0011, unchanged):** one session, alongside the
+exploration that produced it; the third execution arrangement on a seam two changes old.
+
+**What worked:** observing before fixing, three times over. The design said "sessions ride a
+read-only mount of ~/.config/opencode" and the first real probe corrected it twice — opencode's
+credentials live in `~/.local/share/opencode/auth.json`, and macOS Docker Desktop can refuse the
+bind outright — both now recorded in the design instead of shipped as assumptions. And the probe
+against a missing database caught something no unit test would have: the worker's unhandled
+composition exception left the process ALIVE, spinning at 99% CPU — precisely the hang design D3
+forbids. The fix (assert the connection string before anything composes, exit 69 named) exists
+because a probe ran a real container and watched it.
+
+**What didn't:** ten e2e failures that had nothing to do with the change — `wwwroot` was built on
+the previous branch, before another session's UI landed on main, and the e2e serves whatever
+wwwroot holds. Second time this session that an environment artifact read as a regression (the
+missing wwwroot in selfhost-declares-its-limits was the first). Also: the full pod Run against
+the free model (task 3.3) is honestly NOT DONE — the probes covered image → composition →
+database → executor → exit semantics, and the agent pass in a pod remains unexercised, the same
+shape of debt local-dispatch recorded.
+
+**One change next time:** a stale `wwwroot` after a branch switch is now a known false-regression
+shape — rebuild the SPA after every rebase/branch that moves frontend files, before reading e2e
+results. And when a probe watches a container, watch the PROCESS after the failure too:
+"printed the exception" and "exited" are different facts, and the second one was the bug.
