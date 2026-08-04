@@ -100,6 +100,20 @@ deadlock on the `[skip ci]` commit, and required approval is impossible solo. Th
 real: nothing at the platform level prevents a direct push. The gates live in the commands and in
 CI. Revisit this — together with `[skip ci]` — when a second committer appears.
 
+## Local habitats (#250)
+
+`aspire run` starts the **dev loop** by default: demo seeder, local secret store, Local locus
+available, in-process Run execution. To rehearse the **server shape** — what an operator's
+`docker compose up` composes: pods, Local locus declared out, no seeder — switch the habitat
+parameter and run again:
+
+```bash
+dotnet user-secrets set Parameters:habitat server --project src/root/AiOrchestrator.AppHost
+```
+
+(`local` or unset switches back; any other value refuses at startup naming both.) Publishing
+ignores the parameter — the compose artifact is always the server shape.
+
 ## Conventions
 
 - **Conventional Commits**, enforced by commitlint on commit-msg and again in CI, so `--no-verify`
