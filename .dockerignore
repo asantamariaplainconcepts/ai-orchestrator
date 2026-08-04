@@ -1,0 +1,13 @@
+# The build context is the repository root (the Dockerfiles copy src/ and docs/), and without
+# this file every `docker build` shipped the whole working tree to the daemon — 1.3GB of
+# node_modules, bin/ and obj/ that no Dockerfile reads, discovered when the self-host boot proof
+# crawled (#252). Multi-gigabyte contexts are why local image builds took tens of minutes.
+**/bin/
+**/obj/
+**/node_modules/
+.git/
+.claude/
+.telemetry/
+**/.vite/
+**/dist/
+src/root/AiOrchestrator.Server/wwwroot/
