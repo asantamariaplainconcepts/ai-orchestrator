@@ -173,6 +173,18 @@ else
     // second command DEC-049 promises they will not need. Azure gets neither branch — Terraform
     // composes that deployment and never sets this.
     server.WithEnvironment("Identity__Mode", "LocalOwner");
+
+    // …but its Server is a container, and a folder on the operator's machine is not reachable
+    // from it (#247). Declared here, where the composition knows — never inferred from the
+    // runtime (ADR-0010): an operator who mounts a folder deliberately can unset this in their
+    // own compose and owns the consequence. The sentence travels verbatim to the capability
+    // read, the save refusal and the Run refusal.
+    server.WithEnvironment(
+        "Habitat__LocalFolderUnavailableReason",
+        "the orchestrator runs in a container here, and a folder on this machine is not "
+            + "visible to it — local folders need the dev loop, where the server is a process "
+            + "on this machine"
+    );
 }
 
 await builder.Build().RunAsync();

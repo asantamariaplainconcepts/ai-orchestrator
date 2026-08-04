@@ -218,6 +218,17 @@ sealed class ConfigureConnector : IUseCase
                 return BacklogErrors.CodeSourceUnavailable();
             }
 
+            // The second door of the same surface (#247): a self-host habitat whose composition
+            // declares the folder unreachable — the compose, where this process is a container —
+            // refuses with the declared sentence, never a path error later.
+            if (
+                codeSource == CodeSource.LocalFolder
+                && IdentityHabitat.LocalFolderUnavailableReason(configuration) is { } declared
+            )
+            {
+                return BacklogErrors.LocalFolderUnavailable(declared);
+            }
+
             // Loaded before the credential is chosen (design D3): reuse needs this Connector's own
             // stored name, and that is not knowable from the request. This replaces the later lookup
             // rather than adding one, and it leaves the store-then-verify ordering below untouched —

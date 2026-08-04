@@ -138,6 +138,8 @@ export const en = {
   "connector.codeSource.dirtyTree": "uncommitted changes — a Local Run will refuse to start",
   "connector.codeSource.recent": "Recent folders",
   "connector.codeSource.usedBy": "used by",
+  // #247 — the habitat withheld the locus; the declared sentence follows this label verbatim.
+  "connector.codeSource.unavailable": "Local folders are not available on this deployment:",
   "connector.codeSource.podConstraint":
     "A local folder only works with the Local runtime — an Agent in a pod cannot see this machine's disk. Runs of this project default to Local.",
 

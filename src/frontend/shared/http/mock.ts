@@ -285,11 +285,18 @@ const routes: [string, RegExp, Handler][] = [
     "GET",
     /^\/api\/capabilities$/,
     () => {
-      const noStore = new URLSearchParams(window.location.search).has("noStore");
+      const search = new URLSearchParams(window.location.search);
+      const noStore = search.has("noStore");
+      // #247 — `?noLocal` renders the compose shape: self-host, but the folder is unreachable.
+      const noLocal = search.has("noLocal");
       return {
         hasCodeSource: true,
         canStoreSecret: !noStore,
         storeRemedy: noStore ? "Set Secrets:Directory to store values here." : null,
+        canUseLocalFolder: !noLocal,
+        localFolderReason: noLocal
+          ? "the orchestrator runs in a container here, and a folder on this machine is not visible to it"
+          : null,
       };
     },
   ],

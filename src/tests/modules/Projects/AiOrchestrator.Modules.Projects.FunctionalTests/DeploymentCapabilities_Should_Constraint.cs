@@ -16,18 +16,33 @@ namespace AiOrchestrator.Modules.Projects.FunctionalTests;
 [Collection(ProjectsCollection.Name)]
 public class DeploymentCapabilities_Should_Constraint(ProjectsApiFixture fixture)
 {
-    sealed record Capabilities(bool HasCodeSource, bool CanStoreSecret, string? StoreRemedy);
+    sealed record Capabilities(
+        bool HasCodeSource,
+        bool CanStoreSecret,
+        string? StoreRemedy,
+        bool CanUseLocalFolder,
+        string? LocalFolderReason
+    );
 
     static async Task<Capabilities> Read(HttpClient client) =>
         (await client.GetFromJsonAsync<Capabilities>("/api/capabilities"))!;
 
-    HttpClient Habitat(string? mode, ISecretStore? store = null) =>
+    HttpClient Habitat(
+        string? mode,
+        ISecretStore? store = null,
+        string? localFolderReason = null
+    ) =>
         fixture
             .WithWebHostBuilder(builder =>
             {
                 if (mode is not null)
                 {
                     builder.UseSetting("Identity:Mode", mode);
+                }
+
+                if (localFolderReason is not null)
+                {
+                    builder.UseSetting("Habitat:LocalFolderUnavailableReason", localFolderReason);
                 }
 
                 if (store is not null)
@@ -55,6 +70,30 @@ public class DeploymentCapabilities_Should_Constraint(ProjectsApiFixture fixture
         var capabilities = await Read(Habitat(mode: null));
 
         capabilities.HasCodeSource.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ASelfHostWithNoDeclaration_Should_OfferTheLocalFolder()
+    {
+        // The dev loop: self-host, nothing declared — behaviour exactly as before #247.
+        var capabilities = await Read(Habitat("LocalOwner"));
+
+        capabilities.CanUseLocalFolder.ShouldBeTrue();
+        capabilities.LocalFolderReason.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ADeclaringHabitat_Should_WithholdTheLocalFolderWithItsReason()
+    {
+        // The compose shape (#247): still self-host — HasCodeSource stands — but the folder is
+        // declared unreachable, and the declared sentence travels verbatim.
+        var capabilities = await Read(
+            Habitat("LocalOwner", localFolderReason: "the server is a container here")
+        );
+
+        capabilities.HasCodeSource.ShouldBeTrue();
+        capabilities.CanUseLocalFolder.ShouldBeFalse();
+        capabilities.LocalFolderReason.ShouldBe("the server is a container here");
     }
 
     [Fact]

@@ -73,6 +73,7 @@ services:
       AIORCHESTRATORDB_JDBCCONNECTIONSTRING: "jdbc:postgresql://postgres:5432/aiorchestratordb"
       AIORCHESTRATORDB_DATABASENAME: "aiorchestratordb"
       Identity__Mode: "LocalOwner"
+      Habitat__LocalFolderUnavailableReason: "the orchestrator runs in a container here, and a folder on this machine is not visible to it — local folders need the dev loop, where the server is a process on this machine"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
       OTEL_SERVICE_NAME: "server"
