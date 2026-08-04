@@ -4,50 +4,27 @@ var builder = DistributedApplication.CreateBuilder(args);
 // composition, so run mode and the distributable can never describe two different systems.
 // Publish-only — in run mode this adds nothing.
 //
-// ConfigureComposeFile turns the publisher's image placeholders into build contexts: the
-// distribution story is clone + `docker compose up --build`, no registry anywhere (owner
-// decision on #99). The Dockerfiles are multi-stage with the SDK inside, so a Docker-only
-// machine builds everything.
-builder
-    .AddDockerComposeEnvironment("compose")
-    .ConfigureComposeFile(file =>
-    {
-        var builds = new Dictionary<string, string>
-        {
-            ["server"] = "src/root/AiOrchestrator.Server/Dockerfile",
-            ["migrations"] = "src/root/AiOrchestrator.MigrationService/Dockerfile",
-            ["dispatch"] = "src/root/AiOrchestrator.DispatchWorker/Dockerfile",
-        };
+// Every compose fact lives on the resource it describes (#252): the environment itself carries
+// no file surgery, because a global patch block is where a removed service's name keeps living
+// after the service is gone — the dead `dispatch` entries this change deleted were exactly that.
+builder.AddDockerComposeEnvironment("compose");
 
-        foreach (var service in file.Services)
+// PostgreSQL — one database, one schema per module.
+// The volume is named so the generated compose is byte-stable across machines — the default
+// name embeds a path hash, which would make the drift check (#99) fail wherever the checkout
+// path differs.
+var postgres = builder
+    .AddPostgres("postgres")
+    .WithDataVolume("aio-postgres-data")
+    // Two things `aspire run` does that raw compose does not, discovered by booting the output
+    // (#99): Aspire creates the AddDatabase database itself, and it health-gates startup.
+    // Declared here, on the container they describe — without them, migrations raced postgres
+    // and then failed against a database nothing had created.
+    .PublishAsDockerComposeService(
+        (_, service) =>
         {
-            if (builds.TryGetValue(service.Key, out var dockerfile))
-            {
-                service.Value.Image = null;
-                service.Value.Build = new Aspire.Hosting.Docker.Resources.ServiceNodes.Build
-                {
-                    // Relative to selfhost/, where the generated file is committed.
-                    Context = "..",
-                    Dockerfile = dockerfile,
-                };
-            }
-        }
-
-        // A fixed host mapping: the quickstart says "open localhost:$SERVER_PORT", which a
-        // random host port would turn into a scavenger hunt.
-        if (file.Services.TryGetValue("server", out var web))
-        {
-            web.Ports = ["${SERVER_PORT}:${SERVER_PORT}"];
-        }
-
-        // Two things `aspire run` does that raw compose does not, discovered by booting the
-        // output (#99): Aspire creates the AddDatabase database itself, and it health-gates
-        // startup. Without these, migrations raced postgres and then failed against a database
-        // that nothing had created.
-        if (file.Services.TryGetValue("postgres", out var db))
-        {
-            db.Environment["POSTGRES_DB"] = "aiorchestratordb";
-            db.Healthcheck = new Aspire.Hosting.Docker.Resources.ServiceNodes.Healthcheck
+            service.Environment["POSTGRES_DB"] = "aiorchestratordb";
+            service.Healthcheck = new Aspire.Hosting.Docker.Resources.ServiceNodes.Healthcheck
             {
                 Test = ["CMD-SHELL", "pg_isready -U postgres -d aiorchestratordb"],
                 Interval = "2s",
@@ -56,27 +33,8 @@ builder
                 StartPeriod = "5s",
             };
         }
-
-        foreach (var name in new[] { "migrations", "server", "dispatch" })
-        {
-            if (
-                file.Services.TryGetValue(name, out var dependent)
-                && dependent.DependsOn.TryGetValue("postgres", out var dependency)
-            )
-            {
-                dependency.Condition = "service_healthy";
-            }
-        }
-    });
-
-// PostgreSQL — one database, one schema per module.
-// The volume is named so the generated compose is byte-stable across machines — the default
-// name embeds a path hash, which would make the drift check (#99) fail wherever the checkout
-// path differs.
-var database = builder
-    .AddPostgres("postgres")
-    .WithDataVolume("aio-postgres-data")
-    .AddDatabase("aiorchestratordb");
+    );
+var database = postgres.AddDatabase("aiorchestratordb");
 
 // Azurite stands in for Azure Storage Queues, the Run dispatch substrate KEDA scales on
 // (DEC-013). It is here from day 0 so the queue contract is exercised locally, never mocked.
@@ -103,7 +61,26 @@ var frontend = builder.ExecutionContext.IsRunMode
 var migrations = builder
     .AddProject<Projects.AiOrchestrator_MigrationService>("migrations")
     .WithReference(database)
-    .WaitFor(database);
+    .WaitFor(database)
+    .PublishAsDockerComposeService(
+        (_, service) =>
+        {
+            // The distribution story is clone + `docker compose up --build`, no registry
+            // anywhere (owner decision on #99): the publisher's image placeholder becomes a
+            // build context, and the Dockerfile is multi-stage with the SDK inside.
+            service.Image = null;
+            service.Build = new Aspire.Hosting.Docker.Resources.ServiceNodes.Build
+            {
+                // Relative to selfhost/, where the generated file is committed.
+                Context = "..",
+                Dockerfile = "src/root/AiOrchestrator.MigrationService/Dockerfile",
+            };
+
+            // Waiting for a HEALTHY postgres is this dependent's requirement (#99): plain
+            // depends_on starts it against a database still initialising.
+            WaitForHealthyPostgres(service);
+        }
+    );
 
 // No dispatch worker here. It exists to drain a queue, and this habitat has none: the Server
 // consumes the outbox in its own process, which is the container this change removes. The
@@ -118,7 +95,24 @@ var server = builder
     .WithReference(database)
     .WaitFor(database)
     .WaitForCompletion(migrations)
-    .WithExternalHttpEndpoints();
+    .WithExternalHttpEndpoints()
+    .PublishAsDockerComposeService(
+        (_, service) =>
+        {
+            service.Image = null;
+            service.Build = new Aspire.Hosting.Docker.Resources.ServiceNodes.Build
+            {
+                Context = "..",
+                Dockerfile = "src/root/AiOrchestrator.Server/Dockerfile",
+            };
+
+            // A fixed host mapping: the quickstart says "open localhost:$SERVER_PORT", which a
+            // random host port would turn into a scavenger hunt (#99).
+            service.Ports = ["${SERVER_PORT}:${SERVER_PORT}"];
+
+            WaitForHealthyPostgres(service);
+        }
+    );
 
 // Deliberately no queue connection string on the Server: its absence is the configuration that
 // composes the outbox substrate and its in-process consumer (ADR-0010 — asked, never inferred).
@@ -171,6 +165,16 @@ else
 
 await builder.Build().RunAsync();
 return;
+
+// Waiting on a HEALTHY postgres, spelled once: it is each dependent's requirement, and two
+// dependents writing the condition by hand is how one of them forgets the condition exists.
+static void WaitForHealthyPostgres(Aspire.Hosting.Docker.Resources.ComposeNodes.Service service)
+{
+    if (service.DependsOn.TryGetValue("postgres", out var dependency))
+    {
+        dependency.Condition = "service_healthy";
+    }
+}
 
 // The dev loop: a machine one person owns, worked on from the keyboard. Everything here exists
 // to make the first `aspire run` clickable and the local loop exercisable.
