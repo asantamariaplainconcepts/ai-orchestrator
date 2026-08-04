@@ -3093,3 +3093,33 @@ contradicts the design is the real proposal document, and finding it early is th
 between a spec delta and a spec contradiction. And when adding an always-present labelled
 element to the shell, grep the e2e suite for loose GetByLabel/GetByRole substrings its name can
 newly match — the collision is deterministic, so it can be found before CI does.
+
+## 2026-08-04 — compose-per-resource (#252)
+
+**Time (telemetry, partial):** 51 min agent this session (3 051 s cli, $17.61, 45k output
+tokens) — the proof/close-out session, captured by the main checkout despite running in a
+worktree. The implementation session (`para-grill` worktree, commit `1a2ba9e`) is unattributed:
+`sessions.jsonl` has no `compose-per-resource` mapping, and `verify-telemetry.mjs` from this
+worktree fails 3 checks (`OTEL_EXPORTER_OTLP_ENDPOINT` unset in spawned shells, cwd-relative
+`.telemetry/` absent, SessionStart hook never fired) — second consecutive change hitting the
+worktree misread documented in the previous entry.
+
+**What worked:** the per-resource API said everything the global patch block used to say — the
+regenerated compose came out byte-identical, stronger than the equivalent-not-identical the spec
+allowed, so the drift baseline never moved. And D3's "prove by booting, not diffing" paid
+immediately: the boot surfaced the missing repo-root `.dockerignore` (every image build was
+shipping 1.3GB of node_modules/bin/obj to the daemon).
+
+**What didn't:** roughly an hour lost to a machine-local hang that looked like a slow build —
+`docker-credential-desktop` wedged, and every pull and buildx `load metadata` consults it before
+touching the network, so two ~28-minute builds sat silent with zero output. The silent pipe was
+the accomplice: `up -d --build | tail -40` buffers everything, so there was no signal to
+distinguish "compiling" from "hung". Separately, the first E2E run went 36/43 red purely from
+the known missing-bundle gotcha plus CPU contention with the wedged build — 18 minutes of
+timeouts for an already-documented cause.
+
+**One change next time:** long docker operations never run as a silent pipe — `--progress=plain`
+to a log file plus a monitor from the first attempt, and a short-timeout `docker pull` of one
+base image as preflight before any compose build, so a daemon-level hang fails in seconds
+instead of half an hour. The credential-helper failure mode is worth remembering: host network
+fine + daemon pulls hanging = check `docker-credential-desktop` before restarting anything.
