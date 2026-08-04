@@ -15,8 +15,11 @@ namespace AiOrchestrator.ServiceDefaults.Dispatch;
 /// execution: a fallback would erase the isolation the operator asked for without telling them.
 /// </para>
 /// </summary>
-public sealed class PodRunLauncher(PodLaunchOptions options, ILogger<PodRunLauncher> logger)
-    : IDispatchedRunHandler
+public sealed class PodRunLauncher(
+    PodLaunchOptions options,
+    AgentPodsHost pods,
+    ILogger<PodRunLauncher> logger
+) : IDispatchedRunHandler
 {
     /// <summary>
     /// The host bound (design D6): BR-001 bounds per-Story, this bounds the machine. A semaphore
@@ -27,15 +30,27 @@ public sealed class PodRunLauncher(PodLaunchOptions options, ILogger<PodRunLaunc
 
     public async Task Handle(Guid runId, CancellationToken cancellationToken)
     {
-        await _slots.WaitAsync(cancellationToken);
+        // Sighted before the slot wait, not after: the Run parked on this semaphore is exactly
+        // the one the panel must explain (design review 5b), and it is invisible everywhere else
+        // — still Queued in the database, already claimed off the outbox.
+        pods.WaitingForSlot(runId);
         try
         {
-            DispatchLog.PodStarting(logger, runId, options.Image);
-            await Launch(runId, cancellationToken);
+            await _slots.WaitAsync(cancellationToken);
+            try
+            {
+                pods.Executing(runId);
+                DispatchLog.PodStarting(logger, runId, options.Image);
+                await Launch(runId, cancellationToken);
+            }
+            finally
+            {
+                _slots.Release();
+            }
         }
         finally
         {
-            _slots.Release();
+            pods.Finished(runId);
         }
     }
 

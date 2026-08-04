@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Dispatch;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Connectors;
@@ -44,6 +45,12 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
     /// <summary>The ceremony faked at its seam: scripted preparation and publication.</summary>
     internal FakeCodeWorkspace Workspace { get; } = new();
+
+    /// <summary>
+    /// The pod host faked at the monitor seam (design review 5b): the panel's endpoint is about
+    /// joining sightings to Runs, never about docker — so the tests hand it sightings directly.
+    /// </summary>
+    internal FakeAgentPodsMonitor Pods { get; } = new();
 
     /// <summary>
     /// The conversation runtime, faked at its seam (#166). Faked rather than driven through the
@@ -105,8 +112,21 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
             services.RemoveAll<ICodeWorkspace>();
             services.AddSingleton<ICodeWorkspace>(Workspace);
+
+            services.RemoveAll<IAgentPodsMonitor>();
+            services.AddSingleton<IAgentPodsMonitor>(Pods);
         });
     }
+}
+
+/// <summary>A pod host whose snapshot the test decides; unhosted until one does.</summary>
+sealed class FakeAgentPodsMonitor : IAgentPodsMonitor
+{
+    public AgentPodsSnapshot Next { get; set; } = AgentPodsSnapshot.Unhosted;
+
+    public void Reset() => Next = AgentPodsSnapshot.Unhosted;
+
+    public AgentPodsSnapshot Snapshot() => Next;
 }
 
 /// <summary>A vendor whose responses the test decides.</summary>
