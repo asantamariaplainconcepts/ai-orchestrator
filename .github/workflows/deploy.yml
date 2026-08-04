@@ -135,6 +135,20 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.ARM_SUBSCRIPTION_ID }}
 
+      # deploy.sh publishes the product images with the SDK and builds the SPA first (#260) —
+      # the toolchain it needs is set up here, not assumed of the runner.
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
+
       # deploy.sh owns the release ordering — push, migrate, wait, then move the revision. CI
       # calls it rather than restating it, so the sequence that protects a running app cannot
       # drift between the two ways of invoking it (ADR-0003).

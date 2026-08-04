@@ -18,6 +18,9 @@ need() { command -v "$1" >/dev/null || { echo "Missing required tool: $1" >&2; e
 need az
 need docker
 need terraform
+# The product images are SDK-published and the SPA is built here first (#260).
+need dotnet
+need pnpm
 
 # Every name comes from Terraform state — nothing here is hardcoded or guessed.
 tf() { terraform -chdir="${TF_DIR}" output -raw "$1"; }
@@ -47,26 +50,38 @@ echo
 echo "→ signing in to the registry"
 az acr login --name "${REGISTRY_NAME}" --output none
 
-# linux/amd64 explicitly: Container Apps runs amd64, and an Apple-silicon default would build an
-# arm64 image that pushes fine and then fails to start with an exec-format error.
-echo "→ building images (linux/amd64)"
-docker build --platform linux/amd64 \
-  -f "${REPO_ROOT}/src/root/AiOrchestrator.Server/Dockerfile" \
-  -t "${PORTAL_IMAGE}" "${REPO_ROOT}"
-docker build --platform linux/amd64 \
-  -f "${REPO_ROOT}/src/root/AiOrchestrator.MigrationService/Dockerfile" \
-  -t "${MIGRATION_IMAGE}" "${REPO_ROOT}"
-docker build --platform linux/amd64 \
-  -f "${REPO_ROOT}/src/root/AiOrchestrator.DispatchWorker/Dockerfile" \
-  -t "${DISPATCH_IMAGE}" "${REPO_ROOT}"
+# The SPA lands in the Server's wwwroot before the portal is published — the same order the
+# publish-images workflow and the E2E suite require: a portal with a stale or absent wwwroot is
+# the failure CI already caught once.
+echo "→ building the SPA into wwwroot"
+pnpm -C "${REPO_ROOT}/src/frontend" install --frozen-lockfile
+pnpm -C "${REPO_ROOT}/src/frontend" build
+
+# The three product images are SDK-published straight to the registry (#257: no Dockerfile backs
+# them, #260: this script learned that one deploy too late). linux-x64 explicitly: Container
+# Apps runs amd64, and an Apple-silicon default would publish an arm64 image that pushes fine
+# and then fails to start with an exec-format error.
+echo "→ publishing images (SDK container publish, linux-x64)"
+publish_image() {
+  dotnet publish "${REPO_ROOT}/src/root/$1/$1.csproj" \
+    -c Release /t:PublishContainer \
+    -p:ContainerRuntimeIdentifier=linux-x64 \
+    -p:ContainerRegistry="${REGISTRY}" \
+    -p:ContainerRepository="$2" \
+    -p:ContainerImageTags="${TAG}"
+}
+publish_image AiOrchestrator.Server portal
+publish_image AiOrchestrator.MigrationService migrations
+publish_image AiOrchestrator.DispatchWorker dispatch
+
+# The conversation session keeps the one Dockerfile left (#257): it bakes agent CLIs through
+# RUN steps the SDK cannot express.
+echo "→ building the conversation session image (linux/amd64)"
 docker build --platform linux/amd64 \
   -f "${REPO_ROOT}/src/root/AiOrchestrator.ConversationSession/Dockerfile" \
   -t "${SESSION_IMAGE}" "${REPO_ROOT}"
 
 echo "→ pushing"
-docker push "${PORTAL_IMAGE}"
-docker push "${MIGRATION_IMAGE}"
-docker push "${DISPATCH_IMAGE}"
 docker push "${SESSION_IMAGE}"
 
 echo "→ pointing the migration job at ${TAG}"
