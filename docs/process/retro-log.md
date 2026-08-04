@@ -2985,3 +2985,27 @@ finding new surfaces, and the next one should be looked for rather than tripped 
 - **Time invested:** not measured (source: **manual** — hundred-and-second consecutive). Unchanged:
   `.telemetry/usage.jsonl` is absent, so `collect-usage` has nothing to join against.
 - **ADR:** none. ADR-0011 remains owed from #238 and is untouched by this.
+
+## 2026-08-04 — selfhost-declares-its-limits
+
+**Time (manual — the worktree telemetry gap of ADR-0011, unchanged):** a short change inside a
+longer exploration session; the code was small because the exploration had already done the
+thinking.
+
+**What worked:** the StoreRemedy pattern paid for itself a second time. The capabilities read
+already had the shape "a missing ability carries its remedy", so the Local locus was one more
+fact, not a new mechanism — and D4's rule that the reason is *one sentence read in one place*
+meant the capability read, the save refusal and the Run refusal literally cannot disagree. The
+exploration-first order also showed: reading Orbion and loop-task before grilling turned "maybe
+Electron?" into a grounded no with evidence, and the issue bodies carry it.
+
+**What didn't:** an early return placed before the hooks in `CodeSourceSection` — the
+rules-of-hooks failure the design validator caught. The withheld branch was conceived as "render
+something else entirely", and writing it at the top of the component read naturally but broke
+hook order. Also, the first storage assertion asked a read model (`GET /connector` → 404?) about
+absence when the read model has a default shape; the store itself was the honest witness.
+
+**One change next time:** when a component gains a "render nothing of the usual" branch, put the
+branch *after* every hook call by default and let the comment say why it sits low — the natural
+reading position (top) is exactly where it breaks. And assert absence against the store, not
+against a read model whose empty answer has a shape.
