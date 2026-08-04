@@ -3058,3 +3058,38 @@ anything the Program reads, it is already an application.
 CreateAsync, never as post-hoc configuration writes — the Program has already run. Worth
 remembering alongside the wwwroot lesson from the previous change: the e2e tier's fixtures have
 their own lifecycle rules, and both failures this week were lifecycle misreads, not product bugs.
+
+## 2026-08-04 — design-review-turn-5 (self-host posture chip + pods panel)
+
+**Time (telemetry):** 48 min agent (2 867 s cli, $78.97, 178k output tokens); human time
+unmeasured — two steering messages, the change ran end-to-end from the design-project import.
+Caveat: `verify-telemetry.mjs` reports FAIL when run from a worktree (no `.telemetry/` there and
+`OTEL_EXPORTER_OTLP_ENDPOINT` unset in spawned shells) while the main checkout captured this
+session fine — the check reads cwd-relative paths and misreads worktrees.
+
+**What worked:** the design project as the spec. Issues 12–15 in the claude.ai/design project
+carried exact component sketches, i18n key lists and acceptance criteria, so implementation was
+mostly disciplined transcription against DESIGN.md — three explorer agents mapped the Runs
+module, the frontend patterns and the secrets seam in parallel before any code. Verifying in the
+mock browser caught a real defect the types never would: the looks-like-token length heuristic
+flagged the product's own 49-character derived secret names (names read like names — hyphenated;
+tokens read like entropy). The seam pattern paid again: `IAgentPodsMonitor` in BuildingBlocks
+with a `TryAdd` default in the module meant the panel endpoint needed no knowledge of docker,
+and the functional test faked one registration.
+
+**What didn't:** three doc surfaces contradicted the change after the code was done — the
+frontend-architecture spec's banner-on-every-screen requirement and two manual paragraphs.
+Implementing directly from the design artifact (no grill→propose) meant nothing forced the spec
+delta until a grep for "banner" found it; the openspec workflow would have surfaced it at
+proposal time. The manual's screenshots still show the old banner — text updated, images not.
+And the chip's accessible name ("This machine — owner · no sign-in") broke four e2e tests at CI:
+Playwright's default GetByLabel is a substring match, so a shell-level label containing "owner"
+collided with the connector form's Owner input on every screen — fixed by exact-matching the
+form locators, a third e2e-tier surprise this week after the two lifecycle misreads.
+
+**One change next time:** when implementing from a design artifact instead of an OpenSpec
+change, grep `openspec/specs/` for the surface being replaced FIRST — the requirement that
+contradicts the design is the real proposal document, and finding it early is the difference
+between a spec delta and a spec contradiction. And when adding an always-present labelled
+element to the shell, grep the e2e suite for loose GetByLabel/GetByRole substrings its name can
+newly match — the collision is deterministic, so it can be found before CI does.

@@ -172,9 +172,71 @@ export const en = {
   "run.execution.localOutput": "Local branch — no pull request; review it in your editor.",
   "run.execution.podOutput": "Pull request — see Details.",
 
-  // The self-host posture, stated on every screen while it applies (#211, mock 3d).
-  "shell.localOwner":
-    "Running as local owner — every action is administrator, no sign-in. Trusted networks only.",
+  // The self-host posture as an environment chip (design review 5a) — the permanent banner
+  // treated the primary mode as an anomaly; the chip states the facts once, in the sidebar's
+  // footer, and the popover carries the warning said well.
+  "env.thisMachine": "This machine",
+  "env.ownerNoSignIn": "owner · no sign-in",
+  "env.selfHostedTitle": "Self-hosted on this machine",
+  "env.identity": "Identity",
+  "env.identityValue": "Local owner — every action is admin",
+  "env.listeningOn": "Listening on",
+  "env.agentPods": "Agent pods",
+  "env.viewPods": "View Agent pods",
+  "env.networkWarning": "Keep this port off the internet — there is no sign-in to stop anyone.",
+  // The banner that remains (5a): the real hazard, not the posture. Shown only when the page
+  // was reached from another machine while every caller is the administrator.
+  "env.exposedBanner":
+    "Reached from another machine with no sign-in — anyone who can reach this port is the administrator. Keep it on trusted networks, or bind it to localhost.",
+  "env.exposedDismiss": "Dismiss for this session",
+
+  // The Agent pods panel (design review 5b/5c): what `docker ps` shows, joined to the Runs it
+  // is actually about. Local pods now, remote declared as coming.
+  "pods.title": "Agent pods",
+  "pods.heading": "Agent pods",
+  "pods.onThisMachine": "on this machine",
+  "pods.loading": "Loading…",
+  "pods.error": "Could not load the Agent pods.",
+  "pods.notHosted":
+    "This deployment does not execute Runs in pods on this machine, so there is nothing to watch here.",
+  "pods.empty": "No pods right now. A dispatched Run appears here while it waits and executes.",
+  "pods.checking": "Checking…",
+  "pods.dockerReady": "Docker ready",
+  "pods.dockerDown": "Docker unreachable",
+  "pods.imageMissing": "Image not built",
+  // Mid-sentence, before the linked Story id: "Phoenix · Run #491".
+  "pods.run": "Run",
+  "pods.waitsForSlot": "waits for a slot",
+  "pods.concurrency": "Concurrency",
+  "pods.concurrency.one": "pod at a time",
+  "pods.concurrency.other": "pods at a time",
+  "pods.concurrencyNote": "this machine's setting — remote pods lift it",
+  "pods.remoteTitle": "Remote pods",
+  "pods.remoteComing": "coming",
+  "pods.remoteNote": "The same Runs, dispatched to cloud infrastructure. Nothing here changes.",
+  // The rule the not-ready card leads with (5c): the Run never fails for absent infrastructure.
+  "pods.unavailableTitle": "Agent pods unavailable — Docker isn't reachable",
+  "pods.unavailableBody":
+    "The Run stays Queued and dispatches on its own once pods are back. Nothing is lost.",
+  "pods.imageMissingTitle": "The pod image isn't built yet",
+  "pods.imageMissingBody":
+    "Docker answers, but the Agent image is missing. Runs stay Queued until it exists — build it once and they dispatch on their own.",
+  "pods.try": "Try",
+  // The commands are copy so the panel and the self-hosting guide cannot drift apart silently.
+  "pods.tryCommand.compose": "docker compose up -d",
+  "pods.tryCommand.build":
+    "docker build -f src/root/AiOrchestrator.DispatchWorker/Dockerfile -t aio-dispatch-worker:latest .",
+  // Composed: "Checked 20s · retries every 30s".
+  "pods.checked": "Checked",
+  "pods.retries": "retries every",
+
+  // The queued Run's cross-link (5c): no destructive styling on the Run — the cause lives on
+  // the panel, the Run only points at it.
+  "run.queuedPods": "Waiting for Agent pods —",
+  "run.queuedPods.seeWhy": "see why",
+
+  "ui.copy": "Copy",
+  "ui.copied": "Copied",
 
   // Close the loop (#211, mock 3d): three derived steps, gone once any Run reaches terminal.
   "onboarding.title": "Close the loop on this machine",
@@ -201,6 +263,18 @@ export const en = {
   // #226 — neither allowed nor refused: the vendor will not answer without us performing it.
   "connector.test.unknown": "Not checkable",
   "connector.requiredPermissions": "Grant this token:",
+
+  // BR-010's split, said where the name is typed (design review 5d): the name lives in the
+  // product, the value in the host's environment — with the exact line and a live answer.
+  "secret.envExplainer":
+    "The name lives here; the value lives in the host's environment. Add this line beside your compose file, then restart:",
+  "secret.checking": "Checking whether it resolves…",
+  "secret.resolves": "Resolves on this machine.",
+  "secret.notYet": "Doesn't resolve yet — add it to the environment and restart compose.",
+  "secret.looksLikeToken":
+    "This looks like the token itself. The name goes here; the value goes in the environment.",
+  "secret.localNote":
+    "Your working copy is your own — nothing here clones or pushes with this token.",
 
   "connector.healthy": "Connected",
   "connector.unhealthy": "Last poll failed",

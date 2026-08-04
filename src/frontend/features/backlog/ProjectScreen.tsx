@@ -32,6 +32,7 @@ import {
   useWriteStoryLabel,
 } from "./useBacklog";
 import { CodeSourceSection } from "./CodeSourceSection";
+import { SecretNameAside } from "./SecretNameAside";
 import { CloseTheLoopChecklist } from "./CloseTheLoopChecklist";
 import { ApiError } from "@/shared/http/client";
 import { useRememberedPreference } from "@/shared/lib/useRememberedPreference";
@@ -755,13 +756,28 @@ function ConnectorPanel({
                       ? t("connector.accessTokenHint")
                       : t("connector.secretHint")}
                 </p>
+                {/* BR-010 said where it is typed (design review 5d): the exact line to add and
+                    a live "does it resolve?" — only on the self-host posture, where the
+                    Secrets__ vocabulary is true. */}
+                {!pasting && capabilities.data?.hasCodeSource ? (
+                  <SecretNameAside projectId={projectId} name={secretName} />
+                ) : null}
                 {/* Stated where the token is supplied, in the vendor's own words — the names a
-                    person selects while minting one (#226, design D4). */}
+                    person selects while minting one (#226, design D4). A box rather than a
+                    line (5d): the local-folder shape asks for less, and the note saying why
+                    belongs beside the list it shortens. */}
                 {required.data && required.data.scopes.length > 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {t("connector.requiredPermissions")}{" "}
-                    <span className="font-mono">{required.data.scopes.join(" · ")}</span>
-                  </p>
+                  <div className="flex flex-col gap-1 rounded-md border border-border px-3 py-2.5">
+                    <span className="text-xs font-semibold text-muted-foreground">
+                      {t("connector.requiredPermissions")}
+                    </span>
+                    <span className="font-mono text-xs">{required.data.scopes.join(" · ")}</span>
+                    {codeIsLocal ? (
+                      <span className="text-[11px] text-muted-foreground">
+                        {t("secret.localNote")}
+                      </span>
+                    ) : null}
+                  </div>
                 ) : null}
                 {canStore ? (
                   /* The other path as a link, under the field it would replace — a peer control

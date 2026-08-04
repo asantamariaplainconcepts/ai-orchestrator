@@ -300,6 +300,59 @@ const routes: [string, RegExp, Handler][] = [
       };
     },
   ],
+  // Design review 5b/5c — the pod host. `?podsDown` renders the docker-unreachable state and
+  // `?noImage` the unbuilt image, so both not-ready shapes are reachable without killing docker.
+  [
+    "GET",
+    /^\/api\/pods$/,
+    () => {
+      const search = new URLSearchParams(window.location.search);
+      const down = search.has("podsDown");
+      const noImage = search.has("noImage");
+      return {
+        hosted: true,
+        dockerReady: !down,
+        imagePresent: down ? null : !noImage,
+        checkedAt: at(0.3),
+        retrySeconds: 30,
+        maxConcurrentPods: 1,
+        pods:
+          down || noImage
+            ? []
+            : [
+                {
+                  runId: runs[4]?.id ?? crypto.randomUUID(),
+                  projectId: projectAlpha,
+                  projectName: "Alpha portal",
+                  vendorStoryId: "13",
+                  triggerLabel: "ai:implement",
+                  runtime: "ClaudeCodeHeadless",
+                  executing: true,
+                  sightedAt: at(12),
+                },
+                {
+                  runId: runs[0]?.id ?? crypto.randomUUID(),
+                  projectId: projectAlpha,
+                  projectName: "Alpha portal",
+                  vendorStoryId: "11",
+                  triggerLabel: "ai:estimate",
+                  runtime: "OpenCode",
+                  executing: false,
+                  sightedAt: at(2),
+                },
+              ],
+      };
+    },
+  ],
+  // Design review 5d — the name/value split's live check. Resolves only for the name the
+  // fixture Connector already carries, so both verdicts are reachable by typing.
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/connector\/secret-resolves$/,
+    (_match, _body, params) => ({
+      resolves: params.get("name") === connector.secretName,
+    }),
+  ],
   // #226 — what to grant, for the shape being configured. A local code source asks for less.
   [
     "GET",

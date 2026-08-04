@@ -19,9 +19,11 @@ must do in stable IDs. This one is the tour.
 Everything is scoped to a **Project**: a backlog, its Automations, its Runs, its credentials. A
 project is a name and nothing else at first — the connection comes next.
 
-The banner is the deployment telling you what it is. Where no sign-in is configured, it says so
-plainly rather than pretending: _running as local owner, every action is administrator_. That is
-correct on a machine one person owns and deliberately loud anywhere else.
+The environment chip at the sidebar's foot is the deployment telling you what it is. Where no
+sign-in is configured it says so plainly rather than pretending: _this machine, owner, no
+sign-in_ — and its popover carries the identity, the address, the Agent pods' health and the
+network warning. Reach the page from another machine and a red banner appears instead: on an
+exposed port with no sign-in, anyone who connects is the administrator.
 
 ---
 
@@ -122,10 +124,12 @@ message costs one agent pass, and the conversation says what it has cost.
 
 Two things in every screenshot above belong to the **local habitat**, and they are worth naming.
 
-The banner — _running as local owner, every action is administrator, no sign-in_ — is the deployment
-telling you what it is. Where no sign-in is configured the product says so rather than pretending
-there is security it does not have. The projects list's **Local** badge on _Alpha portal_ is the
-other: that project's code does not come from a clone.
+The environment chip — _this machine, owner · no sign-in_, in the sidebar's foot — is the
+deployment telling you what it is. Where no sign-in is configured the product says so rather
+than pretending there is security it does not have; the chip's popover adds the address, the
+Agent pods' health and the network warning, and links to the **Agent pods** panel — what
+`docker ps` would show, joined to the Runs it is about. The projects list's **Local** badge on
+_Alpha portal_ is the other: that project's code does not come from a clone.
 
 ### A folder instead of a clone
 

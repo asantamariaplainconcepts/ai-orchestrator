@@ -3,6 +3,7 @@ import { Check, X } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { useAutomations } from "@/features/automations/useAutomations";
+import { podsBlocked, usePods } from "@/features/pods/usePods";
 import { RunTranscript, TranscriptSpend } from "./RunTranscript";
 import { ApiError } from "@/shared/http/client";
 import { t, type TranslationKey } from "@/shared/i18n";
@@ -88,6 +89,12 @@ export function RunScreen() {
   const cancellable =
     run !== undefined &&
     ["Queued", "Planning", "AwaitingApproval", "Executing"].includes(run.state);
+
+  // Design review 5c: a pod Run queued while pods cannot take work explains itself with a
+  // pointer, never with destructive styling — the cause lives on the panel, not on the Run.
+  const queuedForPods = run?.state === "Queued" && run.locus === "Pod";
+  const pods = usePods({ enabled: queuedForPods });
+  const waitingForPods = queuedForPods && podsBlocked(pods.data);
 
   return (
     <AppShell
@@ -192,6 +199,14 @@ export function RunScreen() {
               </Badge>
               {/* Mock 3c: locus beside the state, in the vocabulary the projects list uses. */}
               <LocusChip locus={run.locus} />
+              {waitingForPods ? (
+                <span className="text-xs text-muted-foreground">
+                  {t("run.queuedPods")}{" "}
+                  <Link className="text-primary underline-offset-4 hover:underline" to="/pods">
+                    {t("run.queuedPods.seeWhy")}
+                  </Link>
+                </span>
+              ) : null}
             </div>
 
             <RunStepper run={run} />

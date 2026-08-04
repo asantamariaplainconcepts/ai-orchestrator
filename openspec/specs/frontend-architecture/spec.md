@@ -231,18 +231,31 @@ Run locus chip. Locus SHALL never be conveyed by colour alone.
 
 ### Requirement: the local owner is guided from empty to a closed loop
 
-Whenever the current principal is the `local-owner` sentinel, a persistent banner
-(`role="status"`, warning family) SHALL state it on every screen; a signed-in principal SHALL
-remove it. The Operate tab SHALL show a three-step "close the loop" checklist — Connector
+Whenever the current principal is the `local-owner` sentinel, an environment chip in the
+shell's sidebar footer (design review 5a) SHALL state the posture — this machine, owner, no
+sign-in — at every width: chip with popover on desktop and the collapsed rail, a plain section
+in the phone sheet. The popover SHALL carry the identity sentence, the address the page was
+reached at, Agent-pod health where pods are hosted, and the network warning; a signed-in
+principal SHALL remove the chip. The warning banner SHALL be reserved for the real hazard: when
+the page was reached over a non-loopback address while the principal is the local owner, a
+destructive banner (`role="alert"`, dismissible per session) SHALL state it; over loopback no
+banner renders. The Operate tab SHALL show a three-step "close the loop" checklist — Connector
 configured, Automations exist, a Run reached a terminal state — derived live from the connector,
 automations and runs read models with no stored progress, and SHALL never render again once any
 Run in the project has reached a terminal state. The checklist's third step SHALL offer the
 set-up-defaults action (#212) once that action exists; until then it SHALL guide without it.
 
-#### Scenario: the banner keys on the principal
+#### Scenario: the chip keys on the principal
 
 - **WHEN** the principal is the local-owner sentinel
-- **THEN** the banner is present on every screen; with a signed-in principal it is absent
+- **THEN** the environment chip is present in the shell at every width; with a signed-in
+  principal it is absent
+
+#### Scenario: the banner is reserved for exposure
+
+- **WHEN** the page is reached over a non-loopback address with the local-owner principal
+- **THEN** a destructive banner states the hazard, dismissible for the session; reached over
+  loopback, no banner renders and the chip alone carries the posture
 
 #### Scenario: a closed loop retires the checklist permanently
 

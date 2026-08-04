@@ -3,6 +3,7 @@ using Azure.Identity;
 using Azure.Storage.Queues;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace AiOrchestrator.ServiceDefaults.Dispatch;
@@ -82,6 +83,19 @@ public static class DispatchComposition
 
         builder.Services.AddSingleton(PodOptions(builder, podImage));
         builder.Services.AddSingleton<IDispatchedRunHandler, PodRunLauncher>();
+
+        // The pod host becomes observable the moment it exists (design review 5b/5c): the ledger
+        // the launcher writes sightings into, the probe that asks docker on the panel's cadence,
+        // and the monitor registration the panel's endpoint reads. Registered after the module's
+        // unhosted default, deliberately — the later registration is the one that resolves, so a
+        // habitat with pods answers with them and every other habitat keeps the honest "not
+        // hosted here".
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<AgentPodsHost>();
+        builder.Services.AddSingleton<IAgentPodsMonitor>(provider =>
+            provider.GetRequiredService<AgentPodsHost>()
+        );
+        builder.Services.AddHostedService<AgentPodsProbe>();
         return builder;
     }
 

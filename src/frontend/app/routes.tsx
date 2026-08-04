@@ -4,6 +4,7 @@ import { StoryScreen } from "@/features/backlog/StoryScreen";
 import { RunScreen } from "@/features/runs/RunScreen";
 import { ProjectsScreen } from "@/features/projects/ProjectsScreen";
 import { InboxScreen } from "@/features/inbox/InboxScreen";
+import { PodsScreen } from "@/features/pods/PodsScreen";
 
 /** Thin route wiring only — screens and their data live in feature slices. */
 export function AppRoutes() {
@@ -14,6 +15,9 @@ export function AppRoutes() {
       <Route path="/" element={<Navigate to="/projects" replace />} />
       <Route path="/projects" element={<ProjectsScreen />} />
       <Route path="/inbox" element={<InboxScreen />} />
+      {/* Machine-scoped, not project-scoped (design review 5b) — reached from the environment
+          chip, which is where "this machine" already lives in the shell. */}
+      <Route path="/pods" element={<PodsScreen />} />
       <Route path="/projects/:projectId" element={<ProjectScreen />} />
       <Route path="/projects/:projectId/stories/:vendorStoryId" element={<StoryScreen />} />
       <Route path="/projects/:projectId/runs/:runId" element={<RunScreen />} />

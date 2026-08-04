@@ -113,7 +113,9 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         await page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 })
             .WaitForAsync(new() { Timeout = 30_000 });
 
-        await page.GetByLabel("Owner").FillAsync("acme");
+        // Exact: the shell's environment chip is labelled "This machine — owner · no sign-in",
+        // which a substring "Owner" match also resolves to (design review 5a).
+        await page.GetByLabel("Owner", new() { Exact = true }).FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
         await page.GetByRole(AriaRole.Button, new() { Name = "Name an existing secret instead" })
             .ClickAsync();
@@ -158,7 +160,7 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         await page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 })
             .WaitForAsync(new() { Timeout = 30_000 });
 
-        await page.GetByLabel("Owner").FillAsync("acme");
+        await page.GetByLabel("Owner", new() { Exact = true }).FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
         // Pasting is the form's default (#124); this habitat has no writable store, so these
         // tests take the path that names a secret the environment already supplies.
@@ -211,7 +213,7 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}");
         await page.GetByRole(AriaRole.Heading, new() { Name = "Connector", Level = 2 })
             .WaitForAsync(new() { Timeout = 30_000 });
-        await page.GetByLabel("Owner").FillAsync("acme");
+        await page.GetByLabel("Owner", new() { Exact = true }).FillAsync("acme");
         await page.GetByLabel("Repository").FillAsync("portal");
         // Pasting is the form's default (#124); this habitat has no writable store, so these
         // tests take the path that names a secret the environment already supplies.
