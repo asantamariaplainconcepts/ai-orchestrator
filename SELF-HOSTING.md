@@ -15,8 +15,8 @@ cp .env.example .env    # set POSTGRES_PASSWORD to anything; SERVER_PORT if 8080
 docker compose up
 ```
 
-The first start pulls the images (no build — there is no Dockerfile in this repository). When it
-settles, open `http://localhost:8080` (or your `SERVER_PORT`).
+The first start pulls the images (no build — no Dockerfile backs any image this compose runs).
+When it settles, open `http://localhost:8080` (or your `SERVER_PORT`).
 
 Then close the loop:
 

@@ -1,6 +1,10 @@
 # The conversation session's image (#166). Its own, not the dispatch worker's: this one serves HTTP
 # and holds a warm checkout for the length of one conversation, while that one drains a queue and
 # exits. Sharing an image would mean one entrypoint pretending to be two processes.
+#
+# The one Dockerfile left standing after #257: it bakes OS packages and global agent CLIs below —
+# RUN steps the SDK's container publish cannot express — and it belongs to the Azure path
+# (infra/deploy.sh), never to the self-host compose, whose images are all SDK-published.
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 

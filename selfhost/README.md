@@ -13,9 +13,9 @@ to `latest`; pin a specific build by setting `AIO_IMAGE_TAG=<commit-sha>` in you
 dashboard).
 
 `docker-compose.yaml` is **generated** from the AppHost (`./scripts/generate-compose.sh`); do not
-hand-edit it — CI's drift gate compares the two. No Dockerfile exists in this repository: images
-are produced by the .NET SDK's container publish (`dotnet publish /t:PublishContainer`), with the
-SPA built into the server's `wwwroot` first (`pnpm build`).
+hand-edit it — CI's drift gate compares the two. No Dockerfile backs any image this compose runs:
+they are produced by the .NET SDK's container publish (`dotnet publish /t:PublishContainer`), with
+the SPA built into the server's `wwwroot` first (`pnpm build`).
 
 ## What this habitat can and cannot do
 

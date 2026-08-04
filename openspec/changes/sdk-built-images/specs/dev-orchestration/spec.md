@@ -8,7 +8,7 @@ The repository SHALL carry a generated docker-compose description of the full sy
 migrations, worker, database, queue emulator — runnable on a machine with only Docker and git,
 contacting no cloud service beyond public image registries. The images SHALL be published to a
 public registry by CI on merge to the default branch, tagged by commit SHA, and produced by the
-toolchain's own container publish (no Dockerfile in the repository). The compose SHALL be
+toolchain's own container publish — no Dockerfile backs a self-host image. The compose SHALL be
 generated from the same composition development runs, and CI SHALL fail when the committed
 artifact drifts from it. The quickstart SHALL require no AI credential and SHALL build no image
 locally: the default runtime is the free model, and the only secret anywhere is the operator's
@@ -31,12 +31,14 @@ own vendor PAT, provided as configuration.
 - **WHEN** the AppHost's composition changes without regenerating the compose
 - **THEN** CI fails naming the drift
 
-#### Scenario: no Dockerfile owns build knowledge
+#### Scenario: no Dockerfile owns a self-host image
 
 - **WHEN** the repository is searched for Dockerfiles
-- **THEN** none exist — every image is declared through the toolchain's publish path, and the
-  facts the old Dockerfiles carried (base image, non-root, the SPA in `wwwroot`, socket access
-  for pods) are expressed in project files, the AppHost, or code
+- **THEN** none backs any image the generated compose runs — every self-host image is declared
+  through the toolchain's publish path, and the facts the old Dockerfiles carried (base image,
+  non-root, the SPA in `wwwroot`, socket access for pods) are expressed in project files, the
+  AppHost, or code. An image that bakes OS packages the SDK cannot express (the conversation
+  session's agent CLIs, Azure path) keeps its Dockerfile, with the reason written in it
 
 ### Requirement: the compose output is declared beside the resource it describes
 
