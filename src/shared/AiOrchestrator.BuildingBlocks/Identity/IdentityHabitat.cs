@@ -37,4 +37,21 @@ public static class IdentityHabitat
     /// </summary>
     public static bool IsSelfHost(IConfiguration configuration) =>
         string.Equals(configuration[ModeKey], "LocalOwner", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// The habitat's own declaration that a folder on the operator's machine is NOT reachable
+    /// from this process (#247) — set by the compose self-host composition, where the Server is
+    /// a container and the folder lives on the host. A sentence, not a flag: the capability
+    /// read, the save refusal and the Run refusal all carry it verbatim, so the three sites
+    /// cannot drift. Declared, never inferred (ADR-0010): only the composition knows whether an
+    /// operator deliberately mounted something.
+    /// </summary>
+    public const string LocalFolderUnavailableReasonKey = "Habitat:LocalFolderUnavailableReason";
+
+    /// <summary>Null where the locus is available — the dev loop declares nothing.</summary>
+    public static string? LocalFolderUnavailableReason(IConfiguration configuration)
+    {
+        var reason = configuration[LocalFolderUnavailableReasonKey];
+        return string.IsNullOrWhiteSpace(reason) ? null : reason.Trim();
+    }
 }

@@ -45,7 +45,15 @@ sealed class GetDeploymentCapabilities : IUseCase
                             CanStoreSecret: secrets is not UnavailableSecretStore,
                             // The remedy the store itself names, so the portal states how to gain
                             // the option rather than only that it is missing.
-                            StoreRemedy: (secrets as UnavailableSecretStore)?.Remedy
+                            StoreRemedy: (secrets as UnavailableSecretStore)?.Remedy,
+                            // The Local locus, as the habitat declares it (#247): self-host with
+                            // no declared reason offers it; compose self-host declares why not.
+                            CanUseLocalFolder: IdentityHabitat.IsSelfHost(configuration)
+                                && IdentityHabitat.LocalFolderUnavailableReason(configuration)
+                                    is null,
+                            LocalFolderReason: IdentityHabitat.LocalFolderUnavailableReason(
+                                configuration
+                            )
                         )
                     )
             )
@@ -58,6 +66,15 @@ sealed class GetDeploymentCapabilities : IUseCase
     /// <summary>
     /// <paramref name="StoreRemedy"/> is non-null exactly when <paramref name="CanStoreSecret"/>
     /// is false — the sentence the unavailable store carries about how to gain the ability.
+    /// <paramref name="LocalFolderReason"/> follows the same pattern for the Local locus (#247):
+    /// the declared sentence, present exactly where <paramref name="CanUseLocalFolder"/> is
+    /// false on a self-host deployment.
     /// </summary>
-    internal sealed record Response(bool HasCodeSource, bool CanStoreSecret, string? StoreRemedy);
+    internal sealed record Response(
+        bool HasCodeSource,
+        bool CanStoreSecret,
+        string? StoreRemedy,
+        bool CanUseLocalFolder,
+        string? LocalFolderReason
+    );
 }

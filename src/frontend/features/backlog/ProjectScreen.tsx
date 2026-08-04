@@ -575,7 +575,7 @@ function ConnectorPanel({
 
   // A local folder makes the code repository inapplicable: a local Run leaves a branch and opens
   // no pull request (#220, design D3). Hidden and cleared are one act — see submit().
-  const codeIsLocal = Boolean(capabilities.data?.hasCodeSource) && codeSource === "LocalFolder";
+  const codeIsLocal = Boolean(capabilities.data?.canUseLocalFolder) && codeSource === "LocalFolder";
 
   /**
    * The disclosure's open state is derived, never remembered (design D1): open where the stored
@@ -627,9 +627,11 @@ function ConnectorPanel({
         promptDirectory: promptDirectory.trim() ? promptDirectory.trim() : null,
         // Sent only where the surface exists: a cloud deployment never renders the control, and
         // null keeps the API's default so pre-#210 behaviour is untouched.
-        codeSource: capabilities.data?.hasCodeSource ? codeSource : null,
+        // Sent only where the locus can succeed (#247): a habitat that withheld the local
+        // folder never posts one, whatever stale state the form carried.
+        codeSource: capabilities.data?.canUseLocalFolder ? codeSource : null,
         localPath:
-          capabilities.data?.hasCodeSource && codeSource === "LocalFolder" && localPath.trim()
+          capabilities.data?.canUseLocalFolder && codeSource === "LocalFolder" && localPath.trim()
             ? localPath.trim()
             : null,
       },
@@ -858,6 +860,7 @@ function ConnectorPanel({
                     onCodeSource={setCodeSource}
                     localPath={localPath}
                     onLocalPath={setLocalPath}
+                    localFolderReason={capabilities.data.localFolderReason}
                   />
                 ) : null}
               </div>

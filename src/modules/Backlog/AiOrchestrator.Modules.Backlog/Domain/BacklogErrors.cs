@@ -86,6 +86,13 @@ static class BacklogErrors
         );
 
     /// <summary>
+    /// The habitat is self-host but its composition declared the folder unreachable (#247) —
+    /// the declared sentence travels verbatim, the same one the capabilities read carries.
+    /// </summary>
+    public static Error LocalFolderUnavailable(string reason) =>
+        Error.Validation("Connector.LocalFolderUnavailable", reason);
+
+    /// <summary>
     /// The vendor answered, and the answer was "this credential may not do that" (#132, design
     /// D3). Distinct from <see cref="VendorUnavailable"/>, which claims the vendor could not be
     /// reached — false whenever it replied, and the sentence that made a missing Contents

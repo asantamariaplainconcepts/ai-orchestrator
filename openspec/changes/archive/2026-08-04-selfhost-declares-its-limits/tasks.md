@@ -1,0 +1,26 @@
+## 1. The declared fact
+
+- [x] 1.1 Configuration key (`Habitat:LocalFolderUnavailableReason`) read in one place; the
+      capabilities response gains `CanUseLocalFolder` + `LocalFolderReason` (design D2)
+- [x] 1.2 The AppHost publish composition sets the reason on the Server; regenerate
+      `selfhost/docker-compose.yaml` (design D1, the #225 drift lesson)
+- [x] 1.3 Functional tests: declared → withheld with reason; undeclared → offered as today
+
+## 2. The two doors
+
+- [x] 2.1 `ConfigureConnector` refuses a `LocalFolder` save in a declaring habitat, naming the
+      reason (design D3)
+- [x] 2.2 `RunCreator` refuses a Local-locus resolution in a declaring habitat, naming the reason
+- [x] 2.3 Functional tests: the save refusal, the pre-existing-Connector Run refusal, and the
+      dev-loop unchanged path
+
+## 3. The surface
+
+- [x] 3.1 The code-source section reads the new capability; the local option is withheld and the
+      reason shown in its place; i18n entries (aio-design skill)
+
+## 4. Docs and proof
+
+- [x] 4.1 DEC-049 self-host docs state what compose self-host cannot do and why, and that an
+      operator who mounts and unsets the declaration owns the consequence
+- [x] 4.2 Full gates: build, tests, lint, spec validation, design validator, compose-drift

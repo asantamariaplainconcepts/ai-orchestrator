@@ -1,10 +1,12 @@
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Contracts;
 using AiOrchestrator.Modules.Runs.Domain;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Npgsql;
 
@@ -26,6 +28,7 @@ sealed class RunCreator(
     ILocalCodeWorkspace localWorkspace,
     RunsOptions options,
     TimeProvider clock,
+    IConfiguration configuration,
     ILogger<RunCreator> logger
 )
 {
@@ -69,6 +72,17 @@ sealed class RunCreator(
                 "This project's code is a folder on this machine, which an Agent pod cannot "
                     + "see — runs of this project execute locally."
             );
+        }
+
+        // The habitat's own declaration (#247): a Connector stored before the declaration — or
+        // around the portal — still cannot produce a Local Run where the composition says the
+        // folder is unreachable. The declared sentence, never a container path error later.
+        if (
+            locus == RunLocus.Local
+            && IdentityHabitat.LocalFolderUnavailableReason(configuration) is { } declared
+        )
+        {
+            return Refused(declared);
         }
 
         // BR-016, refused before any write (the BR-001 pattern): a Local run must start from a

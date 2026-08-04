@@ -20,12 +20,15 @@ export function CodeSourceSection({
   onCodeSource,
   localPath,
   onLocalPath,
+  localFolderReason,
 }: {
   projectId: string;
   codeSource: string;
   onCodeSource: (value: string) => void;
   localPath: string;
   onLocalPath: (value: string) => void;
+  /** Non-null where the habitat declared the Local locus unavailable (#247). */
+  localFolderReason?: string | null;
 }) {
   const validate = useValidateLocalPath(projectId);
   const health = useConnectorHealth();
@@ -44,6 +47,21 @@ export function CodeSourceSection({
     // validate is a stable mutation handle; listing it would re-arm the timer on every render.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [local, localPath]);
+
+  // The habitat withheld the locus (#247): the radiogroup never renders a choice that cannot
+  // succeed here, and the declared sentence stands where it would have been — "no pipeline
+  // here" and "this control is broken" must not look identical. After the hooks, because a
+  // hook behind an early return is a different component on every render.
+  if (localFolderReason) {
+    return (
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium">{t("connector.codeSource")}</span>
+        <p className="text-xs text-muted-foreground" role="note">
+          {t("connector.codeSource.unavailable")} {localFolderReason}
+        </p>
+      </div>
+    );
+  }
 
   /**
    * Recent folders: paths other visible projects already configured (mock 3a #4). Derived from

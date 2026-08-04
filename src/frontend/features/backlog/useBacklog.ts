@@ -112,6 +112,10 @@ export interface DeploymentCapabilities {
   canStoreSecret: boolean;
   /** Non-null exactly when it cannot: how to gain the ability, in the store's own words. */
   storeRemedy: string | null;
+  /** Whether a folder on this machine is reachable from the executing process (#247). */
+  canUseLocalFolder: boolean;
+  /** The habitat's declared reason where it is not — shown where the choice would be offered. */
+  localFolderReason: string | null;
 }
 
 /**
