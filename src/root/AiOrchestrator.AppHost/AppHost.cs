@@ -185,6 +185,17 @@ else
             + "visible to it — local folders need the dev loop, where the server is a process "
             + "on this machine"
     );
+
+    // Runs execute in pods here (#246): the Server's own image carries no agent CLI on purpose
+    // — fattening it was rejected at grill — so each Run gets a container from the worker image
+    // instead. Named here, and honestly incomplete by default: without the docker socket (the
+    // operator's explicit grant, root-equivalent, made in their own compose override) a Run
+    // fails naming exactly that. A named failure beats a silent in-process fallback that would
+    // erase the isolation the operator asked for. selfhost/README.md carries the grant.
+    server.WithEnvironment("Dispatch__PodImage", "aio-dispatch-worker:latest");
+    // `docker compose` prefixes networks with the project name, which defaults to the
+    // directory: selfhost/. An operator running with -p overrides this too.
+    server.WithEnvironment("Dispatch__PodNetwork", "selfhost_aspire");
 }
 
 await builder.Build().RunAsync();

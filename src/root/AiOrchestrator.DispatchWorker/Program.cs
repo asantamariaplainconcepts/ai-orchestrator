@@ -18,6 +18,41 @@ using Microsoft.Extensions.Logging;
 // (IRunExecutor) — the worker adds claiming and process lifetime, never Run semantics.
 var builder = Host.CreateApplicationBuilder(args);
 
+// The per-Run entry mode (#246): `--run <id>` executes exactly that Run and exits — the pod
+// arrangement's whole contract, and no queue is read or even configured. The id is parsed
+// before composition because a pod started with garbage should die naming it, not compose a
+// host first.
+Guid? singleRun = null;
+var runFlag = Array.IndexOf(args, "--run");
+if (runFlag >= 0)
+{
+    if (runFlag + 1 >= args.Length || !Guid.TryParse(args[runFlag + 1], out var parsed))
+    {
+        Console.Error.WriteLine("--run requires a Run id (a GUID). Usage: --run <id>");
+        return 64;
+    }
+
+    singleRun = parsed;
+}
+
+// Refuse to start without the database — checked BEFORE anything composes, because a missing
+// connection string thrown from inside composition proved able to leave the process alive and
+// spinning after the unhandled exception (#246, observed): a pod that hangs instead of exiting
+// non-zero holds a cap slot forever. Exit 69 (EX_UNAVAILABLE), deterministically.
+//
+// This asserts configuration, not reachability: a wrong password still fails later, at the
+// first query. Claiming needs only the queue, so a worker missing its connection string is
+// worse than a broken one — it would take messages, execute nothing, and exit zero (#90).
+if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("aiorchestratordb")))
+{
+    Console.Error.WriteLine(
+        "The dispatch worker has no 'aiorchestratordb' connection string. Executing a Run is "
+            + "database work, so the worker needs it exactly as the portal does — set "
+            + "ConnectionStrings__aiorchestratordb (or the SecretName variant on the job)."
+    );
+    return 69;
+}
+
 // The worker never polls the backlog; the portal host owns that. Set before module Add()s read
 // configuration.
 builder.Configuration["Backlog:PollingEnabled"] = "false";
@@ -25,7 +60,12 @@ builder.Configuration["Backlog:PollingEnabled"] = "false";
 builder.AddServiceDefaults();
 builder.AddSecretResolution();
 builder.AddIntegrationEvents();
-builder.AddRunDispatchReader();
+if (singleRun is null)
+{
+    // The queue reader exists to drain a queue, and the per-Run mode has none: a pod habitat
+    // dispatches through the outbox, and this process receives its one Run id as an argument.
+    builder.AddRunDispatchReader();
+}
 builder.AddAgentRuntime();
 builder.AddCodeWorkspace();
 builder.AddLocalCodeWorkspace();
@@ -37,21 +77,20 @@ using var host = builder.Build();
 
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("DispatchWorker");
 
-// Refuse to start without the database. Claiming needs only the queue, so a worker missing its
-// connection string is worse than a broken one: it takes messages, cannot execute them, and
-// exits zero — Runs orphaned in Queued while the job reports success and BR-004 forbids any
-// retry (#90). A job that fails loudly on its first execution is recoverable; a silent shredder
-// is not.
-//
-// This asserts configuration, not reachability: a wrong password still fails later, at the first
-// query. It is the precondition that was actually missing, checked where it is cheap.
-if (string.IsNullOrWhiteSpace(builder.Configuration.GetConnectionString("aiorchestratordb")))
+if (singleRun is { } runId)
 {
-    throw new InvalidOperationException(
-        "The dispatch worker has no 'aiorchestratordb' connection string. Executing a Run is "
-            + "database work, so the worker needs it exactly as the portal does — set "
-            + "ConnectionStrings__aiorchestratordbSecretName on the job."
-    );
+    WorkerLog.Claimed(logger, runId);
+
+    await using (var scope = host.Services.CreateAsyncScope())
+    {
+        // Exit 0 means "execution happened" — the Run's own state carries success or failure
+        // (#246 design D4). A failed Run is a completed execution; only a throw (no database,
+        // no runtime) reaches the caller as non-zero, and BR-004 forbids retrying on it.
+        var executor = scope.ServiceProvider.GetRequiredService<IRunExecutor>();
+        await executor.Execute(runId);
+    }
+
+    return 0;
 }
 
 var reader = host.Services.GetRequiredService<DispatchQueueReader>();
@@ -113,7 +152,7 @@ var repeatInterval = builder.Configuration.GetValue<int?>("Dispatch:LocalPollSec
 if (repeatInterval is null or <= 0)
 {
     WorkerLog.PassComplete(logger, await DrainOnce());
-    return;
+    return 0;
 }
 
 using var passes = new PeriodicTimer(TimeSpan.FromSeconds(repeatInterval.Value));
@@ -127,6 +166,8 @@ do
         WorkerLog.PassComplete(logger, handled);
     }
 } while (await passes.WaitForNextTickAsync());
+
+return 0;
 
 /// <summary>
 /// Source-generated log delegates. Required by CA1848 rather than chosen — and the event ids are

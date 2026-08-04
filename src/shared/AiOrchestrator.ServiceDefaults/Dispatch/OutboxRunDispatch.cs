@@ -32,9 +32,14 @@ public sealed class OutboxRunDispatcher(ICapPublisher cap) : IRunDispatcher
 /// dispatch worker publishes nothing and must never acquire a consumer, and in a habitat with a
 /// queue the portal must not either — that separation is the credential boundary between the two
 /// processes.
+/// <para>
+/// Since #246 the consumer claims and hands on: WHERE the Run executes — this process, or a pod
+/// of its own — is an <see cref="IDispatchedRunHandler"/> the composition picked. The outbox
+/// stays the durable half either way; the arrangement changes only the execution locus.
+/// </para>
 /// </summary>
 public sealed class OutboxRunSubscriber(
-    IServiceProvider services,
+    IDispatchedRunHandler handler,
     ILogger<OutboxRunSubscriber> logger
 ) : ICapSubscribe
 {
@@ -42,7 +47,18 @@ public sealed class OutboxRunSubscriber(
     public async Task Handle(Guid runId, CancellationToken cancellationToken)
     {
         DispatchLog.Claimed(logger, runId);
+        await handler.Handle(runId, cancellationToken);
+    }
+}
 
+/// <summary>
+/// Today's arrangement, named: the Run executes in this process. Kept as the default and as the
+/// only option where no pod image is configured — nothing about #225's habitat changes.
+/// </summary>
+public sealed class InProcessRunHandler(IServiceProvider services) : IDispatchedRunHandler
+{
+    public async Task Handle(Guid runId, CancellationToken cancellationToken)
+    {
         // A scope per Run, for the reason the worker's own loop gives: the executor takes
         // DbContexts, and one Run's failure must not leak tracked state into the next.
         await using var scope = services.CreateAsyncScope();
@@ -50,7 +66,7 @@ public sealed class OutboxRunSubscriber(
 
         // Nothing is guarded here on purpose. A redelivery — after a crash, or for a Run the
         // reaper has since terminated — is answered by the executor's own state check, which
-        // logs and returns for anything not awaiting execution. One guard, on both substrates.
+        // logs and returns for anything not awaiting execution. One guard, on all substrates.
         await executor.Execute(runId, cancellationToken);
     }
 }

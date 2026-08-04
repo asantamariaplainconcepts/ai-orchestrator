@@ -32,6 +32,12 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 WORKDIR /app
 COPY --from=build /app .
 
+# The docker CLIENT only (#246): the pod arrangement starts a container per Run through
+# whatever socket the operator mounted, and the launcher speaks through this binary. One static
+# file — not the agent CLIs the grill refused to fatten this image with — and inert until the
+# operator grants the socket in their own override.
+COPY --from=docker.io/docker:29-cli /usr/local/bin/docker /usr/local/bin/docker
+
 # Non-root: the container needs no write access to its own filesystem.
 USER $APP_UID
 EXPOSE 8080

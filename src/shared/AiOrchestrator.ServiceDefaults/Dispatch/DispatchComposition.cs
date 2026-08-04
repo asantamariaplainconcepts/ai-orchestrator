@@ -68,7 +68,103 @@ public static class DispatchComposition
 
         RequireOutbox(builder);
         builder.Services.AddSingleton<OutboxRunSubscriber>();
+
+        // WHERE the claimed Run executes (#246, design D1/D2): a pod image named in
+        // configuration selects the pod launcher; nothing named keeps in-process execution —
+        // presence of configuration, never an environment name (ADR-0010), exactly as the
+        // queue/outbox split above.
+        var podImage = builder.Configuration.GetValue<string?>(PodImageKey);
+        if (string.IsNullOrWhiteSpace(podImage))
+        {
+            builder.Services.AddSingleton<IDispatchedRunHandler, InProcessRunHandler>();
+            return builder;
+        }
+
+        builder.Services.AddSingleton(PodOptions(builder, podImage));
+        builder.Services.AddSingleton<IDispatchedRunHandler, PodRunLauncher>();
         return builder;
+    }
+
+    /// <summary>Naming the worker image is what opts a habitat into pods (#246, design D2).</summary>
+    public const string PodImageKey = "Dispatch:PodImage";
+
+    /// <summary>
+    /// Everything a pod receives, decided here — the launcher knows containers, never habitats.
+    /// The database travels because the worker reads the Run from it; the secret store paths
+    /// travel when this host has them (BR-010's resolution happens inside the pod); the model
+    /// configuration travels so the pod's runtime is the one the Automation named.
+    /// </summary>
+    static PodLaunchOptions PodOptions(IHostApplicationBuilder builder, string image)
+    {
+        var configuration = builder.Configuration;
+
+        var environment = new Dictionary<string, string>();
+
+        // An explicit pod-side connection string wins: on a developer machine the host's own
+        // value says "localhost", which inside a container is the container. The compose network
+        // needs no rewrite, so there the host's value is the pod's.
+        var database =
+            configuration.GetValue<string?>("Dispatch:PodDatabaseConnectionString")
+            ?? configuration.GetConnectionString("aiorchestratordb");
+        environment["ConnectionStrings__aiorchestratordb"] = database!;
+
+        foreach (
+            var key in (string[])
+                [
+                    "Secrets:LocalStorePath",
+                    "Secrets:LocalKeyRingPath",
+                    "Agents:OpenCode:Model",
+                    "Agents:OpenCode:CredentialSecretName",
+                    "Agents:ClaudeCodeHeadless:CredentialSecretName",
+                ]
+        )
+        {
+            if (configuration.GetValue<string?>(key) is { } value)
+            {
+                environment[key.Replace(":", "__")] = value;
+            }
+        }
+
+        var mounts = new List<string>(
+            configuration.GetSection("Dispatch:PodMounts").Get<string[]>() ?? []
+        );
+
+        // The host's sessions, by deliberate default (#246 grill, design D5): pod Runs act and
+        // bill as those sessions, and the off switch is one key. The source is the HOST's home —
+        // the docker daemon resolves -v paths on the host — so a containerised Server needs the
+        // operator to name it; a process host can name its own.
+        if (configuration.GetValue("Dispatch:PodSessions", defaultValue: true))
+        {
+            var home =
+                configuration.GetValue<string?>("Dispatch:PodSessionsHome")
+                ?? (
+                    OperatingSystem.IsWindows()
+                        ? null
+                        : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+                );
+
+            if (!string.IsNullOrWhiteSpace(home))
+            {
+                // The observed set (#246 tasks 3.1): opencode keeps its credentials in
+                // ~/.local/share/opencode/auth.json — NOT in ~/.config/opencode, which holds
+                // agents and commands — so both travel. Read-only, per the same observation;
+                // note it also found that macOS Docker Desktop can refuse a dot-directory bind
+                // outright (Permission denied as root), so a host where these mounts fail needs
+                // Dispatch:PodSessions=false and named secrets instead.
+                mounts.Add($"{home}/.config/opencode:/root/.config/opencode:ro");
+                mounts.Add($"{home}/.local/share/opencode:/root/.local/share/opencode:ro");
+                mounts.Add($"{home}/.claude:/root/.claude:ro");
+            }
+        }
+
+        return new PodLaunchOptions
+        {
+            Image = image,
+            Network = configuration.GetValue<string?>("Dispatch:PodNetwork"),
+            Environment = environment,
+            Mounts = mounts,
+            MaxConcurrentPods = configuration.GetValue("Dispatch:MaxConcurrentPods", 2),
+        };
     }
 
     static bool HasQueue(IHostApplicationBuilder builder) =>
