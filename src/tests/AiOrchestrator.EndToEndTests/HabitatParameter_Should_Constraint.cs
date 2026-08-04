@@ -62,7 +62,8 @@ public class HabitatParameter_Should_Constraint
         // The same set the generated compose carries (#246, #247) — one method, both routes,
         // so the rehearsal and the artifact cannot drift.
         environment["Identity__Mode"].ShouldBe("LocalOwner");
-        environment["Dispatch__PodImage"].ShouldBe("aio-dispatch-worker:latest");
+        environment["Dispatch__PodImage"]
+            .ShouldBe("ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest");
         environment["Habitat__LocalFolderUnavailableReason"].ShouldContain("container");
         // …and none of the dev loop's: an operator's first boot has no demo project.
         environment.ShouldNotContainKey("LocalLoop:Seed");
