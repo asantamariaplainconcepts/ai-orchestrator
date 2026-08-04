@@ -137,8 +137,49 @@ if (builder.ExecutionContext.IsRunMode)
 {
     server.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
 
+    // Which declaration set run mode applies (#250): `local` is the dev loop, `server`
+    // rehearses the operator's shape without `docker compose up`. Read from configuration
+    // (`dotnet user-secrets set Parameters:habitat server`) rather than AddParameter on
+    // purpose (design D1): a parameter *resource* would materialise in publish output, and
+    // this value must never reach the artifact — publishing always emits the server shape.
+    var habitat = builder.Configuration["Parameters:habitat"] ?? "local";
+
+    switch (habitat)
+    {
+        case "local":
+            DeclareDevLoop(server);
+            break;
+        case "server":
+            DeclareServerShape(server);
+            break;
+        default:
+            // The queue/outbox rule (DEC-054): ambiguity refuses where a person is watching,
+            // never defaults silently — a rehearsal of the wrong shape teaches wrong lessons.
+            throw new InvalidOperationException(
+                $"Parameters:habitat is '{habitat}', which is not a habitat. Valid values: "
+                    + "'local' (the dev loop — seeder, local secret store, Local locus) and "
+                    + "'server' (the compose shape — pods, no seeder, Local locus declared out)."
+            );
+    }
+}
+else
+{
+    // Publishing IS the server shape — no parameter, no branch: the artifact cannot carry a
+    // habitat choice, only declarations (ADR-0010).
+    DeclareServerShape(server);
+}
+
+await builder.Build().RunAsync();
+return;
+
+// The dev loop: a machine one person owns, worked on from the keyboard. Everything here exists
+// to make the first `aspire run` clickable and the local loop exercisable.
+static void DeclareDevLoop(IResourceBuilder<ProjectResource> server)
+{
     // The demo seeder runs only here (local-agent-loop design D3). No deployed template sets
-    // this, and the seeder refuses without it — a property rather than a promise.
+    // this, and the seeder refuses without it — a property rather than a promise. A dev-loop
+    // declaration, not a run-mode one: rehearsing the server shape means seeing the empty
+    // first boot an operator sees.
     server.WithEnvironment("LocalLoop:Seed", "true");
 
     // `aspire run` is a machine somebody owns, so the person at the keyboard is the owner
@@ -154,19 +195,14 @@ if (builder.ExecutionContext.IsRunMode)
     // Two paths, never one: values and the key that protects them together in one directory is
     // obfuscation, and the host refuses to start that way.
     var secrets = Path.Combine(Path.GetTempPath(), "ai-orchestrator", "secrets");
-    var values = Path.Combine(secrets, "values");
-    var keys = Path.Combine(secrets, "keys");
-
-    // Both processes, not just the one with the form: the worker resolves the same credential
-    // when it executes a Run, and a store only the Server can read would make a pasted token
-    // work in the portal and fail at the first dispatch.
-    // One process now (#225): the Server holds the form and executes the Run, so the store it
-    // writes is the store it reads. This configured the worker too, for a reason that no longer
-    // exists — there is no second process to disagree with.
-    server.WithEnvironment("Secrets__LocalStorePath", values);
-    server.WithEnvironment("Secrets__LocalKeyRingPath", keys);
+    server.WithEnvironment("Secrets__LocalStorePath", Path.Combine(secrets, "values"));
+    server.WithEnvironment("Secrets__LocalKeyRingPath", Path.Combine(secrets, "keys"));
 }
-else
+
+// The server shape: what an operator's `docker compose up` runs, and since #250 also what
+// `Parameters:habitat=server` rehearses under `aspire run`. One block, both routes — the two
+// cannot drift because they are one method.
+static void DeclareServerShape(IResourceBuilder<ProjectResource> server)
 {
     // The self-host compose is also a machine somebody owns (#119): the operator who ran
     // `docker compose up` is the owner, and asking them to configure an identity would be the
@@ -197,5 +233,3 @@ else
     // directory: selfhost/. An operator running with -p overrides this too.
     server.WithEnvironment("Dispatch__PodNetwork", "selfhost_aspire");
 }
-
-await builder.Build().RunAsync();

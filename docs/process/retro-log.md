@@ -3036,3 +3036,25 @@ shape of debt local-dispatch recorded.
 shape — rebuild the SPA after every rebase/branch that moves frontend files, before reading e2e
 results. And when a probe watches a container, watch the PROCESS after the failure too:
 "printed the exception" and "exited" are different facts, and the second one was the bug.
+
+## 2026-08-04 — apphost-habitat-parameter
+
+**Time (manual — the worktree telemetry gap of ADR-0011, unchanged):** the smallest change of the
+session; a refactor whose behaviour delta is one parameter and one refusal.
+
+**What worked:** byte-identity as the acceptance criterion. "The regenerated compose must not
+change" turned a refactor review into a mechanical check, and it held on the first regeneration.
+Reading the parameter as plain configuration instead of `AddParameter` was the one real decision:
+a parameter *resource* would have materialised in the publish output, and the artifact must not
+carry a habitat choice — the alternative was caught at design time by asking what publish emits.
+
+**What didn't:** the first test set `builder.Configuration[...]` after
+`DistributedApplicationTestingBuilder.CreateAsync`, which runs the AppHost's Program before the
+test's line executes — the parameter read had already happened. Two of three tests failed until
+the value travelled as a command-line arg instead. The testing builder looks like a builder; for
+anything the Program reads, it is already an application.
+
+**One change next time:** when a test drives AppHost composition, pass inputs as args to
+CreateAsync, never as post-hoc configuration writes — the Program has already run. Worth
+remembering alongside the wwwroot lesson from the previous change: the e2e tier's fixtures have
+their own lifecycle rules, and both failures this week were lifecycle misreads, not product bugs.
