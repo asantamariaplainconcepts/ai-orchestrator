@@ -5,6 +5,16 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 
+  <!-- The image, owned by the SDK (#257): `dotnet publish /t:PublishContainer` replaces the
+       hand-written Dockerfile. The base image is inferred from the web SDK (aspnet), non-root is
+       explicit, and the SPA rides in because publish includes wwwroot — CI runs `pnpm build`
+       first, the same order the E2E suite already requires. -->
+  <PropertyGroup>
+    <EnableSdkContainerSupport>true</EnableSdkContainerSupport>
+    <ContainerRepository>asantamariaplainconcepts/ai-orchestrator/server</ContainerRepository>
+    <ContainerUser>app</ContainerUser>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
     <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />

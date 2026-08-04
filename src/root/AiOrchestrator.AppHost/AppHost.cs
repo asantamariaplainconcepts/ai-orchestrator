@@ -65,16 +65,11 @@ var migrations = builder
     .PublishAsDockerComposeService(
         (_, service) =>
         {
-            // The distribution story is clone + `docker compose up --build`, no registry
-            // anywhere (owner decision on #99): the publisher's image placeholder becomes a
-            // build context, and the Dockerfile is multi-stage with the SDK inside.
-            service.Image = null;
-            service.Build = new Aspire.Hosting.Docker.Resources.ServiceNodes.Build
-            {
-                // Relative to selfhost/, where the generated file is committed.
-                Context = "..",
-                Dockerfile = "src/root/AiOrchestrator.MigrationService/Dockerfile",
-            };
+            // The distribution story is clone + `docker compose up`, images published by CI
+            // (#257, DEC-049's published-images lane): the operator pulls, builds nothing —
+            // no Dockerfile exists to build. The tag is overridable in the operator's .env;
+            // the inline default keeps the quickstart at zero new variables.
+            service.Image = PublishedImage("migrations");
 
             // Waiting for a HEALTHY postgres is this dependent's requirement (#99): plain
             // depends_on starts it against a database still initialising.
@@ -99,12 +94,7 @@ var server = builder
     .PublishAsDockerComposeService(
         (_, service) =>
         {
-            service.Image = null;
-            service.Build = new Aspire.Hosting.Docker.Resources.ServiceNodes.Build
-            {
-                Context = "..",
-                Dockerfile = "src/root/AiOrchestrator.Server/Dockerfile",
-            };
+            service.Image = PublishedImage("server");
 
             // A fixed host mapping: the quickstart says "open localhost:$SERVER_PORT", which a
             // random host port would turn into a scavenger hunt (#99).
@@ -165,6 +155,13 @@ else
 
 await builder.Build().RunAsync();
 return;
+
+// Where CI publishes every image (#257): GHCR, tagged by commit SHA plus a moving `latest`.
+// The compose carries the literal `${AIO_IMAGE_TAG:-latest}` — compose's own inline default —
+// so the quickstart needs no new .env variable and an operator can still pin a SHA. Spelled
+// once, because three services writing the registry path by hand is how one of them drifts.
+static string PublishedImage(string name) =>
+    $"ghcr.io/asantamariaplainconcepts/ai-orchestrator/{name}:${{AIO_IMAGE_TAG:-latest}}";
 
 // Waiting on a HEALTHY postgres, spelled once: it is each dependent's requirement, and two
 // dependents writing the condition by hand is how one of them forgets the condition exists.
@@ -232,7 +229,15 @@ static void DeclareServerShape(IResourceBuilder<ProjectResource> server)
     // operator's explicit grant, root-equivalent, made in their own compose override) a Run
     // fails naming exactly that. A named failure beats a silent in-process fallback that would
     // erase the isolation the operator asked for. selfhost/README.md carries the grant.
-    server.WithEnvironment("Dispatch__PodImage", "aio-dispatch-worker:latest");
+    // Since #257 the default is the published worker image — the operator pulls it rather than
+    // building it, and overriding the name in their own compose still works. The tag is spelled
+    // plain here, not as the compose placeholder: this method also declares the `aspire run`
+    // rehearsal, where nothing interpolates `${...}` — an operator pinning a SHA overrides the
+    // whole variable in their own compose, which wins over this default either way.
+    server.WithEnvironment(
+        "Dispatch__PodImage",
+        "ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest"
+    );
     // `docker compose` prefixes networks with the project name, which defaults to the
     // directory: selfhost/. An operator running with -p overrides this too.
     server.WithEnvironment("Dispatch__PodNetwork", "selfhost_aspire");
