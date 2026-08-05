@@ -23,6 +23,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.config/otel/map-session-change.mjs\""
+          }
+        ]
+      }
     ]
   }
 }

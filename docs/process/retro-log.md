@@ -3171,3 +3171,25 @@ the tree.
 the root, no directory list — because the next consumer will also live in the one directory
 nobody thought to include. Out-of-scope means "this change doesn't modify it", never "this
 change cannot break it".
+
+## 2026-08-05 — telemetry-worktree-attribution (#255, spec-less)
+
+**Time (telemetry, session-level):** built inside the same long-running session as
+compose-per-resource's close-out and sdk-built-images; ~30 min of its agent time. The last
+change that cannot split its own time: this is the fix that makes the next one self-measuring.
+
+**What worked:** reading the artifacts before writing code. The claimed defect ("the hook never
+fires in worktrees") was false — sessions.jsonl showed worktree sessions mapping fine; the real
+defects were the verifier resolving paths from its own file location and the mapping being
+start-only while the dominant flow switches branches after start. Ten minutes of grepping the
+actual records replaced a fix aimed at the wrong component. ADR-0011 also paid off as designed:
+it recorded the debt, and the debt was collected by exactly the kind of change it named.
+
+**What didn't:** the evidence-based check-1 rework (fresh usage.jsonl bytes beat subshell env)
+was invented at fix time — the two prior retros had already caveated the false FAIL twice, and
+nobody promoted the caveat into the verifier until a third change tripped over it. The
+graduation rule exists for ADRs; check wording deserves the same second-occurrence reflex.
+
+**One change next time:** when a retro caveats the same diagnostic twice, the next touch of that
+tool fixes the diagnostic itself, not just the work it was misreading — a check that lies twice
+is a defect, not a footnote.

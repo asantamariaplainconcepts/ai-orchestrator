@@ -1,7 +1,14 @@
 #!/usr/bin/env node
-// SessionStart session→change mapping: append one JSONL record linking the CURRENT
-// session's id to the change its branch is working, so collect-usage can attribute
-// usage.jsonl records (which only carry session.id) to a change by joining on it.
+// Session→change mapping: append one JSONL record linking the CURRENT session's id
+// to the change its branch is working, so collect-usage can attribute usage.jsonl
+// records (which only carry session.id) to a change by joining on it.
+//
+// Fired on SessionStart AND UserPromptSubmit: a mapping taken only at start is stale
+// the moment the session checks out a different branch — the dominant worktree flow
+// starts on a generated `claude/...` branch and switches to the `change/...` branch
+// afterwards, which is how 24 sessions accumulated with change="" while the work
+// they measured belonged to real changes. The dedup below keeps re-firing free:
+// a record is appended only when (session, branch, change) is a new combination.
 //
 // This exists because resource-attribute tagging (OTEL_RESOURCE_ATTRIBUTES) cannot
 // attribute the running session: the env is read once at startup, and the desktop

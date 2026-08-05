@@ -73,5 +73,13 @@ a footnote:
 - Retro entries: `local-code-source` (rule set), `default-automations-setup` (second occurrence,
   ADR declared due), `prompt-picker` (third).
 - Verifier: `.config/otel/verify-telemetry.mjs`; skill: `.claude/skills/collect-usage/SKILL.md`.
+- **The plumbing landed** with `telemetry-worktree-attribution` (after `compose-per-resource`'s
+  retro became the fourth and fifth entries carrying the paragraph): the verifier resolves the
+  main repo root via `git rev-parse --git-common-dir` instead of its own location, and the
+  mapping hook also fires on `UserPromptSubmit`, so a session that switches to the change branch
+  after starting gets re-mapped on its next prompt. What that change's evidence corrected in this
+  ADR's context: worktree sessions were exporting to the right collector and being mapped all
+  along — the losses were the verifier misreading worktrees and the start-only mapping going
+  stale on branch switch.
 - Related: ADR-0009 (a claim about existing behaviour cites where it lives) — the same instinct,
   applied to claims rather than to measurements.

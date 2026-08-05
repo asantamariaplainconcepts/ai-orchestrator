@@ -16,7 +16,21 @@ import { dirname, join, resolve } from 'node:path';
 import { createConnection } from 'node:net';
 import { fileURLToPath } from 'node:url';
 
-const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+// The telemetry lives at the MAIN repo root — a worktree has no .telemetry/ of its own
+// (the collector's file sink and the sessions map both write to the main checkout), so a
+// script-relative path read from a worktree asserts against a directory that is empty by
+// design and reports capture as broken while the main checkout is recording fine.
+let repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+try {
+  const commonDir = execFileSync(
+    'git',
+    ['rev-parse', '--path-format=absolute', '--git-common-dir'],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
+  ).trim();
+  repoRoot = resolve(commonDir, '..');
+} catch {
+  // Not a git checkout — the script-relative fallback stands.
+}
 const telemetryDir = join(repoRoot, '.telemetry');
 const usageFile = join(telemetryDir, 'usage.jsonl');
 const sessionsFile = join(telemetryDir, 'sessions.jsonl');
@@ -32,16 +46,27 @@ const check = (name, ok, detail) => results.push({ name, ok, detail });
 // precisely how four changes' measurements disappeared without a single error.
 const enabled = process.env.CLAUDE_CODE_ENABLE_TELEMETRY === '1';
 const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? '';
+// This process's env is weak evidence both ways: the verifier often runs in a spawned
+// subshell that never saw the client's env (a false FAIL, twice in the retro log), and a
+// green env proves nothing about delivery (ADR-0004). Fresh bytes in usage.jsonl are the
+// artifact — if the sink was written in the last few minutes, exporting demonstrably works
+// end to end, whatever this subshell's env says.
+const freshMs = 10 * 60 * 1000;
+const usageFresh =
+  existsSync(usageFile) && Date.now() - statSync(usageFile).mtime.getTime() < freshMs;
 check(
   'exporter enabled AND pointed here',
-  enabled && endpoint !== '',
+  (enabled && endpoint !== '') || usageFresh,
   enabled && endpoint
     ? `endpoint ${endpoint}`
-    : !enabled
-      ? 'CLAUDE_CODE_ENABLE_TELEMETRY is not set'
-      : 'enabled but OTEL_EXPORTER_OTLP_ENDPOINT is UNSET — exports are going to the OTLP ' +
-        'default port, not ours. Set it in the shell profile the app inherits; project ' +
-        '.claude/settings.json does not deliver OTEL_* to every client.'
+    : usageFresh
+      ? 'env not visible in this subshell, but usage.jsonl was written in the last 10 min — ' +
+        'exports are demonstrably landing'
+      : !enabled
+        ? 'CLAUDE_CODE_ENABLE_TELEMETRY is not set'
+        : 'enabled but OTEL_EXPORTER_OTLP_ENDPOINT is UNSET — exports are going to the OTLP ' +
+          'default port, not ours. Set it in the shell profile the app inherits; project ' +
+          '.claude/settings.json does not deliver OTEL_* to every client.'
 );
 
 // 2. Something is listening where the exporter points. A configured endpoint with nothing behind
