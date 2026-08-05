@@ -1,5 +1,6 @@
-using System.Diagnostics;
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using Docker.DotNet;
+using Docker.DotNet.Models;
 using Microsoft.Extensions.Logging;
 
 namespace AiOrchestrator.ServiceDefaults.Dispatch;
@@ -9,10 +10,11 @@ namespace AiOrchestrator.ServiceDefaults.Dispatch;
 /// the DispatchWorker's, started in its per-Run entry mode (<c>--run &lt;id&gt;</c>), so the code
 /// that executes here is byte-for-byte the code the queue habitat runs.
 /// <para>
-/// It talks to the docker <b>CLI</b>, which reaches whatever socket the operator mounted — the
-/// grant is the operator's, made in their own compose, never this product's default (design D3).
-/// Every refusal names what is missing, and there is deliberately no fallback to in-process
-/// execution: a fallback would erase the isolation the operator asked for without telling them.
+/// It speaks to the docker <b>socket</b> directly (#257), which is whatever the operator mounted
+/// — the grant is the operator's, made in their own compose, never this product's default
+/// (design D3). Every refusal names what is missing, and there is deliberately no fallback to
+/// in-process execution: a fallback would erase the isolation the operator asked for without
+/// telling them.
 /// </para>
 /// </summary>
 public sealed class PodRunLauncher(
@@ -56,74 +58,113 @@ public sealed class PodRunLauncher(
 
     async Task Launch(Guid runId, CancellationToken cancellationToken)
     {
-        var startInfo = new ProcessStartInfo("docker")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
+        using var docker = DockerSocket.CreateClient();
 
-        startInfo.ArgumentList.Add("run");
-        // Removed on exit: the Run's state and log live in the database, and a graveyard of
-        // exited containers is a leak, not an audit.
-        startInfo.ArgumentList.Add("--rm");
-
-        if (!string.IsNullOrWhiteSpace(options.Network))
-        {
-            startInfo.ArgumentList.Add("--network");
-            startInfo.ArgumentList.Add(options.Network);
-        }
-
-        foreach (var (name, value) in options.Environment)
-        {
-            startInfo.ArgumentList.Add("-e");
-            startInfo.ArgumentList.Add($"{name}={value}");
-        }
-
-        foreach (var mount in options.Mounts)
-        {
-            startInfo.ArgumentList.Add("-v");
-            startInfo.ArgumentList.Add(mount);
-        }
-
-        startInfo.ArgumentList.Add(options.Image);
-        startInfo.ArgumentList.Add("--run");
-        startInfo.ArgumentList.Add(runId.ToString());
-
-        Process process;
+        string containerId;
         try
         {
-            process = Process.Start(startInfo)!;
+            var created = await docker.Containers.CreateContainerAsync(
+                new CreateContainerParameters
+                {
+                    Image = options.Image,
+                    // Appended to the image's entrypoint, exactly as `docker run <image> --run
+                    // <id>` appended them.
+                    Cmd = ["--run", runId.ToString()],
+                    Env =
+                    [
+                        .. options.Environment.Select(variable =>
+                            $"{variable.Key}={variable.Value}"
+                        ),
+                    ],
+                    HostConfig = new HostConfig
+                    {
+                        Binds = [.. options.Mounts],
+                        NetworkMode = string.IsNullOrWhiteSpace(options.Network)
+                            ? null
+                            : options.Network,
+                    },
+                },
+                cancellationToken
+            );
+            containerId = created.ID;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // The docker CLI itself is missing — the sentence names the grant that is absent.
+            // The socket is not there to answer — the sentence names the grant that is absent.
             throw new InvalidOperationException(
                 "This habitat is configured to execute Runs in pods "
-                    + $"(Dispatch:PodImage = {options.Image}), but the docker CLI could not be "
-                    + "started. Grant the container the docker socket and CLI, or remove "
-                    + "Dispatch:PodImage to execute in-process.",
+                    + $"(Dispatch:PodImage = {options.Image}), but the docker socket at "
+                    + $"{DockerSocket.Endpoint()} could not create one. Grant the container the "
+                    + "docker socket, or remove Dispatch:PodImage to execute in-process.",
                 exception
             );
         }
 
-        // Drained concurrently with the wait: a pod that fills either pipe would deadlock a
-        // reader that only started after exit.
-        var stdout = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        var stderr = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken);
-
-        if (process.ExitCode != 0)
+        try
         {
-            // Non-zero is "execution could not happen" (design D4) — no socket, no image, no
-            // database. The Run stays where it was; BR-004 forbids anything from retrying, so
-            // the failure must carry everything a person needs.
-            throw new InvalidOperationException(
-                $"The pod for run {runId} exited {process.ExitCode} without executing. "
-                    + $"stderr: {Truncate(await stderr)} stdout: {Truncate(await stdout)}"
+            await docker.Containers.StartContainerAsync(
+                containerId,
+                new ContainerStartParameters(),
+                cancellationToken
             );
+
+            var exited = await docker.Containers.WaitContainerAsync(containerId, cancellationToken);
+
+            if (exited.StatusCode != 0)
+            {
+                // Non-zero is "execution could not happen" (design D4) — no socket, no image, no
+                // database. The Run stays where it was; BR-004 forbids anything from retrying, so
+                // the failure must carry everything a person needs.
+                var (stdout, stderr) = await Logs(docker, containerId, cancellationToken);
+                throw new InvalidOperationException(
+                    $"The pod for run {runId} exited {exited.StatusCode} without executing. "
+                        + $"stderr: {Truncate(stderr)} stdout: {Truncate(stdout)}"
+                );
+            }
+        }
+        finally
+        {
+            // Removed on exit, exactly as `--rm` did: the Run's state and log live in the
+            // database, and a graveyard of exited containers is a leak, not an audit. Removal
+            // survives cancellation on purpose — an abandoned container is the leak.
+            try
+            {
+                await docker.Containers.RemoveContainerAsync(
+                    containerId,
+                    new ContainerRemoveParameters { Force = true },
+                    CancellationToken.None
+                );
+            }
+            catch (DockerApiException)
+            {
+                // Already gone — the race's harmless arm.
+            }
         }
 
         DispatchLog.PodFinished(logger, runId);
+    }
+
+    static async Task<(string Stdout, string Stderr)> Logs(
+        DockerClient docker,
+        string containerId,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            using var stream = await docker.Containers.GetContainerLogsAsync(
+                containerId,
+                tty: false,
+                new ContainerLogsParameters { ShowStdout = true, ShowStderr = true },
+                cancellationToken
+            );
+            return await stream.ReadOutputToEndAsync(cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // The exit code alone still names the failure; missing logs must not mask it.
+            return (string.Empty, $"(logs unavailable: {exception.Message})");
+        }
     }
 
     static string Truncate(string text) =>
@@ -138,13 +179,13 @@ public sealed class PodLaunchOptions
 {
     public required string Image { get; init; }
 
-    /// <summary>Empty omits <c>--network</c> — the operator names the compose network.</summary>
+    /// <summary>Empty means the daemon's default network — the operator names the compose network.</summary>
     public string? Network { get; init; }
 
     public IReadOnlyDictionary<string, string> Environment { get; init; } =
         new Dictionary<string, string>();
 
-    /// <summary>docker <c>-v</c> values, verbatim (<c>source:target[:ro]</c>).</summary>
+    /// <summary>docker bind values, verbatim (<c>source:target[:ro]</c>).</summary>
     public IReadOnlyList<string> Mounts { get; init; } = [];
 
     public int MaxConcurrentPods { get; init; } = 2;

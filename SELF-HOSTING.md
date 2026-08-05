@@ -1,9 +1,10 @@
 # Self-hosting
 
-Run the whole system on any machine with **Docker and git**. No .NET SDK, no Azure, no registry:
-every image builds locally from this repository's Dockerfiles, the database is a Postgres
-container, and the default agent runtime is opencode's **free model** (DEC-044) — the demo costs nothing and needs
-no AI key. The only credential anywhere is your own GitHub PAT.
+Run the whole system on any machine with **Docker and git**. No .NET SDK, no Azure, no local
+build (#257): every image is pulled from GHCR, published there by CI on each merge and tagged by
+commit SHA plus a moving `latest` (pin one with `AIO_IMAGE_TAG=<sha>`). The database is a
+Postgres container, and the default agent runtime is opencode's **free model** (DEC-044) — the
+demo costs nothing and needs no AI key. The only credential anywhere is your own GitHub PAT.
 
 ## Quickstart
 
@@ -11,11 +12,11 @@ no AI key. The only credential anywhere is your own GitHub PAT.
 git clone https://github.com/asantamariaplainconcepts/ai-orchestrator.git
 cd ai-orchestrator/selfhost
 cp .env.example .env    # set POSTGRES_PASSWORD to anything; SERVER_PORT if 8080 is taken
-docker compose up --build
+docker compose up
 ```
 
-First build takes a few minutes (three .NET images plus the SPA). When it settles, open
-`http://localhost:8080` (or your `SERVER_PORT`).
+The first start pulls the images (no build — no Dockerfile backs any image this compose runs).
+When it settles, open `http://localhost:8080` (or your `SERVER_PORT`).
 
 Then close the loop:
 

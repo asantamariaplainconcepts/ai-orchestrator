@@ -1,0 +1,63 @@
+name: Publish images
+
+# The self-host images (#257): every merge to main publishes server, migrations and
+# dispatch-worker to GHCR, tagged with the commit SHA plus a moving `latest`. The generated
+# compose references these by tag, so the operator's `docker compose up` pulls and builds
+# nothing — DEC-049's published-images lane. No Dockerfile exists: the images are produced by
+# the SDK's container publish, and the SPA rides in because `pnpm build` writes wwwroot before
+# the server is published — the same order the E2E suite requires.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: src/frontend/pnpm-lock.yaml
+
+      # The SPA lands in the Server's wwwroot; publish includes it (a server image with a stale
+      # or absent wwwroot is the failure CI already caught once).
+      - name: Build the SPA into wwwroot
+        working-directory: src/frontend
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Sign in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Restore
+        run: dotnet restore src/AiOrchestrator.slnx
+
+      - name: Publish the images
+        run: |
+          set -euo pipefail
+          for project in AiOrchestrator.Server AiOrchestrator.MigrationService AiOrchestrator.DispatchWorker; do
+            dotnet publish "src/root/${project}/${project}.csproj" \
+              -c Release --no-restore /t:PublishContainer \
+              -p:ContainerRegistry=ghcr.io \
+              -p:ContainerImageTags='"${{ github.sha }};latest"'
+          done

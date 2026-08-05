@@ -6,8 +6,16 @@ Run the whole product on a machine you own (DEC-049):
 POSTGRES_PASSWORD=<pick-one> SERVER_PORT=8080 docker compose up
 ```
 
+Nothing builds locally (#257): every image is **pulled** from GHCR, published there by CI on
+each merge to `main` and tagged with the commit SHA plus a moving `latest`. The compose defaults
+to `latest`; pin a specific build by setting `AIO_IMAGE_TAG=<commit-sha>` in your environment or
+`.env`. The only registries contacted are public ones (GHCR and Docker Hub for postgres and the
+dashboard).
+
 `docker-compose.yaml` is **generated** from the AppHost (`./scripts/generate-compose.sh`); do not
-hand-edit it — CI's drift gate compares the two.
+hand-edit it — CI's drift gate compares the two. No Dockerfile backs any image this compose runs:
+they are produced by the .NET SDK's container publish (`dotnet publish /t:PublishContainer`), with
+the SPA built into the server's `wwwroot` first (`pnpm build`).
 
 ## What this habitat can and cannot do
 
@@ -16,9 +24,10 @@ hand-edit it — CI's drift gate compares the two.
 - **Runs execute in pods** (#246): each dispatched Run starts its own container from the
   DispatchWorker image and exits with it. Two things are yours to provide, deliberately:
 
-  1. **The image**: `docker build -f src/root/AiOrchestrator.DispatchWorker/Dockerfile -t aio-dispatch-worker:latest .`
-     (from the repository root). The compose names `aio-dispatch-worker:latest`
-     (`Dispatch__PodImage`); nothing pulls or builds it for you.
+  1. **The image**: `docker pull ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest`
+     — the compose names that image (`Dispatch__PodImage`); nothing pulls it for you, because a
+     pod host that fetches images unasked is a surprise, not a convenience. Override the name in
+     your own compose to use a different worker image.
   2. **The docker socket** — your explicit grant, in a `selfhost/docker-compose.override.yaml`
      you write:
 

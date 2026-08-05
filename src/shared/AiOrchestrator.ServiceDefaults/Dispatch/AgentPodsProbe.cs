@@ -1,4 +1,4 @@
-using System.Diagnostics;
+using Docker.DotNet;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -10,10 +10,10 @@ namespace AiOrchestrator.ServiceDefaults.Dispatch;
 /// explanation lived in a log nobody was reading. The probe turns that silence into a state the
 /// panel and the environment chip can render, with the last-checked time beside it.
 /// <para>
-/// Two questions, cheapest first: does the daemon answer, and does the pod image exist. They are
-/// separate because their remedies are — a down daemon is started, a missing image is built —
-/// and conflating them sends the operator to the wrong fix (the reason
-/// <c>AgentPodsSnapshot.ImagePresent</c> is three-valued).
+/// One question with a three-way answer, straight off the socket (#257): an inspected image
+/// proves both the daemon and the image; the daemon answering "no such image" proves the daemon
+/// alone — and their remedies differ (a down daemon is started, a missing image is pulled or
+/// built), which is the reason <c>AgentPodsSnapshot.ImagePresent</c> is three-valued.
 /// </para>
 /// </summary>
 public sealed class AgentPodsProbe(
@@ -23,8 +23,9 @@ public sealed class AgentPodsProbe(
 ) : BackgroundService
 {
     /// <summary>
-    /// Generous for a local CLI call, but a docker daemon mid-wedge can hang instead of refuse —
-    /// and a probe that hangs forever reports nothing, which is the exact silence it exists to end.
+    /// Generous for a local socket call, but a docker daemon mid-wedge can hang instead of
+    /// refuse — and a probe that hangs forever reports nothing, which is the exact silence it
+    /// exists to end.
     /// </summary>
     static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(10);
 
@@ -70,74 +71,32 @@ public sealed class AgentPodsProbe(
 
     async Task<(bool DockerReady, bool? ImagePresent)> Probe(CancellationToken cancellationToken)
     {
-        // The image question answers both when it succeeds: an inspected image implies a
-        // reachable daemon, so the healthy path costs one CLI call, not two.
-        if (await Succeeds(["image", "inspect", options.Image], cancellationToken))
-        {
-            return (DockerReady: true, ImagePresent: true);
-        }
-
-        return await Succeeds(["version", "--format", "{{.Server.Version}}"], cancellationToken)
-            ? (DockerReady: true, ImagePresent: false)
-            : (DockerReady: false, ImagePresent: null);
-    }
-
-    /// <summary>
-    /// Exit code zero, and nothing else: the probe never parses docker's output, so a CLI
-    /// version changing its wording cannot turn a healthy host red.
-    /// </summary>
-    static async Task<bool> Succeeds(string[] arguments, CancellationToken cancellationToken)
-    {
-        var startInfo = new ProcessStartInfo("docker")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-        };
-
-        foreach (var argument in arguments)
-        {
-            startInfo.ArgumentList.Add(argument);
-        }
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(ProbeTimeout);
 
         try
         {
-            using var process = Process.Start(startInfo)!;
-
-            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            timeout.CancelAfter(ProbeTimeout);
-
-            // Drained so a chatty CLI cannot fill a pipe and stall the exit — the same rule the
-            // launcher follows, one level smaller.
-            var stdout = process.StandardOutput.ReadToEndAsync(timeout.Token);
-            var stderr = process.StandardError.ReadToEndAsync(timeout.Token);
-
-            try
-            {
-                await process.WaitForExitAsync(timeout.Token);
-            }
-            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-            {
-                // The probe's own timeout, not shutdown: a wedged daemon counts as unreachable.
-                try
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-                catch (InvalidOperationException)
-                {
-                    // Exited between the timeout and the kill — the race's harmless arm.
-                }
-
-                return false;
-            }
-
-            await Task.WhenAll(stdout, stderr);
-            return process.ExitCode == 0;
+            using var docker = DockerSocket.CreateClient();
+            // One socket call answers both when it succeeds: an inspected image implies a
+            // reachable daemon.
+            await docker.Images.InspectImageAsync(options.Image, timeout.Token);
+            return (DockerReady: true, ImagePresent: true);
         }
-        catch (Exception exception) when (exception is not OperationCanceledException)
+        catch (DockerImageNotFoundException)
         {
-            // The CLI itself is missing or refused to start — the same "not ready" the panel
-            // shows for a down daemon, because the operator's first move is identical.
-            return false;
+            // The daemon itself composed that answer — reachable, image absent.
+            return (DockerReady: true, ImagePresent: false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            // Shutdown, not a probe verdict.
+            throw;
+        }
+        catch (Exception)
+        {
+            // Unreachable, refused, or wedged past the timeout — the panel's first move is the
+            // same for all three: look at the daemon.
+            return (DockerReady: false, ImagePresent: null);
         }
     }
 }

@@ -35,9 +35,7 @@ services:
       retries: 15
       start_period: "5s"
   migrations:
-    build:
-      context: ".."
-      dockerfile: "src/root/AiOrchestrator.MigrationService/Dockerfile"
+    image: "ghcr.io/asantamariaplainconcepts/ai-orchestrator/migrations:${AIO_IMAGE_TAG:-latest}"
     environment:
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
       ConnectionStrings__aiorchestratordb: "Host=postgres;Port=5432;Username=postgres;Password=${POSTGRES_PASSWORD};Database=aiorchestratordb"
@@ -57,9 +55,7 @@ services:
     networks:
       - "aspire"
   server:
-    build:
-      context: ".."
-      dockerfile: "src/root/AiOrchestrator.Server/Dockerfile"
+    image: "ghcr.io/asantamariaplainconcepts/ai-orchestrator/server:${AIO_IMAGE_TAG:-latest}"
     environment:
       OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY: "in_memory"
       ASPNETCORE_FORWARDEDHEADERS_ENABLED: "true"
@@ -74,7 +70,7 @@ services:
       AIORCHESTRATORDB_DATABASENAME: "aiorchestratordb"
       Identity__Mode: "LocalOwner"
       Habitat__LocalFolderUnavailableReason: "the orchestrator runs in a container here, and a folder on this machine is not visible to it — local folders need the dev loop, where the server is a process on this machine"
-      Dispatch__PodImage: "aio-dispatch-worker:latest"
+      Dispatch__PodImage: "ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest"
       Dispatch__PodNetwork: "selfhost_aspire"
       OTEL_EXPORTER_OTLP_ENDPOINT: "http://compose-dashboard:18889"
       OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
