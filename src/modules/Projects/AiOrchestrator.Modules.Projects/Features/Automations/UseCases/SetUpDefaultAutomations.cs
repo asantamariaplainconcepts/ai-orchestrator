@@ -49,7 +49,8 @@ sealed class SetUpDefaultAutomations : IUseCase
                         new Command(
                             projectId,
                             request?.PromptDirectory,
-                            request?.InstallMissing ?? false
+                            request?.InstallMissing ?? false,
+                            request?.Steps
                         ),
                         cancellationToken
                     );
@@ -60,21 +61,37 @@ sealed class SetUpDefaultAutomations : IUseCase
             .WithTags("Automations");
 
     /// <summary>
-    /// Both fields are the human's confirmation, and both default to "nothing new": an absent body
-    /// is exactly the #212 action, so a caller that predates discovery keeps working.
+    /// The human's confirmation, defaulting to "nothing new": an absent body is exactly the #212
+    /// action, so a caller that predates discovery keeps working.
     /// <para>
     /// <paramref name="PromptDirectory"/> is a directory discovery <i>proposed</i> and a person
     /// accepted — the action never picks one itself (design D1). <paramref name="InstallMissing"/>
     /// is a second consent, because writing to somebody's repository is a different decision from
     /// creating Automations in this product.
     /// </para>
+    /// <para>
+    /// <paramref name="Steps"/> is which steps the Admin kept (#262), and <b>absent is not
+    /// empty</b>: <c>null</c> means every step — so a caller that sends no selection, or no body at
+    /// all, behaves exactly as it did before this field existed — while <c>[]</c> means none, a
+    /// lawful no-op that creates nothing and reports every step excluded. The two differ by a pull
+    /// request, which is why the distinction is written down rather than left to the reader.
+    /// </para>
     /// </summary>
-    internal sealed record Request(string? PromptDirectory = null, bool InstallMissing = false);
+    internal sealed record Request(
+        string? PromptDirectory = null,
+        bool InstallMissing = false,
+        IReadOnlyList<string>? Steps = null
+    );
 
     /// <summary>
     /// The five facts design D5 asks for, so an Admin who did not read the repository first still
     /// learns what happened to it: where prompts are read from, what was created, what was skipped
     /// and why, what was found and left alone, and what was installed.
+    /// <para>
+    /// <paramref name="Excluded"/> is the sixth, and deliberately not a <see cref="SkippedStep"/>
+    /// reason (#262): "skipped" answers <i>was this already set up?</i>, and folding the Admin's own
+    /// choice into that count would make one number mean two things.
+    /// </para>
     /// </summary>
     internal sealed record Response(
         string Directory,
@@ -82,7 +99,8 @@ sealed class SetUpDefaultAutomations : IUseCase
         IReadOnlyList<SkippedStep> Skipped,
         IReadOnlyList<string> FoundNotWired,
         InstalledStarters? Installed,
-        IReadOnlyList<MissingPrompt> MissingPrompts
+        IReadOnlyList<MissingPrompt> MissingPrompts,
+        IReadOnlyList<string> Excluded
     );
 
     /// <summary>A trigger that already existed, and the sentence that says which case it was.</summary>
@@ -105,9 +123,12 @@ sealed class SetUpDefaultAutomations : IUseCase
     internal sealed record MissingPrompt(string SaveAs, string? ResolvedPath);
 
     [Requires(ProjectPermissions.ManageAutomations)]
-    internal sealed record Command(Guid ProjectId, string? PromptDirectory, bool InstallMissing)
-        : ICommand<ErrorOr<Response>>,
-            IScopedToProject;
+    internal sealed record Command(
+        Guid ProjectId,
+        string? PromptDirectory,
+        bool InstallMissing,
+        IReadOnlyList<string>? Steps = null
+    ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(
         ProjectsDbContext database,
@@ -161,12 +182,34 @@ sealed class SetUpDefaultAutomations : IUseCase
             // Adopted steps first, then the installable ones the repository has no file for. A
             // step recognised from an opt-in tier is wired because its file is already there; it
             // never joins the gap list, so no button writes a methodology nobody chose.
-            var adopted = PipelineSteps.All.Where(step => present.Files.ContainsKey(step.Trigger));
+            var adopted = PipelineSteps
+                .All.Where(step => present.Files.ContainsKey(step.Trigger))
+                .ToList();
             var gaps = PipelineSteps
                 .Installable.Where(step => !present.Files.ContainsKey(step.Trigger))
                 .ToList();
 
-            foreach (var step in adopted.Concat(gaps))
+            // The Admin's selection (#262), compared with the same case-insensitive identity
+            // BR-003 uses. Absent means every step — an unselected caller keeps its old behaviour;
+            // an empty selection means none, and the two are not the same answer.
+            var selection = command.Steps is null
+                ? null
+                : new HashSet<string>(command.Steps, StringComparer.OrdinalIgnoreCase);
+
+            bool Selected(PipelineStep step) =>
+                selection is null || selection.Contains(step.Trigger);
+
+            // Filtered here, ahead of the loop, so an excluded step never reaches the already-exists
+            // and overlap checks below: it belongs in exactly one list, and it is this one. A
+            // selected trigger naming a step this invocation would not have acted on matches
+            // nothing — no error, and no work the action never proposed.
+            var excluded = adopted
+                .Concat(gaps)
+                .Where(step => !Selected(step))
+                .Select(step => step.Trigger)
+                .ToList();
+
+            foreach (var step in adopted.Concat(gaps).Where(Selected))
             {
                 // The file the Automation names: the repository's own where there is one, the
                 // starter's saved name where the gap is about to be filled.
@@ -240,11 +283,29 @@ sealed class SetUpDefaultAutomations : IUseCase
                 }
             }
 
+            // Only the gaps still selected reach the installer. That is also what keeps the
+            // no-pull-request promise honest: FillGaps already short-circuits on an empty list, so
+            // "the Admin excluded every gap" and "the repository already had every file" converge
+            // on one path. Handing an empty list further down would earn a Workspace.NoChanges
+            // refusal, and reporting a failure for a choice somebody made is the wrong answer.
             var installed = command.InstallMissing
-                ? await FillGaps(command.ProjectId, directory, gaps, cancellationToken)
+                ? await FillGaps(
+                    command.ProjectId,
+                    directory,
+                    [.. gaps.Where(Selected)],
+                    cancellationToken
+                )
                 : null;
 
-            return new Response(directory, created, skipped, present.Unmatched, installed, missing);
+            return new Response(
+                directory,
+                created,
+                skipped,
+                present.Unmatched,
+                installed,
+                missing,
+                excluded
+            );
         }
 
         /// <summary>

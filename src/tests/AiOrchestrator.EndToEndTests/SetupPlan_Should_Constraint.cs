@@ -22,6 +22,14 @@ namespace AiOrchestrator.EndToEndTests;
 /// stub, which is its own change. So the E2E covers what it can reach honestly: the checkbox is
 /// gone. The rest lives in the functional suite, where the listing can be arranged.
 /// </para>
+/// <para>
+/// <b>#262 inherits that boundary.</b> Making each plan row selectable adds a per-row checkbox, a
+/// broken-hand-off marker and a confirm that goes unavailable on an empty selection — all of it
+/// behind the same unreachable state, so none of it is asserted here. A test written against a
+/// state this tier cannot enter would pass by never running its assertions, which is worse than the
+/// gap it pretends to close. The selection's behaviour is pinned in
+/// <c>PipelineAdoption_Should_Constraint</c> against the API that carries it.
+/// </para>
 /// </summary>
 [Collection(AppHostCollection.Name)]
 [Trait("Category", "E2E")]

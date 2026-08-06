@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ApiError } from "@/shared/http/client";
 import { t } from "@/shared/i18n";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
+import { handoffsBrokenBy } from "./planHandoff";
 import {
   usePipelineDiscovery,
   useSetUpWorkflow,
@@ -23,9 +24,44 @@ import {
 export function WorkflowSetupSection({ projectId }: { projectId: string }) {
   const [looking, setLooking] = useState(false);
   const [chosen, setChosen] = useState<string | null>(null);
+  // Exclusions rather than selections (#262), so a row this card has not seen before is selected by
+  // definition: a plan that grows never quietly leaves the new step out. A different candidate is a
+  // different list, so choosing one clears them.
+  const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
 
   const discovery = usePipelineDiscovery(projectId, looking);
   const setUp = useSetUpWorkflow(projectId);
+
+  const plan = useMemo(
+    () => planFor(discovery.data?.candidates ?? [], chosen),
+    [discovery.data?.candidates, chosen],
+  );
+
+  const selected = useMemo(
+    () => new Set(plan.filter((step) => !excluded.has(step.trigger)).map((step) => step.trigger)),
+    [plan, excluded],
+  );
+
+  const broken = useMemo(() => handoffsBrokenBy(plan, selected), [plan, selected]);
+
+  const chooseCandidate = (directory: string) => {
+    setChosen(directory);
+    setExcluded(new Set());
+  };
+
+  const toggle = (trigger: string) =>
+    setExcluded((current) => {
+      const next = new Set(current);
+      if (!next.delete(trigger)) next.add(trigger);
+      return next;
+    });
+
+  // A discovered pipeline is a list to choose from; an empty repository is not. With no rows there
+  // is nothing to select, so the selection stays out of it entirely and the press means what it
+  // meant before this feature existed — which is the whole reason the API reads an absent selection
+  // and an empty one as different answers.
+  const selecting = plan.length > 0;
+  const nothingSelected = selecting && selected.size === 0;
 
   return (
     <Card>
@@ -61,21 +97,21 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
             searchedIn={discovery.data.searchedIn}
             reason={discovery.data.reason}
             chosen={chosen}
-            onChoose={setChosen}
+            onChoose={chooseCandidate}
           />
         ) : null}
 
         {discovery.data && !discovery.data.reason ? (
           <div className="flex flex-col gap-3">
-            {/* The plan, before the button (#233). It replaces a checkbox that was doing a
-                preview's job: the rows say which steps install a starter, so a toggle asking
-                whether to install them had nothing left to communicate that the list does not. */}
-            <Plan steps={planFor(discovery.data.candidates, chosen)} />
+            {/* The plan, before the button (#233), and since #262 a checklist rather than a
+                notice: a preview a reader cannot change leaves them accepting steps they do not
+                want and deleting the Automations afterwards. */}
+            <Plan steps={plan} excluded={excluded} broken={broken} onToggle={toggle} />
 
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
-                disabled={setUp.isPending}
+                disabled={setUp.isPending || nothingSelected}
                 onClick={() =>
                   setUp.mutate({
                     promptDirectory: chosen ?? undefined,
@@ -83,6 +119,9 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
                     // press. A second consent for a preview somebody just read is a confirmation
                     // of a confirmation.
                     installMissing: true,
+                    // Absent where there is no plan to select from — never `[]`, which the API
+                    // reads as "no step at all".
+                    steps: selecting ? [...selected] : undefined,
                   })
                 }
               >
@@ -91,6 +130,12 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
               {/* Beside the button, where the decision is taken — not in a paragraph above it. */}
               <p className="text-xs text-muted-foreground">{t("workflowSetup.draftSafety")}</p>
             </div>
+
+            {nothingSelected ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                {t("workflowSetup.nothingSelected")}
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -192,6 +237,9 @@ function Report({ report }: { report: WorkflowSetupReport }) {
         label={t("workflowSetup.skipped")}
         values={report.skipped.map((step) => `${step.trigger} — ${step.reason}`)}
       />
+      {/* Beside "Skipped" and never inside it: one means the project already had it, the other
+          means you said no. Folding them together would make one count mean two things. */}
+      <Fact label={t("workflowSetup.excluded")} values={report.excluded} />
       <Fact label={t("workflowSetup.found")} values={report.foundNotWired} />
       <Fact
         label={t("workflowSetup.missing")}
@@ -248,7 +296,17 @@ function planFor(candidates: PipelineCandidate[], chosen: string | null): Planne
  * would do was a surprise, and the per-step detail existed only in the report afterwards — which is
  * the wrong side of an action that writes to somebody's repository.
  */
-function Plan({ steps }: { steps: PlannedStep[] }) {
+function Plan({
+  steps,
+  excluded,
+  broken,
+  onToggle,
+}: {
+  steps: PlannedStep[];
+  excluded: ReadonlySet<string>;
+  broken: ReadonlySet<string>;
+  onToggle: (trigger: string) => void;
+}) {
   const [expanded, setExpanded] = useState(false);
 
   if (steps.length === 0) return null;
@@ -261,25 +319,50 @@ function Plan({ steps }: { steps: PlannedStep[] }) {
     <div className="flex flex-col gap-2">
       <h3 className="text-sm font-semibold">{t("workflowSetup.planTitle")}</h3>
       <ul className="divide-y divide-border rounded-lg border border-border">
-        {visible.map((step) => (
-          <li key={step.trigger} className="flex flex-wrap items-center gap-2.5 px-3.5 py-2">
-            <span className="w-28 shrink-0 font-mono text-[11.5px] font-semibold text-primary">
-              {step.trigger}
-            </span>
-            <span className="min-w-0 flex-1 text-xs text-muted-foreground">
-              {t("workflowSetup.wireTo")} <span className="font-mono">{step.promptFile}</span>
-              {step.gated ? (
-                <>
-                  {" · "}
-                  <b className="text-warning-foreground">{t("workflowSetup.gate")}</b>
-                </>
-              ) : null}
-            </span>
-            <Badge variant={step.exists ? "secondary" : "outline"}>
-              {step.exists ? t("workflowSetup.exists") : t("workflowSetup.installStarter")}
-            </Badge>
-          </li>
-        ))}
+        {visible.map((step) => {
+          const off = excluded.has(step.trigger);
+
+          return (
+            <li key={step.trigger} className="flex flex-wrap items-center gap-2.5 px-3.5 py-2">
+              {/* An excluded row stays legible — it is excluded, not gone, and a reader has to be
+                  able to see what they turned off in order to turn it back on. */}
+              <input
+                type="checkbox"
+                className="size-3.5 shrink-0 accent-primary"
+                checked={!off}
+                onChange={() => onToggle(step.trigger)}
+                aria-label={`${t("workflowSetup.includeStep")} ${step.trigger}`}
+              />
+              <span
+                className={`w-28 shrink-0 font-mono text-[11.5px] font-semibold ${
+                  off ? "text-muted-foreground line-through" : "text-primary"
+                }`}
+              >
+                {step.trigger}
+              </span>
+              <span className="min-w-0 flex-1 text-xs text-muted-foreground">
+                {t("workflowSetup.wireTo")} <span className="font-mono">{step.promptFile}</span>
+                {step.gated ? (
+                  <>
+                    {" · "}
+                    <b className="text-warning-foreground">{t("workflowSetup.gate")}</b>
+                  </>
+                ) : null}
+                {/* Information, never a blocker: a workflow where a person hands on is a workflow
+                    this product already supports. */}
+                {broken.has(step.trigger) ? (
+                  <>
+                    {" · "}
+                    <b className="text-warning-foreground">{t("workflowSetup.handoffBroken")}</b>
+                  </>
+                ) : null}
+              </span>
+              <Badge variant={step.exists ? "secondary" : "outline"}>
+                {step.exists ? t("workflowSetup.exists") : t("workflowSetup.installStarter")}
+              </Badge>
+            </li>
+          );
+        })}
       </ul>
       {hidden > 0 || expanded ? (
         <Button

@@ -1,20 +1,6 @@
-# default-automations Specification
+# default-automations
 
-## Purpose
-A project's starter Automations created in one conflict-proof, idempotent action (#212), with the wiring carried by the starter catalogue as content (#190's discipline).
-## Requirements
-### Requirement: the starter catalogue carries default Automation wiring as content
-
-The portable tier's manifest entries MAY carry an `automation` block — trigger label,
-`requiresApproval`, output labels — and the manifest-enumeration test SHALL refuse a wiring that
-duplicates a trigger within the catalogue. The wiring is content beside the prompts it belongs
-to: the product hardcodes no methodology.
-
-#### Scenario: the wiring is enumerable and consistent
-
-- **WHEN** the starter manifest is loaded
-- **THEN** every `automation` block names a prompt in its own tier and no two blocks share a
-  normalised trigger label
+## MODIFIED Requirements
 
 ### Requirement: an Admin sets up the default Automations in one action
 
@@ -100,6 +86,8 @@ the wired set exists regardless of what any earlier caller excluded.
 - **WHEN** the selection names a trigger that is not among the steps this invocation would act on
 - **THEN** the call succeeds, that name produces no Automation, and nothing is invented from it
 
+## ADDED Requirements
+
 ### Requirement: starters are installed only for the gaps still selected
 
 Where installing is asked for, the action SHALL write a starter only for a gap the selection kept.
@@ -125,4 +113,3 @@ not a refusal, and surfacing one would tell an Admin their own decision went wro
 
 - **WHEN** a step whose file the repository already holds is excluded
 - **THEN** no Automation is created for it and the file is neither read into a wiring nor modified
-

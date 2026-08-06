@@ -3193,3 +3193,46 @@ graduation rule exists for ADRs; check wording deserves the same second-occurren
 **One change next time:** when a retro caveats the same diagnostic twice, the next touch of that
 tool fixes the diagnostic itself, not just the work it was misreading — a check that lies twice
 is a defect, not a footnote.
+
+## 2026-08-06 — select-setup-steps (#262)
+
+**Time (telemetry, per change):** agent 55.5 min, cost $29.52, 38.27M tokens (123,822 output;
+645k cache creation; 37.5M cache read). **The first self-measuring change**: session `6ae2dd93`
+maps to `select-setup-steps` in `sessions.jsonl` and 395 datapoints joined on `session.id`, so
+these are this change's numbers rather than — as in the three entries above — a session's totals
+spanning several changes. #255 said it was "the fix that makes the next one self-measuring"; this
+is the next one, and it did.
+
+**Human time is still not measured, and it is no longer ADR-0011's fault.**
+`claude_code.active_time.total{type=user}` has zero datapoints for this session and for all 49
+recorded sessions, while `node .config/otel/verify-telemetry.mjs` passes all five checks. The
+worktree gap is fixed; the user half of "human vs agent" has simply never been emitted, which
+could not be seen before because the pipeline was too broken to distinguish "absent" from "lost".
+First clean sighting, so no ADR yet — **the trip-wire: if a second change records the same
+user-metric absence against a green verifier, that is the graduation point.**
+
+**What worked:** reading the implementation before writing the spec changed the design twice.
+`FillGaps` already short-circuits on an empty gap list, so "no pull request when every gap is
+deselected" needed no new code — only filtering upstream of it. One layer below,
+`StarterInstaller.Install` answers `Workspace.NoChanges` for an empty file list, which would have
+reported a *failure* for a choice the Admin made; the design named that trap and a functional test
+now pins it.
+
+The absent-versus-empty distinction (design D2) read as pedantry at spec time and caught a real
+bug at implementation time. The first pass disabled the confirm control whenever nothing was
+selected — which would have killed the empty-repository onboarding path, where there are no plan
+rows, nothing is selected by definition, and the button that installs the whole starter set would
+have been permanently dead. Because the spec had already insisted `null` and `[]` are different
+answers, the fix was immediate: a repository with no plan sends no selection at all.
+
+**What didn't:** the mock's setup report was written from a hardcoded trigger list instead of from
+the plan the mock itself serves, so mock mode reported `Excluded ai:grill, ai:propose` — steps
+that candidate's plan never offered. Nothing caught it but opening the browser and reading the
+report out of the running UI. Task 4.2 asked for "the same report shape the API returns", and the
+first attempt satisfied it in shape and not in content. A mock that teaches a contract the API
+does not have is worse than no mock, because mock mode is where the surface gets exercised by
+hand and its lies are the ones that get believed.
+
+**One change next time:** when a change adds a field to an endpoint the mock also serves, the mock
+derives that field from the same source the real handler derives it from — never from a parallel
+list kept beside it. A fixture answering from its own copy drifts the moment either side moves.

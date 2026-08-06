@@ -283,6 +283,191 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
         plan.ShouldContain(step => step.GetProperty("gated").GetBoolean());
     }
 
+    // #262 — the Admin chooses which of the proposed steps are actually created. The property the
+    // suite below pins is that **absent and empty are different answers**: one means every step,
+    // the other means none, and they differ by a pull request landing in somebody's repository.
+
+    [Fact]
+    public async Task AnAbsentSelection_Should_CreateEveryStep()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var report = await SetUp(directory: "ai/prompts", installMissing: true, steps: null);
+
+        // The whole installable set: the adopted file plus every gap. A caller that sends no
+        // selection behaves exactly as it did before selection existed.
+        Strings(report, "created")
+            .ShouldBe(
+                ["ai:triage", "ai:explain", "ai:implement", "ai:tests", "ai:review"],
+                ignoreOrder: true
+            );
+        Strings(report, "excluded").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnEmptySelection_Should_CreateNothingAndOpenNoPullRequest()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var report = await SetUp(directory: "ai/prompts", installMissing: true, steps: []);
+
+        Strings(report, "created").ShouldBeEmpty();
+        (await Automations()).GetArrayLength().ShouldBe(0);
+
+        // Every step it would have acted on, named as the caller's own choice.
+        Strings(report, "excluded")
+            .ShouldBe(
+                ["ai:triage", "ai:explain", "ai:implement", "ai:tests", "ai:review"],
+                ignoreOrder: true
+            );
+
+        // Nothing to write is not a refusal: no branch, no pull request, and no failure reported
+        // for a decision the Admin made.
+        fixture.Workspace.PreparedBranch.ShouldBeNull();
+        var installed = report.GetProperty("installed");
+        Strings(installed, "files").ShouldBeEmpty();
+        installed.GetProperty("pullRequestUrl").ValueKind.ShouldBe(JsonValueKind.Null);
+        installed.GetProperty("failure").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task APartialSelection_Should_CreateOnlyTheSelectedSteps()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            steps: ["ai:triage", "ai:explain"]
+        );
+
+        Strings(report, "created").ShouldBe(["ai:triage", "ai:explain"], ignoreOrder: true);
+        Strings(report, "excluded")
+            .ShouldBe(["ai:implement", "ai:tests", "ai:review"], ignoreOrder: true);
+
+        var automations = await Automations();
+        automations.GetArrayLength().ShouldBe(2);
+        automations
+            .EnumerateArray()
+            .Select(entry => entry.GetProperty("triggerLabel").GetString())
+            .ShouldNotContain("ai:review");
+    }
+
+    [Fact]
+    public async Task AnExcludedGap_Should_BeAbsentFromThePullRequest()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            steps: ["ai:triage", "ai:explain", "ai:implement", "ai:review"]
+        );
+
+        // ai:tests was the one gap left out — its starter is written nowhere.
+        var files = Strings(report.GetProperty("installed"), "files");
+        files.Count.ShouldBe(3);
+        files.ShouldNotContain("ai/prompts/tests.md");
+        fixture.Workspace.PublishedFiles.ShouldNotContain("ai/prompts/tests.md");
+        fixture.Workspace.PublishedFiles.Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task ExcludingEveryGap_Should_OpenNoPullRequestAndReportNoFailure()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        // Only the step whose file is already here. Every gap is excluded, so the installer must
+        // never be reached — handed an empty list it would answer Workspace.NoChanges, and a
+        // failure reported for the Admin's own choice is the wrong answer.
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            steps: ["ai:triage"]
+        );
+
+        Strings(report, "created").ShouldBe(["ai:triage"]);
+        fixture.Workspace.PreparedBranch.ShouldBeNull();
+
+        var installed = report.GetProperty("installed");
+        Strings(installed, "files").ShouldBeEmpty();
+        installed.GetProperty("pullRequestUrl").ValueKind.ShouldBe(JsonValueKind.Null);
+        installed.GetProperty("failure").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task AnExcludedStep_Should_NotAlsoBeReportedAsSkipped()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var existing = await _client.PostAsJsonAsync(
+            $"/api/projects/{_projectId}/automations",
+            new
+            {
+                triggerLabel = "ai:triage",
+                triggerState = (string?)null,
+                action = "RepositoryPrompt",
+                runtime = "ClaudeCodeHeadless",
+                promptPath = "mine.md",
+                requiresApproval = false,
+            }
+        );
+        existing.EnsureSuccessStatusCode();
+
+        var report = await SetUp(directory: "ai/prompts", steps: ["ai:explain"]);
+
+        // Excluded and already-taken are different facts, and the filter runs first — so the step
+        // the Admin left out never reaches the skip path and lands in exactly one list.
+        Strings(report, "excluded").ShouldContain("ai:triage");
+        Strings(report, "skipped", "trigger").ShouldNotContain("ai:triage");
+    }
+
+    [Fact]
+    public async Task ASelection_Should_MatchTriggersWhateverTheirCaseAndIgnoreUnknownOnes()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            steps: ["AI:TRIAGE", "ai:does-not-exist"]
+        );
+
+        // The BR-003 identity, so a selection cannot be accepted and then silently match nothing.
+        Strings(report, "created").ShouldBe(["ai:triage"]);
+
+        // A name this invocation would not have acted on invents no work and is not an error.
+        (await Automations())
+            .GetArrayLength()
+            .ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ThePlan_Should_CarryWhatEachStepHandsOn()
+    {
+        // The card marks a hand-off broken by an exclusion as rows are clicked, so the labels have
+        // to arrive with the plan — a round trip per checkbox is not an answer.
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+
+        var candidate = (await Discover())
+            .GetProperty("candidates")
+            .EnumerateArray()
+            .Single(entry => entry.GetProperty("directory").GetString() == "ai/prompts");
+
+        var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
+
+        var implement = plan.Single(step =>
+            step.GetProperty("trigger").GetString() == "ai:implement"
+        );
+        Strings(implement, "outputLabels").ShouldBe(["ai:tests"]);
+
+        // A step that hands work to nobody says so with an empty list, never a missing property.
+        var triage = plan.Single(step => step.GetProperty("trigger").GetString() == "ai:triage");
+        Strings(triage, "outputLabels").ShouldBeEmpty();
+
+        // Still no extra vendor read: the plan comes from the listing discovery already performed.
+        fixture.Directories.Saved.ShouldBeEmpty();
+    }
+
     async Task<JsonElement> Discover()
     {
         var response = await _client.GetStringAsync(
@@ -291,11 +476,20 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
         return JsonDocument.Parse(response).RootElement.Clone();
     }
 
-    async Task<JsonElement> SetUp(string? directory = null, bool installMissing = false)
+    async Task<JsonElement> SetUp(
+        string? directory = null,
+        bool installMissing = false,
+        string[]? steps = null
+    )
     {
         var response = await _client.PostAsJsonAsync(
             $"/api/projects/{_projectId}/automations/set-up-defaults",
-            new { promptDirectory = directory, installMissing }
+            new
+            {
+                promptDirectory = directory,
+                installMissing,
+                steps,
+            }
         );
         response.EnsureSuccessStatusCode();
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();

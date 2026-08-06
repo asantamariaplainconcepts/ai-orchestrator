@@ -11,6 +11,8 @@ export interface PlannedStep {
   gated: boolean;
   /** False where a starter cannot be written — the step is listed, not silently dropped. */
   installable: boolean;
+  /** What this step hands on. Excluding a step named here breaks a hand-off (#262). */
+  outputLabels: string[];
 }
 
 export interface PipelineCandidate {
@@ -57,6 +59,8 @@ export interface WorkflowSetupReport {
   foundNotWired: string[];
   installed: InstalledStarters | null;
   missingPrompts: MissingPrompt[];
+  /** Steps the Admin excluded. Its own fact: "skipped" means the project already had it. */
+  excluded: string[];
 }
 
 /**
@@ -78,6 +82,11 @@ export interface WorkflowSetupInput {
   promptDirectory?: string;
   /** The second consent: writing to somebody's repository is its own decision. */
   installMissing: boolean;
+  /**
+   * The triggers still selected (#262). Omitted means every step — the API reads absent and empty
+   * as different answers, so never send `[]` to mean "no preference".
+   */
+  steps?: string[];
 }
 
 /**
