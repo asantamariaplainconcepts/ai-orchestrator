@@ -157,13 +157,10 @@ const mockTiers = [
  * The plan each candidate directory is offered with (#233), shared by discovery and the setup
  * report so the two cannot disagree — the report must only ever name steps the plan proposed.
  *
- * **There are no hand-off edges left to exercise.** Every spec-first prompt carries empty
- * `outputLabels`, and #269 removed the portable tier that held the catalogue's only chain
- * (`ai:implement → ai:tests → ai:review`). So #262's broken-hand-off marker is unreachable by hand
- * here, and unreachable in the product too — the requirement stays correct and nothing fires it.
- * Restoring a chain is a methodology decision, scoped as its own change; do not invent edges here to
- * make the marker demonstrable, because a mock that disagrees with the catalogue is worse than a
- * feature that is quiet.
+ * The edges are the catalogue's own (#273): `ai:grill → ai:propose → ai:implement → ai:sync`,
+ * decided as the spec-first tier's wiring and carried here so the mock cannot disagree with the
+ * manifest. They are what makes #262's broken-hand-off marker demonstrable by hand: unchecking
+ * `ai:propose` marks `ai:implement`. Unchecking `ai:status` marks nothing — it hands to nobody.
  *
  * `installable: false` on every row is not an oversight: this tier declares a prerequisite, so a
  * starter is written for it only once the consent above is on. The card adds those rows itself.
@@ -189,7 +186,7 @@ const mockPlans: Record<
       exists: true,
       gated: false,
       installable: false,
-      outputLabels: [],
+      outputLabels: ["ai:propose"],
       tierId: "workflow",
     },
     {
@@ -198,7 +195,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: [],
+      outputLabels: ["ai:implement"],
       tierId: "workflow",
     },
     {
@@ -207,7 +204,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: [],
+      outputLabels: ["ai:sync"],
       tierId: "workflow",
     },
     {
@@ -247,7 +244,7 @@ const mockPlans: Record<
       exists: true,
       gated: false,
       installable: false,
-      outputLabels: [],
+      outputLabels: ["ai:propose"],
       tierId: "workflow",
     },
     {
@@ -256,7 +253,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: [],
+      outputLabels: ["ai:implement"],
       tierId: "workflow",
     },
     {
@@ -265,7 +262,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: [],
+      outputLabels: ["ai:sync"],
       tierId: "workflow",
     },
     {

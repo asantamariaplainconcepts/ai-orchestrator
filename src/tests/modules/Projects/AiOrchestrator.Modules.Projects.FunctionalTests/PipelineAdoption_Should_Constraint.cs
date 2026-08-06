@@ -654,11 +654,24 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
 
         var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
 
-        // **The catalogue has no hand-off edges left** (#269): the portable tier held the only chain,
-        // and every spec-first prompt hands work to nobody. So this asserts the shape survives — an
-        // empty list, never a missing property — rather than inventing an edge to exercise. #262's
-        // marker is correct and currently unreachable; see planHandoff.ts.
-        plan.ShouldAllBe(step => step.GetProperty("outputLabels").GetArrayLength() == 0);
+        // The catalogue's own edges (#273): the spec-first tier wires grill → propose → implement
+        // → sync, so the plan carries exactly those hand-offs — and the marker #262 built is
+        // exercisable again. Asserted by value, not just by count: the labels are what the card's
+        // broken-hand-off computation consumes.
+        string[] LabelsOf(string trigger) =>
+            [
+                .. plan.Single(step => step.GetProperty("trigger").GetString() == trigger)
+                    .GetProperty("outputLabels")
+                    .EnumerateArray()
+                    .Select(label => label.GetString()!),
+            ];
+
+        LabelsOf("ai:grill").ShouldBe(["ai:propose"]);
+        LabelsOf("ai:propose").ShouldBe(["ai:implement"]);
+        LabelsOf("ai:implement").ShouldBe(["ai:sync"]);
+        LabelsOf("ai:sync").ShouldBeEmpty();
+        LabelsOf("ai:refine").ShouldBeEmpty();
+        LabelsOf("ai:status").ShouldBeEmpty();
 
         // Every row names its tier, which is what lets a consent add and remove rows client-side.
         plan.ShouldAllBe(step => step.GetProperty("tierId").GetString() == "workflow");
