@@ -4,12 +4,14 @@ import { t } from "@/shared/i18n";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
+import { Switch } from "@/shared/ui/switch";
 import { handoffsBrokenBy } from "./planHandoff";
 import {
   usePipelineDiscovery,
   useSetUpWorkflow,
   type PipelineCandidate,
   type PlannedStep,
+  type StarterTier,
   type WorkflowSetupReport,
 } from "./useWorkflowSetup";
 
@@ -28,13 +30,23 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
   // definition: a plan that grows never quietly leaves the new step out. A different candidate is a
   // different list, so choosing one clears them.
   const [excluded, setExcluded] = useState<ReadonlySet<string>>(() => new Set());
+  // Consent is opt-in, so this is a set of what was granted rather than of what was withheld — the
+  // mirror image of `excluded` above, and for the mirror-image reason: a tier this card has not seen
+  // before must arrive off, never on.
+  const [consented, setConsented] = useState<ReadonlySet<string>>(() => new Set());
 
   const discovery = usePipelineDiscovery(projectId, looking);
   const setUp = useSetUpWorkflow(projectId);
 
+  // A tier with no prerequisite needs no consent and gets no control; only a gated one is offered.
+  const gatedTiers = useMemo(
+    () => (discovery.data?.tiers ?? []).filter((tier) => tier.requires !== null),
+    [discovery.data?.tiers],
+  );
+
   const plan = useMemo(
-    () => planFor(discovery.data?.candidates ?? [], chosen),
-    [discovery.data?.candidates, chosen],
+    () => planFor(discovery.data?.candidates ?? [], chosen, consented),
+    [discovery.data?.candidates, chosen, consented],
   );
 
   const selected = useMemo(
@@ -49,6 +61,13 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
     setExcluded(new Set());
   };
 
+  const toggleConsent = (tierId: string) =>
+    setConsented((current) => {
+      const next = new Set(current);
+      if (!next.delete(tierId)) next.add(tierId);
+      return next;
+    });
+
   const toggle = (trigger: string) =>
     setExcluded((current) => {
       const next = new Set(current);
@@ -62,6 +81,9 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
   // and an empty one as different answers.
   const selecting = plan.length > 0;
   const nothingSelected = selecting && selected.size === 0;
+  // With no rows at all there is nothing a press could do: no file to wire and no consent given.
+  // Distinct from `nothingSelected`, which is rows that exist and were all turned off.
+  const nothingToBuild = plan.length === 0;
 
   return (
     <Card>
@@ -101,6 +123,14 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
           />
         ) : null}
 
+        {/* Outside the plan on purpose: an empty repository has no rows, and that is exactly the
+            case a consent exists for — a control living inside the row list would be unreachable
+            precisely when it matters. Offered even with no Connector, because what a consent writes
+            is catalogue content rather than something read from the repository. */}
+        {gatedTiers.length > 0 ? (
+          <Consent tiers={gatedTiers} consented={consented} onToggle={toggleConsent} />
+        ) : null}
+
         {discovery.data && !discovery.data.reason ? (
           <div className="flex flex-col gap-3">
             {/* The plan, before the button (#233), and since #262 a checklist rather than a
@@ -111,17 +141,21 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
             <div className="flex flex-wrap items-center gap-3">
               <Button
                 type="button"
-                disabled={setUp.isPending || nothingSelected}
+                disabled={setUp.isPending || nothingSelected || nothingToBuild}
                 onClick={() =>
                   setUp.mutate({
                     promptDirectory: chosen ?? undefined,
                     // The rows already said which files would be written, so the decision is the
                     // press. A second consent for a preview somebody just read is a confirmation
-                    // of a confirmation.
+                    // of a confirmation — the consent above asks a different question, about paths
+                    // no row names.
                     installMissing: true,
                     // Absent where there is no plan to select from — never `[]`, which the API
                     // reads as "no step at all".
                     steps: selecting ? [...selected] : undefined,
+                    // Sent as given: an empty set means no tier, which is what the API defaults to
+                    // anyway. Unlike `steps`, there is no absent-versus-empty distinction to honour.
+                    tiers: [...consented],
                   })
                 }
               >
@@ -134,6 +168,12 @@ export function WorkflowSetupSection({ projectId }: { projectId: string }) {
             {nothingSelected ? (
               <p className="text-xs text-muted-foreground" role="status">
                 {t("workflowSetup.nothingSelected")}
+              </p>
+            ) : null}
+
+            {nothingToBuild ? (
+              <p className="text-xs text-muted-foreground" role="status">
+                {t("workflowSetup.nothingToBuild")}
               </p>
             ) : null}
           </div>
@@ -245,6 +285,17 @@ function Report({ report }: { report: WorkflowSetupReport }) {
         label={t("workflowSetup.missing")}
         values={report.missingPrompts.map((prompt) => prompt.resolvedPath ?? prompt.saveAs)}
       />
+      {/* Its own fact, never folded into the prompts: these are writes outside the prompt directory,
+          and an Admin who consented to prompts has to see them without opening the diff. */}
+      <Fact
+        label={t("workflowSetup.prerequisites")}
+        values={report.installed?.prerequisites ?? []}
+      />
+      {/* "We wrote four of seven" only means something beside which three were already yours. */}
+      <Fact
+        label={t("workflowSetup.prerequisitesKept")}
+        values={report.installed?.prerequisitesAlreadyPresent ?? []}
+      />
 
       {report.installed?.pullRequestUrl ? (
         <p className="text-sm">
@@ -284,11 +335,91 @@ function Fact({ label, values }: { label: string; values: string[] }) {
 /**
  * Which candidate's plan to show: the chosen directory, or the first offered when nobody has
  * chosen yet — the same directory the button would use, so the preview and the press agree.
+ *
+ * Filtered by consent (#269). A step whose file is already there is always a row — wiring it reads
+ * the repository and needs no permission. A step with no file is a row only once its tier is
+ * consented to, because until then nothing would happen for it, and a row offering a choice that
+ * changes nothing is the noise #233 kept out of this list.
  */
-function planFor(candidates: PipelineCandidate[], chosen: string | null): PlannedStep[] {
+function planFor(
+  candidates: PipelineCandidate[],
+  chosen: string | null,
+  consented: ReadonlySet<string>,
+): PlannedStep[] {
   const candidate = chosen ? candidates.find((entry) => entry.directory === chosen) : candidates[0];
 
-  return candidate?.plan ?? [];
+  return (candidate?.plan ?? []).filter(
+    (step) => step.exists || step.installable || consented.has(step.tierId),
+  );
+}
+
+/**
+ * The consent (#269): off by default, with what it would write stated beside it rather than
+ * discovered in the diff afterwards.
+ *
+ * This is not the control #262 deleted. That one asked whether to install the starters the plan rows
+ * already named — a confirmation of a confirmation. This one authorises writing files *outside* the
+ * prompt directory, at paths no row names, on the terms of a methodology the plan does not describe.
+ */
+function Consent({
+  tiers,
+  consented,
+  onToggle,
+}: {
+  tiers: StarterTier[];
+  consented: ReadonlySet<string>;
+  onToggle: (tierId: string) => void;
+}) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {tiers.map((tier) => {
+        const on = consented.has(tier.id);
+
+        return (
+          <li key={tier.id} className="flex flex-col gap-2 rounded-md border border-border p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1">
+                <span className="text-sm font-semibold">{tier.title}</span>
+                <p className="text-sm text-muted-foreground">{tier.summary}</p>
+              </div>
+              <Switch
+                checked={on}
+                onCheckedChange={() => onToggle(tier.id)}
+                aria-label={`${t("workflowSetup.adopt")}: ${tier.title}`}
+              />
+            </div>
+
+            {/* Shown whether the switch is on or off: a prerequisite an Admin cannot read before
+                consenting is a prerequisite they learn from a failed Run, which is the failure the
+                tiering was introduced to prevent. */}
+            {tier.requires ? (
+              <p className="text-xs text-muted-foreground">
+                <span className="font-medium">{t("workflowSetup.adoptNeeds")}</span> {tier.requires}
+              </p>
+            ) : null}
+
+            {tier.prerequisites.length > 0 ? (
+              <>
+                <ul className="flex flex-col gap-0.5">
+                  {tier.prerequisites.map((path) => (
+                    <li key={path} className="font-mono text-[11.5px] text-muted-foreground">
+                      {path}
+                    </li>
+                  ))}
+                </ul>
+                {/* The precise claim, not the optimistic one: nothing was read to produce this list,
+                    so it says where the files go and on what condition — and the report afterwards
+                    says which ones were actually written. */}
+                <p className="text-xs text-muted-foreground">
+                  {t("workflowSetup.adoptWritesWhereAbsent")}
+                </p>
+              </>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
 }
 
 /**

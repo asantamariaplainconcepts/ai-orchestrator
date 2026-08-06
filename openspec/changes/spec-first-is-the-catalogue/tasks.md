@@ -80,32 +80,32 @@
 
 ## 6. The card (design D6, D8)
 
-- [ ] 6.1 Mirror every DTO change in `useWorkflowSetup.ts`: `tiers` on the discovery response,
+- [x] 6.1 Mirror every DTO change in `useWorkflowSetup.ts`: `tiers` on the discovery response,
       `tierId` on `PlannedStep`, `tiers?: string[]` on the input, the split installed report.
-- [ ] 6.2 Hold consent state in `WorkflowSetupSection`, empty by default, cleared when the chosen
+- [x] 6.2 Hold consent state in `WorkflowSetupSection`, empty by default, cleared when the chosen
       candidate changes — the same reasoning as #262's exclusion reset.
-- [ ] 6.3 Render the consent control **outside** the `Plan` list, so it is reachable when the plan has
+- [x] 6.3 Render the consent control **outside** the `Plan` list, so it is reachable when the plan has
       no rows. That is the empty-repository case, which is the case it exists for. Compose from the
       existing kit per `DESIGN.md`; copy through `en.ts` (DEC-021 — hardcoded JSX copy fails CI).
-- [ ] 6.4 Show the tier's `requires` text and the prerequisite paths with the control. The copy states
+- [x] 6.4 Show the tier's `requires` text and the prerequisite paths with the control. The copy states
       that the paths are written **where they are not already present** — true without any read, and
       the report tells the truth afterwards.
-- [ ] 6.5 Filter the plan by consent: a row whose tier is unconsented and whose file does not exist is
+- [x] 6.5 Filter the plan by consent: a row whose tier is unconsented and whose file does not exist is
       not shown. Toggling the switch adds and removes those rows.
-- [ ] 6.6 Send `tiers` from the confirm. Enable the confirm when anything would happen — a consented
+- [x] 6.6 Send `tiers` from the confirm. Enable the confirm when anything would happen — a consented
       gap, or an existing file to wire. With nothing consented and nothing present, there is nothing
       to press.
-- [ ] 6.7 Report the prerequisites as their own fact, beside the prompts.
+- [x] 6.7 Report the prerequisites as their own fact, beside the prompts.
 
 ## 7. Mock mode
 
-- [ ] 7.1 `mock.ts:516` serves a `portable` tier and `:156-230` build plans from the portable
+- [x] 7.1 `mock.ts:516` serves a `portable` tier and `:156-230` build plans from the portable
       triggers. Rebuild both around the spec-first tier, with its prerequisites, so mock mode exercises
       the switch by hand.
-- [ ] 7.2 Correct the comment at `mock.ts:139-141`. It states the `ai:implement → ai:tests → ai:review`
+- [x] 7.2 Correct the comment at `mock.ts:139-141`. It states the `ai:implement → ai:tests → ai:review`
       edges make #262's marker reachable by hand. After this change the catalogue has no hand-off edges
       at all (design D10), and a comment asserting the opposite is a lie left in the codebase.
-- [ ] 7.3 Have the mock's `set-up-defaults` honour `tiers` and answer with the split installed report.
+- [x] 7.3 Have the mock's `set-up-defaults` honour `tiers` and answer with the split installed report.
 
 ## 8. Decision records and docs (design D9)
 

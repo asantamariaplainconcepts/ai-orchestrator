@@ -528,7 +528,7 @@ export const en = {
   // because a button that reconfigured a repository on the first click would be the wrong button.
   "workflowSetup.title": "Set up the whole workflow",
   "workflowSetup.explainer":
-    "Look for the prompts your repository already has, wire an Automation to each one, and install starters only for the steps you have no file for.",
+    "Look for the prompts your repository already has and wire an Automation to each one. To install a workflow you do not have yet, turn it on below — its prompts and the documents they read arrive together as one draft pull request.",
   "workflowSetup.look": "Look for a pipeline",
   "workflowSetup.looking": "Reading the repository\u2026",
   "workflowSetup.lookFailed": "Could not read the repository.",
@@ -567,6 +567,17 @@ export const en = {
   "workflowSetup.missing": "No file yet",
   "workflowSetup.installed": "Draft pull request opened \u2014 review and merge it:",
   "workflowSetup.installFailed": "Could not install the missing starters:",
+  // Consenting to a workflow (#269). Off by default and stated before it is given, because this
+  // control authorises writes *outside* the prompt directory \u2014 which no plan row names, and which is
+  // why it is not the "confirmation of a confirmation" #262 deleted.
+  "workflowSetup.adopt": "Install this workflow",
+  "workflowSetup.adoptNeeds": "What it needs, and what this writes:",
+  "workflowSetup.adoptWritesWhereAbsent":
+    "Written only where your repository has no file at that path \u2014 anything you already have is left exactly as it is.",
+  "workflowSetup.nothingToBuild":
+    "Nothing to build yet \u2014 install a workflow above, or point this at a directory that already holds prompts.",
+  "workflowSetup.prerequisites": "Also written",
+  "workflowSetup.prerequisitesKept": "Already yours, left alone",
   "project.tab.ask": "Ask",
   "shell.crumb.projects": "Projects",
   "shell.breadcrumbs": "Breadcrumbs",
