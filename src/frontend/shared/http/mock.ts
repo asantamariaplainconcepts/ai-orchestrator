@@ -448,12 +448,99 @@ const routes: [string, RegExp, Handler][] = [
           files: ["triage.md", "explain.md"],
           steps: ["ai:triage", "ai:explain"],
           unmatched: [],
+          // The plan the card renders (#233) — absent here until #262, which is why mock mode
+          // showed an empty one. The implement → tests → review edges are the catalogue's only
+          // hand-offs, so they are what makes the broken-hand-off marker reachable by hand.
+          plan: [
+            {
+              trigger: "ai:triage",
+              promptFile: "triage.md",
+              exists: true,
+              gated: false,
+              installable: true,
+              outputLabels: [],
+            },
+            {
+              trigger: "ai:explain",
+              promptFile: "explain.md",
+              exists: true,
+              gated: false,
+              installable: true,
+              outputLabels: [],
+            },
+            {
+              trigger: "ai:implement",
+              promptFile: "implement.md",
+              exists: false,
+              gated: true,
+              installable: true,
+              outputLabels: ["ai:tests"],
+            },
+            {
+              trigger: "ai:tests",
+              promptFile: "tests.md",
+              exists: false,
+              gated: false,
+              installable: true,
+              outputLabels: ["ai:review"],
+            },
+            {
+              trigger: "ai:review",
+              promptFile: "review.md",
+              exists: false,
+              gated: false,
+              installable: true,
+              outputLabels: [],
+            },
+          ],
         },
         {
           directory: ".claude/commands/ds",
           files: ["grill.md", "propose.md", "implement.md", "sprint-notes.md"],
           steps: ["ai:grill", "ai:propose", "ai:implement"],
           unmatched: ["sprint-notes.md"],
+          plan: [
+            {
+              trigger: "ai:grill",
+              promptFile: "grill.md",
+              exists: true,
+              gated: false,
+              installable: false,
+              outputLabels: [],
+            },
+            {
+              trigger: "ai:propose",
+              promptFile: "propose.md",
+              exists: true,
+              gated: true,
+              installable: false,
+              outputLabels: [],
+            },
+            {
+              trigger: "ai:implement",
+              promptFile: "implement.md",
+              exists: true,
+              gated: true,
+              installable: true,
+              outputLabels: ["ai:tests"],
+            },
+            {
+              trigger: "ai:tests",
+              promptFile: "tests.md",
+              exists: false,
+              gated: false,
+              installable: true,
+              outputLabels: ["ai:review"],
+            },
+            {
+              trigger: "ai:review",
+              promptFile: "review.md",
+              exists: false,
+              gated: false,
+              installable: true,
+              outputLabels: [],
+            },
+          ],
         },
       ],
       searchedIn: ["ai/prompts", ".claude/commands"],
@@ -464,22 +551,49 @@ const routes: [string, RegExp, Handler][] = [
     "POST",
     /^\/api\/projects\/[^/]+\/automations\/set-up-defaults$/,
     (_match, body) => {
-      const input = body as { promptDirectory?: string; installMissing?: boolean };
+      const input = body as {
+        promptDirectory?: string;
+        installMissing?: boolean;
+        steps?: string[];
+      };
       const directory = input.promptDirectory ?? "ai/prompts";
+
+      // Absent means every step, an empty list means none (#262) — the mock honours the same
+      // distinction the API does, or mock mode would teach the wrong contract.
+      const kept = (trigger: string) => input.steps === undefined || input.steps.includes(trigger);
+
+      const created = ["ai:grill", "ai:propose", "ai:implement"].filter(kept);
+      const skipped = [
+        { trigger: "ai:triage", reason: "an Automation already uses this trigger" },
+      ].filter((step) => kept(step.trigger));
+      const installedFiles = ["tests.md", "review.md"]
+        .filter((file) => kept(`ai:${file.replace(".md", "")}`))
+        .map((file) => `${directory}/${file}`);
+
       return {
         directory,
-        created: ["ai:grill", "ai:propose", "ai:implement"],
-        skipped: [{ trigger: "ai:triage", reason: "an Automation already uses this trigger" }],
+        created,
+        skipped,
         foundNotWired: ["sprint-notes.md"],
-        installed: input.installMissing
-          ? {
-              files: [`${directory}/tests.md`, `${directory}/review.md`],
-              pullRequestUrl: "https://github.com/acme/portal/pull/8",
-              branch: "starter/pipeline",
-              failure: null,
-            }
-          : null,
-        missingPrompts: [{ saveAs: "tests.md", resolvedPath: `${directory}/tests.md` }],
+        excluded: ["ai:grill", "ai:propose", "ai:implement", "ai:triage", "ai:tests", "ai:review"]
+          .filter((trigger) => !kept(trigger))
+          .sort(),
+        // No files left to write means no branch and no pull request — the same clean outcome as a
+        // repository that already had everything, never a failure.
+        installed:
+          input.installMissing && installedFiles.length > 0
+            ? {
+                files: installedFiles,
+                pullRequestUrl: "https://github.com/acme/portal/pull/8",
+                branch: "starter/pipeline",
+                failure: null,
+              }
+            : input.installMissing
+              ? { files: [], pullRequestUrl: null, branch: null, failure: null }
+              : null,
+        missingPrompts: kept("ai:tests")
+          ? [{ saveAs: "tests.md", resolvedPath: `${directory}/tests.md` }]
+          : [],
       };
     },
   ],

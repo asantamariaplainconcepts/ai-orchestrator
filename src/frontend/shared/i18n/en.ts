@@ -549,13 +549,20 @@ export const en = {
   "workflowSetup.planFewer": "Show fewer",
   "workflowSetup.draftSafety":
     "Starters land on a branch as a draft pull request \u2014 nothing is committed to your default branch.",
-  "workflowSetup.installMissing": "Install starters for the steps with no file",
+  // Selecting what actually gets built (#262). Every row starts selected: the plan is a checklist
+  // of what will happen, and a preview you cannot change is a notice rather than a decision.
+  "workflowSetup.includeStep": "Include",
+  "workflowSetup.handoffBroken": "nobody hands on to this \u2014 a person will",
+  "workflowSetup.nothingSelected": "Select at least one step to build.",
   "workflowSetup.build": "Build the workflow",
   "workflowSetup.building": "Building\u2026",
   "workflowSetup.buildFailed": "Could not build the workflow.",
   "workflowSetup.readsFrom": "Prompts read from",
   "workflowSetup.created": "Created",
   "workflowSetup.skipped": "Skipped",
+  // Its own fact, never folded into "Skipped": that word means the project already had it, and
+  // this one means you chose otherwise.
+  "workflowSetup.excluded": "Excluded",
   "workflowSetup.found": "Found, not wired",
   "workflowSetup.missing": "No file yet",
   "workflowSetup.installed": "Draft pull request opened \u2014 review and merge it:",
