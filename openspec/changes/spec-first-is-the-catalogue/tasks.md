@@ -164,9 +164,9 @@
 
 ## 10. Gates
 
-- [ ] 10.1 `dotnet build`, then the non-E2E suite, then the E2E suite.
-- [ ] 10.2 CSharpier, Prettier, ESLint `--max-warnings=0`, `tsc --noEmit`, the design-system validator.
-- [ ] 10.3 Frontend production build — run through `rtk proxy`, not `rtk`. This repository has had a
+- [x] 10.1 `dotnet build`, then the non-E2E suite, then the E2E suite.
+- [x] 10.2 CSharpier, Prettier, ESLint `--max-warnings=0`, `tsc --noEmit`, the design-system validator.
+- [x] 10.3 Frontend production build — run through `rtk proxy`, not `rtk`. This repository has had a
       broken build report success under `rtk` and invalidate a mutation check; grep the new copy out of
       the emitted bundle before trusting any result.
-- [ ] 10.4 `openspec validate spec-first-is-the-catalogue`.
+- [x] 10.4 `openspec validate spec-first-is-the-catalogue`.

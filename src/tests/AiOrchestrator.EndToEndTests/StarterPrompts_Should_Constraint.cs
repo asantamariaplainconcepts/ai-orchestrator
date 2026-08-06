@@ -28,9 +28,9 @@ public class StarterPrompts_Should_Constraint(AppHostFixture fixture)
         await page.GetByRole(AriaRole.Heading, new() { Name = "Starter prompts", Level = 2 })
             .WaitForAsync(new() { Timeout = 30_000 });
 
-        // Both tiers present, and the second one saying what it needs before anybody takes it.
-        await page.GetByRole(AriaRole.Heading, new() { Name = "Starters", Level = 3 })
-            .WaitForAsync(new() { Timeout = 15_000 });
+        // The tier that ships, saying what it needs before anybody takes it. #269 removed the
+        // portable tier, so this asserts the labelling rather than a count: what the requirement
+        // fixes is that a tier declares its assumptions, not how many tiers exist.
         await page.GetByRole(
                 AriaRole.Heading,
                 new() { Name = "The spec-first workflow", Level = 3 }
@@ -42,9 +42,8 @@ public class StarterPrompts_Should_Constraint(AppHostFixture fixture)
         text.ShouldContain("Requires:");
         text.ShouldContain("OpenSpec");
 
-        // The two implement prompts are distinguishable, which is the collision this change found:
-        // one file name for both would have made only one of them takeable.
-        text.ShouldContain("implement.md");
+        // Saved under its own name, which is what keeps a starter off a path a team's own
+        // implement.md may already occupy.
         text.ShouldContain("aio-implement.md");
     }
 
