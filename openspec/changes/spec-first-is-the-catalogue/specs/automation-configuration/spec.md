@@ -114,6 +114,58 @@ unprompted; it is the prompt.
 - **THEN** its starter is written, an Automation is created on its trigger naming the installed file,
   and both arrive in one draft pull request
 
+### Requirement: setting a project up adopts the pipeline it already has
+
+Setting up a project's Automations SHALL begin by finding the prompt files the repository already
+carries, and SHALL wire Automations to those. Installing a starter SHALL happen only for a
+pipeline step the repository has no file for.
+
+A repository that already carries its own pipeline SHALL NOT receive a second copy of one. The
+reason is the reason DEC-048 already gives for reading the grill's rubric from the project: a
+product-wide version of a team's own document imposes one team's standards on every repository it
+touches, and the copy is the weaker of the two.
+
+That comparison presumes there are two. Where a repository has **no** file at a path a consented tier
+would write, there is no team's own version to be weaker than, and the product MAY seed one — revised by
+DEC-064 and recorded in `docs/adr/0012-a-seeded-document-is-the-projects-own.md`. The rule above is
+unchanged in the case it was written about: an existing file still always wins.
+
+**Discovery SHALL propose, never choose.** The conventional locations SHALL be searched — the
+Connector's configured directory first, then `ai/prompts`, then `.claude/commands` and its
+immediate subdirectories — and what was found SHALL be shown before anything is written. Where
+more than one candidate holds files, all SHALL be offered and none SHALL be selected silently.
+The prompts directory SHALL be saved only once a human has confirmed it.
+
+Search SHALL go one subdirectory deep and no further: a form action that crawls a repository is a
+different thing from one that looks where prompts conventionally live.
+
+#### Scenario: a repository with its own pipeline is wired, not duplicated
+
+- **WHEN** setting up a project whose repository already holds prompt files named for pipeline
+  steps
+- **THEN** Automations are wired to those files, and no starter is installed for those steps
+
+#### Scenario: nothing is written before the human sees what was found
+
+- **WHEN** discovery completes
+- **THEN** the candidate directories and their files are reported, and no directory is saved and
+  no Automation created until the choice is confirmed
+
+#### Scenario: two candidates are both offered
+
+- **WHEN** more than one conventional location holds prompt files
+- **THEN** both are offered and neither is chosen automatically
+
+#### Scenario: an empty repository gets the starters
+
+- **WHEN** no conventional location holds a prompt file
+- **THEN** every pipeline step is a gap, and the starter set is what fills it
+
+#### Scenario: the seeding revision is reachable from the rule it narrows
+
+- **WHEN** a reader finds the adoption rationale citing DEC-048
+- **THEN** the decision that narrowed it, and the ADR recording why, are named there
+
 ### Requirement: the setup card says what it will create before it is pressed
 
 Where a pipeline has been discovered, the portal SHALL show what pressing the build control would

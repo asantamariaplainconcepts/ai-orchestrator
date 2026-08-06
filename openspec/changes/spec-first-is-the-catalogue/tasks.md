@@ -109,16 +109,16 @@
 
 ## 8. Decision records and docs (design D9)
 
-- [ ] 8.1 Write `docs/adr/0012-a-seeded-document-is-the-project-s-own.md` from `docs/adr/template.md`.
+- [x] 8.1 Write `docs/adr/0012-a-seeded-document-is-the-project-s-own.md` from `docs/adr/template.md`.
       It must carry the narrow argument — *"the weaker of the two" presumes two* — state that DEC-048's
       read-time invariant is untouched, and record the cost: on day one every repository that presses
       the button holds the same readiness bar.
-- [ ] 8.2 Add **DEC-064** to `docs/product/mvp/10-locked-mvp-decisions.md`, revising DEC-048's rubric
+- [x] 8.2 Add **DEC-064** to `docs/product/mvp/10-locked-mvp-decisions.md`, revising DEC-048's rubric
       clause and citing the ADR. Never edit DEC-048 in place — the file's own convention.
-- [ ] 8.3 Update `docs/product/manual/README.md`: the consent switch, what the pull request contains,
+- [x] 8.3 Update `docs/product/manual/README.md`: the consent switch, what the pull request contains,
       and that the portable starters are gone. Judgement call at implementation whether the screenshots
       need reshooting (design Open Questions).
-- [ ] 8.4 Correct `automation-configuration`'s adoption rationale if it now reads as contradicting
+- [x] 8.4 Correct `automation-configuration`'s adoption rationale if it now reads as contradicting
       itself: `openspec/specs/automation-configuration/spec.md:762` cites DEC-048 for "the copy is the
       weaker of the two". That sentence stays true — the delta spec does not touch it — but the ADR must
       be reachable from it, so a reader who finds the sentence finds the revision.
