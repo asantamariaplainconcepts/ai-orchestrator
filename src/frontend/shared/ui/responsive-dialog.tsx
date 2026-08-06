@@ -56,6 +56,11 @@ export function ResponsiveDialog({
    * For a panel whose content already carries its own heading. The title stays in the accessibility
    * tree — a dialog without one is unnamed — and the header bar is not drawn, so the reader does not
    * meet the same words twice.
+   *
+   * It is rendered as a plain element rather than the heading radix defaults to, because `sr-only`
+   * hides pixels and not the accessibility tree: a visually hidden `<h2>` beside the content's own
+   * `<h2>` of the same name is two headings a screen reader announces twice, and two elements a
+   * role query cannot tell apart. The E2E suite caught exactly that as a strict-mode violation.
    */
   hideTitle?: boolean;
   footer?: React.ReactNode;
@@ -72,7 +77,13 @@ export function ResponsiveDialog({
           className={cn("max-h-[90svh] gap-0 rounded-t-xl p-0", className)}
         >
           <SheetHeader className={cn("border-b border-border px-4 py-3", hideTitle && "sr-only")}>
-            <SheetTitle className="text-sm">{title}</SheetTitle>
+            {hideTitle ? (
+              <SheetTitle asChild>
+                <span>{title}</span>
+              </SheetTitle>
+            ) : (
+              <SheetTitle className="text-sm">{title}</SheetTitle>
+            )}
           </SheetHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
           {footer ? (
@@ -94,7 +105,13 @@ export function ResponsiveDialog({
         )}
       >
         <DialogHeader className={cn("border-b border-border px-5 py-3.5", hideTitle && "sr-only")}>
-          <DialogTitle className="text-sm">{title}</DialogTitle>
+          {hideTitle ? (
+            <DialogTitle asChild>
+              <span>{title}</span>
+            </DialogTitle>
+          ) : (
+            <DialogTitle className="text-sm">{title}</DialogTitle>
+          )}
         </DialogHeader>
         <div className="min-h-0 overflow-y-auto">{children}</div>
         {footer ? (
