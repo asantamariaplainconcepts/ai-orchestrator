@@ -43,15 +43,16 @@ public class StarterPromptsEndpoint_Should_Constraint(ProjectsApiFixture fixture
     {
         var tiers = await Starters();
 
-        tiers.Count.ShouldBeGreaterThanOrEqualTo(2);
+        // One tier is a lawful catalogue (#269): what this requirement fixes is that a tier's
+        // assumptions are declared, not how many tiers ship. Asserting a count here is what made an
+        // earlier version of this test fail for the right change.
+        tiers.ShouldNotBeEmpty();
+        tiers.ShouldAllBe(tier => tier.Prompts.Count > 0);
 
-        // Portable first and requiring nothing; anything else says what it needs. The reference set
-        // this change started from was five-sixths unportable, and one undifferentiated list would
-        // hand somebody a prompt that reads documents their repository does not have.
-        tiers[0].Id.ShouldBe("portable");
-        tiers[0].Requires.ShouldBeNull();
-        tiers[0].Prompts.ShouldNotBeEmpty();
-        tiers.Skip(1).ShouldAllBe(tier => tier.Requires != null);
+        // Every tier either says what it needs or says it needs nothing. A tier that reads documents
+        // a fresh repository has not got must not be presented as though it assumed only the
+        // repository — one undifferentiated list would hand somebody a prompt that fails on a file.
+        tiers.ShouldAllBe(tier => tier.Requires == null || tier.Requires.Length > 0);
 
         // Every entry carries what makes it usable without a second call.
         tiers
@@ -71,24 +72,24 @@ public class StarterPromptsEndpoint_Should_Constraint(ProjectsApiFixture fixture
         // The path a Run would resolve, because it came from the same prompt read a Run performs —
         // not from this slice composing a second opinion about where prompts live.
         prompts.ShouldAllBe(prompt => prompt.TargetPath!.StartsWith("prompts/ours/"));
-        prompts.ShouldContain(prompt => prompt.TargetPath == "prompts/ours/triage.md");
+        prompts.ShouldContain(prompt => prompt.TargetPath == "prompts/ours/aio-grill.md");
     }
 
     [Fact]
     public async Task AStarterTheProjectAlreadyHas_Should_BeReported()
     {
-        fixture.Documents.Documents["ai/prompts/triage.md"] = "Their own version.";
+        fixture.Documents.Documents["ai/prompts/aio-grill.md"] = "Their own version.";
 
         var prompts = (await Starters()).SelectMany(tier => tier.Prompts).ToList();
 
         var present = prompts.Where(prompt => prompt.AlreadyPresent == true).ToList();
         present.Count.ShouldBe(1);
-        present.Single().File.ShouldBe("triage.md");
+        present.Single().SaveAs.ShouldBe("aio-grill.md");
 
         // And every other one is a definite "no", not a shrug — the distinction only holds because
         // the read reached the vendor for all of them.
         prompts
-            .Where(prompt => prompt.File != "triage.md")
+            .Where(prompt => prompt.SaveAs != "aio-grill.md")
             .ShouldAllBe(prompt => prompt.AlreadyPresent == false);
     }
 
@@ -127,10 +128,11 @@ public class StarterPromptsEndpoint_Should_Constraint(ProjectsApiFixture fixture
     [Fact]
     public async Task NoTwoStarters_Should_LandOnTheSamePath()
     {
-        // Found while writing these tests, not by reading the manifest: the portable and workflow
-        // tiers both ship an implement.md, and without distinct saved names they would resolve to
-        // one path — so taking both was impossible and the collision report would have marked two
-        // entries present for one file.
+        // Found while writing these tests, not by reading the manifest: two tiers both shipped an
+        // implement.md, and without distinct saved names they resolved to one path — so taking both
+        // was impossible and the collision report would have marked two entries present for one
+        // file. #269 left one tier standing, which removes the instance and not the rule: `saveAs`
+        // is still what keeps a starter off a path a team's own file may occupy.
         var paths = (await Starters())
             .SelectMany(tier => tier.Prompts)
             .Select(prompt => prompt.TargetPath)

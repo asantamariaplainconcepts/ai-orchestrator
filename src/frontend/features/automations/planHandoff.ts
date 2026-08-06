@@ -22,7 +22,21 @@ import type { PlannedStep } from "./useWorkflowSetup";
  * <p>
  * A step is reported only when it <i>had</i> a hand-off and has none left: losing one of two
  * providers still leaves it fed, and marking it then would be a warning about nothing. A step
- * nobody ever handed to is not orphaned either — it is a start, which is how `ai:triage` reads.
+ * nobody ever handed to is not orphaned either — it is a start.
+ * </p>
+ *
+ * <p>
+ * <b>Currently unreachable, and kept deliberately (#269).</b> The catalogue has no hand-off edges
+ * left: the portable tier held the only chain (`ai:implement → ai:tests → ai:review`) and every
+ * spec-first prompt hands work to nobody, so this function correctly returns an empty set for every
+ * input the product can produce. It is not dead code by mistake — the requirement it implements is
+ * still correct, and the moment any tier declares an `outputLabels` edge the marker works again.
+ * </p>
+ *
+ * <p>
+ * So: do not delete it, and do not invent a catalogue edge to make it demonstrable. Which of the
+ * spec-first loop's edges should be automatic and which should wait for a person is a methodology
+ * decision, scoped as its own change rather than smuggled into wiring.
  * </p>
  */
 export function handoffsBrokenBy(

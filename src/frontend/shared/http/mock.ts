@@ -132,13 +132,41 @@ const connector = {
   localPath: "/home/ana/repos/portal",
 };
 
+/** The one tier the catalogue ships (#269), and the paths consenting to it would write. */
+const mockTiers = [
+  {
+    id: "workflow",
+    title: "The spec-first workflow",
+    summary:
+      "The loop this product's own development runs on: an idea is interrogated to readiness, proposed as a spec, implemented against it, then closed out with a retro and one commit.",
+    requires:
+      "OpenSpec, and the documents these prompts read — a definition of ready, a retro log, and the openspec/ directory layout. Consenting to this tier installs all of them alongside the prompts; anything you already have is left exactly as it is.",
+    prerequisites: [
+      "docs/process/definition-of-ready.md",
+      "docs/process/backlog-shaping-rules.md",
+      "docs/process/product-context.md",
+      "docs/process/retro-log.md",
+      "openspec/config.yaml",
+      "openspec/specs/.gitkeep",
+      "openspec/changes/archive/.gitkeep",
+    ],
+  },
+];
+
 /**
  * The plan each candidate directory is offered with (#233), shared by discovery and the setup
  * report so the two cannot disagree — the report must only ever name steps the plan proposed.
  *
- * The `ai:implement → ai:tests → ai:review` edges are the catalogue's only hand-offs, and they are
- * what makes #262's broken-hand-off marker reachable by hand: unchecking `ai:tests` marks
- * `ai:review`. Unchecking `ai:triage` marks nothing, because it hands work to nobody.
+ * **There are no hand-off edges left to exercise.** Every spec-first prompt carries empty
+ * `outputLabels`, and #269 removed the portable tier that held the catalogue's only chain
+ * (`ai:implement → ai:tests → ai:review`). So #262's broken-hand-off marker is unreachable by hand
+ * here, and unreachable in the product too — the requirement stays correct and nothing fires it.
+ * Restoring a chain is a methodology decision, scoped as its own change; do not invent edges here to
+ * make the marker demonstrable, because a mock that disagrees with the catalogue is worse than a
+ * feature that is quiet.
+ *
+ * `installable: false` on every row is not an oversight: this tier declares a prerequisite, so a
+ * starter is written for it only once the consent above is on. The card adds those rows itself.
  */
 const mockPlans: Record<
   string,
@@ -149,50 +177,69 @@ const mockPlans: Record<
     gated: boolean;
     installable: boolean;
     outputLabels: string[];
+    tierId: string;
   }[]
 > = {
+  // A directory holding some of the loop but not all of it — the adoption case, where the rows that
+  // exist are wired and the rest wait on a consent.
   "ai/prompts": [
     {
-      trigger: "ai:triage",
-      promptFile: "triage.md",
+      trigger: "ai:grill",
+      promptFile: "grill.md",
       exists: true,
       gated: false,
-      installable: true,
+      installable: false,
       outputLabels: [],
+      tierId: "workflow",
     },
     {
-      trigger: "ai:explain",
-      promptFile: "explain.md",
-      exists: true,
-      gated: false,
-      installable: true,
+      trigger: "ai:propose",
+      promptFile: "aio-propose.md",
+      exists: false,
+      gated: true,
+      installable: false,
       outputLabels: [],
+      tierId: "workflow",
     },
     {
       trigger: "ai:implement",
-      promptFile: "implement.md",
+      promptFile: "aio-implement.md",
       exists: false,
       gated: true,
-      installable: true,
-      outputLabels: ["ai:tests"],
-    },
-    {
-      trigger: "ai:tests",
-      promptFile: "tests.md",
-      exists: false,
-      gated: false,
-      installable: true,
-      outputLabels: ["ai:review"],
-    },
-    {
-      trigger: "ai:review",
-      promptFile: "review.md",
-      exists: false,
-      gated: false,
-      installable: true,
+      installable: false,
       outputLabels: [],
+      tierId: "workflow",
+    },
+    {
+      trigger: "ai:sync",
+      promptFile: "aio-sync.md",
+      exists: false,
+      gated: true,
+      installable: false,
+      outputLabels: [],
+      tierId: "workflow",
+    },
+    {
+      trigger: "ai:refine",
+      promptFile: "aio-refine.md",
+      exists: false,
+      gated: false,
+      installable: false,
+      outputLabels: [],
+      tierId: "workflow",
+    },
+    {
+      trigger: "ai:status",
+      promptFile: "aio-status.md",
+      exists: false,
+      gated: false,
+      installable: false,
+      outputLabels: [],
+      tierId: "workflow",
     },
   ],
+  // A repository that already runs the whole loop from its own command directory: every row exists,
+  // so the consent changes nothing about the prompts and only its documents could still be written.
   ".claude/commands/ds": [
     {
       trigger: "ai:grill",
@@ -201,6 +248,7 @@ const mockPlans: Record<
       gated: false,
       installable: false,
       outputLabels: [],
+      tierId: "workflow",
     },
     {
       trigger: "ai:propose",
@@ -209,30 +257,25 @@ const mockPlans: Record<
       gated: true,
       installable: false,
       outputLabels: [],
+      tierId: "workflow",
     },
     {
       trigger: "ai:implement",
       promptFile: "implement.md",
       exists: true,
       gated: true,
-      installable: true,
-      outputLabels: ["ai:tests"],
-    },
-    {
-      trigger: "ai:tests",
-      promptFile: "tests.md",
-      exists: false,
-      gated: false,
-      installable: true,
-      outputLabels: ["ai:review"],
-    },
-    {
-      trigger: "ai:review",
-      promptFile: "review.md",
-      exists: false,
-      gated: false,
-      installable: true,
+      installable: false,
       outputLabels: [],
+      tierId: "workflow",
+    },
+    {
+      trigger: "ai:sync",
+      promptFile: "sync.md",
+      exists: true,
+      gated: true,
+      installable: false,
+      outputLabels: [],
+      tierId: "workflow",
     },
   ],
 };
@@ -513,28 +556,27 @@ const routes: [string, RegExp, Handler][] = [
     /^\/api\/projects\/[^/]+\/starter-prompts$/,
     () => [
       {
-        id: "portable",
-        title: "Starters",
-        summary:
-          "Prompts that assume a cloned repository and, where the Automation names one, a Story.",
-        requires: null,
+        id: mockTiers[0]!.id,
+        title: mockTiers[0]!.title,
+        summary: mockTiers[0]!.summary,
+        requires: mockTiers[0]!.requires,
         prompts: [
           {
-            file: "triage.md",
-            saveAs: "triage.md",
-            purpose: "Say what is missing from a story before anybody writes code.",
-            assumes: "Nothing beyond the story.",
-            content: "---\ndescription: triage\n---\nSay what is missing.",
-            targetPath: "ai/prompts/triage.md",
+            file: "grill.md",
+            saveAs: "aio-grill.md",
+            purpose: "Interrogate a raw idea until it meets the definition of ready.",
+            assumes: "A definition-of-ready document, and product context to grill against.",
+            content: "---\ndescription: grill\n---\nInterrogate the idea.",
+            targetPath: "ai/prompts/aio-grill.md",
             alreadyPresent: false,
           },
           {
-            file: "estimate.md",
-            saveAs: "estimate.md",
-            purpose: "Estimate a story and explain the number.",
-            assumes: "Nothing beyond the story.",
-            content: "---\ndescription: estimate\n---\nEstimate the story.",
-            targetPath: "ai/prompts/estimate.md",
+            file: "sync.md",
+            saveAs: "aio-sync.md",
+            purpose: "Close out an approved change: retro, archive, spec sync, then one commit.",
+            assumes: "OpenSpec's specs and archive directories, and a retro log.",
+            content: "---\ndescription: sync\n---\nClose out the change.",
+            targetPath: "ai/prompts/aio-sync.md",
             alreadyPresent: true,
           },
         ],
@@ -550,21 +592,22 @@ const routes: [string, RegExp, Handler][] = [
       candidates: [
         {
           directory: "ai/prompts",
-          files: ["triage.md", "explain.md"],
-          steps: ["ai:triage", "ai:explain"],
-          unmatched: [],
+          files: ["grill.md", "sprint-notes.md"],
+          steps: ["ai:grill"],
+          unmatched: ["sprint-notes.md"],
           plan: mockPlans["ai/prompts"],
         },
         {
           directory: ".claude/commands/ds",
-          files: ["grill.md", "propose.md", "implement.md", "sprint-notes.md"],
-          steps: ["ai:grill", "ai:propose", "ai:implement"],
+          files: ["grill.md", "propose.md", "implement.md", "sync.md", "sprint-notes.md"],
+          steps: ["ai:grill", "ai:propose", "ai:implement", "ai:sync"],
           unmatched: ["sprint-notes.md"],
           plan: mockPlans[".claude/commands/ds"],
         },
       ],
       searchedIn: ["ai/prompts", ".claude/commands"],
       reason: null,
+      tiers: mockTiers,
     }),
   ],
   [
@@ -575,6 +618,7 @@ const routes: [string, RegExp, Handler][] = [
         promptDirectory?: string;
         installMissing?: boolean;
         steps?: string[];
+        tiers?: string[];
       };
       const directory = input.promptDirectory ?? "ai/prompts";
 
@@ -582,47 +626,82 @@ const routes: [string, RegExp, Handler][] = [
       // distinction the API does, or mock mode would teach the wrong contract.
       const kept = (trigger: string) => input.steps === undefined || input.steps.includes(trigger);
 
+      // Absent means *no* tier (#269) — the opposite default, and the mock has to reproduce that
+      // asymmetry too, because a mock that authorised by default would teach the dangerous half.
+      const consented = (tierId: string) => (input.tiers ?? []).includes(tierId);
+
       // Derived from the plan this directory was offered with, never a list of its own: the real
       // action only ever reports steps it would have acted on, and a mock that named others would
       // be teaching a contract the API does not have.
-      const offered = (mockPlans[directory] ?? mockPlans["ai/prompts"] ?? []).map(
-        (step) => step.trigger,
+      const offered = mockPlans[directory] ?? mockPlans["ai/prompts"] ?? [];
+
+      // A step is acted on when it is selected *and* either its file is already there or its tier
+      // was consented to. An unconsented gap is not created and not installed.
+      const actionable = offered.filter(
+        (step) => kept(step.trigger) && (step.exists || consented(step.tierId)),
       );
 
       // One trigger stands in for "the project already had this", so the report shows a skip and
       // an exclusion side by side — they are different facts and must never merge.
-      const alreadyTaken = "ai:triage";
-      const created = offered.filter((trigger) => kept(trigger) && trigger !== alreadyTaken);
-      const skipped = offered
-        .filter((trigger) => kept(trigger) && trigger === alreadyTaken)
-        .map((trigger) => ({ trigger, reason: "an Automation already uses this trigger" }));
-      const installedFiles = ["tests.md", "review.md"]
-        .filter((file) => offered.includes(`ai:${file.replace(".md", "")}`))
-        .filter((file) => kept(`ai:${file.replace(".md", "")}`))
-        .map((file) => `${directory}/${file}`);
+      const alreadyTaken = "ai:grill";
+      const created = actionable
+        .filter((step) => step.trigger !== alreadyTaken)
+        .map((step) => step.trigger);
+      const skipped = actionable
+        .filter((step) => step.trigger === alreadyTaken)
+        .map((step) => ({
+          trigger: step.trigger,
+          reason: "an Automation already uses this trigger",
+        }));
+
+      const installedFiles = actionable
+        .filter((step) => !step.exists)
+        .map((step) => `${directory}/${step.promptFile}`);
+
+      // Two of the tier's paths stand in for "you already had this", so the report shows written and
+      // already-present prerequisites side by side.
+      const tierPaths = mockTiers
+        .filter((tier) => consented(tier.id))
+        .flatMap((tier) => tier.prerequisites);
+      const alreadyYours = ["docs/process/retro-log.md"];
+      const prerequisites = tierPaths.filter((path) => !alreadyYours.includes(path));
+      const prerequisitesAlreadyPresent = tierPaths.filter((path) => alreadyYours.includes(path));
+
+      const wrote = installedFiles.length + prerequisites.length;
 
       return {
         directory,
         created,
         skipped,
         foundNotWired: ["sprint-notes.md"],
-        excluded: offered.filter((trigger) => !kept(trigger)),
+        excluded: offered
+          .map((step) => step.trigger)
+          .filter((trigger) => !kept(trigger))
+          .concat(
+            // Not excluded by choice of row, but not acted on either: an unconsented gap. Reported
+            // here so mock mode shows the same "nothing happened for this" the API reports.
+            offered
+              .filter((step) => kept(step.trigger) && !step.exists && !consented(step.tierId))
+              .map((step) => step.trigger),
+          ),
         // No files left to write means no branch and no pull request — the same clean outcome as a
         // repository that already had everything, never a failure.
-        installed:
-          input.installMissing && installedFiles.length > 0
-            ? {
-                files: installedFiles,
-                pullRequestUrl: "https://github.com/acme/portal/pull/8",
-                branch: "starter/pipeline",
-                failure: null,
-              }
-            : input.installMissing
-              ? { files: [], pullRequestUrl: null, branch: null, failure: null }
-              : null,
-        missingPrompts: kept("ai:tests")
-          ? [{ saveAs: "tests.md", resolvedPath: `${directory}/tests.md` }]
-          : [],
+        installed: input.installMissing
+          ? {
+              files: installedFiles,
+              pullRequestUrl: wrote > 0 ? "https://github.com/acme/portal/pull/8" : null,
+              branch: wrote > 0 ? "starter/pipeline" : null,
+              failure: null,
+              prerequisites,
+              prerequisitesAlreadyPresent,
+            }
+          : null,
+        missingPrompts: actionable
+          .filter((step) => !step.exists)
+          .map((step) => ({
+            saveAs: step.promptFile,
+            resolvedPath: `${directory}/${step.promptFile}`,
+          })),
       };
     },
   ],

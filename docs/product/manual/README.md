@@ -50,9 +50,21 @@ anything chosen in this product.
 
 Three things share this tab.
 
-**Set up the whole workflow** looks for the prompts your repository already has, shows a plan of what
-it would wire before you press anything, and installs starters only for steps you have no file for.
-Starters arrive as a draft pull request; nothing lands on your default branch.
+**Set up the whole workflow** looks for the prompts your repository already has and shows a plan of
+what it would wire before you press anything. Every row is a checkbox, so you can leave a step out
+rather than delete its Automation afterwards.
+
+To install a workflow you do not have yet, turn it on first. The switch names what the workflow needs
+and lists every path it would write — its prompts, and the documents those prompts read, which is why
+some of them sit outside your prompt directory. Nothing is on by default: a workflow is a way of
+working, and the product will not choose one for you.
+
+**Anything you already have wins.** A path that exists in your repository is not written, not
+modified, and does not appear in the pull request — so a team with its own readiness document keeps
+it, and the report afterwards tells you which files were written and which were left alone.
+
+Everything arrives together, in one branch and one draft pull request: a workflow whose prompts and
+whose documents landed as two reviews could be merged half-way. Nothing lands on your default branch.
 
 **The catalogue** is every Automation the project has. **The workflow** is the subset that hands work
 to one another — one Automation writes a label, the next one's trigger matches it, and a chain

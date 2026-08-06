@@ -1,8 +1,5 @@
-# default-automations Specification
+## MODIFIED Requirements
 
-## Purpose
-A project's starter Automations created in one conflict-proof, idempotent action (#212), with the wiring carried by the starter catalogue as content (#190's discipline).
-## Requirements
 ### Requirement: the starter catalogue carries default Automation wiring as content
 
 The catalogue's manifest entries MAY carry an `automation` block — trigger label, `requiresApproval`,
@@ -164,4 +161,3 @@ chose is not a refusal, and surfacing one would tell an Admin their own decision
 
 - **WHEN** a step has no file in the chosen directory and its tier was not consented to
 - **THEN** its file is absent from the branch and the pull request, and no failure is reported
-

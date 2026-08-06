@@ -118,9 +118,14 @@ sealed class InstallStarterPrompt : IUseCase
                 cancellationToken
             );
 
-            return published.IsError
-                ? published.Errors
-                : new Response(published.Value, presence.ResolvedPath, branch);
+            // The presence check above already refused an existing file by name, so this install
+            // never marks its file OnlyIfAbsent and never skips: a null URL here would mean the
+            // workspace found a file this handler was told did not exist. Treated as the workspace
+            // refusing rather than silently answering success with nothing.
+            return published.IsError ? published.Errors
+                : published.Value.PullRequestUrl is not { } url
+                    ? StarterInstallErrors.AlreadyPresent(presence.ResolvedPath)
+                : new Response(url, presence.ResolvedPath, branch);
         }
     }
 }

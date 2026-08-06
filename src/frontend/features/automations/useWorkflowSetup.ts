@@ -9,10 +9,27 @@ export interface PlannedStep {
   promptFile: string;
   exists: boolean;
   gated: boolean;
-  /** False where a starter cannot be written — the step is listed, not silently dropped. */
+  /**
+   * Whether a starter can be written for this step **without** a consent. A gated step becomes
+   * installable once its tier is consented to (#269), which is a decision this card makes — see
+   * `tierId`.
+   */
   installable: boolean;
   /** What this step hands on. Excluding a step named here breaks a hand-off (#262). */
   outputLabels: string[];
+  /** The tier this step came from, so toggling a consent adds and removes rows with no round trip. */
+  tierId: string;
+}
+
+/** One starter tier as a consent decision (#269). */
+export interface StarterTier {
+  id: string;
+  title: string;
+  summary: string;
+  /** What the tier assumes — and, since #269, the text of the consent. Null needs no consent. */
+  requires: string | null;
+  /** Repository-relative paths the consent would write, outside the prompt directory. */
+  prerequisites: string[];
 }
 
 export interface PipelineCandidate {
@@ -32,6 +49,11 @@ export interface PipelineDiscovery {
   searchedIn: string[];
   /** Why there is nothing to show, when that is the answer: no Connector, or a vendor refusal. */
   reason: string | null;
+  /**
+   * The catalogue's tiers (#269). Answered even where there is no Connector — a consent's content is
+   * catalogue data, and reading what a press would write before connecting anything is ordinary.
+   */
+  tiers: StarterTier[];
 }
 
 export interface SkippedStep {
@@ -45,6 +67,13 @@ export interface InstalledStarters {
   branch: string | null;
   /** Set when installing was asked for and refused — never silently dropped from the report. */
   failure: string | null;
+  /**
+   * Files written **outside** the prompt directory (#269). Its own fact, never folded into `files`:
+   * an Admin who consented to prompts must see that process documents were written too.
+   */
+  prerequisites: string[];
+  /** Prerequisite paths left alone because the repository already had them. */
+  prerequisitesAlreadyPresent: string[];
 }
 
 export interface MissingPrompt {
@@ -87,6 +116,12 @@ export interface WorkflowSetupInput {
    * as different answers, so never send `[]` to mean "no preference".
    */
   steps?: string[];
+  /**
+   * The tiers consented to (#269). Omitted means **no tier** — the opposite default from `steps`
+   * above, and deliberately so: a selection narrows a plan already on screen, while a consent
+   * authorises writing files into the repository. Sending nothing must authorise nothing.
+   */
+  tiers?: string[];
 }
 
 /**

@@ -154,6 +154,24 @@ sealed class StubInstallWorkspace : ICodeWorkspace
     /// <summary>Files present in the workspace at publish time, relative to its root.</summary>
     public List<string> PublishedFiles { get; } = [];
 
+    /// <summary>
+    /// Paths the repository already holds, created in the prepared workspace before anything is
+    /// written (#269). This is how the existing-file rule is exercised for a prerequisite: the
+    /// installer decides against the clone, so the only honest way to test it is to put a file in the
+    /// clone.
+    /// </summary>
+    public List<string> ExistingFiles { get; } = [];
+
+    /// <summary>
+    /// What each published path contained. Needed because a file the repository already had is
+    /// *present* at publish time whether or not this action touched it — so "left alone" can only be
+    /// asserted on content, never on absence.
+    /// </summary>
+    public Dictionary<string, string> PublishedContents { get; } = new(StringComparer.Ordinal);
+
+    /// <summary>The content a seeded existing file holds, so a test can assert it survived.</summary>
+    public const string TheProjectsOwnContent = "the project's own content";
+
     public void Reset()
     {
         PrepareError = null;
@@ -161,6 +179,8 @@ sealed class StubInstallWorkspace : ICodeWorkspace
         PreparedBranch = null;
         PublishedAsDraft = null;
         PublishedFiles.Clear();
+        PublishedContents.Clear();
+        ExistingFiles.Clear();
         PullRequestUrl = "https://github.com/acme/portal/pull/7";
     }
 
@@ -184,12 +204,20 @@ sealed class StubInstallWorkspace : ICodeWorkspace
         }
 
         PreparedBranch = branch;
+
+        var root = Directory.CreateTempSubdirectory("install-ws-").FullName;
+
+        // Seed what the repository already has, so a caller that only writes where nothing exists is
+        // tested against a clone that really holds the file.
+        foreach (var existing in ExistingFiles)
+        {
+            var path = Path.Combine(root, existing.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, TheProjectsOwnContent);
+        }
+
         return Task.FromResult<ErrorOr<PreparedWorkspace>>(
-            new PreparedWorkspace(
-                coordinates,
-                Directory.CreateTempSubdirectory("install-ws-").FullName,
-                branch
-            )
+            new PreparedWorkspace(coordinates, root, branch)
         );
     }
 
@@ -204,13 +232,21 @@ sealed class StubInstallWorkspace : ICodeWorkspace
     {
         PublishedAsDraft = draft;
         PublishedFiles.Clear();
+        PublishedContents.Clear();
         if (Directory.Exists(workspace.Path))
         {
-            PublishedFiles.AddRange(
-                Directory
-                    .EnumerateFiles(workspace.Path, "*", SearchOption.AllDirectories)
-                    .Select(file => Path.GetRelativePath(workspace.Path, file).Replace('\\', '/'))
-            );
+            foreach (
+                var file in Directory.EnumerateFiles(
+                    workspace.Path,
+                    "*",
+                    SearchOption.AllDirectories
+                )
+            )
+            {
+                var relative = Path.GetRelativePath(workspace.Path, file).Replace('\\', '/');
+                PublishedFiles.Add(relative);
+                PublishedContents[relative] = File.ReadAllText(file);
+            }
         }
 
         return Task.FromResult<ErrorOr<PublishedChange>>(

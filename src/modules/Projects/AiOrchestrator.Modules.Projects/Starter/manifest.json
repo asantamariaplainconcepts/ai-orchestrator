@@ -1,78 +1,41 @@
 {
-  "$comment": "The starter catalogue (#190). One manifest read by the endpoint and by the tests, so a starter that ships uncovered is not possible. 'file' is the source in this repository; 'saveAs' is the name it takes in a project, and the two differ where they must: portable/implement.md and workflow/implement.md would otherwise both land on ai/prompts/implement.md and only one could be taken. Tiers are ordered; prompts within a tier are ordered. 'automation' (#212) is the wiring for a pipeline step: trigger, approval, output labels — the pipeline is catalogue content, never code. A wired prompt in a tier with a 'requires' (#229) is recognisable but not installable: adoption wires a repository's own grill.md, and no button ever writes one into a repository whose team did not choose the methodology. The workflow tier's implement.md carries no wiring on purpose — it is the same step as the portable implement, and two entries cannot own one trigger.",
+  "$comment": "The starter catalogue (#190). One manifest read by the endpoint and by the tests, so a starter that ships uncovered is not possible. 'file' is the source in this repository; 'saveAs' is the name it takes in a project. Tiers are ordered; prompts within a tier are ordered. 'automation' (#212) is the wiring for a pipeline step: trigger, approval, output labels — the pipeline is catalogue content, never code. A tier that declares 'requires' (#229) is recognisable from a repository's own files, and installable only where a caller consents to it by name (#269). 'prerequisites' (#269) are the files a tier's prompts read but a fresh repository does not have: 'file' is the source here, 'path' is where it lands in the project, and the two are decoupled so a source name may differ from its target (one gitkeep source fills two directories). A prerequisite is written only where nothing exists at its path — an existing file always wins, which is what keeps a seeded document the project's own rather than a copy displacing one (ADR-0012, DEC-064 revising DEC-048).",
   "tiers": [
-    {
-      "id": "portable",
-      "title": "Starters",
-      "summary": "Prompts that assume a cloned repository and, where the Automation names one, a Story. Nothing else.",
-      "requires": null,
-      "prompts": [
-        {
-          "file": "triage.md",
-          "purpose": "Say what is missing from a story before anybody writes code.",
-          "assumes": "Nothing beyond the story.",
-          "saveAs": "triage.md",
-          "automation": {
-            "trigger": "ai:triage",
-            "requiresApproval": false,
-            "outputLabels": []
-          }
-        },
-        {
-          "file": "explain.md",
-          "purpose": "Explain how the part of the code a story touches actually works.",
-          "assumes": "Nothing beyond the cloned repository.",
-          "saveAs": "explain.md",
-          "automation": {
-            "trigger": "ai:explain",
-            "requiresApproval": false,
-            "outputLabels": []
-          }
-        },
-        {
-          "file": "implement.md",
-          "purpose": "Implement the story on a branch and open a pull request.",
-          "assumes": "Push access, and a command line the agent can open a pull request with.",
-          "saveAs": "implement.md",
-          "automation": {
-            "trigger": "ai:implement",
-            "requiresApproval": true,
-            "outputLabels": [
-              "ai:tests"
-            ]
-          }
-        },
-        {
-          "file": "tests.md",
-          "purpose": "Write the tests a story's change needs, and run them.",
-          "assumes": "A test command the agent can discover from the repository.",
-          "saveAs": "tests.md",
-          "automation": {
-            "trigger": "ai:tests",
-            "requiresApproval": false,
-            "outputLabels": [
-              "ai:review"
-            ]
-          }
-        },
-        {
-          "file": "review.md",
-          "purpose": "Review the change a story produced and report what is wrong with it.",
-          "assumes": "An existing branch or pull request to review.",
-          "saveAs": "review.md",
-          "automation": {
-            "trigger": "ai:review",
-            "requiresApproval": false,
-            "outputLabels": []
-          }
-        }
-      ]
-    },
     {
       "id": "workflow",
       "title": "The spec-first workflow",
       "summary": "The loop this product's own development runs on: an idea is interrogated to readiness, proposed as a spec, implemented against it, then closed out with a retro and one commit.",
-      "requires": "OpenSpec, and the documents these prompts read — a definition of ready, a retro log, and the openspec/ directory layout. Take this tier only if you are adopting the workflow; the prompts assume all of it.",
+      "requires": "OpenSpec, and the documents these prompts read — a definition of ready, a retro log, and the openspec/ directory layout. Consenting to this tier installs all of them alongside the prompts; anything you already have is left exactly as it is.",
+      "prerequisites": [
+        {
+          "file": "definition-of-ready.md",
+          "path": "docs/process/definition-of-ready.md"
+        },
+        {
+          "file": "backlog-shaping-rules.md",
+          "path": "docs/process/backlog-shaping-rules.md"
+        },
+        {
+          "file": "product-context.md",
+          "path": "docs/process/product-context.md"
+        },
+        {
+          "file": "retro-log.md",
+          "path": "docs/process/retro-log.md"
+        },
+        {
+          "file": "openspec-config.yaml",
+          "path": "openspec/config.yaml"
+        },
+        {
+          "file": "gitkeep.txt",
+          "path": "openspec/specs/.gitkeep"
+        },
+        {
+          "file": "gitkeep.txt",
+          "path": "openspec/changes/archive/.gitkeep"
+        }
+      ],
       "prompts": [
         {
           "file": "grill.md",
@@ -100,7 +63,12 @@
           "file": "implement.md",
           "purpose": "Implement a validated proposal on its own branch and mark the pull request ready.",
           "assumes": "OpenSpec, a tasks.md convention, and a work-in-progress limit to check.",
-          "saveAs": "aio-implement.md"
+          "saveAs": "aio-implement.md",
+          "automation": {
+            "trigger": "ai:implement",
+            "requiresApproval": true,
+            "outputLabels": []
+          }
         },
         {
           "file": "sync.md",

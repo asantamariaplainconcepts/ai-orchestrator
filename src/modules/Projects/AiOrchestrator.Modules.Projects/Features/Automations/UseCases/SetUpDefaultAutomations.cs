@@ -50,7 +50,8 @@ sealed class SetUpDefaultAutomations : IUseCase
                             projectId,
                             request?.PromptDirectory,
                             request?.InstallMissing ?? false,
-                            request?.Steps
+                            request?.Steps,
+                            request?.Tiers
                         ),
                         cancellationToken
                     );
@@ -77,10 +78,26 @@ sealed class SetUpDefaultAutomations : IUseCase
     /// request, which is why the distinction is written down rather than left to the reader.
     /// </para>
     /// </summary>
+    /// <param name="Tiers">
+    /// Which starter tiers the Admin consented to install (#269), by catalogue id. <b>Absent means no
+    /// tier</b> — the opposite default from <paramref name="Steps"/> on this same record, and the
+    /// asymmetry is deliberate rather than an oversight.
+    /// <para>
+    /// A selection <i>narrows</i> a plan the caller was already shown, so "everything you proposed" is
+    /// the safe default. A consent <i>authorises writing files into somebody's repository</i>, so
+    /// "nothing" is the safe default. Aligning the two for symmetry would make the safer field the
+    /// more dangerous one: a caller that forgot to send a consent would install a methodology.
+    /// </para>
+    /// <para>
+    /// Compared exactly (see <see cref="PipelineSteps.Installable"/>) — these are ids echoed back from
+    /// discovery, not labels a human types. A name the catalogue does not contain matches nothing.
+    /// </para>
+    /// </param>
     internal sealed record Request(
         string? PromptDirectory = null,
         bool InstallMissing = false,
-        IReadOnlyList<string>? Steps = null
+        IReadOnlyList<string>? Steps = null,
+        IReadOnlyList<string>? Tiers = null
     );
 
     /// <summary>
@@ -112,11 +129,23 @@ sealed class SetUpDefaultAutomations : IUseCase
     /// five Automations" stand for "and the prompts they name exist", which is the exact confusion
     /// #190 built the missing-prompt list to prevent.
     /// </summary>
+    /// <param name="Prerequisites">
+    /// The files written outside the prompt directory (#269) — an OpenSpec layout, process documents —
+    /// kept apart from <paramref name="Files"/> rather than folded in. An Admin who consented to
+    /// prompts has to be able to see, without opening the diff, that their repository's process
+    /// documents were touched; one list covering both would let a count of prompts stand for that.
+    /// </param>
+    /// <param name="PrerequisitesAlreadyPresent">
+    /// Prerequisite paths left exactly as they were, because the repository already had them. Reported
+    /// because "we wrote four of seven" is only legible beside which three were yours already.
+    /// </param>
     internal sealed record InstalledStarters(
         IReadOnlyList<string> Files,
         string? PullRequestUrl,
         string? Branch,
-        string? Failure
+        string? Failure,
+        IReadOnlyList<string> Prerequisites,
+        IReadOnlyList<string> PrerequisitesAlreadyPresent
     );
 
     /// <summary>Where the file belongs, so the report is an instruction rather than a shrug.</summary>
@@ -127,7 +156,8 @@ sealed class SetUpDefaultAutomations : IUseCase
         Guid ProjectId,
         string? PromptDirectory,
         bool InstallMissing,
-        IReadOnlyList<string>? Steps = null
+        IReadOnlyList<string>? Steps = null,
+        IReadOnlyList<string>? Tiers = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(
@@ -185,8 +215,12 @@ sealed class SetUpDefaultAutomations : IUseCase
             var adopted = PipelineSteps
                 .All.Where(step => present.Files.ContainsKey(step.Trigger))
                 .ToList();
+            // Only the tiers this caller consented to can contribute a gap (#269). With no consent
+            // and no ungated tier in the catalogue this list is empty, which is what makes an
+            // unconsented press wire what is there and write nothing.
             var gaps = PipelineSteps
-                .Installable.Where(step => !present.Files.ContainsKey(step.Trigger))
+                .Installable(command.Tiers)
+                .Where(step => !present.Files.ContainsKey(step.Trigger))
                 .ToList();
 
             // The Admin's selection (#262), compared with the same case-insensitive identity
@@ -288,11 +322,24 @@ sealed class SetUpDefaultAutomations : IUseCase
             // "the Admin excluded every gap" and "the repository already had every file" converge
             // on one path. Handing an empty list further down would earn a Workspace.NoChanges
             // refusal, and reporting a failure for a choice somebody made is the wrong answer.
+            // A tier's documents follow a tier that is actually being acted on. Consent alone is not
+            // enough: an Admin who consented and then unchecked every row has said "create nothing",
+            // and writing seven process documents into their repository at that point would be the
+            // press ignoring the checklist it just showed them. Conversely a tier whose prompts all
+            // already exist *is* being acted on — those rows are selected and being wired — so its
+            // documents still arrive, which is the whole point of consenting on an adopted pipeline.
+            var actedOnTiers = adopted
+                .Concat(gaps)
+                .Where(Selected)
+                .Select(step => step.Tier.Id)
+                .ToHashSet(StringComparer.Ordinal);
+
             var installed = command.InstallMissing
                 ? await FillGaps(
                     command.ProjectId,
                     directory,
                     [.. gaps.Where(Selected)],
+                    Prerequisites(command.Tiers?.Where(actedOnTiers.Contains).ToList()),
                     cancellationToken
                 )
                 : null;
@@ -362,20 +409,46 @@ sealed class SetUpDefaultAutomations : IUseCase
         }
 
         /// <summary>
+        /// The prerequisite files of every tier this caller consented to (#269). Distinct paths only:
+        /// two tiers naming the same path would otherwise write it twice, and the first write would
+        /// make the second's absence check lie.
+        /// </summary>
+        static IReadOnlyList<StarterPrerequisite> Prerequisites(IReadOnlyList<string>? consented) =>
+            consented is null or []
+                ? []
+                :
+                [
+                    .. StarterCatalogue
+                        .Tiers.Where(tier => consented.Contains(tier.Id, StringComparer.Ordinal))
+                        .SelectMany(tier => tier.Prerequisites)
+                        .DistinctBy(prerequisite => prerequisite.Path, StringComparer.Ordinal),
+                ];
+
+        /// <summary>
         /// Every gap in one branch and one draft pull request (design D4). #214 opens one per
         /// starter, which is right when a human picks one; four gaps picked by one press are one
         /// decision, and four reviews of one decision is the cost this removes.
+        /// <para>
+        /// Since #269 the same branch also carries the consented tiers' prerequisites — the documents
+        /// its prompts read. One press is one decision, and a workflow whose prompts and whose
+        /// documents arrived as two reviews could be merged half-way, which is precisely the state the
+        /// prerequisites exist to prevent.
+        /// </para>
         /// </summary>
         async Task<InstalledStarters> FillGaps(
             Guid projectId,
             string directory,
             IReadOnlyList<PipelineStep> gaps,
+            IReadOnlyList<StarterPrerequisite> prerequisites,
             CancellationToken cancellationToken
         )
         {
-            if (gaps.Count == 0)
+            // Nothing selected and nothing consented: no branch, no pull request, no failure. A
+            // consented tier whose prompts all already exist still reaches the installer, because its
+            // documents may not — that is the case this guard used to swallow.
+            if (gaps.Count == 0 && prerequisites.Count == 0)
             {
-                return new InstalledStarters([], null, null, Failure: null);
+                return new InstalledStarters([], null, null, Failure: null, [], []);
             }
 
             var files = gaps.Select(step => $"{directory}/{step.Prompt.SaveAs}").ToList();
@@ -389,17 +462,52 @@ sealed class SetUpDefaultAutomations : IUseCase
                         (step, index) =>
                             new StarterInstaller.File(files[index], step.Prompt.Content)
                     ),
+                    // OnlyIfAbsent: unlike a prompt gap, nothing upstream has established that these
+                    // paths are free — an existing file always wins, decided against the clone.
+                    .. prerequisites.Select(prerequisite => new StarterInstaller.File(
+                        prerequisite.Path,
+                        prerequisite.Content,
+                        OnlyIfAbsent: true
+                    )),
                 ],
                 "docs(prompts): install the starter prompts this pipeline needs",
-                "Installs the starter prompts for the pipeline steps this repository had no file "
-                    + $"for, under `{directory}/`. Installed from the portal (#229); review and "
-                    + "merge to make them available to the Automations already created.",
+                $"Installs the starter prompts for the pipeline steps this repository had no file for, under `{directory}/`"
+                    + (
+                        prerequisites.Count == 0
+                            ? "."
+                            : ", together with the documents those prompts read — an OpenSpec layout "
+                                + "and process documents, outside the prompt directory. Anything this "
+                                + "repository already had is untouched and absent from this branch."
+                    )
+                    + " Installed from the portal (#229, #269); review and merge to make them "
+                    + "available to the Automations already created.",
                 cancellationToken
             );
 
-            return published.IsError
-                ? new InstalledStarters([], null, null, published.FirstError.Description)
-                : new InstalledStarters(files, published.Value, branch, Failure: null);
+            if (published.IsError)
+            {
+                return new InstalledStarters(
+                    [],
+                    null,
+                    null,
+                    published.FirstError.Description,
+                    [],
+                    []
+                );
+            }
+
+            // Split back apart for the report: the installer answers in paths, and which list a path
+            // belongs to is a fact this handler already holds.
+            var promptPaths = new HashSet<string>(files, StringComparer.Ordinal);
+
+            return new InstalledStarters(
+                [.. published.Value.Written.Where(promptPaths.Contains)],
+                published.Value.PullRequestUrl,
+                published.Value.PullRequestUrl is null ? null : branch,
+                Failure: null,
+                [.. published.Value.Written.Where(path => !promptPaths.Contains(path))],
+                published.Value.Skipped
+            );
         }
     }
 }

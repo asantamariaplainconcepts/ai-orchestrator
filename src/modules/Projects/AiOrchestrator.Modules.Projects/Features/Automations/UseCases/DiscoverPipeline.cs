@@ -34,10 +34,30 @@ sealed class DiscoverPipeline : IUseCase
     /// <paramref name="SearchedIn"/> is present even when nothing was found: "we looked in these
     /// three places" is an answer, and a bare empty list reads as a broken button.
     /// </summary>
+    /// <param name="Tiers">
+    /// The catalogue's tiers (#269), so the card can offer a consent that states its own consequence.
+    /// Carried here for the reason #262 carried output labels: the answer to "what would this write?"
+    /// has to arrive on a click, so it cannot be a round trip — and the data sits on the catalogue the
+    /// plan projection already walks, so it costs nothing.
+    /// </param>
     internal sealed record Response(
         IReadOnlyList<Candidate> Candidates,
         IReadOnlyList<string> SearchedIn,
-        string? Reason
+        string? Reason,
+        IReadOnlyList<Tier> Tiers
+    );
+
+    /// <summary>
+    /// One starter tier as a consent decision. <paramref name="Requires"/> is null for a tier that
+    /// needs nothing beyond the repository — such a tier needs no consent, and the card shows no
+    /// control for it.
+    /// </summary>
+    internal sealed record Tier(
+        string Id,
+        string Title,
+        string Summary,
+        string? Requires,
+        IReadOnlyList<string> Prerequisites
     );
 
     /// <summary>
@@ -69,13 +89,23 @@ sealed class DiscoverPipeline : IUseCase
     /// walking, so carrying them costs nothing.
     /// </para>
     /// </summary>
+    /// <param name="Installable">
+    /// Whether a starter could be written for this step at all — true for a step whose tier needs no
+    /// consent. Since #269 a gated step is installable <i>once its tier is consented to</i>, and that
+    /// decision belongs to the card, which is why <paramref name="TierId"/> travels beside this.
+    /// </param>
+    /// <param name="TierId">
+    /// The tier this step came from, so toggling a consent adds and removes its rows without a round
+    /// trip.
+    /// </param>
     internal sealed record PlannedStep(
         string Trigger,
         string PromptFile,
         bool Exists,
         bool Gated,
         bool Installable,
-        IReadOnlyList<string> OutputLabels
+        IReadOnlyList<string> OutputLabels,
+        string TierId
     );
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -86,12 +116,17 @@ sealed class DiscoverPipeline : IUseCase
     {
         public async Task<Response> Handle(Query query, CancellationToken cancellationToken)
         {
+            // The tiers are catalogue content and do not depend on the repository, so they are
+            // answered even where there is nothing to look in: an Admin may read what a consent
+            // would write before connecting anything.
+            var tiers = Tiers();
+
             var connector = await connectors.Find(query.ProjectId, cancellationToken);
             if (connector is null)
             {
                 // Not an error: a project reaches this screen before it is connected, and the
                 // honest answer is that there is nowhere to look yet.
-                return new Response([], [], "this project has no Connector yet");
+                return new Response([], [], "this project has no Connector yet", tiers);
             }
 
             var listings = await discovery.Candidates(
@@ -124,11 +159,20 @@ sealed class DiscoverPipeline : IUseCase
                             StringComparer.OrdinalIgnoreCase
                         );
 
+                    // Every step is planned, and the card decides which rows to show (#269). Before
+                    // consent existed this filtered out steps that were neither present nor
+                    // installable, because nothing would happen for them either way — but a gated
+                    // step is now installable the moment its tier is consented to, so dropping it
+                    // here would hide the row a consent is supposed to reveal. `Installable` keeps
+                    // its meaning — installable *without* consent — and `TierId` is what lets the
+                    // card add the rest without asking again.
+                    var uncontested = PipelineSteps.Installable(null);
+
                     var plan = PipelineSteps
                         .All.Select(step =>
                         {
                             var exists = present.TryGetValue(step.Trigger, out var file);
-                            var installable = PipelineSteps.Installable.Any(candidate =>
+                            var installable = uncontested.Any(candidate =>
                                 string.Equals(
                                     candidate.Trigger,
                                     step.Trigger,
@@ -142,10 +186,10 @@ sealed class DiscoverPipeline : IUseCase
                                 exists,
                                 step.Wiring.RequiresApproval,
                                 installable,
-                                step.Wiring.OutputLabels
+                                step.Wiring.OutputLabels,
+                                step.Tier.Id
                             );
                         })
-                        .Where(step => step.Exists || step.Installable)
                         .ToList();
 
                     return new Candidate(
@@ -166,8 +210,25 @@ sealed class DiscoverPipeline : IUseCase
             return new Response(
                 candidates,
                 PipelineDiscovery.Roots(connector.PromptDirectory),
-                refusal
+                refusal,
+                tiers
             );
         }
+
+        /// <summary>
+        /// The catalogue's tiers with the paths each one's consent would write. Content, not a read:
+        /// no vendor call, which is the constraint the plan requirement already imposes on this
+        /// endpoint.
+        /// </summary>
+        static IReadOnlyList<Tier> Tiers() =>
+            [
+                .. StarterCatalogue.Tiers.Select(tier => new Tier(
+                    tier.Id,
+                    tier.Title,
+                    tier.Summary,
+                    tier.Requires,
+                    [.. tier.Prerequisites.Select(prerequisite => prerequisite.Path)]
+                )),
+            ];
     }
 }

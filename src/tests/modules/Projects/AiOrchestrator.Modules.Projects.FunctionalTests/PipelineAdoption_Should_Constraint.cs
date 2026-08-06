@@ -144,43 +144,72 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
     [Fact]
     public async Task TheGaps_Should_ArriveAsOnePullRequest()
     {
-        // One file present; every other installable step is a gap. Four gaps, one review.
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        // One file present; every other step of the consented tier is a gap. Five gaps, one review.
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("grill.md");
 
-        var report = await SetUp(directory: "ai/prompts", installMissing: true);
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            tiers: ["workflow"]
+        );
 
         var installed = report.GetProperty("installed");
         installed
             .GetProperty("pullRequestUrl")
             .GetString()
             .ShouldBe("https://github.com/acme/portal/pull/7");
-        Strings(installed, "files").Count.ShouldBe(4);
-        Strings(installed, "files").ShouldNotContain("ai/prompts/triage.md");
+        Strings(installed, "files").Count.ShouldBe(5);
+        Strings(installed, "files").ShouldNotContain("ai/prompts/grill.md");
 
         // One branch, one draft pull request, every gap in it (design D4).
         fixture.Workspace.PreparedBranch.ShouldBe("starter/pipeline");
         fixture.Workspace.PublishedAsDraft.ShouldBe(true);
-        fixture.Workspace.PublishedFiles.Count.ShouldBe(4);
-        fixture.Workspace.PublishedFiles.ShouldAllBe(path => path.StartsWith("ai/prompts/"));
+
+        // The prompts land under the chosen directory; the tier's documents deliberately do not, and
+        // they travel in the same pull request (#269).
+        Strings(installed, "files").ShouldAllBe(path => path!.StartsWith("ai/prompts/"));
+        Strings(installed, "prerequisites").ShouldAllBe(path => !path!.StartsWith("ai/prompts/"));
     }
 
     [Fact]
-    public async Task AnOptInStep_Should_BeAdoptedButNeverInstalled()
+    public async Task AnOptInStep_Should_BeAdoptedWithoutConsentAndInstalledOnlyWithIt()
     {
         ArrangeDsConnect();
 
-        var report = await SetUp(directory: ".claude/commands/ds", installMissing: true);
+        // No consent: the four files that are here are wired, because reading what a team wrote was
+        // never the act in question — and nothing at all is written.
+        var adopted = await SetUp(directory: ".claude/commands/ds", installMissing: true);
 
-        // grill is a step of a tier that declares a prerequisite: its file is here, so it is
-        // wired — reading what a team wrote is not the act writing one would be.
-        Strings(report, "created").ShouldContain("ai:grill");
+        Strings(adopted, "created").ShouldContain("ai:grill");
+        Strings(adopted.GetProperty("installed"), "files").ShouldBeEmpty();
+        Strings(adopted.GetProperty("installed"), "prerequisites").ShouldBeEmpty();
+        fixture.Workspace.PreparedBranch.ShouldBeNull();
+    }
 
-        // …and nothing from that tier is in the pull request. Only steps a tier offers
-        // unconditionally may be written into somebody's repository by a button.
-        var installedFiles = Strings(report.GetProperty("installed"), "files");
-        installedFiles.ShouldNotBeEmpty();
-        installedFiles.ShouldAllBe(path => path!.EndsWith(".md") && !path.Contains("grill"));
-        fixture.Workspace.PublishedFiles.ShouldAllBe(path => !path.Contains("aio-"));
+    [Fact]
+    public async Task AnOptInStepWithNoFile_Should_BeInstalledOnceItsTierIsConsentedTo()
+    {
+        ArrangeDsConnect();
+
+        // `ds` holds grill, propose, implement and sync — so refine and status are the gaps, and only
+        // a consent may fill them.
+        var report = await SetUp(
+            directory: ".claude/commands/ds",
+            installMissing: true,
+            tiers: ["workflow"]
+        );
+
+        var files = Strings(report.GetProperty("installed"), "files");
+        files.ShouldBe(
+            [".claude/commands/ds/aio-refine.md", ".claude/commands/ds/aio-status.md"],
+            ignoreOrder: true
+        );
+
+        // The repository's own four files are wired, not rewritten under the starter's saved name.
+        Automation(await Automations(), "ai:grill")
+            .GetProperty("promptPath")
+            .GetString()
+            .ShouldBe("grill.md");
     }
 
     [Fact]
@@ -255,11 +284,16 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
         adopted.GetProperty("exists").GetBoolean().ShouldBeTrue();
         adopted.GetProperty("promptFile").GetString().ShouldBe("grill.md");
 
-        // And a step with no file in this directory says a starter would be written for it, which
-        // is the distinction the checkbox used to stand in for.
+        // And a step with no file in this directory is offered as a row that a consent would fill.
+        // `installable` stays false because the catalogue's only tier declares a prerequisite (#269):
+        // it means "a starter can be written without asking", and here asking is the whole point. The
+        // row still arrives, with its tier, so the card can reveal it the moment the switch goes on.
         plan.ShouldContain(step => !step.GetProperty("exists").GetBoolean());
         plan.Where(step => !step.GetProperty("exists").GetBoolean())
-            .ShouldAllBe(step => step.GetProperty("installable").GetBoolean());
+            .ShouldAllBe(step =>
+                !step.GetProperty("installable").GetBoolean()
+                && step.GetProperty("tierId").GetString() == "workflow"
+            );
 
         // Reading the plan writes nothing: discovery proposes and never picks (design D1).
         fixture.Directories.Saved.ShouldBeEmpty();
@@ -287,45 +321,201 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
     // suite below pins is that **absent and empty are different answers**: one means every step,
     // the other means none, and they differ by a pull request landing in somebody's repository.
 
+    /// <summary>
+    /// A repository holding one step of the loop and none of the rest: `grill.md` is adopted, and the
+    /// other five are gaps that only a consent can fill.
+    /// </summary>
+    const string Grill = "grill.md";
+
+    static readonly string[] EveryStep =
+    [
+        "ai:grill",
+        "ai:propose",
+        "ai:implement",
+        "ai:sync",
+        "ai:refine",
+        "ai:status",
+    ];
+
     [Fact]
     public async Task AnAbsentSelection_Should_CreateEveryStep()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            steps: null,
+            tiers: ["workflow"]
+        );
+
+        // The whole set: the adopted file plus every gap the consent unlocked. An absent selection
+        // still means every step — #262's contract, unchanged by #269.
+        Strings(report, "created").ShouldBe(EveryStep, ignoreOrder: true);
+        Strings(report, "excluded").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnAbsentConsent_Should_WireOnlyWhatIsAlreadyThere()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
+
+        // No tier named: the opposite default from `steps`. The file that exists is still wired,
+        // because reading a repository needs no permission — but nothing is written.
         var report = await SetUp(directory: "ai/prompts", installMissing: true, steps: null);
 
-        // The whole installable set: the adopted file plus every gap. A caller that sends no
-        // selection behaves exactly as it did before selection existed.
-        Strings(report, "created")
-            .ShouldBe(
-                ["ai:triage", "ai:explain", "ai:implement", "ai:tests", "ai:review"],
-                ignoreOrder: true
-            );
-        Strings(report, "excluded").ShouldBeEmpty();
+        Strings(report, "created").ShouldBe(["ai:grill"]);
+        fixture.Workspace.PreparedBranch.ShouldBeNull();
+
+        var installed = report.GetProperty("installed");
+        Strings(installed, "files").ShouldBeEmpty();
+        Strings(installed, "prerequisites").ShouldBeEmpty();
+        installed.GetProperty("pullRequestUrl").ValueKind.ShouldBe(JsonValueKind.Null);
+        installed.GetProperty("failure").ValueKind.ShouldBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task AConsentedTier_Should_BringItsPromptsAndItsDocumentsInOnePullRequest()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            tiers: ["workflow"]
+        );
+
+        var installed = report.GetProperty("installed");
+
+        // The five gaps, under the chosen directory.
+        Strings(installed, "files").Count.ShouldBe(5);
+        Strings(installed, "files").ShouldContain("ai/prompts/aio-implement.md");
+
+        // And the documents those prompts read, outside the prompt directory — reported apart from
+        // the prompts, because one count standing for both would hide the writes that leave it.
+        var prerequisites = Strings(installed, "prerequisites");
+        prerequisites.ShouldContain("docs/process/definition-of-ready.md");
+        prerequisites.ShouldContain("openspec/config.yaml");
+
+        // One branch, one pull request, carrying both kinds.
+        installed.GetProperty("branch").GetString().ShouldBe("starter/pipeline");
+        installed.GetProperty("pullRequestUrl").ValueKind.ShouldNotBe(JsonValueKind.Null);
+        fixture.Workspace.PublishedFiles.Count.ShouldBe(5 + prerequisites.Count);
+    }
+
+    [Fact]
+    public async Task AnExistingPrerequisite_Should_BeLeftAloneAndReported()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
+
+        // The rule the seeding decision rests on (ADR-0012): a team that already has its own
+        // readiness document keeps it, so the product's copy is never the weaker of two.
+        fixture.Workspace.ExistingFiles.Add("docs/process/definition-of-ready.md");
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            tiers: ["workflow"]
+        );
+
+        var installed = report.GetProperty("installed");
+        Strings(installed, "prerequisites").ShouldNotContain("docs/process/definition-of-ready.md");
+        Strings(installed, "prerequisitesAlreadyPresent")
+            .ShouldContain("docs/process/definition-of-ready.md");
+
+        // Asserted on content, not on absence: a file the repository already had is present in the
+        // clone either way, so "left alone" means its bytes did not change.
+        fixture
+            .Workspace.PublishedContents["docs/process/definition-of-ready.md"]
+            .ShouldBe(StubInstallWorkspace.TheProjectsOwnContent);
+
+        // The prompts still install: one document being present says nothing about the rest.
+        Strings(installed, "files").Count.ShouldBe(5);
+    }
+
+    [Fact]
+    public async Task AConsentedTierWithNoGap_Should_StillBringItsDocuments()
+    {
+        // Every prompt already there, so there is no gap at all — and the documents may still be
+        // missing. This is the case the old empty-gap short-circuit swallowed.
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(
+            "grill.md",
+            "propose.md",
+            "implement.md",
+            "sync.md",
+            "refine.md",
+            "status.md"
+        );
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            tiers: ["workflow"]
+        );
+
+        var installed = report.GetProperty("installed");
+        Strings(installed, "files").ShouldBeEmpty();
+        Strings(installed, "prerequisites").ShouldNotBeEmpty();
+        installed.GetProperty("pullRequestUrl").ValueKind.ShouldNotBe(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task EverythingAlreadyPresent_Should_WriteNothingAndNotFail()
+    {
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(
+            "grill.md",
+            "propose.md",
+            "implement.md",
+            "sync.md",
+            "refine.md",
+            "status.md"
+        );
+        foreach (var path in PrerequisitePaths)
+        {
+            fixture.Workspace.ExistingFiles.Add(path);
+        }
+
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            tiers: ["workflow"]
+        );
+
+        var installed = report.GetProperty("installed");
+        Strings(installed, "files").ShouldBeEmpty();
+        Strings(installed, "prerequisites").ShouldBeEmpty();
+        Strings(installed, "prerequisitesAlreadyPresent").ShouldNotBeEmpty();
+
+        // Nothing to write is a clean outcome, never a refusal — no pull request and no failure.
+        installed.GetProperty("pullRequestUrl").ValueKind.ShouldBe(JsonValueKind.Null);
+        installed.GetProperty("failure").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
     [Fact]
     public async Task AnEmptySelection_Should_CreateNothingAndOpenNoPullRequest()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
-        var report = await SetUp(directory: "ai/prompts", installMissing: true, steps: []);
+        // Consented **and** every step excluded. Consent answers "may this be installed"; the
+        // selection answers "what is being created". Nothing is being created, so the tier is not
+        // being installed and its documents must not arrive either.
+        var report = await SetUp(
+            directory: "ai/prompts",
+            installMissing: true,
+            steps: [],
+            tiers: ["workflow"]
+        );
 
         Strings(report, "created").ShouldBeEmpty();
         (await Automations()).GetArrayLength().ShouldBe(0);
-
-        // Every step it would have acted on, named as the caller's own choice.
-        Strings(report, "excluded")
-            .ShouldBe(
-                ["ai:triage", "ai:explain", "ai:implement", "ai:tests", "ai:review"],
-                ignoreOrder: true
-            );
+        Strings(report, "excluded").ShouldBe(EveryStep, ignoreOrder: true);
 
         // Nothing to write is not a refusal: no branch, no pull request, and no failure reported
         // for a decision the Admin made.
         fixture.Workspace.PreparedBranch.ShouldBeNull();
         var installed = report.GetProperty("installed");
         Strings(installed, "files").ShouldBeEmpty();
+        Strings(installed, "prerequisites").ShouldBeEmpty();
         installed.GetProperty("pullRequestUrl").ValueKind.ShouldBe(JsonValueKind.Null);
         installed.GetProperty("failure").ValueKind.ShouldBe(JsonValueKind.Null);
     }
@@ -333,78 +523,81 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
     [Fact]
     public async Task APartialSelection_Should_CreateOnlyTheSelectedSteps()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
         var report = await SetUp(
             directory: "ai/prompts",
             installMissing: true,
-            steps: ["ai:triage", "ai:explain"]
+            steps: ["ai:grill", "ai:propose"],
+            tiers: ["workflow"]
         );
 
-        Strings(report, "created").ShouldBe(["ai:triage", "ai:explain"], ignoreOrder: true);
+        Strings(report, "created").ShouldBe(["ai:grill", "ai:propose"], ignoreOrder: true);
         Strings(report, "excluded")
-            .ShouldBe(["ai:implement", "ai:tests", "ai:review"], ignoreOrder: true);
+            .ShouldBe(["ai:implement", "ai:sync", "ai:refine", "ai:status"], ignoreOrder: true);
 
         var automations = await Automations();
         automations.GetArrayLength().ShouldBe(2);
         automations
             .EnumerateArray()
             .Select(entry => entry.GetProperty("triggerLabel").GetString())
-            .ShouldNotContain("ai:review");
+            .ShouldNotContain("ai:sync");
+
+        // Some steps survived, so the tier is being acted on and its documents arrive once.
+        Strings(report.GetProperty("installed"), "prerequisites").ShouldNotBeEmpty();
     }
 
     [Fact]
     public async Task AnExcludedGap_Should_BeAbsentFromThePullRequest()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
         var report = await SetUp(
             directory: "ai/prompts",
             installMissing: true,
-            steps: ["ai:triage", "ai:explain", "ai:implement", "ai:review"]
+            steps: ["ai:grill", "ai:propose", "ai:implement", "ai:refine", "ai:status"],
+            tiers: ["workflow"]
         );
 
-        // ai:tests was the one gap left out — its starter is written nowhere.
+        // ai:sync was the one gap left out — its starter is written nowhere.
         var files = Strings(report.GetProperty("installed"), "files");
-        files.Count.ShouldBe(3);
-        files.ShouldNotContain("ai/prompts/tests.md");
-        fixture.Workspace.PublishedFiles.ShouldNotContain("ai/prompts/tests.md");
-        fixture.Workspace.PublishedFiles.Count.ShouldBe(3);
+        files.Count.ShouldBe(4);
+        files.ShouldNotContain("ai/prompts/aio-sync.md");
+        fixture.Workspace.PublishedFiles.ShouldNotContain("ai/prompts/aio-sync.md");
     }
 
     [Fact]
-    public async Task ExcludingEveryGap_Should_OpenNoPullRequestAndReportNoFailure()
+    public async Task ExcludingEveryGap_Should_StillBringTheDocumentsOfAnAdoptedTier()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
-        // Only the step whose file is already here. Every gap is excluded, so the installer must
-        // never be reached — handed an empty list it would answer Workspace.NoChanges, and a
-        // failure reported for the Admin's own choice is the wrong answer.
+        // Only the step whose file is already here. No prompt gap survives, so no starter is
+        // written — but the tier is still being acted on, so its documents are.
         var report = await SetUp(
             directory: "ai/prompts",
             installMissing: true,
-            steps: ["ai:triage"]
+            steps: ["ai:grill"],
+            tiers: ["workflow"]
         );
 
-        Strings(report, "created").ShouldBe(["ai:triage"]);
-        fixture.Workspace.PreparedBranch.ShouldBeNull();
+        Strings(report, "created").ShouldBe(["ai:grill"]);
 
         var installed = report.GetProperty("installed");
         Strings(installed, "files").ShouldBeEmpty();
-        installed.GetProperty("pullRequestUrl").ValueKind.ShouldBe(JsonValueKind.Null);
+        Strings(installed, "prerequisites").ShouldNotBeEmpty();
         installed.GetProperty("failure").ValueKind.ShouldBe(JsonValueKind.Null);
     }
 
     [Fact]
     public async Task AnExcludedStep_Should_NotAlsoBeReportedAsSkipped()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
         var existing = await _client.PostAsJsonAsync(
             $"/api/projects/{_projectId}/automations",
             new
             {
-                triggerLabel = "ai:triage",
+                triggerLabel = "ai:grill",
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
@@ -414,26 +607,31 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
         );
         existing.EnsureSuccessStatusCode();
 
-        var report = await SetUp(directory: "ai/prompts", steps: ["ai:explain"]);
+        var report = await SetUp(
+            directory: "ai/prompts",
+            steps: ["ai:propose"],
+            tiers: ["workflow"]
+        );
 
         // Excluded and already-taken are different facts, and the filter runs first — so the step
         // the Admin left out never reaches the skip path and lands in exactly one list.
-        Strings(report, "excluded").ShouldContain("ai:triage");
-        Strings(report, "skipped", "trigger").ShouldNotContain("ai:triage");
+        Strings(report, "excluded").ShouldContain("ai:grill");
+        Strings(report, "skipped", "trigger").ShouldNotContain("ai:grill");
     }
 
     [Fact]
     public async Task ASelection_Should_MatchTriggersWhateverTheirCaseAndIgnoreUnknownOnes()
     {
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
         var report = await SetUp(
             directory: "ai/prompts",
-            steps: ["AI:TRIAGE", "ai:does-not-exist"]
+            steps: ["AI:GRILL", "ai:does-not-exist"],
+            tiers: ["workflow"]
         );
 
         // The BR-003 identity, so a selection cannot be accepted and then silently match nothing.
-        Strings(report, "created").ShouldBe(["ai:triage"]);
+        Strings(report, "created").ShouldBe(["ai:grill"]);
 
         // A name this invocation would not have acted on invents no work and is not an error.
         (await Automations())
@@ -442,11 +640,12 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
     }
 
     [Fact]
-    public async Task ThePlan_Should_CarryWhatEachStepHandsOn()
+    public async Task ThePlan_Should_CarryWhatEachStepHandsOnAndWhichTierItIsFrom()
     {
-        // The card marks a hand-off broken by an exclusion as rows are clicked, so the labels have
-        // to arrive with the plan — a round trip per checkbox is not an answer.
-        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of("triage.md");
+        // The card computes both the broken-hand-off marker and which rows a consent reveals, on a
+        // click — so the labels and the tier have to arrive with the plan. A round trip per checkbox
+        // is not an answer.
+        fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
         var candidate = (await Discover())
             .GetProperty("candidates")
@@ -455,14 +654,22 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
 
         var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
 
-        var implement = plan.Single(step =>
-            step.GetProperty("trigger").GetString() == "ai:implement"
-        );
-        Strings(implement, "outputLabels").ShouldBe(["ai:tests"]);
+        // **The catalogue has no hand-off edges left** (#269): the portable tier held the only chain,
+        // and every spec-first prompt hands work to nobody. So this asserts the shape survives — an
+        // empty list, never a missing property — rather than inventing an edge to exercise. #262's
+        // marker is correct and currently unreachable; see planHandoff.ts.
+        plan.ShouldAllBe(step => step.GetProperty("outputLabels").GetArrayLength() == 0);
 
-        // A step that hands work to nobody says so with an empty list, never a missing property.
-        var triage = plan.Single(step => step.GetProperty("trigger").GetString() == "ai:triage");
-        Strings(triage, "outputLabels").ShouldBeEmpty();
+        // Every row names its tier, which is what lets a consent add and remove rows client-side.
+        plan.ShouldAllBe(step => step.GetProperty("tierId").GetString() == "workflow");
+
+        var grill = plan.Single(step => step.GetProperty("trigger").GetString() == "ai:grill");
+        grill.GetProperty("exists").GetBoolean().ShouldBeTrue();
+
+        // A gated tier's step is not installable until its tier is consented to.
+        var sync = plan.Single(step => step.GetProperty("trigger").GetString() == "ai:sync");
+        sync.GetProperty("exists").GetBoolean().ShouldBeFalse();
+        sync.GetProperty("installable").GetBoolean().ShouldBeFalse();
 
         // Still no extra vendor read: the plan comes from the listing discovery already performed.
         fixture.Directories.Saved.ShouldBeEmpty();
@@ -476,10 +683,23 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
         return JsonDocument.Parse(response).RootElement.Clone();
     }
 
+    /// <summary>Every path the workflow tier's consent would write, in manifest order.</summary>
+    static readonly string[] PrerequisitePaths =
+    [
+        "docs/process/definition-of-ready.md",
+        "docs/process/backlog-shaping-rules.md",
+        "docs/process/product-context.md",
+        "docs/process/retro-log.md",
+        "openspec/config.yaml",
+        "openspec/specs/.gitkeep",
+        "openspec/changes/archive/.gitkeep",
+    ];
+
     async Task<JsonElement> SetUp(
         string? directory = null,
         bool installMissing = false,
-        string[]? steps = null
+        string[]? steps = null,
+        string[]? tiers = null
     )
     {
         var response = await _client.PostAsJsonAsync(
@@ -489,6 +709,7 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
                 promptDirectory = directory,
                 installMissing,
                 steps,
+                tiers,
             }
         );
         response.EnsureSuccessStatusCode();

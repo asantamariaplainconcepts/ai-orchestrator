@@ -87,19 +87,57 @@ public class StarterCatalogue_Should_Constraint
     {
         var tiers = StarterCatalogue.Tiers;
 
-        // Portable first, because it is the tier that answers "this project has no prompts". A
-        // surface that led with the methodology would be offering a way of working to somebody who
-        // asked for a starting point.
-        tiers.First().Id.ShouldBe("portable");
-        tiers.First().Requires.ShouldBeNull();
+        tiers.ShouldNotBeEmpty();
 
-        // And the other tier says what it needs. This is design D2's entire point: the reference set
-        // this change started from was five-sixths unportable, and presenting it as though it were
-        // portable moves the failure from a sentence on the screen to an agent that cannot find a
-        // file.
+        // Every tier declares what it assumes, or declares that it assumes nothing. This is design
+        // D2's entire point: presenting a tier as though it needed only the repository moves the
+        // failure from a sentence on the screen to an agent that cannot find a file. #269 gave the
+        // sentence a second job — it is the text of the consent that installs the tier — so an empty
+        // string is as wrong as a lie.
+        tiers.ShouldAllBe(tier => tier.Requires == null || tier.Requires.Length > 0);
+
+        // A tier that needs documents beyond the repository declares them, so the consent can name
+        // every path it writes rather than gesturing at "some files".
         tiers
-            .Where(tier => tier.Id != "portable")
-            .ShouldAllBe(tier => tier.Requires != null && tier.Requires.Length > 0);
+            .Where(tier => tier.Requires != null)
+            .ShouldAllBe(tier => tier.Prerequisites.Count > 0);
+    }
+
+    [Fact]
+    public void EveryPrerequisite_Should_LoadWithABody()
+    {
+        // The same guarantee starters have, for the same reason: a prerequisite offered as working and
+        // shipped empty is worse than none, because the workflow installs and then fails on a file
+        // that exists. Enumerating them here is also what turns a manifest entry naming an unembedded
+        // file into a red build rather than a runtime surprise.
+        var prerequisites = StarterCatalogue.Tiers.SelectMany(tier => tier.Prerequisites).ToList();
+
+        prerequisites.ShouldNotBeEmpty();
+
+        foreach (var prerequisite in prerequisites)
+        {
+            prerequisite.Path.ShouldNotBeNullOrWhiteSpace();
+            prerequisite.Content.ShouldNotBeNullOrWhiteSpace(prerequisite.Path);
+
+            // Repository-relative and nowhere else: an absolute path or a traversal would write
+            // outside the workspace the installer prepared.
+            prerequisite.Path.ShouldNotStartWith("/");
+            prerequisite.Path.ShouldNotContain("..");
+        }
+    }
+
+    [Fact]
+    public void TheCatalogue_Should_NotClaimOnePathTwiceWithinATier()
+    {
+        // Two entries for one path would write it twice, and the first write would make the second's
+        // absence check lie — an existing-file rule that reports a file it created itself.
+        foreach (var tier in StarterCatalogue.Tiers)
+        {
+            tier.Prerequisites.Select(prerequisite => prerequisite.Path)
+                .Distinct(StringComparer.Ordinal)
+                .Count()
+                .ShouldBe(tier.Prerequisites.Count, tier.Id);
+        }
     }
 
     [Fact]
@@ -130,6 +168,12 @@ public class StarterCatalogue_Should_Constraint
 
         wired.ShouldNotBeEmpty();
 
+        // Across the whole catalogue, with **no exception for any tier** (#269). This is the
+        // assertion that keeps "which file a step wires" from becoming a function of which tier a
+        // caller consented to: one trigger has one prompt, so a consent changes whether a step is
+        // installed and never what it points at. An earlier draft of #269 would have needed a
+        // gated-claim carve-out here; deleting the portable tier is what made that unnecessary, and
+        // this test is where the simplification would be lost if anyone reintroduced one.
         wired
             .Select(prompt => prompt.Automation!.Trigger)
             .Distinct(StringComparer.OrdinalIgnoreCase)

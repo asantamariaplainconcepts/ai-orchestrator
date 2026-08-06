@@ -3236,3 +3236,55 @@ hand and its lies are the ones that get believed.
 **One change next time:** when a change adds a field to an endpoint the mock also serves, the mock
 derives that field from the same source the real handler derives it from — never from a parallel
 list kept beside it. A fixture answering from its own copy drifts the moment either side moves.
+
+## 2026-08-06 — spec-first-is-the-catalogue (#269)
+
+**Time (telemetry, partial):** 1 h 28 min agent across two sessions (5 309 s cli, $59.20,
+224k output tokens, 89.9M cache reads). **Human active time reads 0 s and that is a capture gap,
+not a measurement:** `verify-telemetry.mjs` passes all five checks and the agent figures are real,
+so `active_time.total{type=user}` recorded nothing for these sessions while `{type=cli}` recorded
+correctly. Named rather than absorbed — the whole reason this field exists is the human/agent
+split, and half of it is missing. Related to but distinct from ADR-0011's worktree gap: the
+`.telemetry/` directory resolves to the main checkout, and the session→change mapping worked
+(two sessions mapped), so this is the metric and not the plumbing.
+
+**What worked:** deleting the portable tier **simplified** instead of complicating. The scope
+change arrived late — four rounds of grill had already settled a consent switch beside two tiers —
+and removing the second tier collapsed three acceptance criteria into one and let the manifest's
+duplicate-trigger refusal keep its no-exception form instead of growing a gated-claim carve-out.
+Worth noticing because the instinct on a late widening is that it costs; here the wider ask deleted
+a special case. Grounding the design in verified reads before writing it paid too:
+`StarterInstaller.Install` already wrote arbitrary repository-relative paths and
+`IDocumentReader.Read` already read them, so the new write seam the design nearly invented never
+needed to exist — both checked by reading the file, ADR-0009's discipline, not by assuming.
+Reconciling rather than bypassing the spec conflict was the third: `automation-configuration`
+forbade "a separate consent" in #262's own words, and the delta narrows that requirement to the
+files a plan row names instead of quietly deleting the scenario.
+
+**What didn't:** **I wrote two requirements in this change's own spec bundle that contradicted each
+other**, one file apart, and did not notice until a test forced the case where both applied — "a
+consented tier with no gap still brings its documents" against "the selection and the consent
+together leaving no gap opens no pull request". Consenting and then unchecking every row satisfies
+the first and violates the second, and the implementation followed the first: seven process
+documents written into a repository whose owner had just excluded everything. I reviewed each delta
+against the requirement it modified and never against the other. The fix is a third requirement —
+prerequisites follow a tier actually being acted on — which is the rule that should have been
+written first. Separately, an old E2E assertion was **passing on a substring**:
+`ShouldContain("implement.md")` is satisfied by `"aio-implement.md"`, so the line written to prove
+the two were distinguishable could never have failed. Found only because the surrounding test broke
+for an unrelated reason. That is the second occurrence of this class — #231's `GetByLabel` collision
+on 2026-08-05 was the first — so it graduates to
+[ADR-0013](../adr/0013-an-assertion-must-be-able-to-fail.md). Also cost a wrong-directory read: a
+`cd` into `src/frontend` persisted across tool calls and sent a PR-template lookup to a path that
+does not exist there.
+
+**One change next time:** when a change's spec bundle both **adds** a requirement and **modifies**
+another, read the new one and the modified one side by side and name the case that satisfies both,
+before any code. Reviewing each delta against the requirement it replaces is necessary and not
+sufficient — the contradiction here lived between two of my own new sentences, was reachable by
+inspection, and cost a wrong implementation plus a spec rewrite to find at test time.
+
+**Decisions recorded:** [ADR-0012](../adr/0012-a-seeded-document-is-the-projects-own.md) with
+DEC-064, revising DEC-048's rubric clause on the narrow ground that "the weaker of the two"
+presumes two — an existing document still wins, so a seed lands only where there is none.
+[ADR-0013](../adr/0013-an-assertion-must-be-able-to-fail.md) on the substring assertion.

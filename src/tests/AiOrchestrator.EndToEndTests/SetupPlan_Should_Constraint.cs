@@ -30,6 +30,17 @@ namespace AiOrchestrator.EndToEndTests;
 /// gap it pretends to close. The selection's behaviour is pinned in
 /// <c>PipelineAdoption_Should_Constraint</c> against the API that carries it.
 /// </para>
+/// <para>
+/// <b>#269 inherits it too, with one exception worth naming.</b> The consent switch is the first part
+/// of this card that renders <i>without</i> a successful discovery — it is deliberately outside the
+/// plan list, because an empty repository has no rows and that is the case a consent exists for. In
+/// principle it is reachable here. It is still not asserted, because the tier's stub project has no
+/// Connector, so the card stops at its own "no Connector yet" answer before the tiers are read. The
+/// consent's behaviour was verified against the running SPA in mock mode instead — off by default,
+/// the plan growing when it is turned on, and the report separating written documents from ones left
+/// alone — and its contract is pinned in <c>PipelineAdoption_Should_Constraint</c>. Extending the stub
+/// to serve directory listings remains the change that would close all of this at once.
+/// </para>
 /// </summary>
 [Collection(AppHostCollection.Name)]
 [Trait("Category", "E2E")]

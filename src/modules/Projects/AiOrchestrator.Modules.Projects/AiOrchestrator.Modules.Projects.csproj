@@ -18,6 +18,12 @@
          directory is the failure mode, not the fix. -->
     <EmbeddedResource Include="Starter\manifest.json" />
     <EmbeddedResource Include="Starter\**\*.md" />
+    <!-- A tier's prerequisites (#269) are not all markdown: an OpenSpec config is YAML, and a
+         directory-keeping placeholder is plain text. The .md glob above would embed neither, and a
+         manifest entry whose file is not embedded throws on first read — loudly, and covered by the
+         catalogue test, but the fix belongs here rather than in a filename compromise. -->
+    <EmbeddedResource Include="Starter\**\*.yaml" />
+    <EmbeddedResource Include="Starter\**\*.txt" />
   </ItemGroup>
 
   <ItemGroup>

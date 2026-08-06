@@ -29,31 +29,31 @@ public class InstallStarterPrompt_Should_Constraint(ProjectsApiFixture fixture) 
     [Fact]
     public async Task Install_Should_OpenADraftPullRequestOnAStarterScopedBranch()
     {
-        var response = await Install("triage.md");
+        var response = await Install("aio-grill.md");
 
         response.EnsureSuccessStatusCode();
         var body = (await response.Content.ReadFromJsonAsync<InstallResponse>())!;
 
         body.Url.ShouldBe("https://github.com/acme/portal/pull/7");
-        body.Path.ShouldBe("ai/prompts/triage.md");
-        body.Branch.ShouldBe("starter/triage");
+        body.Path.ShouldBe("ai/prompts/aio-grill.md");
+        body.Branch.ShouldBe("starter/aio-grill");
 
-        fixture.Workspace.PreparedBranch.ShouldBe("starter/triage");
+        fixture.Workspace.PreparedBranch.ShouldBe("starter/aio-grill");
         // The spec's whole point: a human merges, so the PR must be born a draft.
         fixture.Workspace.PublishedAsDraft.ShouldBe(true);
-        fixture.Workspace.PublishedFiles.ShouldBe(["ai/prompts/triage.md"]);
+        fixture.Workspace.PublishedFiles.ShouldBe(["ai/prompts/aio-grill.md"]);
     }
 
     [Fact]
     public async Task Install_Should_RefuseByNameWhenTheFileAlreadyExists()
     {
-        fixture.Documents.Documents["ai/prompts/triage.md"] = "already here";
+        fixture.Documents.Documents["ai/prompts/aio-grill.md"] = "already here";
 
-        var response = await Install("triage.md");
+        var response = await Install("aio-grill.md");
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
         var raw = await response.Content.ReadAsStringAsync();
-        raw.ShouldContain("ai/prompts/triage.md");
+        raw.ShouldContain("ai/prompts/aio-grill.md");
 
         // Refused before any workspace exists — no branch, no PR.
         fixture.Workspace.PreparedBranch.ShouldBeNull();
@@ -65,7 +65,7 @@ public class InstallStarterPrompt_Should_Constraint(ProjectsApiFixture fixture) 
         fixture.Documents.Connected = false;
         fixture.Connector.Snapshot = null;
 
-        var response = await Install("triage.md");
+        var response = await Install("aio-grill.md");
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         fixture.Workspace.PreparedBranch.ShouldBeNull();
@@ -87,7 +87,7 @@ public class InstallStarterPrompt_Should_Constraint(ProjectsApiFixture fixture) 
             "Pushing the run branch failed: rejected"
         );
 
-        var response = await Install("triage.md");
+        var response = await Install("aio-grill.md");
 
         response.StatusCode.ShouldNotBe(HttpStatusCode.OK);
         (await response.Content.ReadAsStringAsync()).ShouldContain("PushFailed");

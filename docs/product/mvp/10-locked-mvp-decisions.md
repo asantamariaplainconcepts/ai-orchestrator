@@ -383,3 +383,25 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   made for the in-process conversation runtime: correct on a machine one person owns, not a
   degraded mode, and local only. **Second consequence:** CAP has no SQLite storage provider, so
   this couples the local habitat to Postgres and constrains any future embedded database.
+
+- **DEC-064 — the product may seed a process document it does not find, and what it writes is the
+  project's own** *(revises DEC-048)*: DEC-048 settled that the grill's rubric "is always the project's
+  own document, read live, because a product-wide readiness bar would impose one team's standards on
+  every repository it touches", and `automation-configuration` restated it as "the copy is the weaker of
+  the two". Both were written about a product that only ever **read** documents. #269 makes the
+  spec-first workflow installable, and its prompts read a definition of ready, a retro log and an
+  OpenSpec layout — so installing the prompts alone ships a workflow whose first Run fails on a missing
+  file, which is the abandoned-prerequisite failure the tiering exists to prevent, moved one step later.
+  **The revision is narrow: "the weaker of the two" presumes two.** Where a team has its own document it
+  still wins — a prerequisite whose path exists is not written, not modified and absent from the pull
+  request, decided against the clone the branch is cut from. Where a team has none there is no second
+  term, and the alternative on offer is not their own rubric but a broken workflow. DEC-048's
+  **read-time** invariant is untouched: `GrillToReady` still reads the project's document live at a
+  configured path, never a bundled copy. What changes is only that the product may put a first version
+  there, after which it is at the project's own path, in their repository, theirs to edit or delete.
+  Gated by a consent that is off by default and names every path it will write ([ADR-0012](../../adr/0012-a-seeded-document-is-the-projects-own.md)).
+  **The cost, stated:** on day one every repository that presses the button holds the same readiness
+  bar. Bounded, not dismissed — it is theirs from the moment it lands. The seed carries the rubric and
+  the shaping rules it must cite, ships `openspec/config.yaml` with its project-context section an
+  explicit TODO because context cannot be inherited, and **never** carries this product's own corpus
+  (`ACT-*`, `UC-*`, `BR-*`, `DEC-*`): that is AI Orchestrator's identity, not a template.
