@@ -28,4 +28,5 @@
 - [x] 4.4 In mock mode: the setup plan shows the edges, excluding a mid-chain step marks its
       downstream (the #262 marker, reachable by hand again), and the built workflow draws one
       chain with three gates.
-- [ ] 4.5 CI green on the PR head (verified job-by-job), at sync.
+- [x] 4.5 CI green on the PR head (verified job-by-job), at sync. Run 31131897892 on 26e1838:
+      every job success, terraform correctly skipped by the paths filter.
