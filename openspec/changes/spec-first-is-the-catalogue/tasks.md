@@ -2,78 +2,78 @@
 
 ## 1. The catalogue becomes one tier (design D1, D3, D5)
 
-- [ ] 1.1 Delete the `portable` tier from `Starter/manifest.json` and delete
+- [x] 1.1 Delete the `portable` tier from `Starter/manifest.json` and delete
       `Starter/portable/{triage,explain,implement,tests,review}.md`. Confirm the csproj embeds
       `Starter/**` by glob rather than per file — a per-file list would leave five dangling entries
       and a build error that reads as unrelated.
-- [ ] 1.2 Give `Starter/workflow/implement.md` the `ai:implement` wiring (`requiresApproval: true`,
+- [x] 1.2 Give `Starter/workflow/implement.md` the `ai:implement` wiring (`requiresApproval: true`,
       empty `outputLabels`) and delete the `$comment` clause at `manifest.json:2` explaining why it
       had none — the collision it describes no longer exists.
-- [ ] 1.3 Add a `prerequisites` block to the workflow tier: `{ file, path }` pairs. Write the files
+- [x] 1.3 Add a `prerequisites` block to the workflow tier: `{ file, path }` pairs. Write the files
       under `Starter/workflow/prerequisites/`. Content per D8 — the readiness rubric and the
       `RULE-001..007` shaping rules with real content, `openspec/config.yaml` with its context section
       an explicit TODO, an empty retro log, and heading-only skeletons for the documents the rubric
       links to. Two `.gitkeep` entries carry `openspec/specs/` and `openspec/changes/archive/`.
-- [ ] 1.4 **Do not copy this repository's product corpus.** The rubric and shaping rules are generic;
+- [x] 1.4 **Do not copy this repository's product corpus.** The rubric and shaping rules are generic;
       `docs/product/mvp/` is this product's identity. Verify by reading each shipped file that no
       `ACT-`, `UC-`, `BR-` or `DEC-` identifier of this product's appears as content rather than as a
       convention example.
-- [ ] 1.5 Correct the three doc comments that now describe a catalogue that does not exist:
+- [x] 1.5 Correct the three doc comments that now describe a catalogue that does not exist:
       `StarterCatalogue.cs:30` (tier ordering "the portable tier comes first"), `:116` (the
       `Requires` rationale), `:132` (the `SaveAs` rationale citing two tiers shipping `implement.md`).
 
 ## 2. The catalogue seam (design D1, D3)
 
-- [ ] 2.1 `StarterCatalogue`: `ManifestTier` and `StarterTier` gain
+- [x] 2.1 `StarterCatalogue`: `ManifestTier` and `StarterTier` gain
       `IReadOnlyList<StarterPrerequisite> Prerequisites`, loaded through the existing `Text()` resource
       reader so a declared file that is not embedded throws at first read, as prompts already do.
-- [ ] 2.2 `PipelineSteps.Installable` becomes `Installable(IReadOnlyCollection<string> consent)` —
+- [x] 2.2 `PipelineSteps.Installable` becomes `Installable(IReadOnlyCollection<string> consent)` —
       tiers with no `Requires`, plus tiers whose id the consent names. Replace the current
       `Requires is null` predicate at `PipelineSteps.cs:35-36`. Keep the doc comment's reasoning and
       update what it claims: the rule is no longer "tiers that require nothing" alone.
-- [ ] 2.3 Tier-id comparison is exact, not case-insensitive: ids are catalogue content the caller
+- [x] 2.3 Tier-id comparison is exact, not case-insensitive: ids are catalogue content the caller
       echoes back, not user-typed labels like triggers. State that on the method so the next reader
       does not "fix" it into the BR-003 comparison.
 
 ## 3. The installer writes two kinds of file (design D4)
 
-- [ ] 3.1 `StarterInstaller.File` gains `bool OnlyIfAbsent = false`.
-- [ ] 3.2 In the write loop (`StarterInstaller.cs:73-81`), skip a file marked `OnlyIfAbsent` whose
+- [x] 3.1 `StarterInstaller.File` gains `bool OnlyIfAbsent = false`.
+- [x] 3.2 In the write loop (`StarterInstaller.cs:73-81`), skip a file marked `OnlyIfAbsent` whose
       target already exists in the prepared clone. The clone is the authoritative default-branch
       content — no vendor read, and no window between checking and branching.
-- [ ] 3.3 `Install` returns `ErrorOr<InstallOutcome>` — written paths, skipped paths, nullable
+- [x] 3.3 `Install` returns `ErrorOr<InstallOutcome>` — written paths, skipped paths, nullable
       pull-request URL — instead of `ErrorOr<string>`. Where every file was skipped, publish nothing,
       return no URL, and return **no failure**. Keep the `files.Count == 0` → `WorkspaceErrors.NoChanges()`
       refusal at `:36-41` for a genuinely empty request: that is a caller bug, not an outcome a human chose.
-- [ ] 3.4 Update `InstallStarterPrompt` (`:110-123`) for the new return type. It passes no
+- [x] 3.4 Update `InstallStarterPrompt` (`:110-123`) for the new return type. It passes no
       `OnlyIfAbsent` file — its presence check at `:100-103` already refuses beforehand, and that
       refusal stays, because it names the path before any workspace exists.
 
 ## 4. Consent on the endpoint (design D2)
 
-- [ ] 4.1 `SetUpDefaultAutomations.Request` and `Command` gain `IReadOnlyList<string>? Tiers`.
+- [x] 4.1 `SetUpDefaultAutomations.Request` and `Command` gain `IReadOnlyList<string>? Tiers`.
       Document on the record that **absent means no tier**, and that this is the opposite default from
       `Steps` on the same record, and why (D2). The asymmetry will look like a bug to the next reader;
       one paragraph of XML doc is cheaper than the "fix".
-- [ ] 4.2 Pass the consent into `PipelineSteps.Installable(...)` where `gaps` is computed
+- [x] 4.2 Pass the consent into `PipelineSteps.Installable(...)` where `gaps` is computed
       (`SetUpDefaultAutomations.cs:188-190`). With no consent the gap list is empty, so no starter is
       installed and — via the existing short-circuit — no branch and no pull request.
-- [ ] 4.3 `FillGaps` (`:369`) also writes the consented tiers' prerequisites, as `OnlyIfAbsent` files,
+- [x] 4.3 `FillGaps` (`:369`) also writes the consented tiers' prerequisites, as `OnlyIfAbsent` files,
       into the same branch and pull request. Adjust the guard: today it returns early on
       `gaps.Count == 0`; it must now proceed when there are no prompt gaps but prerequisites remain to
       write — AC-7's "a consented tier with no prompt gap still brings its prerequisites".
-- [ ] 4.4 Update the PR body text: it currently says it installs "the starter prompts for the pipeline
+- [x] 4.4 Update the PR body text: it currently says it installs "the starter prompts for the pipeline
       steps this repository had no file for". It now also carries process documents, and the body is
       where a reviewer learns that.
-- [ ] 4.5 `InstalledStarters` gains the prerequisite facts — written and skipped-as-present — kept
+- [x] 4.5 `InstalledStarters` gains the prerequisite facts — written and skipped-as-present — kept
       separate from the prompt files, per the report requirement. Do not fold them into `Files`.
 
 ## 5. Discovery carries the tiers (design D6)
 
-- [ ] 5.1 `DiscoverPipeline.Response` gains `Tiers`: id, title, `requires`, and the prerequisite paths.
+- [x] 5.1 `DiscoverPipeline.Response` gains `Tiers`: id, title, `requires`, and the prerequisite paths.
       From the catalogue the projection already walks — no extra vendor read, the constraint the plan
       requirement already imposes.
-- [ ] 5.2 The plan projection (`:127-149`) computes `installable` per step from
+- [x] 5.2 The plan projection (`:127-149`) computes `installable` per step from
       `Installable(consent)` — but discovery has no consent. Return the step's **tier id** on each row
       instead and let the card decide, so a switch toggles without a round trip. Verify the existing
       `.Where(step => step.Exists || step.Installable)` filter still drops rows that can never act.

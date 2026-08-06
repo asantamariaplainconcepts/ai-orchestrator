@@ -1,0 +1,53 @@
+schema: spec-driven
+
+# ---------------------------------------------------------------------------
+# This is a starter, and it is now yours.
+#
+# `context` is the one part that cannot be inherited: it is what your agents
+# read before writing a proposal, a design or a spec, and a plausible-looking
+# description of somebody else's product is worse than a blank one. So it ships
+# empty, deliberately.
+#
+# Fill it in with what an agent would otherwise have to guess: what the product
+# is and who uses it, the architecture and its conventions, where the source
+# lives, how tests are structured and run, and the vocabulary your team has
+# settled on. Be concrete — paths, project names, command names. Everything
+# here is read on every change, so vagueness is paid for repeatedly.
+# ---------------------------------------------------------------------------
+context: |
+  TODO — describe this product and its codebase.
+
+  Product: what it does, who uses it, and where its scope is defined
+  (see docs/process/product-context.md).
+
+  Architecture: the shape of the solution, the layers or modules, and the
+  conventions a change is expected to follow.
+
+  Layout: where source, tests and documentation live.
+
+  Testing: the tiers that exist, how they are named, and the one command that
+  runs them.
+
+  Vocabulary: the terms this product uses, and the ones it avoids.
+
+# The rules below are generic and safe to keep as they are. They encode the
+# discipline the spec-first workflow depends on rather than anything about a
+# particular product, so tighten them when your team learns something — that is
+# what they are for.
+rules:
+  proposal:
+    - Ground capabilities in the existing specs (openspec/specs/) and the product context; cite the actor, use-case, business-rule and decision ids the definition of ready asks for
+    - Never propose scope the product context does not cover — surface the gap instead of inventing
+    - Never propose work that depends on an open question (RULE-006); a decision-closure item blocks it
+    - Mark breaking changes with **BREAKING** and state which contracts are affected or preserved
+  design:
+    - Record decisions with rationale and rejected alternatives
+    - Call out any deviation from the codebase's own conventions, and justify it
+    - Verify claims about existing behaviour and infrastructure against reality before they enter the design; a config existing is not evidence it works
+  specs:
+    - Requirements use SHALL/MUST; every requirement has at least one testable scenario
+    - Reference repository artifacts by real path so specs stay verifiable
+  tasks:
+    - Order tasks so shared building blocks and seams complete before the work that depends on them
+    - Include verification tasks that run the same gates continuous integration runs
+    - Each task must be small, verifiable, and completable in one session

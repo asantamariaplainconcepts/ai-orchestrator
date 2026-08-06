@@ -21,10 +21,29 @@ sealed class StarterInstaller(
     ICodeWorkspace workspace
 )
 {
-    /// <summary>One file to write: a repository-relative path and the bytes that go in it.</summary>
-    public sealed record File(string Path, string Content);
+    /// <summary>
+    /// One file to write: a repository-relative path and the bytes that go in it.
+    /// <para>
+    /// <paramref name="OnlyIfAbsent"/> is for a file whose presence this caller has not already
+    /// established (#269): a tier's prerequisites land outside the prompt directory, so the gap
+    /// computation that vouches for a prompt says nothing about them. Prompts pass false and keep
+    /// their existing contract.
+    /// </para>
+    /// </summary>
+    public sealed record File(string Path, string Content, bool OnlyIfAbsent = false);
 
-    public async Task<ErrorOr<string>> Install(
+    /// <summary>
+    /// What an install did. <paramref name="PullRequestUrl"/> is null where nothing needed writing —
+    /// not a failure (#269): every file being already present is a clean outcome, and the caller that
+    /// chose it must not be told its own decision went wrong.
+    /// </summary>
+    public sealed record InstallOutcome(
+        IReadOnlyList<string> Written,
+        IReadOnlyList<string> Skipped,
+        string? PullRequestUrl
+    );
+
+    public async Task<ErrorOr<InstallOutcome>> Install(
         Guid projectId,
         string branch,
         IReadOnlyList<File> files,
@@ -35,8 +54,10 @@ sealed class StarterInstaller(
     {
         if (files.Count == 0)
         {
-            // Nothing to install is a refusal here for the same reason the workspace refuses an
-            // empty change set: an empty pull request would claim work that did not happen.
+            // Being handed nothing at all is a caller bug, and stays a refusal for the same reason
+            // the workspace refuses an empty change set: an empty pull request would claim work that
+            // did not happen. Distinct from "everything turned out to be present", which is decided
+            // below against the clone and is an outcome rather than an error.
             return WorkspaceErrors.NoChanges();
         }
 
@@ -70,14 +91,35 @@ sealed class StarterInstaller(
 
         try
         {
+            var written = new List<string>();
+            var skipped = new List<string>();
+
             foreach (var file in files)
             {
                 var target = System.IO.Path.Combine(
                     prepared.Value.Path,
                     file.Path.Replace('/', System.IO.Path.DirectorySeparatorChar)
                 );
+
+                // Decided against the clone, which *is* the default-branch content this branch comes
+                // from — no vendor read, and no window between asking and branching in which the
+                // answer could change. An existing file always wins.
+                if (file.OnlyIfAbsent && System.IO.File.Exists(target))
+                {
+                    skipped.Add(file.Path);
+                    continue;
+                }
+
                 Directory.CreateDirectory(System.IO.Path.GetDirectoryName(target)!);
                 await System.IO.File.WriteAllTextAsync(target, file.Content, cancellationToken);
+                written.Add(file.Path);
+            }
+
+            if (written.Count == 0)
+            {
+                // Everything was already there. Publishing would open an empty pull request, and
+                // refusing would report a failure for a repository that simply had the files.
+                return new InstallOutcome(written, skipped, PullRequestUrl: null);
             }
 
             var published = await workspace.Publish(
@@ -91,7 +133,9 @@ sealed class StarterInstaller(
 
             return published.IsError
                 ? published.Errors
-                : ErrorOrFactory.From(published.Value.PullRequestUrl);
+                : ErrorOrFactory.From(
+                    new InstallOutcome(written, skipped, published.Value.PullRequestUrl)
+                );
         }
         finally
         {

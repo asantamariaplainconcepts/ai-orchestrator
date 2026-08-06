@@ -26,9 +26,9 @@ static class StarterCatalogue
     static readonly Lazy<IReadOnlyList<StarterTier>> Loaded = new(Load);
 
     /// <summary>
-    /// Tiers in manifest order, prompts in manifest order. Ordering is content, not presentation:
-    /// the portable tier comes first because it is the one that answers "this project has no
-    /// prompts", and a surface sorting them alphabetically would put the methodology first.
+    /// Tiers in manifest order, prompts in manifest order. Ordering is content, not presentation: a
+    /// surface that sorted them alphabetically would decide for the catalogue which methodology a
+    /// reader meets first, which is the manifest's decision to make.
     /// </summary>
     public static IReadOnlyList<StarterTier> Tiers => Loaded.Value;
 
@@ -62,6 +62,12 @@ static class StarterCatalogue
                             )
                             : null
                     )),
+                ],
+                [
+                    .. tier.Prerequisites.Select(prerequisite => new StarterPrerequisite(
+                        prerequisite.Path,
+                        Text($"{Prefix}{tier.Id}.prerequisites.{prerequisite.File}")
+                    )),
                 ]
             )),
         ];
@@ -92,8 +98,15 @@ static class StarterCatalogue
         string Title,
         string Summary,
         string? Requires,
-        IReadOnlyList<ManifestPrompt> Prompts
-    );
+        IReadOnlyList<ManifestPrompt> Prompts,
+        IReadOnlyList<ManifestPrerequisite>? Prerequisites = null
+    )
+    {
+        /// <summary>Absent and empty are the same answer here: a tier that needs nothing extra.</summary>
+        public IReadOnlyList<ManifestPrerequisite> Prerequisites { get; } = Prerequisites ?? [];
+    }
+
+    sealed record ManifestPrerequisite(string File, string Path);
 
     sealed record ManifestPrompt(
         string File,
@@ -112,25 +125,47 @@ static class StarterCatalogue
 
 /// <summary>
 /// <paramref name="Requires"/> is null for a tier that assumes only the repository. Non-null is the
-/// labelling design D2 exists for: the reference set this change started from was five-sixths
-/// unportable, and presenting it as though it were portable would move the failure from a sentence
-/// on the screen to an agent that cannot find a file.
+/// labelling #190's design D2 exists for: presenting a tier as though it assumed only the repository
+/// would move the failure from a sentence on the screen to an agent that cannot find a file.
+/// <para>
+/// Since #269 the sentence has a second job. It is no longer only a warning about what a reader must
+/// already have — it is the text of a consent, because consenting to the tier installs
+/// <paramref name="Prerequisites"/> too. A tier that declares what it assumes is therefore both
+/// opt-in and self-supplying.
+/// </para>
 /// </summary>
 sealed record StarterTier(
     string Id,
     string Title,
     string Summary,
     string? Requires,
-    IReadOnlyList<StarterPrompt> Prompts
+    IReadOnlyList<StarterPrompt> Prompts,
+    /// <summary>
+    /// The files this tier's prompts read that a fresh repository has not got (#269). Empty for a
+    /// tier that needs nothing beyond its prompts.
+    /// </summary>
+    IReadOnlyList<StarterPrerequisite> Prerequisites
 );
+
+/// <summary>
+/// One file a tier needs in place before its prompts can run. <paramref name="Path"/> is
+/// repository-relative and fixed — unlike a prompt's <c>SaveAs</c>, it is never resolved against the
+/// Connector's prompt directory, because a process document does not live in a prompt folder.
+/// <para>
+/// The source name and the target path are decoupled on purpose: one placeholder file fills two empty
+/// directories, and a source called <c>gitkeep.txt</c> lands as <c>.gitkeep</c>.
+/// </para>
+/// </summary>
+sealed record StarterPrerequisite(string Path, string Content);
 
 /// <summary>
 /// <paramref name="Assumes"/> is the same discipline one level down: a prompt that quietly needs
 /// push access is a prompt whose first failure is confusing.
 /// <para>
 /// <paramref name="SaveAs"/> is the name the file takes in a project, and it is not always
-/// <paramref name="File"/>: the portable and workflow tiers both ship an <c>implement.md</c>, and
-/// without distinct saved names they would land on the same path and only one could ever be taken.
+/// <paramref name="File"/>: a tier's <c>implement.md</c> lands as <c>aio-implement.md</c>, so a
+/// repository can hold a starter beside a file of its own with the obvious name. Two tiers shipping
+/// the same source name was the original reason (#190) and remains the one that would bite again.
 /// </para>
 /// </summary>
 sealed record StarterPrompt(

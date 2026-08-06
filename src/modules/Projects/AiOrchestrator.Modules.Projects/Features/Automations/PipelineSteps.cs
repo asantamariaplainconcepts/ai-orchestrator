@@ -27,13 +27,35 @@ static class PipelineSteps
         ];
 
     /// <summary>
-    /// The steps a button may install a starter for. Only tiers that require nothing: a tier
-    /// declaring <c>requires</c> is opt-in by construction (#190, design D2), and installing one
-    /// unprompted would push a methodology into a repository whose team never chose it. Adoption
-    /// still recognises those steps — the difference is between reading a file and writing one.
+    /// The steps a button may install a starter for: tiers that require nothing, plus the tiers this
+    /// caller has <paramref name="consented"/> to by name (#269).
+    /// <para>
+    /// A tier declaring <c>requires</c> is opt-in by construction (#190, design D2), and installing
+    /// one <i>unprompted</i> would push a methodology into a repository whose team never chose it. A
+    /// consent that is off by default, names the tier and states the paths it writes is not
+    /// unprompted — it is the prompt. What the rule still forbids is the silent case, which is why an
+    /// empty consent leaves a gated tier uninstallable rather than merely unselected.
+    /// </para>
+    /// <para>
+    /// Adoption is unaffected either way: <see cref="All"/> recognises every tier's files, because
+    /// reading a file a team wrote was never the act in question.
+    /// </para>
     /// </summary>
-    public static IReadOnlyList<PipelineStep> Installable =>
-        [.. All.Where(step => step.Tier.Requires is null)];
+    /// <param name="consented">
+    /// Tier ids, compared <b>exactly</b>. These are catalogue identifiers a caller echoes back from
+    /// discovery, not labels a human types — so this is deliberately not the case-insensitive BR-003
+    /// comparison triggers use, and should not be "fixed" into one.
+    /// </param>
+    public static IReadOnlyList<PipelineStep> Installable(IReadOnlyCollection<string>? consented) =>
+        [
+            .. All.Where(step =>
+                step.Tier.Requires is null
+                || (
+                    consented is not null
+                    && consented.Contains(step.Tier.Id, StringComparer.Ordinal)
+                )
+            ),
+        ];
 
     /// <summary>
     /// The step a discovered file is, or null. Matched on the file's stem against both the
