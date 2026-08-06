@@ -1,15 +1,15 @@
 import { CornerDownRight, GripVertical, UserRound, UserRoundPlus } from "lucide-react";
 import { useState } from "react";
-import { t, tCount } from "@/shared/i18n";
+import { t } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { Card, CardContent } from "@/shared/ui/card";
+import { Card } from "@/shared/ui/card";
 import { GateChip } from "@/shared/ui/gate-chip";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
-import { useSetAutomationEnabled, useUpdateAutomation } from "./useAutomations";
-import { hasBranches, summarise, workflowChains } from "./workflowGraph";
+import { useUpdateAutomation } from "./useAutomations";
+import { hasBranches, workflowChains } from "./workflowGraph";
 
 /**
  * What a drag carries (#137). "new" is a block coming out of the catalogue; anything else is the id
@@ -54,16 +54,21 @@ export function HumanStepBlock() {
 export function WorkflowCanvas({
   projectId,
   automations,
+  onEdit,
 }: {
   projectId: string;
   automations: Automation[];
+  /**
+   * Opens the edit panel on a step (design review 6b). The canvas raises the intent and never owns
+   * the form: the same panel answers a click here and a click in the rail, which is what keeps the
+   * two surfaces from growing two different edit experiences.
+   */
+  onEdit: (automation: Automation) => void;
 }) {
   const update = useUpdateAutomation(projectId);
-  const setEnabled = useSetAutomationEnabled(projectId);
   // Only what is a workflow (#136, design D2): a chain of one is an Automation with no edge, which
   // belongs to the catalogue and not here. That single filter is what removed #122's special case.
   const chains = workflowChains(automations);
-  const summary = summarise(chains);
   // Whether any step hands on to more than one place — what the BR-001 note is for.
   const branching = hasBranches(chains);
   const [dragging, setDragging] = useState(false);
@@ -150,22 +155,6 @@ export function WorkflowCanvas({
         </p>
       )}
 
-      {/* Steps and human stops, both derived (design D4): "6 Automations" is a fact about the
-          catalogue and says nothing about the pipeline. */}
-      <p className="text-xs text-muted-foreground">
-        {tCount(
-          summary.steps,
-          "automations.workflow.steps.one",
-          "automations.workflow.steps.other",
-        )}
-        {" \u00b7 "}
-        {tCount(
-          summary.humanStops,
-          "automations.workflow.stops.one",
-          "automations.workflow.stops.other",
-        )}
-      </p>
-
       <p className="text-xs text-muted-foreground">{t("canvas.hint")}</p>
 
       {/* The ceiling, stated where the edges are explained (#165, design D3). A picture of two
@@ -225,15 +214,10 @@ export function WorkflowCanvas({
                 <AutomationNode
                   automation={node.automation}
                   connected={node.next !== null}
+                  onEdit={() => onEdit(node.automation)}
                   onToggleApproval={() =>
                     change(node.automation, {
                       requiresApproval: !node.automation.requiresApproval,
-                    })
-                  }
-                  onToggleEnabled={() =>
-                    setEnabled.mutate({
-                      id: node.automation.id,
-                      enabled: !node.automation.enabled,
                     })
                   }
                 />
@@ -278,14 +262,14 @@ export function WorkflowCanvas({
 function AutomationNode({
   automation,
   connected,
+  onEdit,
   onToggleApproval,
-  onToggleEnabled,
 }: {
   automation: Automation;
   /** Whether an edge leaves this step. Only the graph knows; the node cannot infer it. */
   connected: boolean;
+  onEdit: () => void;
   onToggleApproval: () => void;
-  onToggleEnabled: () => void;
 }) {
   // An output label pointing at no Automation, announced on the step that owns it (#232). It used
   // to be said at the connector below, which is where the reader is looking at a *gap* — the label
@@ -294,28 +278,55 @@ function AutomationNode({
   const dangling = !connected && automation.outputLabels.length > 0;
 
   return (
-    <Card className={cn("w-full", !automation.enabled && "opacity-60")}>
-      {/* Header: what fires it, whether a person gates it, and what can be done to it. The card
-          used to stack two full-width buttons under the content, which made every node taller than
-          the information it carried and put a yellow button next to the warning badges it competed
-          with. */}
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3.5 py-2.5">
-        <span className="flex min-w-0 flex-wrap items-center gap-2">
+    // One line per step (design review 6a). The node used to be a two-zone card — a header row plus
+    // a body repeating the action and the runtime — which made a three-step flow taller than the
+    // screen and buried the shape the canvas exists to show. What a step needs at a glance is what
+    // fires it, whether a person gates it, and which prompt it runs; the rest is one click away in
+    // the edit panel, where it can be changed rather than only read.
+    <Card
+      className={cn(
+        "w-full gap-0 py-0",
+        !automation.enabled && "opacity-60",
+        dangling && "border-destructive/50",
+      )}
+    >
+      <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-2">
+        <span className="flex min-w-0 items-center gap-2">
           <span className="truncate font-mono text-xs font-semibold text-primary">
             {automation.triggerLabel}
           </span>
-          {/* The board's chip, not one that looks like it (#232). */}
+          {/* The board's chip, not one that looks like it (#232). Before the approval toggle in DOM
+              order, so "what is true" reads ahead of "what you can change". */}
           {automation.requiresApproval ? <GateChip hint={t("canvas.approval.on")} /> : null}
+          {automation.promptPath ? (
+            <span className="truncate font-mono text-[11px] text-muted-foreground">
+              {automation.promptPath}
+            </span>
+          ) : null}
+          {automation.enabled ? null : (
+            <span className="shrink-0 text-[10px] font-semibold text-muted-foreground">
+              {t("automations.disabled")}
+            </span>
+          )}
+          {/* Dormant today — every catalogue action executes — and kept because the list exists so a
+              future action can be offered before it runs, which is precisely when a step drawn in a
+              flow must not look like it will fire. */}
+          {EXECUTABLE_ACTIONS.includes(automation.action) ? null : (
+            <span className="shrink-0 text-[10px] font-semibold text-warning">
+              {t("automations.actionNotExecutable")}
+            </span>
+          )}
         </span>
-        <span className="flex shrink-0 items-center gap-1.5">
+        <span className="flex shrink-0 items-center gap-1">
           <span className="text-[10px] text-muted-foreground">
             {automation.triggerState ?? t("automations.anyState")}
           </span>
-          {/* Compact and labelled, so both capabilities stay reachable without a button the width
-              of the card (ADR-0006 is about reachability, not prominence). */}
+          {/* The one gesture that belongs to the picture: gating a step is a property of the flow,
+              so it stays on the node. Everything else about the Automation is edited in the panel —
+              ADR-0006 asks that a capability be reachable, and one click is reachable. */}
           <Button
             variant="ghost"
-            size="sm"
+            size="icon-sm"
             type="button"
             onClick={onToggleApproval}
             aria-label={
@@ -326,27 +337,25 @@ function AutomationNode({
           >
             <UserRound className="size-3.5" aria-hidden="true" />
           </Button>
-          <Button variant="ghost" size="sm" type="button" onClick={onToggleEnabled}>
-            {automation.enabled ? t("automations.disable") : t("automations.enable")}
+          <Button
+            variant="ghost"
+            size="sm"
+            type="button"
+            className="text-xs text-primary"
+            onClick={onEdit}
+          >
+            {t("automations.edit")}
           </Button>
         </span>
-      </div>
-
-      <CardContent className="flex flex-col gap-1 py-2.5">
-        <span className="truncate text-sm font-medium">{automation.action}</span>
-        <span className="truncate text-xs text-muted-foreground">
-          {automation.runtime}
-          {EXECUTABLE_ACTIONS.includes(automation.action)
-            ? ""
-            : ` · ${t("automations.actionNotExecutable")}`}
-        </span>
+        {/* An output label pointing at nothing is a defect in the configuration, so it stays on the
+            node rather than moving into the panel: it has to be visible without opening anything. */}
         {dangling ? (
-          <span className="text-xs text-destructive">
+          <span className="w-full text-xs text-destructive">
             {t("canvas.dangling")}{" "}
             <span className="font-mono">{automation.outputLabels.join(", ")}</span>
           </span>
         ) : null}
-      </CardContent>
+      </div>
     </Card>
   );
 }

@@ -142,6 +142,20 @@ export function workflowChains(automations: Automation[]): WorkflowChain[] {
   );
 }
 
+/**
+ * The ids the workflow draws — what a catalogue row needs to say whether it is wired into anything
+ * (design review 6a).
+ *
+ * Derived from {@link workflowChains} rather than from the labels directly, so "in workflow" in the
+ * rail and "drawn on the canvas" cannot disagree: they are one sentence with one implementation, and
+ * a row claiming membership the picture does not show would be worse than no tag at all.
+ */
+export function workflowMembers(automations: Automation[]): ReadonlySet<string> {
+  return new Set(
+    workflowChains(automations).flatMap((chain) => chain.nodes.map((node) => node.automation.id)),
+  );
+}
+
 export interface WorkflowSummary {
   /** Nodes across every chain — steps, not Automations, which is a different number. */
   steps: number;

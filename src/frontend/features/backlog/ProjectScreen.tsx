@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router";
 import { AutomationsSection } from "@/features/automations/AutomationsSection";
-import { PromptScratchpad } from "@/features/automations/PromptScratchpad";
 import { StarterPromptsSection } from "@/features/automations/StarterPromptsSection";
-import { WorkflowSetupSection } from "@/features/automations/WorkflowSetupSection";
 import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
@@ -171,13 +169,12 @@ export function ProjectScreen() {
           </TabsContent>
 
           <TabsContent value="automations" className="flex flex-col gap-6">
-            {/* First on the tab: the one press that answers "what should this project have?"
-                before the forms below ask you to answer it a step at a time (#229). */}
-            <WorkflowSetupSection projectId={projectId} />
+            {/* One surface now (design review 6a). Setup (#229) and the scratchpad (#189) used to
+                stack above and below it as full-width cards, which put the flow — the thing this tab
+                is looked at for — below two tools most visits never touch. They are reached from the
+                section's own toolbar, and setup still renders inline while there is nothing
+                configured, because then it IS the content of the tab. */}
             <AutomationsSection projectId={projectId} />
-            {/* Beside the field that names a prompt file, because this is how you find out what
-                that file will do before there is a file (#189). */}
-            <PromptScratchpad projectId={projectId} />
             {/* Last on the tab: it is the thing you need before you have anything, and the thing you
                 stop needing once you do (#190). */}
             <StarterPromptsSection projectId={projectId} />

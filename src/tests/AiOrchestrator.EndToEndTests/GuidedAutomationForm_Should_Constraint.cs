@@ -29,6 +29,13 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
         return page;
     }
 
+    /// <summary>
+    /// The form lives in a dialog since design review 6b, and a dialog is portalled to the end of the
+    /// document — outside <c>main</c>. Assertions about the form's own text scope here rather than to
+    /// the page, so they cannot pass on copy that happens to appear elsewhere on the tab.
+    /// </summary>
+    static ILocator Form(IPage page) => page.GetByRole(AriaRole.Dialog);
+
     [Fact]
     public async Task TheForm_Should_AskThreeQuestionsInExecutionOrder()
     {
@@ -55,7 +62,7 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
 
         await page.Locator("#requires-approval").WaitForAsync(new() { Timeout = 15_000 });
 
-        var text = await page.Locator("main").TextContentAsync();
+        var text = await Form(page).TextContentAsync();
         text.ShouldNotBeNull();
         text.ShouldContain("Nothing executes until someone approves");
     }
@@ -85,13 +92,13 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
         // sentence naming the gap, and raises nothing.
         var page = await OpenForm($"Sentence — {Guid.NewGuid():N}");
 
-        var main = page.Locator("main");
-        (await main.TextContentAsync())!.ShouldContain("name a trigger label");
+        var form = Form(page);
+        (await form.TextContentAsync())!.ShouldContain("name a trigger label");
 
         await page.Locator("#trigger-label").FillAsync("ai:review");
 
         // The trigger is now stated, and only the still-missing prompt is flagged.
-        var afterTyping = await main.TextContentAsync();
+        var afterTyping = await form.TextContentAsync();
         afterTyping.ShouldNotBeNull();
         afterTyping.ShouldContain("ai:review");
         afterTyping.ShouldNotContain("name a trigger label");
@@ -123,10 +130,11 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
         await page.Locator("#after-stop").ClickAsync();
         (await page.Locator("#output-label").CountAsync()).ShouldBe(0);
 
-        // The Automation form's own submit. Scoped by the field it owns: "Add" is also the
-        // output-label button's text, the submit reads "Add Automation", and the page carries a
-        // second form (the workflow setup card) with a submit of its own.
-        await page.Locator("form:has(#trigger-label) button[type=submit]").ClickAsync();
+        // The Automation form's own submit. Named rather than located inside the `<form>`: since
+        // design review 6b the button sits in the panel's footer and reaches the form by its id, so
+        // that it stays put while the body scrolls. "Add Automation" is still the unambiguous name —
+        // "Add" alone is also the output-label button.
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add Automation" }).ClickAsync();
 
         // The form closes on success, which is the signal the mutation landed. Waited for rather
         // than slept through — reading the API before the POST settles is a race that passes

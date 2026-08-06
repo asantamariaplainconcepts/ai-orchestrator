@@ -18,6 +18,9 @@ export const en = {
   "projects.count.other": "projects",
   "theme.toggle": "Switch theme",
   "ui.close": "Close",
+  // Shared verbs. "Cancel" belongs to no feature: every dialog that can be walked away from needs
+  // it, and a per-feature copy of the same word is how two dialogs end up disagreeing about it.
+  "common.cancel": "Cancel",
   "shell.auth.signIn": "Sign in",
   "shell.auth.signOut": "Sign out",
   "shell.nav.collapse": "Collapse sidebar",
@@ -337,6 +340,11 @@ export const en = {
   "automations.outputLabelHint":
     "Applied to the Story when a Run of this Automation succeeds \u2014 add as many as you need, or leave empty to end here.",
   "automations.delete": "Delete",
+  // Two presses, not one (design review 6b). The first opens the question, the second answers it —
+  // and the second says what it does, because "Confirm" beside "Delete" leaves the reader deducing
+  // which of the two buttons is the dangerous one.
+  "automations.delete.start": "Delete…",
+  "automations.delete.confirm": "Delete it permanently",
   "automations.delete.hint":
     "Only possible while no run has used it. Once one has, disable it instead \u2014 runs keep their automation for the audit trail.",
   "automations.delete.refused":
@@ -349,6 +357,21 @@ export const en = {
   "automations.empty": "No Automations yet. Add one to make a labelled Story trigger an Agent.",
   "automations.add": "Add Automation",
   "automations.new": "New Automation",
+  // Editing arrives in a dialog (design review 6b), so the title has to name what is being edited —
+  // an inline form was identified by where it sat on the page, and a dialog has no "where".
+  "automations.editTitle": "Edit",
+  // What a catalogue row says about the flow (design review 6a). The relation, not a repeat of the
+  // fields the row already shows — "is this wired into anything?" is the question the rail answers.
+  "automations.inWorkflow": "in workflow",
+  "automations.standalone": "standalone",
+  // Below xl the rail cannot sit beside the flow, so the un-chained ones become their own group
+  // under it — the chained ones are already on screen as the chain (design review 6c).
+  "automations.standaloneGroup": "Standalone",
+  // Occasional tools, not permanent content: first-run setup and a scratchpad are things you reach
+  // for, so they live in the toolbar and open over the tab rather than pushing the flow down.
+  "automations.tools.tryPrompt": "Try a prompt",
+  "automations.tools.setup": "Set up from repo…",
+  "automations.tools.more": "More tools",
   // The canvas (#116): the pipeline as a shape, where an edge is one Automation's output label
   // agreeing with another's trigger label.
   "canvas.hint":
@@ -378,7 +401,6 @@ export const en = {
   "automations.workflow.stops.other": "human reviews",
 
   "canvas.changeRefused": "That change was refused. Nothing was saved.",
-  "automations.new.close": "Close form",
   "automations.adding": "Saving\u2026",
   "automations.saveFailed": "Could not save the Automation.",
   "automations.trigger": "Trigger label",

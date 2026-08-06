@@ -88,6 +88,14 @@ public class ProjectPage_Should_Constraint(AppHostFixture fixture)
         (await action.Locator("option").AllInnerTextsAsync()).ShouldHaveSingleItem();
         (await page.Locator("#prompt-path").GetAttributeAsync("required")).ShouldNotBeNull();
 
+        // The form arrives in a modal panel since design review 6b, and a modal deliberately hides
+        // the rest of the page from the accessibility tree. So it is dismissed before anything
+        // outside it is asserted — both the nav entry below and the tab click after it are outside.
+        // Leaving it open made `GetByRole` resolve to nothing and read as "the Inbox link is gone".
+        await page.Keyboard.PressAsync("Escape");
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" })
+            .WaitForAsync(new() { Timeout = 15_000 });
+
         // The inbox is a capability too (UC-026): its nav entry must exist and lead somewhere.
         var inboxNav = page.GetByRole(AriaRole.Link, new() { Name = "Inbox" });
         (await inboxNav.IsVisibleAsync()).ShouldBeTrue();

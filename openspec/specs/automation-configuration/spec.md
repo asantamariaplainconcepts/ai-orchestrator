@@ -235,6 +235,22 @@ This SHALL be reachable from the portal, not only from the API. The editing surf
 form that creates an Automation, so that the input rules, the field vocabularies and the refusals cannot
 diverge between the two.
 
+That form SHALL arrive **over** the tab rather than within it: a modal panel, centred at pointer
+widths and a bottom sheet at narrow ones. Opening it, dismissing it, and saving it SHALL NOT change
+the page's scroll position — a form inserted into the page moves every other thing on it, and an
+Admin who was reading the workflow SHALL still be looking at it afterwards. Dismissal SHALL be
+offered by at least the keyboard, a close control, and the overlay, and all of them SHALL abandon the
+edit identically.
+
+The panel SHALL be reachable from both places an Automation is shown — a catalogue entry and a
+workflow node — and both SHALL open the same panel, so the two surfaces cannot grow two editing
+experiences.
+
+Disabling, re-enabling and deleting SHALL be offered inside that panel, where they act on the
+Automation the panel names, and SHALL NOT be offered as controls on a catalogue row. Deletion SHALL
+require a second, distinct confirmation before it is sent: a single click adjacent to Edit is one
+mis-aim away from a deletion nobody intended.
+
 Because the update endpoint is a full replace, an edit SHALL send every field, seeded from the
 Automation's stored values — a field the form omits SHALL NOT be silently reset to its default. The
 timeout SHALL therefore be a visible field in both modes: a value resent on the Admin's behalf is one
@@ -244,6 +260,10 @@ Changing the action to one that reads no document SHALL clear the document name,
 visible control can reach is a value the Admin cannot manage.
 
 An edit SHALL NOT change whether the Automation is enabled.
+
+Every refusal the panel can provoke — an overlapping save, a refused enable, a refused delete — SHALL
+be reported inside the panel, beside the control that provoked it, and SHALL NOT be reported only
+where the reader is no longer looking.
 
 #### Scenario: an edit that would overlap is refused
 
@@ -290,6 +310,33 @@ An edit SHALL NOT change whether the Automation is enabled.
 
 - **WHEN** a save is refused for overlap or for triggering itself
 - **THEN** the reason the API gave is what the form shows
+
+#### Scenario: opening an edit leaves the page where it was
+
+- **WHEN** an Admin opens an Automation for editing on a tab scrolled away from its top
+- **THEN** the form appears over the tab and the page's scroll position is unchanged
+
+#### Scenario: abandoning and saving both leave the page where it was
+
+- **WHEN** an Admin dismisses the panel by keyboard, by its close control, or by the overlay, or
+  saves it successfully
+- **THEN** the page's scroll position is the same as before the panel opened
+
+#### Scenario: one panel, either surface
+
+- **WHEN** an Admin opens editing from a catalogue entry and then from a workflow node
+- **THEN** both open the same panel on the same Automation's stored values
+
+#### Scenario: a deletion is confirmed before it is sent
+
+- **WHEN** an Admin presses delete in the panel
+- **THEN** nothing is deleted and a distinct confirmation is offered, and only pressing that sends
+  the deletion
+
+#### Scenario: a row offers no destructive control
+
+- **WHEN** an Admin reads the catalogue
+- **THEN** no entry offers delete, and deleting is reachable only through the panel
 
 ### Requirement: an Automation that no Run has used can be deleted
 
@@ -392,16 +439,22 @@ Every other Automation SHALL appear in the catalogue only, and its absence from 
 NOT be an error or an omission — it is a trigger that acts on its own when somebody applies its
 label. Membership SHALL be derived from the edges and SHALL NOT be stored.
 
-The catalogue SHALL show each Automation's trigger label, action, runtime and whether it is
-enabled, and SHALL offer every action already available: create, edit, disable, re-enable, delete.
+The catalogue SHALL show each Automation's trigger label, whether it is enabled, and **its relation
+to the workflow** — in the flow, or standalone. That relation SHALL be derived from the same edges
+the workflow draws, so the two surfaces cannot disagree about it. An Automation's action and runtime
+SHALL be shown in the panel that can change them rather than repeated on a row that cannot. Create,
+edit, disable, re-enable and delete SHALL all remain reachable from the tab — create from its
+toolbar, the rest through the panel a catalogue entry opens.
 
 The workflow SHALL render each Automation as a node, with **one edge per output label that equals
 another Automation's trigger label** — several edges leaving one node when several match. The graph
 and its layout SHALL be derived from the Automations themselves, with nothing about the picture
-stored. At a wide viewport the chain SHALL be a single row read left to right, scrolling horizontally
-**within its own container** when it exceeds it, and SHALL NOT wrap onto a second line; the page
-itself SHALL NOT scroll sideways. At a narrow viewport it SHALL read top to bottom instead. The
-workflow SHALL state how many steps it has and how many times it stops for a person, both derived.
+stored. A chain SHALL read top to bottom at every viewport width, in one layout and one interaction
+model, and SHALL NOT scroll the page sideways. A node SHALL offer editing, opening the same panel a
+catalogue entry opens.
+
+The tab SHALL state how many steps the workflow has and how many times it stops for a person, both
+derived — a count of Automations is a fact about the catalogue and says nothing about the pipeline.
 
 Where several edges leave one node, the workflow SHALL state that they do not run at once: BR-001
 allows one active Run per Story, so a second simultaneous match is ignored rather than queued. A
@@ -427,17 +480,23 @@ unchanged.
 - **THEN** it appears in the catalogue and not in the workflow, and nothing reports that as a
   problem
 
+#### Scenario: a catalogue entry states its relation to the flow
+
+- **WHEN** a project holds both a chained and an unchained Automation
+- **THEN** the chained one reads as in the workflow and the unchained one as standalone, matching
+  what the workflow drew
+
 #### Scenario: the chain does not wrap
 
-- **WHEN** a chain longer than the viewport renders at a wide width
-- **THEN** it stays one row and scrolls within its own container, and the page does not scroll
-  sideways
+- **WHEN** a chain longer than the viewport renders at any width
+- **THEN** it reads top to bottom without wrapping, and neither the chain's own container nor the
+  page scrolls sideways
 
 #### Scenario: how big the flow is
 
-- **WHEN** the workflow renders
-- **THEN** it states its number of steps and how many times it stops for a person, and both match
-  the Automations it drew
+- **WHEN** the Automations tab renders a workflow
+- **THEN** the tab states its number of steps and how many times it stops for a person, and both
+  match the Automations the workflow drew
 
 #### Scenario: a project with no chain at all
 
@@ -1144,4 +1203,55 @@ unprompted; it is the prompt.
   tier was consented to
 - **THEN** its starter is written, an Automation is created on its trigger naming the installed file,
   and both arrive in one draft pull request
+
+### Requirement: the Automations tab orders its content by how often it is read
+
+The Automations tab SHALL present the workflow before the catalogue, because the flow is what an
+Admin opens the tab to read and the catalogue is the reference it is built from. At a wide viewport
+the catalogue SHALL sit beside the workflow rather than above or below it; where it cannot, the
+workflow SHALL come first and the Automations the workflow does not already draw SHALL follow it as
+their own named group, so no Automation is shown twice and none is hidden.
+
+Setting up a workflow from the repository, and trying a prompt, SHALL be reachable from the tab's
+own toolbar and SHALL open over the tab. They SHALL NOT occupy the tab's vertical space as permanent
+content: they are reached on a first day or an occasional afternoon, and a tab that opens on them
+answers a question its reader did not ask.
+
+**A project with no Automations configured is the exception.** While none exists, the workflow setup
+surface SHALL render inline as the content of the tab, because there is no flow to read and setting
+one up is the only thing to do there. In that state the toolbar SHALL NOT offer a second route to the
+same surface.
+
+Every control this ordering moves SHALL remain reachable at every viewport width — a capability
+offered only at one width is a capability withdrawn at the other.
+
+#### Scenario: the workflow is the first thing on the tab
+
+- **WHEN** an Admin opens the Automations tab of a project whose Automations form a chain
+- **THEN** the workflow appears before the catalogue, and at a wide viewport the catalogue is beside
+  it
+
+#### Scenario: a first run offers setup as the tab's content
+
+- **WHEN** an Admin opens the Automations tab of a project with no Automations
+- **THEN** the workflow setup surface is rendered inline on the tab, and the toolbar offers no second
+  way to reach it
+
+#### Scenario: the tools open over the tab
+
+- **WHEN** an Admin chooses to try a prompt, or to set up a workflow from the repository, on a
+  project that already has Automations
+- **THEN** the surface opens over the tab and the tab's own content keeps its position
+
+#### Scenario: a narrow viewport shows the unchained Automations as their own group
+
+- **WHEN** the tab renders at a viewport too narrow for the catalogue to sit beside the workflow
+- **THEN** the chain is shown first and the Automations outside it follow under their own group,
+  each Automation appearing exactly once
+
+#### Scenario: no capability is width-dependent
+
+- **WHEN** the tab renders at a narrow viewport
+- **THEN** creating an Automation, trying a prompt, and setting up from the repository are all
+  reachable
 
