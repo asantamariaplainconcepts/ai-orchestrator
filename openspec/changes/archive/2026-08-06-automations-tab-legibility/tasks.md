@@ -87,7 +87,11 @@
       `[title='A person approves the plan']` first match reads `Approval`.
 - [x] 7.8 Verify the composition with #269 after rebasing: its consent switch renders inside the
       relocated setup panel, toggling it grows the plan, and the panel stays within the viewport.
-- [ ] 7.9 The full suite including E2E. Left open on purpose until `/aio:sync` reads it: the evidence
+- [x] 7.9 The full suite including E2E. Left open on purpose until `/aio:sync` read it: the evidence
       is CI's own `build-test` and `e2e` jobs on the PR head, which boot real PostgreSQL, Azurite and
       the AppHost. A local pass on one machine is weaker evidence than the lane the merge gates on,
-      so this closes when that rollup is green — not before.
+      so this closed when that rollup went green — not before. **Closed by run `31128988205` on
+      `a80e64c`:** `e2e / e2e` success, `build-test / build-test` success, all three `lint` jobs and
+      `compose-drift` and `openspec-validate` success, `terraform` correctly skipped by the paths
+      filter. Verified job-by-job rather than from the run's own conclusion, because an earlier run
+      this same day reported `failure` with every job skipped — a conclusion is not a result.

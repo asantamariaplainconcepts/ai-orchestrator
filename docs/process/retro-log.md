@@ -3288,3 +3288,55 @@ inspection, and cost a wrong implementation plus a spec rewrite to find at test 
 DEC-064, revising DEC-048's rubric clause on the narrow ground that "the weaker of the two"
 presumes two — an existing document still wins, so a seed lands only where there is none.
 [ADR-0013](../adr/0013-an-assertion-must-be-able-to-fail.md) on the substring assertion.
+
+## 2026-08-06 — automations-tab-legibility (#271)
+
+**Time (telemetry, partial):** 1 h 57 min agent (7 026 s cli, $86.16, 239k output tokens, 115.9M
+cache reads), one session mapped to the change. **Human active time is absent again** — no
+`active_time.total{type=user}` datapoint exists for this session while `{type=cli}` recorded
+correctly, and `verify-telemetry.mjs` passes all five checks. This is the **second consecutive
+occurrence**: #269's entry named the identical gap one entry above this one. Twice is no longer a
+finding to name — the human/agent split is the reason the field exists, and it has now silently
+recorded nothing twice, so it needs a tracked fix rather than a third naming. Worth noting the
+mapping itself worked despite a mid-change branch rename: the session resolved to
+`automations-tab-legibility` even though the branch began life as a worktree name, so ADR-0011's
+attribution held.
+
+**What worked:** Reading the E2E suite before writing any code. Twenty test files were grepped for
+the selectors this change would move, which is why the two assertions scoped to `main` and the
+`form:has(#trigger-label) button[type=submit]` locator were corrected in the implementing commit
+rather than discovered by a red lane. The same discipline on the canvas: the geometric properties
+`VerticalWorkflowCanvas_Should_Constraint` measures were read first and preserved deliberately —
+`[node, connector]` as the wrapper's two children, `max-w-[520px]` on the chain, the Gate chip
+ahead of the approval toggle so the `[title=…]` first match still reads `Approval`. Also correct
+was refusing to copy a stale requirement forward: `automation-configuration` still described the
+chain as a horizontally-scrolling row at wide viewports, which #232 replaced, and because a
+MODIFIED block replaces its requirement wholesale at archive time, copying it would have written a
+knowingly false spec into `openspec/specs/`.
+
+**What didn't:** **I reported the change as verified when the verification could not see two of its
+three defects.** The browser checks were real — scroll offset held across open, Esc and save,
+computed colours, node geometry at three widths, both themes — but every one of them measured
+pixels or layout, and the defects lived in the accessibility tree. `sr-only` hides pixels and
+nothing else, so the panel's `hideTitle` left radix's `<h2>` in the tree beside the content's own
+`<h2>` of the same name: one heading announced twice, and two elements Playwright's role query
+could not tell apart. CI's E2E lane found it as a strict-mode violation; nothing I ran could have.
+**This is ADR-0004 again** — the assertion took a proxy (it looks right) for the artifact (what the
+tree contains) — and the third instance of that family in this log. Two smaller ones, both mine:
+`gh run rerun` during a GitHub Actions outage created a run stuck in `queued` that could then
+neither be cancelled (409) nor deleted (403), and I twice misread outage symptoms as something
+else — first calling an unstarted queue "latency", then reporting `main`'s red as an Azure or code
+problem when it was the same cancelled-`changes` pattern the outage was producing everywhere.
+
+**One change next time:** when a change introduces or moves a dialog, a sheet, or any `sr-only`
+content, the browser verification includes at least one **accessibility-tree** assertion — count
+elements by role and accessible name and check the panel's `aria-labelledby` resolves — before the
+change is called verified. A visual check cannot see a duplicated heading, which is exactly the
+defect a modal panel introduces, and "it looks right in both themes at three widths" is a
+statement about rendering that says nothing about what a screen reader or a role query receives.
+
+**Decisions recorded:** none new. The lesson is
+[ADR-0004](../adr/0004-a-verification-asserts-the-artifact-not-a-proxy-signal.md), already
+Accepted; writing a fourteenth ADR for a further instance would fragment a decision that is
+already correct and already cited. The recurring telemetry gap above is the item that needs an
+owner, not a new principle.

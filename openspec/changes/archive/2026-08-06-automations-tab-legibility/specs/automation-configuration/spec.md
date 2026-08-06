@@ -172,11 +172,11 @@ unchanged.
 - **THEN** the chained one reads as in the workflow and the unchained one as standalone, matching
   what the workflow drew
 
-#### Scenario: the chain reads top-down and does not scroll the page sideways
+#### Scenario: the chain does not wrap
 
 - **WHEN** a chain longer than the viewport renders at any width
-- **THEN** it reads top to bottom, and neither the chain's own container nor the page scrolls
-  sideways
+- **THEN** it reads top to bottom without wrapping, and neither the chain's own container nor the
+  page scrolls sideways
 
 #### Scenario: how big the flow is
 
