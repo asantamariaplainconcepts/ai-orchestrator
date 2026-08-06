@@ -3340,3 +3340,32 @@ statement about rendering that says nothing about what a screen reader or a role
 Accepted; writing a fourteenth ADR for a further instance would fragment a decision that is
 already correct and already cited. The recurring telemetry gap above is the item that needs an
 owner, not a new principle.
+
+## 2026-08-06 — spec-first-chain (#273)
+
+**Time (telemetry, delta):** 1 h 03 min agent (3 762 s cli, $61.53, 65k output tokens), computed as
+the difference from the previous entry's totals — this session carries two changes, and the
+session→change join cannot split one session between them, so the delta against the totals recorded
+at the last retro is the honest figure. **Human active time is absent for the third consecutive
+change** — `active_time.total{type=user}` recorded nothing again; the capture defect named in the
+last two entries now has three data points and still no owner.
+
+**What worked:** #269's discipline of scoping the wiring out *with its reasons recorded* made this
+change almost free: the decision arrived pre-framed (which edges, where the human waits live), the
+marker and its tests already existed, and the whole implementation was three manifest values plus
+the surfaces that had documented their own absence. The grill decisions (full chain, gates as
+waits, refine/status standalone) were made in-session by the product authority and the proposal
+cited them instead of re-litigating. CI's E2E lane ran the mock-mode marker scenario that local
+verification had already exercised by hand — unchecking `ai:propose` marks `ai:implement`.
+
+**What didn't:** session-scoped telemetry attribution broke down the moment one session carried two
+changes: `sessions.jsonl` maps this session to both, so neither change's figures are separable
+except by manual delta against the previous entry. Related to but distinct from ADR-0011's worktree
+gap — the mapping *worked*, twice, and that is exactly the problem.
+
+**One change next time:** one session per change once the loop runs multiple changes back-to-back —
+or the mapping hook records a timestamped span rather than a bare session→change pair, so a later
+join can attribute by interval. Decide before the next multi-change session, not after it.
+
+**Decisions recorded:** none new — the methodology decision itself is #273's grill record and the
+added `default-automations` requirement.

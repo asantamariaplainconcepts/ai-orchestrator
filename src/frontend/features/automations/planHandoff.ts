@@ -26,17 +26,10 @@ import type { PlannedStep } from "./useWorkflowSetup";
  * </p>
  *
  * <p>
- * <b>Currently unreachable, and kept deliberately (#269).</b> The catalogue has no hand-off edges
- * left: the portable tier held the only chain (`ai:implement → ai:tests → ai:review`) and every
- * spec-first prompt hands work to nobody, so this function correctly returns an empty set for every
- * input the product can produce. It is not dead code by mistake — the requirement it implements is
- * still correct, and the moment any tier declares an `outputLabels` edge the marker works again.
- * </p>
- *
- * <p>
- * So: do not delete it, and do not invent a catalogue edge to make it demonstrable. Which of the
- * spec-first loop's edges should be automatic and which should wait for a person is a methodology
- * decision, scoped as its own change rather than smuggled into wiring.
+ * Reachable again since #273: the spec-first tier wires `grill → propose → implement → sync`, so
+ * excluding a mid-chain step marks the step it fed. (#269 had left the catalogue with no edges at
+ * all, and this doc carried that as a warning not to invent one — the methodology decision it
+ * deferred is now made, as catalogue content.)
  * </p>
  */
 export function handoffsBrokenBy(

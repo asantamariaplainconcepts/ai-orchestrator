@@ -201,4 +201,29 @@ public class StarterCatalogue_Should_Constraint
             .SelectMany(prompt => prompt.Automation!.OutputLabels)
             .ShouldAllBe(label => triggers.Contains(label));
     }
+
+    [Fact]
+    public void TheSpecFirstTier_Should_ArriveAsOneGatedChain()
+    {
+        // #273 — the methodology decision #269 deferred, pinned as the content it was made as:
+        // grill hands to propose, propose to implement, implement to sync, and every step that
+        // executes against a repository keeps its approval gate, so the chain's human waits are
+        // the gates rather than breaks. refine and status hand to nobody — one is an occasional
+        // post-merge append, the other a query, and wiring either in would run it on every pass.
+        var workflow = StarterCatalogue.Tiers.Single(tier => tier.Id == "workflow");
+        var byFile = workflow.Prompts.ToDictionary(prompt => prompt.File);
+
+        byFile["grill.md"].Automation!.OutputLabels.ShouldBe(["ai:propose"]);
+        byFile["propose.md"].Automation!.OutputLabels.ShouldBe(["ai:implement"]);
+        byFile["implement.md"].Automation!.OutputLabels.ShouldBe(["ai:sync"]);
+        byFile["sync.md"].Automation!.OutputLabels.ShouldBeEmpty();
+        byFile["refine.md"].Automation!.OutputLabels.ShouldBeEmpty();
+        byFile["status.md"].Automation!.OutputLabels.ShouldBeEmpty();
+
+        // The gates the chain's hand-offs stop at. Losing one silently would turn an automatic
+        // hand-off into an unattended execution, which is the opposite of what was decided.
+        byFile["propose.md"].Automation!.RequiresApproval.ShouldBeTrue();
+        byFile["implement.md"].Automation!.RequiresApproval.ShouldBeTrue();
+        byFile["sync.md"].Automation!.RequiresApproval.ShouldBeTrue();
+    }
 }

@@ -45,7 +45,9 @@
           "automation": {
             "trigger": "ai:grill",
             "requiresApproval": false,
-            "outputLabels": []
+            "outputLabels": [
+              "ai:propose"
+            ]
           }
         },
         {
@@ -56,7 +58,9 @@
           "automation": {
             "trigger": "ai:propose",
             "requiresApproval": true,
-            "outputLabels": []
+            "outputLabels": [
+              "ai:implement"
+            ]
           }
         },
         {
@@ -67,7 +71,9 @@
           "automation": {
             "trigger": "ai:implement",
             "requiresApproval": true,
-            "outputLabels": []
+            "outputLabels": [
+              "ai:sync"
+            ]
           }
         },
         {
