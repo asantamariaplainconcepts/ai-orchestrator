@@ -46,6 +46,38 @@ Consent SHALL compare tier identifiers exactly as declared in the catalogue.
 - **WHEN** the action runs with no tier named
 - **THEN** no starter is installed, no branch is created, and no pull request is opened
 
+### Requirement: a step from an opt-in tier is adopted, and installed only on consent
+
+A pipeline step belonging to a starter tier that declares a prerequisite SHALL be recognised and wired
+when the repository already holds its file.
+
+Where the repository does not hold its file, the step SHALL be installed **only where the caller has
+consented to its tier by name**, and SHALL NOT be installed otherwise.
+
+Reading a file a team wrote is not the same act as writing one they did not ask for. A tier that
+declares what it assumes is opt-in by construction, and a button that installed it *unprompted* would
+push a methodology into a repository whose team never chose it — the failure the tiering was introduced
+to prevent. A consent that is off by default, names the tier, and states the paths it will write is not
+unprompted; it is the prompt.
+
+#### Scenario: an opt-in step with a file is wired
+
+- **WHEN** the chosen directory holds a file named for a step from a tier that declares a prerequisite
+- **THEN** an Automation is created on that step's trigger, naming that file
+
+#### Scenario: an opt-in step with no file and no consent is not installed
+
+- **WHEN** a step from a tier that declares a prerequisite has no file in the chosen directory and its
+  tier was not consented to
+- **THEN** no starter is written for it and it does not appear in any pull request
+
+#### Scenario: an opt-in step with no file is installed once its tier is consented to
+
+- **WHEN** a step from a tier that declares a prerequisite has no file in the chosen directory and its
+  tier was consented to
+- **THEN** its starter is written, an Automation is created on its trigger naming the installed file,
+  and both arrive in one draft pull request
+
 ## MODIFIED Requirements
 
 ### Requirement: starters are labelled by what they require
@@ -81,38 +113,6 @@ declared, not how many tiers ship.
 - **WHEN** the catalogue ships a single tier that declares a prerequisite
 - **THEN** the set is offered with that tier's requirement stated, and nothing is presented as
   assuming only the repository
-
-### Requirement: a step from an opt-in tier is adopted, and installed only on consent
-
-A pipeline step belonging to a starter tier that declares a prerequisite SHALL be recognised and wired
-when the repository already holds its file.
-
-Where the repository does not hold its file, the step SHALL be installed **only where the caller has
-consented to its tier by name**, and SHALL NOT be installed otherwise.
-
-Reading a file a team wrote is not the same act as writing one they did not ask for. A tier that
-declares what it assumes is opt-in by construction, and a button that installed it *unprompted* would
-push a methodology into a repository whose team never chose it — the failure the tiering was introduced
-to prevent. A consent that is off by default, names the tier, and states the paths it will write is not
-unprompted; it is the prompt.
-
-#### Scenario: an opt-in step with a file is wired
-
-- **WHEN** the chosen directory holds a file named for a step from a tier that declares a prerequisite
-- **THEN** an Automation is created on that step's trigger, naming that file
-
-#### Scenario: an opt-in step with no file and no consent is not installed
-
-- **WHEN** a step from a tier that declares a prerequisite has no file in the chosen directory and its
-  tier was not consented to
-- **THEN** no starter is written for it and it does not appear in any pull request
-
-#### Scenario: an opt-in step with no file is installed once its tier is consented to
-
-- **WHEN** a step from a tier that declares a prerequisite has no file in the chosen directory and its
-  tier was consented to
-- **THEN** its starter is written, an Automation is created on its trigger naming the installed file,
-  and both arrive in one draft pull request
 
 ### Requirement: setting a project up adopts the pipeline it already has
 
@@ -212,10 +212,11 @@ stops being read, which defeats showing it.
 - **WHEN** the plan is computed
 - **THEN** no Automation is created and nothing is written to the repository
 
-#### Scenario: the preview replaces the consent for the files it names
+#### Scenario: the preview replaces the consent
 
 - **WHEN** the plan is visible
-- **THEN** no separate control asks whether to install the starter files its rows name
+- **THEN** no separate control asks whether to install the starter files its rows name — the tier
+  consent above governs a different act, at paths no row names
 
 #### Scenario: a step nothing would happen for is not offered
 
@@ -227,3 +228,19 @@ stops being read, which defeats showing it.
 - **WHEN** a tier that declares a prerequisite is consented to
 - **THEN** its installable steps appear as rows, each stating that a starter would be installed, and
   withdrawing the consent removes them again
+
+## REMOVED Requirements
+
+### Requirement: a step from an opt-in tier is adopted but never installed
+
+**Reason**: Superseded by "a step from an opt-in tier is adopted, and installed only on consent". The
+old requirement's absolute — never installed — was written for a product that could only ever read
+documents, and it left an Admin assembling the spec-first workflow by hand from six pull requests,
+ending with prompts that read files their repository did not have. What the rule was protecting was
+never installing a methodology *unprompted*; a consent that is off by default, names the tier and lists
+every path it will write is the prompt, not the absence of one.
+
+**Migration**: No caller action. Adoption is unchanged — a repository holding a gated tier's file is
+still wired to that file. Installing such a tier's starters now requires naming the tier in the
+action's optional tier consent; a caller that sends no consent installs nothing, which is the same
+outcome the removed requirement guaranteed.
