@@ -2,30 +2,30 @@
 
 ## 1. The seam the card needs (design D5, D7)
 
-- [ ] 1.1 `DiscoverPipeline.PlannedStep` gains `IReadOnlyList<string> OutputLabels`, filled from
+- [x] 1.1 `DiscoverPipeline.PlannedStep` gains `IReadOnlyList<string> OutputLabels`, filled from
       `step.Wiring.OutputLabels` in the plan projection. No new read: the labels come from
       `PipelineSteps.All`, which the projection already walks.
-- [ ] 1.2 Correct the comment at `DiscoverPipeline.cs:109-110` — it claims a step that is neither
+- [x] 1.2 Correct the comment at `DiscoverPipeline.cs:109-110` — it claims a step that is neither
       present nor installable is "listed as not installable", and the filter below it drops that
       step. The filter is right; say what it does and why (a row that changes nothing either way is
       noise in a list of what will happen).
 
 ## 2. Selection on the endpoint (design D1, D2, D4)
 
-- [ ] 2.1 `SetUpDefaultAutomations.Request` and `Command` gain `IReadOnlyList<string>? Steps`.
+- [x] 2.1 `SetUpDefaultAutomations.Request` and `Command` gain `IReadOnlyList<string>? Steps`.
       Document on the record that absent means every step and empty means none — the distinction is
       load-bearing and one word of XML doc is cheaper than the bug.
-- [ ] 2.2 Build the selection filter as a case-insensitive set (the BR-003/DEC-056 identity, the
+- [x] 2.2 Build the selection filter as a case-insensitive set (the BR-003/DEC-056 identity, the
       comparison already used at `SetUpDefaultAutomations.cs:155`), applied to `adopted` and `gaps`
       at lines 164-167 — **before** the taken/overlap loop, so an excluded step never reaches the
       skip path.
-- [ ] 2.3 `Response` gains `IReadOnlyList<string> Excluded`, populated from the steps the filter
+- [x] 2.3 `Response` gains `IReadOnlyList<string> Excluded`, populated from the steps the filter
       removed. Keep it separate from `Skipped`: they answer different questions.
-- [ ] 2.4 Confirm `FillGaps` receives only selected gaps, so its existing `gaps.Count == 0`
+- [x] 2.4 Confirm `FillGaps` receives only selected gaps, so its existing `gaps.Count == 0`
       short-circuit (lines 315-318) is what produces "no branch, no pull request, no failure".
       `StarterInstaller.Install` must never be reached with an empty file list — it answers
       `Workspace.NoChanges`, which would surface as a failure for a choice the Admin made.
-- [ ] 2.5 Leave `InstallMissing` in place and unchanged (design D3). Verify by reading, not by
+- [x] 2.5 Leave `InstallMissing` in place and unchanged (design D3). Verify by reading, not by
       assumption, that a bodyless call still creates Automations and writes nothing.
 
 ## 3. Selection on the card (design D5)

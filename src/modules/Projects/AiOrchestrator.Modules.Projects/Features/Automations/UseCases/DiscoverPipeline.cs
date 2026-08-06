@@ -62,13 +62,20 @@ sealed class DiscoverPipeline : IUseCase
     /// project may not have: it can be wired to a file that exists, but no starter will be written
     /// for it.
     /// </para>
+    /// <para>
+    /// <paramref name="OutputLabels"/> is what this step hands on (#262). The card needs it to say,
+    /// as rows are deselected, that a hand-off no longer happens — and that answer has to arrive on
+    /// a click, so it cannot be a round trip. The labels come from the catalogue the plan is already
+    /// walking, so carrying them costs nothing.
+    /// </para>
     /// </summary>
     internal sealed record PlannedStep(
         string Trigger,
         string PromptFile,
         bool Exists,
         bool Gated,
-        bool Installable
+        bool Installable,
+        IReadOnlyList<string> OutputLabels
     );
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -104,10 +111,11 @@ sealed class DiscoverPipeline : IUseCase
                         .ToList();
 
                     // The plan the button would carry out, said before it is pressed rather than
-                    // reported after (#233). Every step the catalogue knows appears: the ones this
-                    // directory already has a file for, and the ones a starter would be installed
-                    // for. A step that is neither is not silently dropped — it is listed as not
-                    // installable, because "nothing will happen for this" is also an answer.
+                    // reported after (#233). Two kinds of step appear: the ones this directory
+                    // already has a file for, and the ones a starter would be installed for. A step
+                    // that is neither is left out — nothing would happen for it either way, and
+                    // since #262 made every row a choice, a row whose choice changes nothing is
+                    // noise in a list whose whole job is to say what the press will do.
                     var present = matched
                         .Where(pair => pair.Step is not null)
                         .ToDictionary(
@@ -133,7 +141,8 @@ sealed class DiscoverPipeline : IUseCase
                                 exists ? file! : step.Prompt.SaveAs,
                                 exists,
                                 step.Wiring.RequiresApproval,
-                                installable
+                                installable,
+                                step.Wiring.OutputLabels
                             );
                         })
                         .Where(step => step.Exists || step.Installable)
