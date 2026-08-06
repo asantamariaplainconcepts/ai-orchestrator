@@ -125,39 +125,39 @@
 
 ## 9. Tests
 
-- [ ] 9.1 `StarterCatalogue_Should_Constraint.cs:93,101` asserts `tiers.First().Id == "portable"` and
+- [x] 9.1 `StarterCatalogue_Should_Constraint.cs:93,101` asserts `tiers.First().Id == "portable"` and
       partitions on it. Rewrite around one tier that declares a prerequisite.
-- [ ] 9.2 `StarterPromptsEndpoint_Should_Constraint.cs:51` asserts `tiers[0].Id == "portable"`; `:130`
+- [x] 9.2 `StarterPromptsEndpoint_Should_Constraint.cs:51` asserts `tiers[0].Id == "portable"`; `:130`
       documents the two-tier `implement.md` collision. Rewrite both.
-- [ ] 9.3 `SetUpDefaultAutomations_Should_Constraint.cs:38,55` asserts the wired portable set including
+- [x] 9.3 `SetUpDefaultAutomations_Should_Constraint.cs:38,55` asserts the wired portable set including
       `ai:tests`. Rewrite around the spec-first triggers.
-- [ ] 9.4 `PipelineAdoption_Should_Constraint.cs` (lines 301, 320, 341-346, 364-367, 386-389, 407-436,
+- [x] 9.4 `PipelineAdoption_Should_Constraint.cs` (lines 301, 320, 341-346, 364-367, 386-389, 407-436,
       461-464) is built throughout on the portable triggers. Rewrite around the spec-first set, keeping
       every behaviour #262 pinned: absent vs empty selection, partial selection, excluded ≠ skipped,
       case-insensitive triggers, unknown trigger matches nothing.
-- [ ] 9.5 New unit: every declared prerequisite loads and has a non-empty body. Same guarantee starters
+- [x] 9.5 New unit: every declared prerequisite loads and has a non-empty body. Same guarantee starters
       have, for the same reason — one offered as working and broken is worse than none.
-- [ ] 9.6 New unit: the duplicate-trigger refusal holds with no tier exception (the spec's new scenario).
-- [ ] 9.7 New functional: no consent installs nothing — no `PreparedBranch`, no pull request, no
+- [x] 9.6 New unit: the duplicate-trigger refusal holds with no tier exception (the spec's new scenario).
+- [x] 9.7 New functional: no consent installs nothing — no `PreparedBranch`, no pull request, no
       failure — while files already in the directory are still wired.
-- [ ] 9.8 New functional: consent installs prompts **and** prerequisites into one branch, and
+- [x] 9.8 New functional: consent installs prompts **and** prerequisites into one branch, and
       `StubInstallWorkspace.PublishedFiles` contains both, with exactly one pull request.
-- [ ] 9.9 New functional: a prerequisite whose path already exists is absent from the published files
+- [x] 9.9 New functional: a prerequisite whose path already exists is absent from the published files
       and reported as already present; the prompts still install.
-- [ ] 9.10 New functional: a consented tier whose prompts all exist but whose prerequisites do not
+- [x] 9.10 New functional: a consented tier whose prompts all exist but whose prerequisites do not
       still opens a pull request carrying the prerequisites alone (the 4.3 guard, asserted rather than
       assumed).
-- [ ] 9.11 New functional: everything already present writes nothing, opens no pull request, and
+- [x] 9.11 New functional: everything already present writes nothing, opens no pull request, and
       reports no failure.
-- [ ] 9.12 New functional: an unknown tier id in the consent succeeds and installs nothing.
-- [ ] 9.13 **Stated, not faked:** no E2E test for the consent surface.
+- [x] 9.12 New functional: an unknown tier id in the consent succeeds and installs nothing.
+- [x] 9.13 **Stated, not faked:** no E2E test for the consent surface.
       `SetupPlan_Should_Constraint.cs:18-24` already records why — plan rows need a Connector serving
       directory listings, and that tier's GitHub stub answers issues only. Record it in the doc comment;
       do not write a test that cannot reach the state.
-- [ ] 9.14 **Stated, not faked:** #262's broken-hand-off marker has no reachable test after this change,
+- [x] 9.14 **Stated, not faked:** #262's broken-hand-off marker has no reachable test after this change,
       because the catalogue has no hand-off edges left (design D10). Say so in `planHandoff.ts`'s doc
       comment rather than deleting a correct function or inventing an edge to justify it.
-- [ ] 9.15 Mutation check on the load-bearing assertions: making `Tiers` absent mean *every* tier,
+- [x] 9.15 Mutation check on the load-bearing assertions: making `Tiers` absent mean *every* tier,
       dropping `OnlyIfAbsent` so a prerequisite overwrites, and folding prerequisites into the prompt
       list must each redden a distinct test. Build first — a green suite against a stale build proves
       nothing.

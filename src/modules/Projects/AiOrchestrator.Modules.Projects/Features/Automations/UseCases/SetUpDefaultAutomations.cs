@@ -322,12 +322,24 @@ sealed class SetUpDefaultAutomations : IUseCase
             // "the Admin excluded every gap" and "the repository already had every file" converge
             // on one path. Handing an empty list further down would earn a Workspace.NoChanges
             // refusal, and reporting a failure for a choice somebody made is the wrong answer.
+            // A tier's documents follow a tier that is actually being acted on. Consent alone is not
+            // enough: an Admin who consented and then unchecked every row has said "create nothing",
+            // and writing seven process documents into their repository at that point would be the
+            // press ignoring the checklist it just showed them. Conversely a tier whose prompts all
+            // already exist *is* being acted on — those rows are selected and being wired — so its
+            // documents still arrive, which is the whole point of consenting on an adopted pipeline.
+            var actedOnTiers = adopted
+                .Concat(gaps)
+                .Where(Selected)
+                .Select(step => step.Tier.Id)
+                .ToHashSet(StringComparer.Ordinal);
+
             var installed = command.InstallMissing
                 ? await FillGaps(
                     command.ProjectId,
                     directory,
                     [.. gaps.Where(Selected)],
-                    Prerequisites(command.Tiers),
+                    Prerequisites(command.Tiers?.Where(actedOnTiers.Contains).ToList()),
                     cancellationToken
                 )
                 : null;

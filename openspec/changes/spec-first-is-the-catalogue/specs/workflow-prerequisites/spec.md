@@ -62,6 +62,34 @@ prerequisite declaration exists to prevent: prompts that read documents the repo
   do not
 - **THEN** the prerequisites are written and the pull request carries them alone
 
+### Requirement: prerequisites follow a tier that is actually acted on
+
+Consent alone SHALL NOT cause a prerequisite to be written. A tier's prerequisites SHALL be written
+only where the caller consented to that tier **and** at least one of that tier's steps survived the
+caller's selection — whether that step is being wired to a file the repository already holds or having
+a starter installed.
+
+Where a caller consents to a tier and then excludes every one of its steps, the action SHALL write no
+prerequisite for it, open no branch and no pull request, and report no failure. Consent answers *may
+this workflow be installed*; the selection answers *what is being created*. An invocation that creates
+nothing has not installed a workflow, and writing its documents anyway would be the press overriding
+the checklist it had just shown.
+
+This is what reconciles the two rules that would otherwise disagree: a consented tier whose prompts all
+already exist still brings its documents, because those steps *are* being acted on; a consented tier
+whose every step was excluded brings nothing, because none of them is.
+
+#### Scenario: consenting and then excluding everything writes nothing
+
+- **WHEN** a tier is consented to and every one of its steps is excluded by the selection
+- **THEN** no prerequisite is written, no branch is created, no pull request is opened, and no failure
+  is reported
+
+#### Scenario: a partially selected tier still brings its prerequisites
+
+- **WHEN** a tier is consented to and some but not all of its steps are selected
+- **THEN** its prerequisites are written once, in the same pull request as the selected steps' files
+
 ### Requirement: an existing file always wins, prerequisites included
 
 A prerequisite whose path already exists in the repository SHALL NOT be written, SHALL NOT be

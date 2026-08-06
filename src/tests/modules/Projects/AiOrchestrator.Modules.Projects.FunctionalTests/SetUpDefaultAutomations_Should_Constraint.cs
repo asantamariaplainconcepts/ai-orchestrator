@@ -31,13 +31,28 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
     public Task DisposeAsync() => Task.CompletedTask;
 
     [Fact]
+    public async Task ABodylessCall_Should_ConsentToNothing()
+    {
+        // **A behaviour change, asserted rather than discovered** (#269). Before consent existed, a
+        // bodyless call created the whole portable set. The catalogue now ships one tier and that tier
+        // declares a prerequisite, so a caller who names no tier authorises nothing — and this project
+        // has no Connector, so nothing is adopted either. Nothing is created, and that is correct:
+        // an Automation naming a prompt that does not exist and will not be installed is the
+        // configurable thing that silently never fires.
+        var result = await Invoke();
+
+        result.GetProperty("created").GetArrayLength().ShouldBe(0);
+        result.GetProperty("skipped").GetArrayLength().ShouldBe(0);
+        (await Automations()).GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
     public async Task AFreshProject_Should_GainTheWiredSetOnce()
     {
-        var first = await Invoke();
+        var first = await Invoke(tiers: ["workflow"]);
 
-        // The wired portable set, created and named. The exact triggers are catalogue content;
-        // what this asserts is the contract: everything created, nothing skipped, and the
-        // pipeline edge the catalogue promises (implement hands to tests) really stored.
+        // The wired set, created and named. The exact triggers are catalogue content; what this
+        // asserts is the contract: everything created, nothing skipped, and the wiring really stored.
         first.GetProperty("created").GetArrayLength().ShouldBeGreaterThanOrEqualTo(5);
         first.GetProperty("skipped").GetArrayLength().ShouldBe(0);
 
@@ -47,12 +62,11 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
             .Single(automation =>
                 automation.GetProperty("triggerLabel").GetString() == "ai:implement"
             );
+
+        // ai:implement is wired to the tier's own file now that nothing contends for the trigger
+        // (#269), and it still waits for a person — the step that writes code is gated.
         implement.GetProperty("requiresApproval").GetBoolean().ShouldBeTrue();
-        implement
-            .GetProperty("outputLabels")
-            .EnumerateArray()
-            .Select(label => label.GetString())
-            .ShouldContain("ai:tests");
+        implement.GetProperty("promptPath").GetString().ShouldBe("aio-implement.md");
         implement.GetProperty("enabled").GetBoolean().ShouldBeTrue();
 
         // No Connector on this project: every created Automation's prompt is unreadable, and
@@ -63,7 +77,7 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
             .ShouldBe(first.GetProperty("created").GetArrayLength());
 
         // Idempotence: the second run creates nothing and names everything as already there.
-        var second = await Invoke();
+        var second = await Invoke(tiers: ["workflow"]);
         second.GetProperty("created").GetArrayLength().ShouldBe(0);
         second
             .GetProperty("skipped")
@@ -72,6 +86,17 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
         (await Automations())
             .GetArrayLength()
             .ShouldBe(first.GetProperty("created").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task AnUnknownTier_Should_MatchNothing()
+    {
+        // A name the catalogue does not contain is not an error and installs nothing — the same
+        // forgiveness the selection gives an unknown trigger.
+        var result = await Invoke(tiers: ["no-such-tier"]);
+
+        result.GetProperty("created").GetArrayLength().ShouldBe(0);
+        (await Automations()).GetArrayLength().ShouldBe(0);
     }
 
     [Fact]
@@ -93,7 +118,7 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
         );
         existing.EnsureSuccessStatusCode();
 
-        var result = await Invoke();
+        var result = await Invoke(tiers: ["workflow"]);
 
         result
             .GetProperty("skipped")
@@ -123,12 +148,21 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
             .ShouldBe("mine.md");
     }
 
-    async Task<JsonElement> Invoke()
+    /// <summary>
+    /// No argument posts <b>no body at all</b>, which is the #212 call and, since #269, a call that
+    /// consents to nothing. Passing tiers sends the consent.
+    /// </summary>
+    async Task<JsonElement> Invoke(IReadOnlyList<string>? tiers = null)
     {
-        var response = await _client.PostAsync(
-            $"/api/projects/{_projectId}/automations/set-up-defaults",
-            null
-        );
+        var response = tiers is null
+            ? await _client.PostAsync(
+                $"/api/projects/{_projectId}/automations/set-up-defaults",
+                null
+            )
+            : await _client.PostAsJsonAsync(
+                $"/api/projects/{_projectId}/automations/set-up-defaults",
+                new { tiers }
+            );
         response.EnsureSuccessStatusCode();
         return JsonDocument.Parse(await response.Content.ReadAsStringAsync()).RootElement.Clone();
     }
