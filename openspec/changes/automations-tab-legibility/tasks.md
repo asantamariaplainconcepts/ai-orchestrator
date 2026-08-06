@@ -59,9 +59,14 @@
 
 ## 6. Reconcile with the spec review
 
-- [ ] 6.1 Apply whatever the spec review (HITL #1) changes in the delta specs, or record that it
-      changed nothing.
-- [ ] 6.2 Re-run the gates in group 7 after any such change.
+- [x] 6.1 Apply whatever the spec review (HITL #1) changes in the delta specs, or record that it
+      changed nothing. — **It changed nothing.** The proposal, the design and the
+      `automation-configuration` delta were validated as written, including the two things flagged
+      for close reading: the reconciliation of the wide-viewport chain sentence #232 left behind, and
+      the recorded RULE-002 deviation. No requirement, scenario or decision was edited.
+- [x] 6.2 Re-run the gates in group 7 after any such change. — Not applicable: 6.1 changed no spec
+      and no source file, so the group 7 results stand as recorded. CI re-ran on the PR head and is
+      the independent witness.
 
 ## 7. Verification
 
@@ -82,4 +87,7 @@
       `[title='A person approves the plan']` first match reads `Approval`.
 - [x] 7.8 Verify the composition with #269 after rebasing: its consent switch renders inside the
       relocated setup panel, toggling it grows the plan, and the panel stays within the viewport.
-- [ ] 7.9 `dotnet test src/AiOrchestrator.slnx` — the full suite including E2E, at sync time.
+- [ ] 7.9 The full suite including E2E. Left open on purpose until `/aio:sync` reads it: the evidence
+      is CI's own `build-test` and `e2e` jobs on the PR head, which boot real PostgreSQL, Azurite and
+      the AppHost. A local pass on one machine is weaker evidence than the lane the merge gates on,
+      so this closes when that rollup is green — not before.
