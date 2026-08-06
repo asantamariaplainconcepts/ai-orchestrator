@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Aspire.Hosting;
 using Aspire.Hosting.ApplicationModel;
 using Microsoft.Extensions.DependencyInjection;
@@ -50,5 +51,51 @@ public class LocalLoop_Should_Constraint(AppHostFixture fixture)
         // The seeder makes the loop clickable on first boot; the E2E composition is a run
         // composition, so it seeds exactly as a developer's would.
         (await projects.TextAsync()).ShouldContain("Demo project");
+    }
+
+    [Fact]
+    public async Task TheSeededAutomation_Should_ReadBackThroughTheModulesOwnPath()
+    {
+        // The seeder writes raw SQL because the Projects module's types are internal to it
+        // (MOD003), so the enum names it writes are string literals nothing type-checks. #162
+        // collapsed the action catalogue and missed this one caller: the seeder went on writing
+        // `ImplementToPullRequest`, EF could no longer map it, and every locally seeded project's
+        // Automations tab answered 500. Seeding the row proved nothing, because nobody read it
+        // back.
+        //
+        // So this reads it back through the endpoint the page uses. A rename that leaves the
+        // seeder behind fails here rather than on somebody's screen.
+        var page = await fixture.Browser.NewPageAsync();
+
+        var projects = await page.APIRequest.GetAsync($"{fixture.ServerBaseUrl}api/projects");
+        projects.Status.ShouldBe(200, await projects.TextAsync());
+
+        using var listed = JsonDocument.Parse(await projects.TextAsync());
+        // The seeder's own constant is out of reach: this tier references the AppHost, not the
+        // Server, and the type is internal besides. The literal matches LocalLoopSeeder.ProjectName.
+        var demo = listed
+            .RootElement.GetProperty("projects")
+            .EnumerateArray()
+            .Single(project => project.GetProperty("name").GetString() == "Demo project");
+
+        var automations = await page.APIRequest.GetAsync(
+            $"{fixture.ServerBaseUrl}api/projects/{demo.GetProperty("id").GetGuid()}/automations"
+        );
+
+        // The failure this exists for is a 500 carrying "Cannot convert string value … to any
+        // value in the mapped 'AutomationAction' enum", so the body rides on the assertion.
+        automations.Status.ShouldBe(200, await automations.TextAsync());
+
+        using var rows = JsonDocument.Parse(await automations.TextAsync());
+        var seeded = rows
+            .RootElement.EnumerateArray()
+            .Single(row => row.GetProperty("triggerLabel").GetString() == "ai:implement");
+
+        // Not merely readable — readable as the thing it is meant to be. An action that
+        // deserialises but names the wrong behaviour would pass a status check.
+        seeded.GetProperty("action").GetString().ShouldBe("RepositoryPrompt");
+
+        // A RepositoryPrompt Automation names the prompt it runs; without one it has nothing to do.
+        seeded.GetProperty("promptPath").GetString().ShouldBe("implement.md");
     }
 }
