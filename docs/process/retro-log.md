@@ -3400,3 +3400,36 @@ one test.
 
 **Decisions recorded:** none new. The rate-limit-driven narrowing (the ambient count neither
 includes changes nor triggers vendor reads) is contract in the delta spec, decided in #274.
+
+## 2026-08-07 — run-on-a-pr (#275)
+
+**Time (telemetry, delta):** 41 min agent (2 441 s cli, $117.56, 96k output tokens) by delta
+against the previous entry — the shared-session caveat stands, and `{type=user}` is absent for the
+**fifth** consecutive change. The batch total for tonight's three-change loop: ~2 h 20 min agent.
+
+**What worked:** mapping the execution path before designing it. The exploration established that
+the publish step is retired (DEC-062), that `AgentInstruction.Prompt` is free-form, that the
+named-branch checkout already existed, and that BR-001 is a trio whose filter is generated from
+one array — so the design reused all four instead of inventing a push member the ceremony had
+deliberately shed. The same map found **#274's marker had shipped dead**: it joined on
+`Run.OutputLink`, which nothing writes post-DEC-062, and its test passed by seeding the column at
+the persistence layer — my own test, one change ago, provisioning its own precondition (ADR-0002's
+shape, ADR-0004's family). Fixed here on head branches, with an impostor-branch case so the fix
+can fail. The whitelist test (`List_Should_ExposeExactlyTheRecordedSubset`) did exactly its job:
+it failed on the four new fields and forced the widening to be deliberate. Mock mode caught
+`undefined !== null` rendering every story Run as "PR #undefined" before any human saw it.
+
+**What didn't:** I merged #274 with a marker that could never fire, and nothing in its
+verification could have told me — the browser showed the marker rendering (against a mock that
+seeded it), the functional test passed (against a hand-seeded column), and CI agreed with both.
+The lie was in the seed, not the assertions. It took the *next* change's design exploration to
+read DEC-062 and notice the column was a fossil. That is two ADR-violating test-seeds by me in
+one night (this and the OutputLink one), both caught later than they should have been.
+
+**One change next time:** when a test seeds a column directly at the persistence layer, that is
+the moment to grep for the production writer — `rg "OutputLink ="` would have found only the
+retired path and the vestigial nulls in thirty seconds. A seed with no production writer is a test
+of dead code, and the grep is cheaper than the retro.
+
+**Decisions recorded:** none new — the story-less Run's rules live in #275's grill record and the
+delta specs; DEC-062 honoured rather than revised.

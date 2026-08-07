@@ -62,4 +62,5 @@
 - [x] 7.1 csharpier, frontend gates, `dotnet build` 0 errors, module suites green locally.
 - [x] 7.2 Mock mode: launch dialog, refusal states, change-Run identity on list and detail, board
       tolerant, both themes.
-- [ ] 7.3 CI green on the PR head (verified job-by-job), at sync.
+- [x] 7.3 CI green on the PR head (verified job-by-job), at sync. Run 31137149642 on 0ea31e9:
+      every job success, terraform correctly skipped.
