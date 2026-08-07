@@ -142,6 +142,8 @@ export function KanbanBoard({
   // The latest Run per Story — the one whose state the card wears.
   const latestRun = new Map<string, RunView>();
   for (const run of runs.data ?? []) {
+    // A change-targeted Run has no Story (run-on-a-pr) — nothing on this board to wear it.
+    if (run.vendorStoryId === null) continue;
     const held = latestRun.get(run.vendorStoryId);
     if (!held || run.createdAt > held.createdAt) latestRun.set(run.vendorStoryId, run);
   }

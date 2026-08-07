@@ -4,10 +4,14 @@ export interface InboxEntry {
   projectId: string;
   /** The list is cross-project, so every row names its project; null when it no longer exists. */
   projectName: string | null;
-  vendorStoryId: string;
+  /** Null for a change-targeted Run (run-on-a-pr): its identity is the change fields below. */
+  vendorStoryId: string | null;
   storyTitle: string | null;
   waitingFor: "approval" | "input" | "failure";
   waitingSince: string;
+  /** The change a change-targeted Run updates; null for story Runs. */
+  changeNumber: number | null;
+  changeTitle: string | null;
 }
 
 /** One open change (pull request) awaiting review — a different kind of wait from a Run's. */
