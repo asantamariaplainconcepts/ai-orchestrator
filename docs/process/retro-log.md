@@ -3572,3 +3572,45 @@ every 15 min, because creating a sandbox costs ~4.5 s and that answer belongs to
 changes on deploy. And the credential-source sentence moved from the runtimes to the executor:
 announcing it from the runtime polluted the agent's own output stream and broke the streaming
 contract test — the right signal, caught by an existing test.
+
+## 2026-08-07 — run-previews-over-published-ports
+
+**Time (telemetry, delta):** ~82 min agent (4 932 s cli, ~$117, ~156k output tokens) by delta
+against the previous entry. The automated join **worked this time** — the branch was
+`change/run-previews-over-published-ports`, and `map-session-change.mjs` matches the branch name
+against active change directories, which is exactly what the previous entry's generated
+`claude/...` branch could not do. Cheap fix for that gap, if anyone wants it: name the branch
+after the change. `{type=user}` absent for the NINTH consecutive change.
+
+**What worked:** the previous entry's "one change next time" was applied, and it paid immediately.
+Running the functional suites locally before opening the PR — 152 Runs, 110 Projects, 25 seconds
+— produced a PR that went green on all nine checks first try, against three CI failures on the
+change before it. The lesson worked because it was followed; that is worth recording as loudly as
+the failures.
+
+Exercising rather than reading caught two things nothing else would have. In the browser: a
+preview kept rendering on a finished Run, because react-query's `enabled` stops a query from
+FETCHING but does not retract what it already fetched, and on the first render the log had not
+yet said the Run was done. Against the real sbx: the first version of the round-trip test failed,
+and the failure *was the design working* — it read the published port after awaiting the run, by
+which time the finally had already removed it. Both are the kind of thing that reads as correct
+on the page and is not.
+
+**What didn't:** the mock lied twice more, and one lie actively manufactured evidence that a bug
+was absent — the log fixture hardcoded `complete: false` for every Run, so a Succeeded Run looked
+live and the stale-preview bug looked fixed. Third occurrence of the same class (the
+`nextSequence` note beside the first one already said the rule), so it graduated: **ADR-0016** —
+a fixture derives what the server derives, and fixture ids are stable so every mock state is
+linkable. Separately, the previous change's close-out used `git add -A` and swept this change's
+proposal bundle into `main` inside an unrelated commit: harmless in effect, wrong in principle,
+and entirely avoidable.
+
+**One change next time:** stage close-out commits by path, never `-A`. A commit that carries
+something it does not claim is a small lie in the one record we treat as authoritative.
+
+**Decisions recorded:** the port belongs to the Automation, not the Project (the design's open
+question), because only the prompt knows whether its change is runnable. The local lane never
+previews and says so rather than ignoring a configured port. And a Run that ends while somebody
+watches replaces the frame with a sentence instead of vanishing — the only exception to "a
+finished Run offers nothing", and it exists because a window disappearing unexplained reads as a
+glitch rather than as a rule.
