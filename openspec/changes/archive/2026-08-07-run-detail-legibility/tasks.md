@@ -33,4 +33,6 @@
       banner with decisions and correct link per cause; no sideways scroll at 375; empty cards
       one line; both themes; accessibility-tree check for the banner (role, single heading) —
       the turn-6 lesson.
-- [ ] 5.3 CI green on the PR head (verified job-by-job), at sync.
+- [x] 5.3 CI green on the PR head (verified job-by-job), at sync — twice: run 31163381458 on
+      355340b, then run 31163920096 on the rebased cdd40f5, because main gained an AppHost
+      change mid-flight and the e2e lane boots that AppHost. Every job success both times.
