@@ -142,6 +142,10 @@ const runs = [
   run("Cancelled", "12", 600),
 ];
 
+/** #244: the Project's runtime settings, mutable so the panel round-trips by hand. */
+const runtimeSettings: { defaultRuntime: string | null; credentialNames: Record<string, string> } =
+  { defaultRuntime: null, credentialNames: {} };
+
 const connector = {
   vendor: "GitHub",
   owner: "acme",
@@ -860,6 +864,25 @@ const routes: [string, RegExp, Handler][] = [
       dispatched: true,
       waitingAtCap: false,
     }),
+  ],
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/runtimes$/,
+    // #244: the Project's runtime settings — names only, never values (BR-010).
+    () => runtimeSettings,
+  ],
+  [
+    "PUT",
+    /^\/api\/projects\/[^/]+\/runtimes$/,
+    (_m, body) => {
+      const request = body as {
+        defaultRuntime: string | null;
+        credentialNames: Record<string, string>;
+      };
+      runtimeSettings.defaultRuntime = request.defaultRuntime;
+      runtimeSettings.credentialNames = request.credentialNames;
+      return runtimeSettings;
+    },
   ],
   ["GET", /^\/api\/projects\/[^/]+\/runs$/, () => runs],
   ["POST", /^\/api\/projects\/[^/]+\/runs$/, () => runs[0]],

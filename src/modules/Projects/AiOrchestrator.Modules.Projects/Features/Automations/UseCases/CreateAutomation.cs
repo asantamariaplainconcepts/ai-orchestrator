@@ -72,7 +72,7 @@ sealed class CreateAutomation : IUseCase
         string TriggerLabel,
         string? TriggerState,
         string Action,
-        string Runtime,
+        string? Runtime,
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? PromptPath = null,
@@ -84,7 +84,7 @@ sealed class CreateAutomation : IUseCase
         string TriggerLabel,
         string? TriggerState,
         string Action,
-        string Runtime,
+        string? Runtime,
         bool RequiresApproval,
         int TimeoutMinutes,
         bool Enabled,
@@ -104,7 +104,7 @@ sealed class CreateAutomation : IUseCase
         string TriggerLabel,
         string? TriggerState,
         string Action,
-        string Runtime,
+        string? Runtime,
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? PromptPath = null,
@@ -172,8 +172,10 @@ sealed class CreateAutomation : IUseCase
                     $"Action must be one of: {string.Join(", ", Enum.GetNames<AutomationAction>())}."
                 );
 
+            // Optional since project-runtimes: absent means the Project default, resolved at
+            // execution time. A value that is present must still be a real runtime.
             RuleFor(command => command.Runtime)
-                .Must(value => Enum.TryParse<AgentRuntime>(value, out _))
+                .Must(value => value is null || Enum.TryParse<AgentRuntime>(value, out _))
                 .WithMessage(
                     $"Runtime must be one of: {string.Join(", ", Enum.GetNames<AgentRuntime>())}."
                 );
@@ -212,7 +214,7 @@ sealed class CreateAutomation : IUseCase
                 command.TriggerLabel,
                 string.IsNullOrWhiteSpace(command.TriggerState) ? null : command.TriggerState,
                 Enum.Parse<AutomationAction>(command.Action),
-                Enum.Parse<AgentRuntime>(command.Runtime),
+                command.Runtime is null ? null : Enum.Parse<AgentRuntime>(command.Runtime),
                 command.RequiresApproval,
                 command.TimeoutMinutes is { } minutes
                     ? TimeSpan.FromMinutes(minutes)
@@ -263,7 +265,7 @@ sealed class CreateAutomation : IUseCase
             automation.TriggerLabel,
             automation.TriggerState,
             automation.Action.ToString(),
-            automation.Runtime.ToString(),
+            automation.Runtime?.ToString(),
             automation.RequiresApproval,
             (int)automation.Timeout.TotalMinutes,
             automation.Enabled,

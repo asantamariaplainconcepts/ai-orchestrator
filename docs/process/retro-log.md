@@ -3491,3 +3491,33 @@ was asked too late — the plan assumed a GitHub side effect the owner never sig
 PLAN time, not at execution time — the decision changes the task list, not just the moment. And
 a dev-loop proof step starts by checking the postgres volume matches the session's password
 (`docker volume rm` is the documented fresh start) before burning time on the app layers above.
+
+## 2026-08-07 — project-runtimes (#244)
+
+**Time (telemetry, delta):** ~74 min agent (4 456 s cli, $187.74, 118k output tokens) by delta
+against the previous entry; `{type=user}` absent for the SEVENTH consecutive change. The
+pipeline verifier reports all green — the gap is in the CLI's user-time emission, not the
+collector — and it still has no owner.
+
+**What worked:** landing on the seam #279 had just built meant the whole feature was one chain
+function plus one Contracts read: `run.RuntimeName ?? automation.Runtime ?? project default ??
+deployment default`, with the executor's old inline `??` deleted rather than paralleled (design
+D2's exact fear). The fixture's two recording fakes made all four levels of the order pinnable
+in five functional tests without touching a real CLI. And writing the AC6 pin as "never
+set-to-empty" instead of "unset" made the unit test immune to whatever the host shell exports —
+the defect was shadowing, and the test now states exactly that.
+
+**What didn't:** the transcript header (D2's "name the credential's source") broke two
+exact-content log tests — foreseeable, since the header is prepended to every Run's transcript,
+but not foreseen; the tests were repaired after the fact rather than listed in tasks.md as a
+known ripple. And a parallel session claimed the `runtimes.*` i18n prefix while this change was
+mid-flight, forcing a rename to `projectRuntimes.*` — the second cross-session collision of the
+week (branch overlap checks look at files, and the i18n catalogue is one file everybody touches).
+
+**One change next time:** when a change adds a line to every transcript (or any always-on
+output), grep the test suites for exact-content assertions on that stream at PLAN time and list
+the repairs in tasks.md — a deliberate ripple should never surface as a red suite.
+
+**Decisions recorded:** D3's narrowing is in the design doc — approval shows the resolved
+runtime and deliberately does not re-choose it (an approved plan executed by another agent's
+hands would not be the approved plan).

@@ -75,7 +75,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [triggerLabel, setTriggerLabel] = useState("");
   const [triggerState, setTriggerState] = useState("");
   const [action, setAction] = useState<AutomationAction>("RepositoryPrompt");
-  const [runtime, setRuntime] = useState<AgentRuntime>("ClaudeCodeHeadless");
+  // "" means the Project default (#244): stored as null, resolved at execution time.
+  const [runtime, setRuntime] = useState<AgentRuntime | "">("");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [promptPath, setPromptPath] = useState("");
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
@@ -130,7 +131,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setTriggerLabel("");
     setTriggerState("");
     setAction("RepositoryPrompt");
-    setRuntime("ClaudeCodeHeadless");
+    setRuntime("");
     setRequiresApproval(false);
     setPromptPath("");
     setOutputLabels([]);
@@ -159,7 +160,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setTriggerLabel(automation.triggerLabel);
     setTriggerState(automation.triggerState ?? "");
     setAction(automation.action);
-    setRuntime(automation.runtime);
+    setRuntime(automation.runtime ?? "");
     setRequiresApproval(automation.requiresApproval);
     setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
@@ -184,7 +185,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       // Empty means "any state" — an unconstrained trigger, not an empty string to match.
       triggerState: triggerState.trim() === "" ? null : triggerState.trim(),
       action,
-      runtime,
+      // "" is the Project default — sent as null (#244).
+      runtime: runtime === "" ? null : runtime,
       requiresApproval,
       // Blank is the default, not zero. Sending 0 would be a timeout of no time at all.
       timeoutMinutes: timeoutMinutes.trim() === "" ? null : Number(timeoutMinutes),
@@ -333,8 +335,9 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
             <NativeSelect
               id="runtime"
               value={runtime}
-              onChange={(event) => setRuntime(event.target.value as AgentRuntime)}
+              onChange={(event) => setRuntime(event.target.value as AgentRuntime | "")}
             >
+              <option value="">{t("automations.runtimeProjectDefault")}</option>
               {AGENT_RUNTIMES.map((candidate) => (
                 <option key={candidate} value={candidate}>
                   {candidate}

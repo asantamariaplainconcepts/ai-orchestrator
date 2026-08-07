@@ -25,6 +25,24 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             project.HasKey(entity => entity.Id);
             project.Property(entity => entity.Name).HasMaxLength(200).IsRequired();
             project.HasIndex(entity => entity.Name).IsUnique();
+
+            // project-runtimes: the default a runtime-less Automation resolves to, and the
+            // credential names per runtime (BR-010 — names, never values).
+            project.Property(entity => entity.DefaultRuntime).HasMaxLength(50);
+            project.OwnsMany(
+                entity => entity.RuntimeCredentials,
+                credential =>
+                {
+                    credential.ToTable("project_runtime_credentials");
+                    credential.HasKey(entity => entity.Id);
+                    credential.Property(entity => entity.Runtime).HasMaxLength(50).IsRequired();
+                    credential.Property(entity => entity.SecretName).HasMaxLength(200).IsRequired();
+                    credential.WithOwner().HasForeignKey("ProjectId");
+                    credential
+                        .HasIndex("ProjectId", nameof(ProjectRuntimeCredential.Runtime))
+                        .IsUnique();
+                }
+            );
         });
 
         modelBuilder.Entity<Automation>(automation =>

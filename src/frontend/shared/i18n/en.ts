@@ -463,6 +463,7 @@ export const en = {
   "automations.statePlaceholder": "any state",
   "automations.action": "Action",
   "automations.runtime": "Runtime",
+  "automations.runtimeProjectDefault": "Project default",
   "automations.approval": "Needs approval",
   "automations.timeout": "Timeout (minutes)",
   "automations.anyState": "any state",
@@ -824,6 +825,27 @@ export const en = {
   "runs.runNow.pickAutomation": "Choose the Automation to run",
   "runs.runNow.conflict": "This Story already has an active Run \u2014 one active Run per Story.",
   "runs.runNow.failed": "Could not dispatch the Run.",
+  // #244: the runtime choice at launch. "Project default" is the honest pre-selection for an
+  // Automation with no explicit runtime — the default itself resolves at execution time.
+  "runs.runNow.projectDefaultRuntime": "Project default",
+  // The Project's runtime settings (#244). Names, never values (BR-010); Admin-only (BR-009).
+  "projectRuntimes.heading": "Runtimes",
+  "projectRuntimes.explainer":
+    "The runtime an Automation without one resolves to, and the credential each runtime bills to. Changing the default changes future Runs \u2014 no Automation is edited.",
+  "projectRuntimes.loading": "Loading runtime settings\u2026",
+  "projectRuntimes.unavailable": "Runtime settings are managed by project Admins.",
+  "projectRuntimes.default": "Default runtime",
+  "projectRuntimes.deploymentDefault": "Deployment default",
+  "projectRuntimes.defaultHint":
+    "Applies at execution time to every Automation whose runtime is \u2018Project default\u2019.",
+  "projectRuntimes.credentials": "Credential names",
+  "projectRuntimes.credentialPlaceholder": "secret-name-in-the-vault",
+  "projectRuntimes.credentialHint":
+    "A secret name this deployment can resolve \u2014 the value never passes through here. Blank falls back to the deployment\u2019s credential.",
+  "projectRuntimes.save": "Save runtime settings",
+  "projectRuntimes.saving": "Saving\u2026",
+  "projectRuntimes.saveFailed": "Could not save the runtime settings.",
+  "runs.runNow.confirm": "Run now",
 } as const;
 
 export type TranslationKey = keyof typeof en;

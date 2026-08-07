@@ -25,13 +25,18 @@ static class AgentCredentialEnvironment
             return [];
         }
 
-        var environment = new Dictionary<string, string>
-        {
-            ["GITHUB_TOKEN"] = credentials.VendorAccessToken,
-        };
+        var environment = new Dictionary<string, string>();
 
-        // Only when one was resolved (#279): an exported empty key shadows the CLI's own session
-        // auth, which is exactly what the switched-off credential exists to use.
+        // Each only when there is a value to carry — an exported empty variable SHADOWS whatever
+        // auth the host's own tooling holds, which is the opposite of what an unset credential
+        // means. #279 established the rule for the AI key (the switched-off state runs on the
+        // machine's own session); #244 AC6 extended it to the vendor token, which a Local Run
+        // never resolves.
+        if (!string.IsNullOrEmpty(credentials.VendorAccessToken))
+        {
+            environment["GITHUB_TOKEN"] = credentials.VendorAccessToken;
+        }
+
         if (!string.IsNullOrEmpty(credentials.AiApiKey))
         {
             environment[aiKeyVariable] = credentials.AiApiKey;

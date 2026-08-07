@@ -37,7 +37,8 @@ sealed class RunCreator(
         string vendorStoryId,
         AutomationTrigger automation,
         CancellationToken cancellationToken,
-        RunLocus? requestedLocus = null
+        RunLocus? requestedLocus = null,
+        string? runtimeName = null
     )
     {
         // An archived Project starts no work (#121). Checked here because this is the one
@@ -138,12 +139,15 @@ sealed class RunCreator(
         );
         var belowCap = busy < options.ProjectConcurrencyCap;
 
+        // The human's per-Run choice, recorded at creation (#244, BR-014). Matching passes
+        // null: a label-triggered Run involves no human and offers no override.
         var run = Run.Create(
             projectId,
             vendorStoryId,
             automation.AutomationId,
             locus,
-            clock.GetUtcNow()
+            clock.GetUtcNow(),
+            runtimeName
         );
         database.Runs.Add(run);
 

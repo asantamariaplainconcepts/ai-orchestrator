@@ -22,6 +22,8 @@ export type Locus = "Local" | "Pod";
  * in plain words, the pod card is disabled with its reason on a LocalFolder project, and the
  * primary button repeats the choice — so there is never a surprise about where work executed.
  */
+const RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;
+
 export function RunNowDialog({
   open,
   onOpenChange,
@@ -35,15 +37,25 @@ export function RunNowDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorStoryId: string;
-  automations: { id: string; triggerLabel: string }[];
-  localPath: string;
+  automations: { id: string; triggerLabel: string; runtime: string | null }[];
+  /** Null for a repository project: no locus choice exists, only the runtime one (#244). */
+  localPath: string | null;
   pending: boolean;
   error: unknown;
-  onRun: (automationId: string, locus: Locus) => void;
+  onRun: (automationId: string, locus: Locus | null, runtime: string | null) => void;
 }) {
   const [automationId, setAutomationId] = useState(automations[0]?.id ?? "");
   // A local-folder project defaults to Local — the pod physically cannot see the folder.
   const [locus, setLocus] = useState<Locus>("Local");
+  // The human's choice for this Run only (#244, AC3). Empty means "as resolved": the
+  // Automation's explicit runtime or the Project default, decided at execution time.
+  const [runtime, setRuntime] = useState("");
+
+  const chosen = automations.find((automation) => automation.id === automationId);
+  // Pre-selection is the resolution (AC3): an explicit Automation runtime shows selected;
+  // absent one, the "Project default" option is the honest pre-selection — the default itself
+  // is resolved at execution time, which is what makes changing it later actually work.
+  const resolved = runtime || (chosen?.runtime ?? "");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,28 +82,46 @@ export function RunNowDialog({
           </NativeSelect>
         </div>
 
-        <div
-          className="flex flex-col gap-2"
-          role="radiogroup"
-          aria-label={t("runs.runNow.whereItExecutes")}
-        >
-          <span className="text-sm font-medium">{t("runs.runNow.whereItExecutes")}</span>
-          <LocusCard
-            selected={locus === "Local"}
-            onSelect={() => setLocus("Local")}
-            title={t("runs.locus.local.title")}
-            description={`${t("runs.locus.local.description")} ${localPath}`}
-          />
-          {/* Disabled with its reason rather than hidden: the reader learns why the other
-              option is unavailable, which is the constraint the settings callout states. */}
-          <LocusCard
-            selected={false}
-            disabled
-            onSelect={() => undefined}
-            title={t("runs.locus.pod.title")}
-            description={t("runs.locus.pod.unavailable")}
-          />
+        <div className="flex flex-col gap-2">
+          <span className="text-sm font-medium">{t("automations.runtime")}</span>
+          <NativeSelect
+            value={resolved}
+            onChange={(event) => setRuntime(event.target.value)}
+            aria-label={t("automations.runtime")}
+          >
+            <option value="">{t("runs.runNow.projectDefaultRuntime")}</option>
+            {RUNTIMES.map((candidate) => (
+              <option key={candidate} value={candidate}>
+                {candidate}
+              </option>
+            ))}
+          </NativeSelect>
         </div>
+
+        {localPath !== null ? (
+          <div
+            className="flex flex-col gap-2"
+            role="radiogroup"
+            aria-label={t("runs.runNow.whereItExecutes")}
+          >
+            <span className="text-sm font-medium">{t("runs.runNow.whereItExecutes")}</span>
+            <LocusCard
+              selected={locus === "Local"}
+              onSelect={() => setLocus("Local")}
+              title={t("runs.locus.local.title")}
+              description={`${t("runs.locus.local.description")} ${localPath}`}
+            />
+            {/* Disabled with its reason rather than hidden: the reader learns why the other
+              option is unavailable, which is the constraint the settings callout states. */}
+            <LocusCard
+              selected={false}
+              disabled
+              onSelect={() => undefined}
+              title={t("runs.locus.pod.title")}
+              description={t("runs.locus.pod.unavailable")}
+            />
+          </div>
+        ) : null}
 
         {/* The refusal renders where the gesture happened (spec): BR-001's conflict, BR-013's
             rules, and the clean-tree refusal all land here, announced politely. */}
@@ -108,13 +138,15 @@ export function RunNowDialog({
           <Button
             type="button"
             disabled={pending || !automationId}
-            onClick={() => onRun(automationId, locus)}
+            onClick={() => onRun(automationId, localPath !== null ? locus : null, resolved || null)}
           >
             {pending
               ? t("runs.runNow.pending")
-              : locus === "Local"
-                ? t("runs.runNow.confirmLocal")
-                : t("runs.runNow.confirmPod")}
+              : localPath === null
+                ? t("runs.runNow.confirm")
+                : locus === "Local"
+                  ? t("runs.runNow.confirmLocal")
+                  : t("runs.runNow.confirmPod")}
           </Button>
         </DialogFooter>
       </DialogContent>

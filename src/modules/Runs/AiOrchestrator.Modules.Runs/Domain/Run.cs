@@ -73,12 +73,14 @@ sealed class Run : Aggregate
         string vendorStoryId,
         Guid automationId,
         RunLocus locus,
-        DateTimeOffset createdAt
+        DateTimeOffset createdAt,
+        string? runtimeName = null
     ) =>
         new(projectId, locus, createdAt)
         {
             VendorStoryId = vendorStoryId,
             AutomationId = automationId,
+            RuntimeName = runtimeName,
         };
 
     /// <summary>The change-targeted shape (run-on-a-pr): no Story, no Automation, one change.</summary>

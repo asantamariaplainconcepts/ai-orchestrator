@@ -40,8 +40,10 @@ public sealed class ClaudeCodeHeadlessRuntime(
         // The values live in the child's environment for its lifetime and nowhere else — never
         // in the image, the template, or a file (BR-010, design D1). The AI key only when one
         // was resolved (#279): an exported empty ANTHROPIC_API_KEY shadows the CLI's own session
-        // auth, which is exactly what the switched-off credential exists to use. A host that
-        // authenticates the agent itself receives no values at all (design D2).
+        // auth, which is exactly what the switched-off credential exists to use — and #244 AC6
+        // extends the same shadowing rule to the vendor token, which a Local Run never resolves.
+        // Both rules live in the helper now; a host that authenticates the agent itself receives
+        // no values at all (design D2).
         var environment = AgentCredentialEnvironment.For(
             processHost,
             instruction.Credentials,

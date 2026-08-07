@@ -28,7 +28,9 @@ public sealed class OpenCodeRuntime(
     )
     {
         // Values only where the host cannot authenticate for us (design D2); a free model has
-        // no key to omit either way (DEC-044).
+        // no key to omit either way (DEC-044). The helper also carries #244 AC6's rule: a Local
+        // Run resolves no vendor token, and an exported empty GITHUB_TOKEN would shadow the
+        // host tooling's own auth.
         var environment = AgentCredentialEnvironment.For(
             processHost,
             instruction.Credentials,

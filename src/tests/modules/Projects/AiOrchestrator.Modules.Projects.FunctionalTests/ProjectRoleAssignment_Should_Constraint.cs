@@ -162,6 +162,27 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
             )
         );
         configuring.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        // Runtime settings (#244, BR-009): gated both ways — the READ carries credential names,
+        // the project's billing identity, so it is refused exactly like the write.
+        var readingRuntimes = await client.SendAsync(
+            As(Member, HttpMethod.Get, $"/api/projects/{projectId}/runtimes")
+        );
+        readingRuntimes.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        var configuringRuntimes = await client.SendAsync(
+            As(
+                Member,
+                HttpMethod.Put,
+                $"/api/projects/{projectId}/runtimes",
+                new
+                {
+                    defaultRuntime = "OpenCode",
+                    credentialNames = new Dictionary<string, string>(),
+                }
+            )
+        );
+        configuringRuntimes.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]

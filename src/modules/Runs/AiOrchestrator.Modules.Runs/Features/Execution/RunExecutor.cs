@@ -19,6 +19,7 @@ sealed class RunExecutor(
     RunsDbContext database,
     IStoryReader stories,
     IAutomationCatalog automations,
+    IProjectRuntimeSettings runtimeSettings,
     IConnectorReader connectors,
     IStoryWriter storyWriter,
     IDocumentReader documents,
@@ -298,10 +299,19 @@ sealed class RunExecutor(
             return new Outcome(Failure("The project has no connector."));
         }
 
-        // Selection is composition (opencode-runtime D1): the Automation's runtime names the
-        // implementation and its credential — which MAY be absent for free providers (D3). A
-        // change Run carries the name the launch chose, or the same default the form defaults to.
-        var runtimeName = automation?.Runtime ?? run.RuntimeName ?? "ClaudeCodeHeadless";
+        // Selection is composition (opencode-runtime D1), and the name resolves through one
+        // chain (project-runtimes #244, design D2): the human's per-Run choice recorded on the
+        // Run, then the Automation's explicit runtime, then the Project default, then the
+        // deployment default. The per-Run choice outranks the Automation because the launch
+        // dialog says "for that Run only" — recording it and then losing to the Automation's
+        // value would make the dialog a lie. Asked per execution, never cached: changing the
+        // default changes the NEXT Run, which is the whole point of a default.
+        var projectSettings = await runtimeSettings.Resolve(run.ProjectId, cancellationToken);
+        var runtimeName =
+            run.RuntimeName
+            ?? automation?.Runtime
+            ?? projectSettings.DefaultRuntime
+            ?? "ClaudeCodeHeadless";
         var selection = runtimes.For(runtimeName);
         if (selection is null)
         {
@@ -326,11 +336,21 @@ sealed class RunExecutor(
             return new Outcome(Failure($"Credential could not be resolved: {exception.Message}"));
         }
 
+        // The AI credential resolves project name -> deployment name -> none (#244): the
+        // project's entry is its billing identity where one exists. The transcript names the
+        // source, because a Run billed to the wrong key must be diagnosable from its own record.
+        var projectCredential = projectSettings.CredentialNames.GetValueOrDefault(runtimeName);
+        var credentialSource =
+            projectCredential is not null ? "project"
+            : selection.CredentialSecretName is not null ? "deployment"
+            : "none";
+        onOutput($"Runtime '{runtimeName}' — credential source: {credentialSource}.");
+
         // The AI credential fails with its own sentence (#279): unlike the vendor's, it has a
         // switched-off alternative — no name configured means the machine's own session — and
         // a failure that hides the alternative sends the operator hunting for a key they may
         // not need. Nothing retries (BR-004), so the failure carries the whole remedy.
-        if (selection.CredentialSecretName is { } credentialName)
+        if ((projectCredential ?? selection.CredentialSecretName) is { } credentialName)
         {
             try
             {
