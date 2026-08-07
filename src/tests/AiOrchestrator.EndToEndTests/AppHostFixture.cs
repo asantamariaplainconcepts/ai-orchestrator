@@ -51,6 +51,14 @@ public sealed class AppHostFixture : IAsyncLifetime
         // which is a recurring source of "passes locally, fails in CI" defects.
         builder.Configuration["DcpPublisher:ContainerLifetime"] = "Session";
 
+        // Nor may it inherit the dev loop's agent substrate. `appsettings.Development.json` puts
+        // agents in a per-Run sandbox so a developer needs no flag, and this host loads that file
+        // too — measured, not assumed: the testing builder runs as Development. CI has no sbx, no
+        // daemon and no Docker identity, so inheriting it would turn every Run red for a reason
+        // nobody chose. Declined here, beside the other dev-loop conveniences this tier declines,
+        // and pinned by DevLoopDefaults_Should_Constraint.
+        builder.Configuration["Parameters:sandbox"] = "false";
+
         // Nor may the run inherit the developer's Postgres *data volume*, which the AppHost mounts
         // for `aspire run`. Two reasons, and the first is a hang rather than a failure: a volume
         // keeps the cluster it was initialised with, including the password, while this host has
