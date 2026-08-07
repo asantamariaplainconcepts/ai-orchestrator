@@ -460,6 +460,14 @@ credential requirement, identically across runtimes: nothing is resolved, no cre
 variable is exported to the agent process, and the CLI runs with the machine's own session —
 the same session the pod default already mounts deliberately.
 
+**Where the agent executes in a sandbox, readiness SHALL describe the machine the CLI actually
+runs on, never this process's own binaries.** The probe SHALL report the sandbox host's own
+preconditions — the sandbox service reachable, and whatever else it requires before a sandbox
+can be created — each with its own remedy, and SHALL report a runtime's CLI readiness from
+where that CLI will run. A probe that cannot reach the sandbox host SHALL say so rather than
+answering from this process, because "ready here" is not an answer about a Run that will execute
+elsewhere.
+
 #### Scenario: a missing CLI is visible before any Run
 
 - **WHEN** a registered runtime's executable is not on the executing process's PATH
@@ -483,4 +491,16 @@ the same session the pod default already mounts deliberately.
 - **WHEN** a runtime's credential configuration is set to empty or whitespace
 - **THEN** no secret is resolved, no credential variable reaches the agent process, and a Run
   executes with the machine's own session
+
+#### Scenario: the sandbox host's own preconditions are visible
+
+- **WHEN** Runs execute in sandboxes and the sandbox host is unreachable or unprepared
+- **THEN** the environment surface names that precondition and its remedy with the last-checked
+  time, distinguished from a missing runtime CLI
+
+#### Scenario: readiness does not answer for the wrong machine
+
+- **WHEN** Runs execute in sandboxes and this process happens to have a runtime's CLI installed
+- **THEN** readiness reports the CLI from where Runs will actually run, never reporting ready on
+  the strength of this process's own PATH
 
