@@ -110,9 +110,10 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             .ToList();
 
         // outputLink joined in agent-implements-pr; plan/approvedAt/failureReason in
-        // approval-gate; dismissedAt in #145; locus/workingFolder/branchName in #210 — each a
-        // deliberate widening, which is why this test exists. It failed on the last one, which
-        // is the whole point of asserting a set rather than a subset.
+        // approval-gate; dismissedAt in #145; locus/workingFolder/branchName in #210; the change
+        // target and instruction in run-on-a-pr — each a deliberate widening, which is why this
+        // test exists. It failed on the last two, which is the whole point of asserting a set
+        // rather than a subset.
         fields.ShouldBe([
             "approvedAt",
             "automationId",
@@ -124,11 +125,15 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             "failureReason",
             "id",
             "inputTokens",
+            "instruction",
             "locus",
             "outputLink",
             "outputTokens",
             "plan",
             "state",
+            "targetChangeNumber",
+            "targetChangeTitle",
+            "targetChangeUrl",
             "vendorStoryId",
             "workingFolder",
         ]);

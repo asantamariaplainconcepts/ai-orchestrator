@@ -68,6 +68,19 @@ export const en = {
   "inbox.changes.review": "Review",
   "inbox.changes.byARun": "by a Run",
   "inbox.changes.refused": "could not read the repository —",
+  // Launching a Run on a change (run-on-a-pr): the instruction is the whole point, so the
+  // dialog leads with it, and the explainer says where the work lands.
+  "inbox.changes.run": "Run on this\u2026",
+  "inbox.changes.runTitle": "Run on change",
+  "inbox.changes.runExplainer":
+    "An Agent will work on this change's own branch and push to it \u2014 the same pull request updates. One active Run per change.",
+  "inbox.changes.instruction": "What should it do?",
+  "inbox.changes.instructionPlaceholder": "apply the review comments about naming\u2026",
+  "inbox.changes.launch": "Launch the Run",
+  "inbox.changes.launching": "Launching\u2026",
+  "inbox.changes.launchFailed": "Could not launch the Run.",
+  "run.field.change": "Change",
+  "run.section.instruction": "Instruction",
   "inbox.table.story": "Story",
   "inbox.table.reason": "Needs",
   "inbox.table.waiting": "Waiting",

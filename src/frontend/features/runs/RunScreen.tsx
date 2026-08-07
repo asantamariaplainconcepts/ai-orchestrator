@@ -103,19 +103,27 @@ export function RunScreen() {
         { label: t("run.crumb.project"), to: `/projects/${projectId}` },
         { label: t("run.title.fallback") },
       ]}
-      title={run ? `${t("run.title.fallback")} · #${run.vendorStoryId}` : t("run.title.fallback")}
+      title={
+        run
+          ? `${t("run.title.fallback")} · ${
+              run.targetChangeNumber !== null
+                ? `PR #${run.targetChangeNumber}`
+                : `#${run.vendorStoryId}`
+            }`
+          : t("run.title.fallback")
+      }
       actions={
         run ? (
           <>
-            {run.state === "Failed" ? (
+            {run.state === "Failed" && run.vendorStoryId !== null && run.automationId !== null ? (
               <>
                 <Button
                   size="sm"
                   disabled={runAgain.isPending}
                   onClick={() =>
                     runAgain.mutate({
-                      vendorStoryId: run.vendorStoryId,
-                      automationId: run.automationId,
+                      vendorStoryId: run.vendorStoryId!,
+                      automationId: run.automationId!,
                     })
                   }
                 >
@@ -138,11 +146,19 @@ export function RunScreen() {
                 )}
               </>
             ) : null}
-            <Button asChild variant="outline" size="sm">
-              <Link to={`/projects/${projectId}/stories/${run.vendorStoryId}`}>
-                {t("run.field.story")} #{run.vendorStoryId}
-              </Link>
-            </Button>
+            {run.targetChangeNumber !== null ? (
+              <Button asChild variant="outline" size="sm">
+                <a href={run.targetChangeUrl ?? "#"} target="_blank" rel="noreferrer">
+                  {t("run.field.change")} #{run.targetChangeNumber}
+                </a>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" size="sm">
+                <Link to={`/projects/${projectId}/stories/${run.vendorStoryId}`}>
+                  {t("run.field.story")} #{run.vendorStoryId}
+                </Link>
+              </Button>
+            )}
             {/* Destructive, and dressed as one — never a twin of the navigation beside it. */}
             {cancellable ? (
               <Button
@@ -240,6 +256,21 @@ export function RunScreen() {
 
             <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
               <div className="flex min-w-0 flex-col gap-4">
+                {/* The instruction a change Run executed — its record (run-on-a-pr): what was
+                    asked belongs beside what happened, or the transcript is an answer to an
+                    invisible question. */}
+                {run.instruction ? (
+                  <Card className="gap-0 py-0">
+                    <div className="flex items-center gap-2 border-b px-4 py-3">
+                      <h2 className="text-sm font-semibold">{t("run.section.instruction")}</h2>
+                    </div>
+                    <div className="px-4 py-3">
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                        {run.instruction}
+                      </p>
+                    </div>
+                  </Card>
+                ) : null}
                 <Card className="gap-0 py-0">
                   <div className="flex items-center gap-2 border-b px-4 py-3">
                     <h2 className="text-sm font-semibold">{t("run.section.plan")}</h2>

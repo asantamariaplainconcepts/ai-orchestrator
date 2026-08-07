@@ -95,10 +95,29 @@ const run = (
   locus: "Local",
   workingFolder: "/home/ana/repos/portal",
   branchName: `ai/${story}-story`,
+  // run-on-a-pr: explicit nulls, not absences — `undefined !== null` renders as a change Run.
+  targetChangeNumber: null,
+  targetChangeUrl: null,
+  targetChangeTitle: null,
+  instruction: null,
   ...extra,
 });
 
 const runs = [
+  // A change-targeted Run (run-on-a-pr): no story, no automation — its identity is the change.
+  {
+    ...run("Executing", "", 2, {
+      targetChangeNumber: 118,
+      targetChangeUrl: "https://github.com/acme/portal/pull/118",
+      targetChangeTitle: "feat(portal): the estimate explains itself on the story",
+      instruction: "apply the review comments about naming",
+      locus: "Pod",
+      workingFolder: null,
+      branchName: null,
+    }),
+    vendorStoryId: null,
+    automationId: null,
+  },
   run("Queued", "11", 3),
   run("Planning", "12", 8),
   run("AwaitingApproval", "12", 25, { plan: "## Plan\n\n- touch two files\n- add one test" }),
@@ -777,6 +796,18 @@ const routes: [string, RegExp, Handler][] = [
       automations.push(created);
       return created;
     },
+  ],
+  [
+    "POST",
+    /^\/api\/projects\/[^/]+\/changes\/(\d+)\/runs$/,
+    // run-on-a-pr: the launch answers created; the run lists are the surfaces that change.
+    (match) => ({
+      id: crypto.randomUUID(),
+      changeNumber: Number(match[1]),
+      state: "Queued",
+      dispatched: true,
+      waitingAtCap: false,
+    }),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/runs$/, () => runs],
   ["POST", /^\/api\/projects\/[^/]+\/runs$/, () => runs[0]],

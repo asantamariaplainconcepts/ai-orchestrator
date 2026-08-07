@@ -132,8 +132,11 @@ sealed class GetProjectPulse : IUseCase
             CancellationToken cancellationToken
         )
         {
+            // The per-Automation table is about Automations: a change-targeted Run has none
+            // (run-on-a-pr) and is deliberately absent here while still counted in the totals.
             var byAutomation = windowRuns
-                .GroupBy(run => run.AutomationId)
+                .Where(run => run.AutomationId is not null)
+                .GroupBy(run => run.AutomationId!.Value)
                 .ToDictionary(
                     group => group.Key,
                     group =>

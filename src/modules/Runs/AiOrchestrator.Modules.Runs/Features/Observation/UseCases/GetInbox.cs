@@ -51,10 +51,14 @@ sealed class GetInbox : IUseCase
         Guid RunId,
         Guid ProjectId,
         string? ProjectName,
-        string VendorStoryId,
+        string? VendorStoryId,
         string? StoryTitle,
         string WaitingFor,
-        DateTimeOffset WaitingSince
+        DateTimeOffset WaitingSince,
+        /// <summary>The change a change-targeted Run updates (run-on-a-pr) — its identity where
+        /// a story Run shows its Story id. Null for story Runs.</summary>
+        int? ChangeNumber = null,
+        string? ChangeTitle = null
     );
 
     internal sealed class Handler(
@@ -92,7 +96,10 @@ sealed class GetInbox : IUseCase
             {
                 // Per-entry lookup through Contracts (design D4): the list is human-scale by
                 // nature, and a denormalised title on the Run would mirror the mirror (BR-008).
-                var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
+                // A change-targeted Run has no Story; its identity below is the change's.
+                var story = run.VendorStoryId is { } vendorStoryId
+                    ? await stories.Find(run.ProjectId, vendorStoryId, cancellationToken)
+                    : null;
 
                 if (!names.TryGetValue(run.ProjectId, out var projectName))
                 {
@@ -120,7 +127,9 @@ sealed class GetInbox : IUseCase
                             RunState.AwaitingInput => run.WaitingSince ?? run.CreatedAt,
                             RunState.Failed => run.EndedAt ?? run.CreatedAt,
                             _ => run.StartedAt ?? run.CreatedAt,
-                        }
+                        },
+                        run.TargetChangeNumber,
+                        run.TargetChangeTitle
                     )
                 );
             }

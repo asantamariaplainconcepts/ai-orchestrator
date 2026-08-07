@@ -69,7 +69,8 @@ export function RunsSection({
           <CardContent>
             <ul className="divide-y">
               {rows.map((run) => {
-                const automation = byId.get(run.automationId);
+                const automation =
+                  run.automationId !== null ? byId.get(run.automationId) : undefined;
                 return (
                   <li
                     key={run.id}
@@ -80,7 +81,9 @@ export function RunsSection({
                         className="font-mono text-sm font-medium transition-colors hover:text-primary"
                         to={`/projects/${projectId}/runs/${run.id}`}
                       >
-                        #{run.vendorStoryId}
+                        {run.targetChangeNumber !== null
+                          ? `PR #${run.targetChangeNumber}`
+                          : `#${run.vendorStoryId}`}
                       </Link>
                       <StateBadge state={run.state} />
                       {automation ? (

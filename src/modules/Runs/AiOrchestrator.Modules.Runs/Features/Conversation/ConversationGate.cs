@@ -26,9 +26,12 @@ sealed class ConversationGate(IStoryWriter stories, IConversationReader conversa
         CancellationToken cancellationToken = default
     )
     {
+        // Only a story Run can converse: the question lands as a Story comment, and a
+        // change-targeted Run has no Story to carry it (run-on-a-pr; the gate is dormant for
+        // them the same way DEC-062 left it dormant generally).
         var delivery = await stories.AddComment(
             run.ProjectId,
-            run.VendorStoryId,
+            run.VendorStoryId!,
             RunMarker.Sign(run.Id, questions),
             cancellationToken
         );
@@ -59,7 +62,7 @@ sealed class ConversationGate(IStoryWriter stories, IConversationReader conversa
 
         var result = await conversation.ReadSince(
             run.ProjectId,
-            run.VendorStoryId,
+            run.VendorStoryId!,
             since,
             cancellationToken
         );

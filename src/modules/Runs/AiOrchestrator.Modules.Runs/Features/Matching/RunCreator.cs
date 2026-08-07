@@ -182,6 +182,103 @@ sealed class RunCreator(
         return new RunCreation.Dispatched(run.Id);
     }
 
+    /// <summary>
+    /// The change-targeted creation path (run-on-a-pr): shares every shared guard — accepts-work,
+    /// the concurrency cap, dispatch, MarkDispatched — with its own BR-001-analogue trio, so a
+    /// change Run obeys every rule a story Run does. Pod lane only: a local Run never pushes, and
+    /// a change Run whose work cannot reach the change would break the record's promise.
+    /// </summary>
+    public async Task<RunCreation> CreateForChange(
+        Guid projectId,
+        int changeNumber,
+        string changeUrl,
+        string changeTitle,
+        string changeBranch,
+        string instruction,
+        string? runtimeName,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!await projects.AcceptsWork(projectId, cancellationToken))
+        {
+            return new RunCreation.ProjectArchived();
+        }
+
+        var connector = await connectors.Find(projectId, cancellationToken);
+        if (string.Equals(connector?.CodeSource, "LocalFolder", StringComparison.Ordinal))
+        {
+            var refusal =
+                "This project's code is a folder on this machine, and a local run never pushes — "
+                + "a change-targeted Run executes on the pod lane.";
+            MatchingLog.PreconditionRefused(logger, projectId, $"change #{changeNumber}", refusal);
+            return new RunCreation.PreconditionFailed(refusal);
+        }
+
+        // The BR-001-analogue pre-check; the filtered unique index owns the race below, and the
+        // state list is the same generated array, so the two cannot drift.
+        var hasActiveRun = await database.Runs.AnyAsync(
+            run =>
+                run.ProjectId == projectId
+                && run.TargetChangeNumber == changeNumber
+                && RunStates.Active.Contains(run.State),
+            cancellationToken
+        );
+        if (hasActiveRun)
+        {
+            return new RunCreation.AlreadyActive();
+        }
+
+        var busy = await database.Runs.CountAsync(
+            run =>
+                run.ProjectId == projectId
+                && (run.State == RunState.Planning || run.State == RunState.Executing),
+            cancellationToken
+        );
+        var belowCap = busy < options.ProjectConcurrencyCap;
+
+        var run = Run.CreateForChange(
+            projectId,
+            changeNumber,
+            changeUrl,
+            changeTitle,
+            changeBranch,
+            instruction,
+            runtimeName,
+            RunLocus.Pod,
+            clock.GetUtcNow()
+        );
+        database.Runs.Add(run);
+
+        try
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException exception) when (IsDuplicateActiveRun(exception))
+        {
+            return new RunCreation.AlreadyActive();
+        }
+
+        if (!belowCap)
+        {
+            MatchingLog.QueuedAtCap(logger, run.Id, projectId);
+            return new RunCreation.QueuedAtCap(run.Id);
+        }
+
+        try
+        {
+            await dispatcher.Dispatch(run.Id, cancellationToken);
+        }
+        catch (Exception exception)
+        {
+            MatchingLog.DispatchFailed(logger, exception, run.Id);
+            return new RunCreation.DispatchFailed(run.Id);
+        }
+
+        run.MarkDispatched(clock.GetUtcNow());
+        await database.SaveChangesAsync(cancellationToken);
+        return new RunCreation.Dispatched(run.Id);
+    }
+
     // Narrow on purpose, same as the Backlog reconciler: only a unique-key violation means
     // "someone else already did this".
     static bool IsDuplicateActiveRun(DbUpdateException exception) =>

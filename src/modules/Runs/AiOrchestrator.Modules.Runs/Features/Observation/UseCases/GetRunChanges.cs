@@ -70,7 +70,7 @@ sealed class GetRunChanges : IUseCase
                 .Runs.Where(entity =>
                     entity.Id == query.RunId && entity.ProjectId == query.ProjectId
                 )
-                .Select(entity => new { entity.VendorStoryId })
+                .Select(entity => new { entity.VendorStoryId, entity.TargetChangeNumber })
                 .FirstOrDefaultAsync(cancellationToken);
 
             if (run is null)
@@ -78,11 +78,11 @@ sealed class GetRunChanges : IUseCase
                 return RunsErrors.RunNotFound(query.RunId);
             }
 
-            var files = await changes.ForStory(
-                query.ProjectId,
-                run.VendorStoryId,
-                cancellationToken
-            );
+            // A change-targeted Run already knows its change; a story Run resolves through its
+            // Story as before (run-on-a-pr design D5).
+            var files = run.TargetChangeNumber is { } changeNumber
+                ? await changes.ForChange(query.ProjectId, changeNumber, cancellationToken)
+                : await changes.ForStory(query.ProjectId, run.VendorStoryId!, cancellationToken);
 
             return files is null
                 ? new Response(Change: null)

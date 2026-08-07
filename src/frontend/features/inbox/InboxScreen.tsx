@@ -1,12 +1,15 @@
 import { ExternalLink } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router";
 import { t, type TranslationKey } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { AppShell } from "@/shared/ui/AppShell";
+import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
+import { RunOnChangeDialog } from "./RunOnChangeDialog";
 import { useInbox } from "./useInbox";
 import { useInboxChanges } from "./useInboxChanges";
-import type { InboxEntry } from "./types";
+import type { InboxChange, InboxEntry } from "./types";
 
 /** Relative for recency, absolute past a day — the content fundamentals' rule. */
 function formatWhen(iso: string): string {
@@ -47,6 +50,8 @@ const GROUPS = ["approval", "input", "failure"] as const;
  */
 export function InboxScreen() {
   const inbox = useInbox();
+  // Which change a Run is being launched on (run-on-a-pr); null while nobody is launching.
+  const [launching, setLaunching] = useState<InboxChange | null>(null);
   const entries = inbox.data ?? [];
   // Its own query on its own cadence (design D2): a vendor read per visible project belongs to
   // the page that shows the answer, never to the badge that polls from everywhere.
@@ -93,7 +98,7 @@ export function InboxScreen() {
                       <li key={entry.runId}>
                         <Link
                           to={`/projects/${entry.projectId}/runs/${entry.runId}`}
-                          aria-label={`${entry.storyTitle ?? `#${entry.vendorStoryId}`} — ${t(REASON_KEY[kind])}, ${t("inbox.waitingFor")} ${formatWhen(entry.waitingSince)}`}
+                          aria-label={`${entry.storyTitle ?? entry.changeTitle ?? `#${entry.vendorStoryId ?? entry.changeNumber}`} — ${t(REASON_KEY[kind])}, ${t("inbox.waitingFor")} ${formatWhen(entry.waitingSince)}`}
                           className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors outline-none hover:bg-muted focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:ring-inset"
                         >
                           {/* The severity spine — with the heading and the verb, one of three
@@ -107,12 +112,18 @@ export function InboxScreen() {
                           />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-medium">
-                              {entry.storyTitle ?? `#${entry.vendorStoryId}`}
+                              {entry.storyTitle ??
+                                entry.changeTitle ??
+                                `#${entry.vendorStoryId ?? entry.changeNumber}`}
                             </span>
                             <span className="block text-xs text-muted-foreground">
                               {entry.projectName ? `${entry.projectName} · ` : ""}
-                              <span className="font-mono">#{entry.vendorStoryId}</span> ·{" "}
-                              {t("inbox.waitingFor")} {formatWhen(entry.waitingSince)}
+                              <span className="font-mono">
+                                {entry.changeNumber !== null
+                                  ? `PR #${entry.changeNumber}`
+                                  : `#${entry.vendorStoryId}`}
+                              </span>{" "}
+                              · {t("inbox.waitingFor")} {formatWhen(entry.waitingSince)}
                             </span>
                           </span>
                           {/* Visual affordance only — the row is the link, the chip names what
@@ -163,6 +174,17 @@ export function InboxScreen() {
                           {t("inbox.waitingFor")} {formatWhen(change.createdAt)}
                         </span>
                       </a>
+                      {/* The gesture the review usually ends in (run-on-a-pr): type what to
+                          change, and the same PR updates. */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        type="button"
+                        className="shrink-0"
+                        onClick={() => setLaunching(change)}
+                      >
+                        {t("inbox.changes.run")}
+                      </Button>
                       {/* The product's own work says so, and links to the Run that did it. */}
                       {change.runId ? (
                         <Link
@@ -202,6 +224,8 @@ export function InboxScreen() {
             </Card>
           </section>
         )}
+
+        <RunOnChangeDialog change={launching} onClose={() => setLaunching(null)} />
       </div>
     </AppShell>
   );

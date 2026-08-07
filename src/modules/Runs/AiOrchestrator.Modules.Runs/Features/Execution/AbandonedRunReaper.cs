@@ -88,11 +88,11 @@ sealed partial class RunReaping(
 
         foreach (var run in candidates)
         {
-            var automation = await automations.Detail(
-                run.ProjectId,
-                run.AutomationId,
-                cancellationToken
-            );
+            // A change-targeted Run has no Automation by shape (run-on-a-pr); the framework
+            // default below already covers "no Automation", which is exactly this case too.
+            var automation = run.AutomationId is { } automationId
+                ? await automations.Detail(run.ProjectId, automationId, cancellationToken)
+                : null;
 
             // No Automation means it was deleted under a running Run. The framework's default is
             // the honest fallback: refusing to reap would leave exactly the eternal Executing

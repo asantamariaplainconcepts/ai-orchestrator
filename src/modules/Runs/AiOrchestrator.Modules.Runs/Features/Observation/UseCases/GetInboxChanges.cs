@@ -100,19 +100,50 @@ sealed class GetInboxChanges : IUseCase
                     continue;
                 }
 
-                // The product's own changes, recognised from what the Runs already store: the
-                // executor records where work landed (BR-014), and that URL is this exact page.
-                var urls = open.Changes.Select(change => change.Url).ToList();
+                // The product's own changes, recognised from what the Runs already store —
+                // never asked of the vendor. Matching on OutputLink shipped dead (#274's defect,
+                // fixed by run-on-a-pr): the publish step that wrote it was retired (DEC-062)
+                // and no Run has carried one since. What the ceremony does own is the branch:
+                // a `run/<id>` head branch carries its Run's id, and a change-targeted Run
+                // records the change it updates.
+                var ceremonyRunIds = new Dictionary<string, Guid>(StringComparer.Ordinal);
+                foreach (var change in open.Changes)
+                {
+                    const string ceremonyPrefix = "run/";
+                    if (
+                        change.HeadBranch.StartsWith(ceremonyPrefix, StringComparison.Ordinal)
+                        && Guid.TryParse(
+                            change.HeadBranch.AsSpan(ceremonyPrefix.Length),
+                            out var parsed
+                        )
+                    )
+                    {
+                        ceremonyRunIds[change.HeadBranch] = parsed;
+                    }
+                }
+
+                var candidateIds = ceremonyRunIds.Values.ToList();
+                var numbers = open.Changes.Select(change => change.Number).ToList();
                 var owned = await database
                     .Runs.Where(run =>
                         run.ProjectId == projectId
-                        && run.OutputLink != null
-                        && urls.Contains(run.OutputLink)
+                        && (
+                            candidateIds.Contains(run.Id)
+                            || (
+                                run.TargetChangeNumber != null
+                                && numbers.Contains(run.TargetChangeNumber.Value)
+                            )
+                        )
                     )
-                    .Select(run => new { run.Id, run.OutputLink })
+                    .Select(run => new { run.Id, run.TargetChangeNumber })
                     .ToListAsync(cancellationToken);
-                var byUrl = owned
-                    .GroupBy(run => run.OutputLink!)
+
+                // A branch id only counts once the Run is confirmed to exist in this project —
+                // a branch that merely looks like the ceremony's must not claim a Run it hasn't.
+                var confirmed = owned.Select(run => run.Id).ToHashSet();
+                var byChangeNumber = owned
+                    .Where(run => run.TargetChangeNumber is not null)
+                    .GroupBy(run => run.TargetChangeNumber!.Value)
                     .ToDictionary(group => group.Key, group => group.First().Id);
 
                 entries.AddRange(
@@ -123,7 +154,12 @@ sealed class GetInboxChanges : IUseCase
                         change.Title,
                         change.Url,
                         change.CreatedAt,
-                        byUrl.TryGetValue(change.Url, out var runId) ? runId : null
+                        ceremonyRunIds.TryGetValue(change.HeadBranch, out var branchRun)
+                            && confirmed.Contains(branchRun)
+                                ? branchRun
+                            : byChangeNumber.TryGetValue(change.Number, out var targetRun)
+                                ? targetRun
+                            : null
                     ))
                 );
             }

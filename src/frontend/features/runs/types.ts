@@ -5,8 +5,9 @@
  */
 export interface RunView {
   id: string;
-  vendorStoryId: string;
-  automationId: string;
+  /** Null for a change-targeted Run (run-on-a-pr): its identity is the change below. */
+  vendorStoryId: string | null;
+  automationId: string | null;
   /** Mirrors the backend's RunState names. AwaitingInput (#78) was missing here, so the
    *  compiler believed a state the API has been sending since the conversational actions
    *  shipped could not occur. */
@@ -28,6 +29,12 @@ export interface RunView {
   /** Null means the runtime reported nothing (BR-011) — never the same as a zero cost. */
   inputTokens: number | null;
   outputTokens: number | null;
+  /** The open change a change-targeted Run updates; null for story Runs. */
+  targetChangeNumber: number | null;
+  targetChangeUrl: string | null;
+  targetChangeTitle: string | null;
+  /** The ad-hoc instruction a change Run executed — its record, shown on the detail. */
+  instruction: string | null;
   costUsd: number | null;
   /** When a human decided this failure needs no re-run (#145); null until they do. */
   dismissedAt: string | null;
