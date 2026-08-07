@@ -131,6 +131,14 @@ const runs = [
     dismissedAt: null,
   }),
   run("Failed", "11", 480, { failureReason: "The readiness document could not be read." }),
+  // The mapped cause (turn 7): the banner links this one to Connector settings.
+  run("Failed", "13", 90, {
+    failureReason:
+      "Credential could not be resolved: No secret named 'anthropic-api-key' was found.",
+    locus: "Pod",
+    workingFolder: null,
+    branchName: null,
+  }),
   run("Cancelled", "12", 600),
 ];
 
@@ -886,7 +894,59 @@ const routes: [string, RegExp, Handler][] = [
   [
     "GET",
     /^\/api\/projects\/[^/]+\/runs\/[^/]+\/changes$/,
-    () => ({ number: 41, url: "https://github.com/acme/portal/pull/41", files: [] }),
+    // Turn 7's states, reachable by hand: a long hunk (pagination), a second file (collapse on
+    // mobile), and a binary (the stated omission).
+    // Wrapped in { change } — the envelope the API actually answers with; the old flat shape
+    // made every mock run read "no pull request".
+    () => ({
+      change: {
+        number: 41,
+        url: "https://github.com/acme/portal/pull/41",
+        files: [
+          {
+            path: "src/frontend/features/runs/very/long/nested/path/to/RunDetailSection.tsx",
+            status: "modified",
+            additions: 48,
+            deletions: 3,
+            patch: [
+              "@@ -12,6 +12,51 @@",
+              ' import { t } from "i18n";',
+              "-const OLD_WIDTH = 280;",
+              "-const RAIL = true;",
+              "-const LEGIBLE = false;",
+              "+const BODY_WIDTH = 600;",
+              ...Array.from(
+                { length: 47 },
+                (_, index) => `+const line${index + 1} = 'added content ${index + 1}';`,
+              ),
+              " export {};",
+            ].join("\n"),
+            patchOmittedReason: null,
+          },
+          {
+            path: "docs/process/decision-journal.md",
+            status: "modified",
+            additions: 27,
+            deletions: 0,
+            patch: [
+              "@@ -2020,3 +2020,30 @@",
+              " **ADR:** none new, but the harness decision is its own",
+              "+## 2026-07-30 — strict-with-language, not strict-with-people",
+              '+**Worked:** the owner said "wrong" and the codebase replaced a worse design',
+            ].join("\n"),
+            patchOmittedReason: null,
+          },
+          {
+            path: "assets/logo.png",
+            status: "modified",
+            additions: 0,
+            deletions: 0,
+            patch: null,
+            patchOmittedReason: "Binary",
+          },
+        ],
+      },
+    }),
   ],
   // The licensed write (UC-008), mutating the in-memory mirror so the board and the label pills
   // actually move things in mock mode. A label whose name starts with "refuse" is rejected —

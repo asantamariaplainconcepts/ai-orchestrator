@@ -3433,3 +3433,32 @@ of dead code, and the grep is cheaper than the retro.
 
 **Decisions recorded:** none new — the story-less Run's rules live in #275's grill record and the
 delta specs; DEC-062 honoured rather than revised.
+
+## 2026-08-07 — run-detail-legibility (#280)
+
+**Time (telemetry, delta):** 35 min agent (2 126 s cli, $89.86, 55k output tokens) by delta
+against the previous entry; `{type=user}` absent for the sixth consecutive change — the capture
+defect now spans two days of entries and still has no owner.
+
+**What worked:** grounding the design's every "today" claim in code line numbers before grilling
+(the rail's 280px at RunScreen.tsx:257, the diff mounted inside it at :440, the decisions in the
+header at :120–145) made the issue, the delta and the implementation agree without a single
+re-read. The mock-first verification kept paying: it caught that the run-changes mock had been
+answering a flat shape instead of the API's `{ change }` envelope — every mock Run has read "no
+pull request" since the surface shipped, a defect nobody noticed because the empty state looked
+plausible. And re-verifying CI after the mid-flight rebase was not ceremony: main's new commit
+reconfigured the AppHost the e2e lane boots, so the stale green genuinely proved nothing about
+the merge combination.
+
+**What didn't:** two browser-harness traps cost time. The preview's `innerWidth` reads 0 until an
+explicit `resize_window`, so `matchMedia`-driven components rendered their narrow branch while
+the screenshot looked wide — a lie between two observation channels. And the mock regenerates run
+ids per reload, so a reloaded detail URL 404s silently. Neither is product code, both are now
+known.
+
+**One change next time:** when a component branches on `matchMedia`, the browser check starts
+with an explicit `resize_window` and asserts `innerWidth` — trusting the default viewport is
+trusting an unset value.
+
+**Decisions recorded:** none new. The cause→remedy map is deliberately a closed list against the
+executor's own sentences (design D2); widening it is content work, not a decision.
