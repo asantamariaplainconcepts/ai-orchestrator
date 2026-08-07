@@ -78,7 +78,9 @@ const run = (
   minutesAgo: number,
   extra: Record<string, unknown> = {},
 ) => ({
-  id: crypto.randomUUID(),
+  // Stable, not random: a mock Run has to be reachable by URL like every other mock state, and
+  // a fresh uuid per module load meant a reloaded Run detail always answered "no longer exists".
+  id: stableId(runSequence++),
   vendorStoryId: story,
   automationId: automations[2]?.id ?? crypto.randomUUID(),
   state,
@@ -102,6 +104,14 @@ const run = (
   instruction: null,
   ...extra,
 });
+
+/** BR-001's terminal set, mirrored so the mock cannot claim a finished Run is still live. */
+const TERMINAL = ["Succeeded", "Failed", "Cancelled"];
+
+/** Deterministic ids, so a mock Run's URL survives a reload and can be shared in a bug report. */
+let runSequence = 0;
+const stableId = (index: number) =>
+  `00000000-0000-7000-8000-${(index + 1).toString().padStart(12, "0")}`;
 
 const runs = [
   // A change-targeted Run (run-on-a-pr): no story, no automation — its identity is the change.
@@ -948,15 +958,40 @@ const routes: [string, RegExp, Handler][] = [
   ],
   [
     "GET",
-    /^\/api\/projects\/[^/]+\/runs\/[^/]+\/log$/,
-    () => ({
+    /^\/api\/projects\/[^/]+\/runs\/([^/]+)\/log$/,
+    (match) => ({
       content:
         '{"type":"system","subtype":"init","session_id":"s-1","cwd":"/work"}\n{"type":"assistant","message":{"id":"m-1","content":[{"type":"text","text":"Reading the story, then the two files it names.\\n\\n**Plan:** add the guard, then a test."}]},"usage":{"input_tokens":1840,"output_tokens":96}}\n{"type":"assistant","message":{"id":"m-2","content":[{"type":"tool_use","id":"t-1","name":"Read","input":{"file_path":"src/feature.ts"}}]}}\n{"type":"text","sessionID":"s-1","part":{"id":"p-9","type":"text","text":"The guard belongs before the write, not after."}}\n{"type":"step_finish","sessionID":"s-1","part":{"type":"step-finish","tokens":{"input":420,"output":37},"cost":0.0042}}\nwarning: could not read .git/config (permission denied)\n{"type":"result","subtype":"success","is_error":false,"result":"Added the guard and a regression test.","usage":{"input_tokens":2260,"output_tokens":133},"total_cost_usd":0.0118}',
-      complete: false,
+      // Derived from the Run's own state, as the server derives it from RunStates.IsTerminal.
+      // It was hardcoded false, which taught the UI that a Succeeded Run is still live — the
+      // exact fault the note below warns about, one field over.
+      complete: TERMINAL.includes(runs.find((candidate) => candidate.id === match[1])?.state ?? ""),
       // Four lines read, so the next chunk is 4 (#144): the mock has to carry the field the
       // contract carries, or it teaches the UI a shape the server does not send.
       nextSequence: 4,
     }),
+  ],
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/runs\/[^/]+\/preview$/,
+    // run-previews: every state reachable by hand, the repository's idiom. Default is the
+    // habitat that cannot host previews at all — the honest default and the one whose sentence
+    // must not read as "this Run failed to make one". `?preview` hosts one and shows the frame.
+    () => {
+      const search = new URLSearchParams(window.location.search);
+      const hosted = search.has("preview") || search.has("previewIdle");
+      return { hosted, available: search.has("preview") };
+    },
+  ],
+  [
+    "GET",
+    /^\/api\/projects\/[^/]+\/runs\/[^/]+\/preview\/serve\//,
+    // What the relay would return: somebody else's application, which is exactly the point —
+    // the frame must render it without granting it anything.
+    () =>
+      "<!doctype html><meta charset=utf-8><title>preview</title>" +
+      '<body style="font:14px system-ui;padding:24px">' +
+      "<h1>The Agent's application</h1><p>Served from inside its sandbox.</p>",
   ],
   [
     "GET",

@@ -42,12 +42,17 @@
 
 ## 4. The surface (design D4, D5, aio-design)
 
-- [ ] 4.1 The Run detail frames the preview beside the live output, with a restrictive `sandbox`
+- [x] 4.1 The Run detail frames the preview beside the live output, with a restrictive `sandbox`
       attribute that permits scripts but grants no same-origin access, and copy naming whose
       application is being rendered. i18n as contract; routed through the design system.
+      (Verified in the browser: sandbox="allow-scripts allow-forms allow-popups", no
+      allow-same-origin, referrerPolicy=no-referrer.)
 - [ ] 4.2 The terminal transition: a Run that finishes while its preview is open reports that and
       offers the diff, rather than a broken frame. Reachable in the mock, like every other state.
-- [ ] 4.3 No affordance on a terminal Run — verified by opening one, not by reading the code.
+      (NOT done: the frame currently vanishes when the Run ends, which satisfies 4.3 but not the
+      spec's "reports that the Run finished" scenario — a Member watching would see it disappear
+      with no explanation.)
+- [x] 4.3 No affordance on a terminal Run — verified by opening one, not by reading the code.
 
 ## 5. Proof
 

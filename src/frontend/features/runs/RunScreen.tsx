@@ -15,6 +15,7 @@ import { LocusChip } from "@/shared/ui/locus";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { Card } from "@/shared/ui/card";
 import { RunChanges } from "./RunChanges";
+import { RunPreviewFrame } from "./RunPreviewFrame";
 import { useRunChanges } from "./useRuns";
 import { parseTranscript } from "./transcript";
 import type { RunView } from "./types";
@@ -24,6 +25,7 @@ import {
   useDecideOnPlan,
   useDismissFailure,
   useRunLog,
+  useRunPreview,
   useRuns,
 } from "./useRuns";
 import { useRunNow } from "./useRunNow";
@@ -84,6 +86,11 @@ export function RunScreen() {
     () => (log.data ? parseTranscript(log.data.content) : null),
     [log.data],
   );
+  // The log's own done-flag is the terminal signal, because the server derives it from
+  // RunStates.IsTerminal — reusing it here avoids a fourth hand-written copy of the state list,
+  // which is exactly how the previous three drifted.
+  const runFinished = log.data?.complete ?? false;
+  const preview = useRunPreview(projectId, runId, runFinished);
   const awaiting = run?.state === "AwaitingApproval";
   const triggerLabel =
     automations.data?.find((automation) => automation.id === run?.automationId)?.triggerLabel ??
@@ -372,6 +379,18 @@ export function RunScreen() {
                     </div>
                   </Card>
                 )}
+
+                {/* Above the output, because both are live and they read as one idea: this Run
+                    is happening now. Renders nothing at all once it is not (run-previews D1). */}
+                <RunPreviewFrame
+                  projectId={projectId}
+                  runId={runId}
+                  // Both, and the first is not redundant: `enabled` stops the query from
+                  // FETCHING, it does not retract what it already fetched. On a finished Run the
+                  // log has not arrived on the first render, so the preview query fires and its
+                  // answer would otherwise stick — a frame on a Run that ended.
+                  available={!runFinished && (preview.data?.available ?? false)}
+                />
 
                 <Card className="gap-0 py-0">
                   <div

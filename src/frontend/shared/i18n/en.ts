@@ -110,6 +110,11 @@ export const en = {
   "run.log.live": "live",
   "run.log.error": "The log cannot be followed right now. The run itself is unaffected.",
   "run.log.none": "This run produced no output.",
+  // The preview (run-previews): live while the Run is, gone with it. The copy names whose code
+  // is being rendered, because a Member is looking at an application an Agent wrote — and a
+  // preview is not a place to type anything you would not hand to it.
+  "run.preview.heading": "Preview",
+  "run.preview.whose": "the Agent's own application, running in its sandbox",
   "run.log.waitingForOutput": "No output yet \u2014 following\u2026",
   "connector.heading": "Connector",
   "connector.none": "No backlog connected. Configure a Connector to read Stories.",

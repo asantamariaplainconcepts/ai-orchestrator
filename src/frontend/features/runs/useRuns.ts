@@ -111,6 +111,13 @@ export interface RunLog {
   nextSequence: number;
 }
 
+/** Whether a Run has a live preview, and whether this habitat could host one at all. */
+export interface RunPreview {
+  /** False means previews are not hosted here — not that this Run failed to make one. */
+  hosted: boolean;
+  available: boolean;
+}
+
 /** A pushed frame, carrying where it starts so an overlap can be dropped rather than appended. */
 interface LogFrame {
   from: number;
@@ -221,4 +228,23 @@ export function useRunLog(projectId: string, runId: string) {
   }, [projectId, runId, complete, queryClient]);
 
   return query;
+}
+
+/**
+ * Whether this Run has a preview to look at right now (run-previews). The live output's sibling,
+ * and it stops for the same reason: a preview exists while its Run executes and not one moment
+ * longer, so a finished Run has nothing left to ask about.
+ *
+ * `hosted` is the habitat's answer and `available` is this Run's. Kept apart because "previews
+ * are not hosted here" and "this Run has no preview" are different sentences — reading the first
+ * as the second would make a habitat's limitation look like a Run that failed.
+ */
+export function useRunPreview(projectId: string, runId: string, runIsTerminal: boolean) {
+  return useQuery({
+    queryKey: ["run-preview", projectId, runId],
+    queryFn: () => api.get<RunPreview>(`/api/projects/${projectId}/runs/${runId}/preview`),
+    // Never asked for a Run that is already done: the answer cannot become yes again.
+    enabled: !runIsTerminal,
+    refetchInterval: (q) => (q.state.data?.available ? 15_000 : 5_000),
+  });
 }
