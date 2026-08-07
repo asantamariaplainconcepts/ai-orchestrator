@@ -91,6 +91,23 @@ sealed class Automation : Aggregate
     public TimeSpan Timeout { get; private set; }
 
     /// <summary>
+    /// The port inside the Run's sandbox to publish while it executes, so a Member can look at
+    /// the change running instead of at a description of it. Null — the default and every
+    /// existing Automation — means no preview.
+    /// <para>
+    /// On the Automation rather than the Project (run-previews design D3, closing its open
+    /// question): the Project knows the application, but two Automations over one repository may
+    /// start different things, and only the prompt knows whether its change is runnable at all.
+    /// </para>
+    /// <para>
+    /// Naming the port is the whole contract; nothing detects a listening one. Until something
+    /// inside serves, the preview reads as "nothing serving yet" — a state of a live Run, never
+    /// an error (ADR-0010: asked, never inferred).
+    /// </para>
+    /// </summary>
+    public int? PreviewPort { get; private set; }
+
+    /// <summary>
     /// Present from the start even though #15 owns toggling it: BR-003 only considers *enabled*
     /// Automations, so the overlap rule cannot be written without it.
     /// </summary>
@@ -105,12 +122,14 @@ sealed class Automation : Aggregate
         bool requiresApproval,
         TimeSpan timeout,
         string? promptPath = null,
-        IReadOnlyList<string>? outputLabels = null
+        IReadOnlyList<string>? outputLabels = null,
+        int? previewPort = null
     ) =>
         new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
         {
             PromptPath = promptPath,
             OutputLabels = outputLabels ?? [],
+            PreviewPort = previewPort,
         };
 
     /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
@@ -122,7 +141,8 @@ sealed class Automation : Aggregate
         bool requiresApproval,
         TimeSpan timeout,
         string? promptPath = null,
-        IReadOnlyList<string>? outputLabels = null
+        IReadOnlyList<string>? outputLabels = null,
+        int? previewPort = null
     )
     {
         TriggerLabel = triggerLabel;
@@ -133,6 +153,7 @@ sealed class Automation : Aggregate
         Timeout = timeout;
         PromptPath = promptPath;
         OutputLabels = outputLabels ?? [];
+        PreviewPort = previewPort;
     }
 
     /// <summary>

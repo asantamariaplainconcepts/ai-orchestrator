@@ -1,8 +1,13 @@
 ## 1. Publishing, bounded by the sandbox's life (design D1, D3)
 
-- [ ] 1.1 The Automation names a preview port; nothing named means no preview, and every existing
+- [x] 1.1 The Automation names a preview port; nothing named means no preview, and every existing
       Automation is therefore unchanged. Decide port-on-Automation vs port-on-Project against the
-      design's open question before writing the column.
+      design's open question before writing the column. (Decided **Automation**: the Project knows
+      the application, but two Automations over one repository may start different things, and
+      only the prompt knows whether its change is runnable. Nullable column, additive migration,
+      so every existing row reads as no preview. The bound (1–65535) is validated at save, where
+      the Admin is looking, rather than by docker at Run time in front of somebody who did not
+      choose the number.)
 - [ ] 1.2 The sandbox host publishes that port when it creates the sandbox — `-p <sandboxPort>`
       with the host port **omitted**, which is the ephemeral form (`-p 0:` is rejected outright:
       "port 0 out of range"), then reads back the allocated host port.

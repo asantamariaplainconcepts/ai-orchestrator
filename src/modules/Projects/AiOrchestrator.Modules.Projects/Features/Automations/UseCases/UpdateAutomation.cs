@@ -44,7 +44,8 @@ sealed class UpdateAutomation : IUseCase
                             request.RequiresApproval,
                             request.TimeoutMinutes,
                             request.PromptPath,
-                            request.OutputLabels
+                            request.OutputLabels,
+                            request.PreviewPort
                         ),
                         cancellationToken
                     );
@@ -106,7 +107,8 @@ sealed class UpdateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? PromptPath = null,
-        IReadOnlyList<string>? OutputLabels = null
+        IReadOnlyList<string>? OutputLabels = null,
+        int? PreviewPort = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -133,6 +135,12 @@ sealed class UpdateAutomation : IUseCase
                 .MaximumLength(300);
             // Each member bounded exactly as the single label was, and the collection bounded too:
             // a set is a field a caller controls the size of.
+            // Same bound as the create path, from the same reason: refused where the Admin is
+            // looking rather than by docker at Run time.
+            RuleFor(command => command.PreviewPort!.Value)
+                .InclusiveBetween(1, 65535)
+                .WithMessage("A preview port must be between 1 and 65535.")
+                .When(command => command.PreviewPort is not null);
             RuleForEach(command => command.OutputLabels!)
                 .NotEmpty()
                 .MaximumLength(200)
@@ -224,7 +232,8 @@ sealed class UpdateAutomation : IUseCase
                     ? TimeSpan.FromMinutes(minutes)
                     : CreateAutomation.DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
-                command.OutputLabels is null ? [] : CreateAutomation.Clean(command.OutputLabels)
+                command.OutputLabels is null ? [] : CreateAutomation.Clean(command.OutputLabels),
+                command.PreviewPort
             );
 
             // Excluding itself: an Automation must not be refused for colliding with the
