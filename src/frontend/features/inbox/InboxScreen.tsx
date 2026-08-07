@@ -1,9 +1,11 @@
+import { ExternalLink } from "lucide-react";
 import { Link } from "react-router";
 import { t, type TranslationKey } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { AppShell } from "@/shared/ui/AppShell";
 import { Card, CardContent } from "@/shared/ui/card";
 import { useInbox } from "./useInbox";
+import { useInboxChanges } from "./useInboxChanges";
 import type { InboxEntry } from "./types";
 
 /** Relative for recency, absolute past a day — the content fundamentals' rule. */
@@ -46,6 +48,9 @@ const GROUPS = ["approval", "input", "failure"] as const;
 export function InboxScreen() {
   const inbox = useInbox();
   const entries = inbox.data ?? [];
+  // Its own query on its own cadence (design D2): a vendor read per visible project belongs to
+  // the page that shows the answer, never to the badge that polls from everywhere.
+  const changes = useInboxChanges();
 
   return (
     <AppShell crumbs={[{ label: t("shell.nav.inbox") }]} title={t("inbox.heading")}>
@@ -57,10 +62,15 @@ export function InboxScreen() {
           </p>
         )}
 
-        {/* Empty is the good state and should read like one — not like a missing feature. */}
-        {inbox.data && entries.length === 0 && (
-          <p className="text-sm text-muted-foreground">{t("inbox.empty")}</p>
-        )}
+        {/* Empty is the good state and should read like one — not like a missing feature. The
+            review queue is judged with it: nothing waits only when both kinds say so. */}
+        {inbox.data &&
+          entries.length === 0 &&
+          changes.data &&
+          changes.data.changes.length === 0 &&
+          changes.data.refusals.length === 0 && (
+            <p className="text-sm text-muted-foreground">{t("inbox.empty")}</p>
+          )}
 
         {GROUPS.map((kind) => {
           const group = entries.filter((entry) => entry.waitingFor === kind);
@@ -119,6 +129,79 @@ export function InboxScreen() {
             </section>
           );
         })}
+
+        {/* The review queue (inbox-open-prs): a different kind of wait, visually distinct on
+            purpose — no severity spine, an outline treatment, and the action leaves the product.
+            A change is answered on the vendor; a Run wait is answered here. */}
+        {changes.data && (changes.data.changes.length > 0 || changes.data.refusals.length > 0) && (
+          <section className="flex flex-col gap-1.5">
+            <h3 className="text-[11px] font-semibold tracking-wide text-info uppercase">
+              {t("inbox.changes.heading")} · {changes.data.changes.length}
+            </h3>
+            <Card className="overflow-hidden border-dashed py-0">
+              <CardContent className="p-0">
+                <ul className="divide-y">
+                  {changes.data.changes.map((change) => (
+                    // Two destinations, so two anchors as siblings, never nested (invalid HTML,
+                    // and React refuses to hydrate it): the row's body and the Review chip both
+                    // go to the vendor, and the Run link stands beside them.
+                    <li
+                      key={change.url}
+                      className="flex min-h-11 items-center gap-3 px-4 py-3 transition-colors hover:bg-muted"
+                    >
+                      <a
+                        href={change.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={`${change.title} — ${t("inbox.changes.review")}`}
+                        className="min-w-0 flex-1 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                      >
+                        <span className="block truncate text-sm font-medium">{change.title}</span>
+                        <span className="block text-xs text-muted-foreground">
+                          {change.projectName ? `${change.projectName} · ` : ""}
+                          <span className="font-mono">#{change.number}</span> ·{" "}
+                          {t("inbox.waitingFor")} {formatWhen(change.createdAt)}
+                        </span>
+                      </a>
+                      {/* The product's own work says so, and links to the Run that did it. */}
+                      {change.runId ? (
+                        <Link
+                          to={`/projects/${change.projectId}/runs/${change.runId}`}
+                          className="shrink-0 text-xs text-primary underline-offset-2 hover:underline"
+                        >
+                          {t("inbox.changes.byARun")}
+                        </Link>
+                      ) : null}
+                      <a
+                        href={change.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        className="flex shrink-0 items-center gap-1.5 rounded-md border border-input px-3 py-1.5 text-xs font-semibold"
+                      >
+                        {t("inbox.changes.review")}
+                        <ExternalLink className="size-3" aria-hidden="true" />
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                {/* Refusals render inside the group they degrade, one line per project — a bad
+                    Connector explains itself without blanking anybody else's changes. */}
+                {changes.data.refusals.map((refusal) => (
+                  <p
+                    key={refusal.projectId}
+                    role="alert"
+                    className="border-t px-4 py-2.5 text-xs text-destructive"
+                  >
+                    {refusal.projectName ?? refusal.projectId}: {t("inbox.changes.refused")}{" "}
+                    {refusal.reason}
+                  </p>
+                ))}
+              </CardContent>
+            </Card>
+          </section>
+        )}
       </div>
     </AppShell>
   );

@@ -119,6 +119,18 @@ interface IBacklogConnector
     );
 
     /// <summary>
+    /// The repository's open changes, newest first — read live, never mirrored (BR-008). Exists
+    /// for the Inbox's review group (inbox-open-prs): "what is waiting for my review?" is a
+    /// question about the repository, not about one Story, which is why this is not
+    /// <see cref="FindLinkedChange"/> widened.
+    /// </summary>
+    Task<ErrorOr<IReadOnlyList<OpenChange>>> OpenChanges(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    );
+
+    /// <summary>
     /// Every file the change touched, with the vendor's own unified patch (design D1/D2 of
     /// run-file-changes). The documents list is a projection of this — one vendor call, two
     /// consumers, rather than two calls against the same endpoint.
@@ -210,6 +222,19 @@ enum PatchOmission
 /// documents are read at, so a branch that has moved on shows its current content.
 /// </summary>
 sealed record LinkedChange(int Number, string Title, string Url, string HeadRef);
+
+/// <summary>
+/// One open change of the repository, as the seam speaks it. <see cref="HeadBranch"/> is the
+/// branch <b>name</b>, not a SHA: the caller's question is "is this a product branch?", which a
+/// commit id cannot answer — the deliberate difference from <see cref="LinkedChange.HeadRef"/>.
+/// </summary>
+sealed record OpenChange(
+    int Number,
+    string Title,
+    string Url,
+    string HeadBranch,
+    DateTimeOffset CreatedAt
+);
 
 /// <summary>One comment on a Story, as the seam speaks it.</summary>
 sealed record StoryComment(string Body, DateTimeOffset CreatedAt);

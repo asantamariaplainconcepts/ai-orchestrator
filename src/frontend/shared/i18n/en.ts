@@ -62,6 +62,12 @@ export const en = {
   "inbox.action.approval": "Review plan",
   "inbox.action.input": "Answer",
   "inbox.action.failure": "Open Run",
+  // The review queue (inbox-open-prs). A different kind of wait from a Run's: answered on the
+  // vendor, so the action verb says it leaves the product.
+  "inbox.changes.heading": "Waiting for review",
+  "inbox.changes.review": "Review",
+  "inbox.changes.byARun": "by a Run",
+  "inbox.changes.refused": "could not read the repository —",
   "inbox.table.story": "Story",
   "inbox.table.reason": "Needs",
   "inbox.table.waiting": "Waiting",

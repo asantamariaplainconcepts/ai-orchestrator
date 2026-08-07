@@ -9,3 +9,21 @@ export interface InboxEntry {
   waitingFor: "approval" | "input" | "failure";
   waitingSince: string;
 }
+
+/** One open change (pull request) awaiting review — a different kind of wait from a Run's. */
+export interface InboxChange {
+  projectId: string;
+  projectName: string | null;
+  number: number;
+  title: string;
+  url: string;
+  createdAt: string;
+  /** Set when the change is the product's own — its URL matches a Run's recorded output link. */
+  runId: string | null;
+}
+
+/** Refusals arrive apart from entries, so one bad Connector never blanks the group. */
+export interface InboxChanges {
+  changes: InboxChange[];
+  refusals: { projectId: string; projectName: string | null; reason: string }[];
+}

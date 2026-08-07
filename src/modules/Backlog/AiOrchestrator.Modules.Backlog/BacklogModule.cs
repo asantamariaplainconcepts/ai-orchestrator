@@ -80,6 +80,7 @@ public sealed class BacklogModule : ModuleBase
         services.AddScoped<IStoryReader, StoryReader>();
         services.AddScoped<IConnectorReader, ConnectorReader>();
         services.AddScoped<IChangeFileReader, ChangeFileReader>();
+        services.AddScoped<IChangeReader, ChangeReader>();
         services.AddScoped<IStoryWriter, StoryWriter>();
         services.AddScoped<ILabelWriter, LabelWriter>();
         services.AddScoped<IConversationReader, ConversationReader>();

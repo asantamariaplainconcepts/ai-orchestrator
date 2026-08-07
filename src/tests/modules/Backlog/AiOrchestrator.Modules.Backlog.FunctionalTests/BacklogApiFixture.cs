@@ -101,6 +101,18 @@ sealed class StubBacklogConnector : IBacklogConnector
 
     public Error? FetchError { get; set; }
 
+    /// <summary>The repository's open changes, appendable by tests (inbox-open-prs).</summary>
+    public List<OpenChange> Open { get; } = [];
+
+    public Task<ErrorOr<IReadOnlyList<OpenChange>>> OpenChanges(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<IReadOnlyList<OpenChange>>>(
+            ErrorOrFactory.From<IReadOnlyList<OpenChange>>([.. Open])
+        );
+
     public int FetchCount => _fetches;
 
     public void Reset()
