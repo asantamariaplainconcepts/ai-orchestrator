@@ -171,7 +171,7 @@ public class AgentSandbox_Should_Constraint
             .CredentialSource;
 
         localSource.ShouldContain("agent process's environment");
-        sandboxedSource.ShouldContain("no value entered the sandbox");
+        sandboxedSource.ShouldContain("no value enters the sandbox");
     }
 
     // ---- Composition (design D1, D5) ----
@@ -199,7 +199,7 @@ public class AgentSandbox_Should_Constraint
         var host = builder.Build().Services.GetRequiredService<IAgentProcessHost>();
 
         host.SuppliesCredentials.ShouldBeTrue();
-        host.CredentialSource.ShouldContain("no value entered the sandbox");
+        host.CredentialSource.ShouldContain("no value enters the sandbox");
     }
 
     [Fact]
@@ -271,7 +271,10 @@ public class AgentSandbox_Should_Constraint
     [Fact]
     public async Task ALocalHost_Should_AnswerFromThisProcess()
     {
-        var present = await new LocalAgentProcessHost().CliAnswers("sh", CancellationToken.None);
+        // `git`, not `sh`: the check is `<cli> --version`, and Linux's dash rejects the flag
+        // ("Illegal option --"), so a shell is a bad question to ask on any runner but macOS.
+        // The same trap caught the sandbox-side check first; it applies identically here.
+        var present = await new LocalAgentProcessHost().CliAnswers("git", CancellationToken.None);
         var absent = await new LocalAgentProcessHost().CliAnswers(
             "/nonexistent/cli",
             CancellationToken.None

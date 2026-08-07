@@ -29,7 +29,7 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
     public bool SuppliesCredentials => true;
 
     public string CredentialSource =>
-        "the sandbox host's stored credentials, injected at egress — no value entered the sandbox";
+        "injected at egress by the sandbox host — no value enters the sandbox";
 
     public async Task<AgentProcessOutcome> Run(
         string fileName,

@@ -16,8 +16,7 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
     /// </summary>
     public bool SuppliesCredentials => false;
 
-    public string CredentialSource =>
-        "the credentials resolved for this Run, in the agent process's environment";
+    public string CredentialSource => "carried in the agent process's environment";
 
     public Task<AgentProcessOutcome> Run(
         string fileName,

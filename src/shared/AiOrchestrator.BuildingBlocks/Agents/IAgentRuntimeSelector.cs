@@ -39,6 +39,5 @@ public sealed record AgentRuntimeSelection(
     /// writes it beside its other credential sentences, and a reader never has to infer whether
     /// a secret entered the agent's reach.
     /// </summary>
-    public string CredentialSource { get; init; } =
-        "the credentials resolved for this Run, in the agent process's environment";
+    public string CredentialSource { get; init; } = "carried in the agent process's environment";
 }

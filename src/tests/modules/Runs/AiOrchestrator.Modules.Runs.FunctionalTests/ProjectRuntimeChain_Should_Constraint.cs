@@ -197,7 +197,7 @@ public class ProjectRuntimeChain_Should_Constraint(RunsApiFixture fixture) : IAs
         fixture.SecretNames.All.ShouldContain("acme-anthropic");
         fixture.SecretNames.All.ShouldNotContain("anthropic-api-key");
         (await Log(runId)).ShouldStartWith(
-            "Runtime 'ClaudeCodeHeadless' — credential source: project."
+            "Runtime 'ClaudeCodeHeadless' — credential source: project, carried in the agent process's environment."
         );
     }
 
