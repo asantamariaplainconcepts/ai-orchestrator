@@ -6,7 +6,7 @@ import { useAutomations } from "@/features/automations/useAutomations";
 import { podsBlocked, usePods } from "@/features/pods/usePods";
 import { RunTranscript, TranscriptSpend } from "./RunTranscript";
 import { ApiError } from "@/shared/http/client";
-import { t, type TranslationKey } from "@/shared/i18n";
+import { t, tCount, type TranslationKey } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { AppShell } from "@/shared/ui/AppShell";
 import { Badge } from "@/shared/ui/badge";
@@ -14,6 +14,7 @@ import { Button } from "@/shared/ui/button";
 import { LocusChip } from "@/shared/ui/locus";
 import { Card } from "@/shared/ui/card";
 import { RunChanges } from "./RunChanges";
+import { useRunChanges } from "./useRuns";
 import { parseTranscript } from "./transcript";
 import type { RunView } from "./types";
 import {
@@ -115,37 +116,6 @@ export function RunScreen() {
       actions={
         run ? (
           <>
-            {run.state === "Failed" && run.vendorStoryId !== null && run.automationId !== null ? (
-              <>
-                <Button
-                  size="sm"
-                  disabled={runAgain.isPending}
-                  onClick={() =>
-                    runAgain.mutate({
-                      vendorStoryId: run.vendorStoryId!,
-                      automationId: run.automationId!,
-                    })
-                  }
-                >
-                  {runAgain.isPending ? t("run.again.pending") : t("run.again")}
-                </Button>
-                {run.dismissedAt ? (
-                  <Badge variant="outline">
-                    {t("run.dismissed")} · {formatWhen(run.dismissedAt)}
-                  </Badge>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={dismiss.isPending}
-                    title={t("run.dismiss.hint")}
-                    onClick={() => dismiss.mutate(runId)}
-                  >
-                    {dismiss.isPending ? t("run.dismiss.pending") : t("run.dismiss")}
-                  </Button>
-                )}
-              </>
-            ) : null}
             {run.targetChangeNumber !== null ? (
               <Button asChild variant="outline" size="sm">
                 <a href={run.targetChangeUrl ?? "#"} target="_blank" rel="noreferrer">
@@ -209,6 +179,80 @@ export function RunScreen() {
 
         {run && (
           <>
+            {/* Turn 7: a failure is answerable where it is stated — full reason, the two
+                decisions (#145) inside the banner and nowhere else, and the cause's remedy
+                linked when the cause maps to a surface. The map is a closed list against the
+                executor's own sentences (RunExecutor's refusals); anything else degrades to a
+                banner without a link, never a guessed one. */}
+            {run.state === "Failed" ? (
+              <div
+                role="alert"
+                className="flex flex-col gap-3 rounded-lg border border-destructive/40 bg-destructive/10 p-4 md:flex-row md:items-start md:justify-between"
+              >
+                <div className="flex min-w-0 flex-col gap-1">
+                  <span className="text-sm font-semibold text-destructive">
+                    {t("run.failure.title")}
+                  </span>
+                  <span className="text-sm break-words">
+                    {run.failureReason ?? t("run.failure.unknown")}
+                    {remedyFor(run.failureReason) === "settings" ? (
+                      <>
+                        {" "}
+                        <Link
+                          className="font-medium text-primary underline-offset-4 hover:underline"
+                          to={`/projects/${projectId}?tab=settings`}
+                        >
+                          {t("run.failure.remedy.settings")}
+                        </Link>
+                      </>
+                    ) : remedyFor(run.failureReason) === "automations" ? (
+                      <>
+                        {" "}
+                        <Link
+                          className="font-medium text-primary underline-offset-4 hover:underline"
+                          to={`/projects/${projectId}?tab=automations`}
+                        >
+                          {t("run.failure.remedy.automations")}
+                        </Link>
+                      </>
+                    ) : null}
+                  </span>
+                </div>
+                <span className="flex shrink-0 items-center gap-2">
+                  {run.vendorStoryId !== null && run.automationId !== null ? (
+                    <Button
+                      size="sm"
+                      disabled={runAgain.isPending}
+                      onClick={() =>
+                        runAgain.mutate({
+                          vendorStoryId: run.vendorStoryId!,
+                          automationId: run.automationId!,
+                        })
+                      }
+                    >
+                      {runAgain.isPending ? t("run.again.pending") : t("run.again")}
+                    </Button>
+                  ) : null}
+                  {run.dismissedAt ? (
+                    <Badge variant="outline">
+                      {t("run.dismissed")} · {formatWhen(run.dismissedAt)}
+                    </Badge>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="bg-background"
+                      disabled={dismiss.isPending}
+                      title={t("run.dismiss.hint")}
+                      onClick={() => dismiss.mutate(runId)}
+                    >
+                      {dismiss.isPending ? t("run.dismiss.pending") : t("run.dismiss")}
+                    </Button>
+                  )}
+                </span>
+              </div>
+            ) : null}
+
             <div className="flex flex-wrap items-center gap-2">
               <Badge variant="outline" className={STATE_STYLE[run.state]}>
                 {t(STATE_COPY[run.state])}
@@ -271,35 +315,62 @@ export function RunScreen() {
                     </div>
                   </Card>
                 ) : null}
-                <Card className="gap-0 py-0">
-                  <div className="flex items-center gap-2 border-b px-4 py-3">
-                    <h2 className="text-sm font-semibold">{t("run.section.plan")}</h2>
-                    {awaiting ? (
-                      <Badge
-                        variant="outline"
-                        className="border-warning/40 bg-warning/15 text-warning"
-                      >
-                        {t("run.plan.waiting")}
-                      </Badge>
-                    ) : null}
-                  </div>
-                  <div className="px-4 py-3">
-                    {run.plan ? (
-                      <div
-                        className="prose text-sm leading-relaxed"
-                        // Sanitised — a Plan is model output, as untrusted as any other text we
-                        // did not write (approval-gate D6).
-                        dangerouslySetInnerHTML={{ __html: renderStoryMarkdown(run.plan) }}
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{t("run.plan.none")}</p>
-                    )}
-                  </div>
-                </Card>
+                {/* Turn 7: a section with nothing to show takes one line, not a blank card —
+                    the giant hole disappears. A plan that is merely awaited keeps its card. */}
+                {!run.plan && !awaiting ? (
+                  <Card className="gap-0 py-0">
+                    <div className="flex items-baseline gap-2 px-4 py-3">
+                      <h2 className="text-sm font-semibold">{t("run.section.plan")}</h2>
+                      <span className="text-sm text-muted-foreground">{t("run.plan.none")}</span>
+                    </div>
+                  </Card>
+                ) : (
+                  <Card className="gap-0 py-0">
+                    <div className="flex items-center gap-2 border-b px-4 py-3">
+                      <h2 className="text-sm font-semibold">{t("run.section.plan")}</h2>
+                      {awaiting ? (
+                        <Badge
+                          variant="outline"
+                          className="border-warning/40 bg-warning/15 text-warning"
+                        >
+                          {t("run.plan.waiting")}
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <div className="px-4 py-3">
+                      {run.plan ? (
+                        <div
+                          className="prose text-sm leading-relaxed"
+                          // Sanitised — a Plan is model output, as untrusted as any other text we
+                          // did not write (approval-gate D6).
+                          dangerouslySetInnerHTML={{ __html: renderStoryMarkdown(run.plan) }}
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground">{t("run.plan.none")}</p>
+                      )}
+                    </div>
+                  </Card>
+                )}
 
                 <Card className="gap-0 py-0">
-                  <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3">
+                  <div
+                    className={cn(
+                      "flex flex-wrap items-center gap-2 px-4 py-3",
+                      !(
+                        log.data &&
+                        log.data.complete &&
+                        log.data.content.length === 0 &&
+                        !log.isError
+                      ) && "border-b",
+                    )}
+                  >
                     <h2 className="text-sm font-semibold">{t("run.section.log")}</h2>
+                    {log.data &&
+                    log.data.complete &&
+                    log.data.content.length === 0 &&
+                    !log.isError ? (
+                      <span className="text-sm text-muted-foreground">{t("run.log.none")}</span>
+                    ) : null}
                     {/* Live while it runs (UC-027): the poll stops itself on terminal (D3), and
                         the live region announces the stop. */}
                     <span aria-live="polite">
@@ -319,22 +390,33 @@ export function RunScreen() {
                       </span>
                     ) : null}
                   </div>
-                  <div className="px-4 py-3">
-                    {log.isError && (
-                      <p className="text-sm text-destructive" role="alert">
-                        {t("run.log.error")}
-                      </p>
-                    )}
-                    {log.data &&
-                      (log.data.content.length > 0 && transcript ? (
-                        <RunTranscript entries={transcript.entries} />
-                      ) : (
-                        <p className="text-sm text-muted-foreground">
-                          {log.data.complete ? t("run.log.none") : t("run.log.waitingForOutput")}
+                  {/* Empty-and-finished collapses with its header line above; anything live or
+                      failed keeps the body. */}
+                  {log.data &&
+                  log.data.complete &&
+                  log.data.content.length === 0 &&
+                  !log.isError ? null : (
+                    <div className="px-4 py-3">
+                      {log.isError && (
+                        <p className="text-sm text-destructive" role="alert">
+                          {t("run.log.error")}
                         </p>
-                      ))}
-                  </div>
+                      )}
+                      {log.data &&
+                        (log.data.content.length > 0 && transcript ? (
+                          <RunTranscript entries={transcript.entries} />
+                        ) : (
+                          <p className="text-sm text-muted-foreground">
+                            {log.data.complete ? t("run.log.none") : t("run.log.waitingForOutput")}
+                          </p>
+                        ))}
+                    </div>
+                  )}
                 </Card>
+
+                {/* Turn 7 D1: the diff needs the width the body has — 280px is illegible for a
+                    diff by definition. */}
+                <RunChanges projectId={projectId} runId={runId} />
               </div>
 
               <div className="flex flex-col gap-4">
@@ -388,13 +470,6 @@ export function RunScreen() {
                         ) : null
                       }
                     />
-                    {/* Only when present — an empty failure row on a healthy Run is noise. */}
-                    {run.failureReason ? (
-                      <DetailRow
-                        label={t("run.field.failure")}
-                        value={<span className="text-destructive">{run.failureReason}</span>}
-                      />
-                    ) : null}
                   </div>
                 </Card>
 
@@ -437,7 +512,9 @@ export function RunScreen() {
                   </div>
                 </Card>
 
-                <RunChanges projectId={projectId} runId={runId} />
+                {/* Turn 7 D1: the rail carries only the change's summary, anchoring to the
+                    block in the body — one diff on the page, one summary pointing at it. */}
+                <RunChangesSummary projectId={projectId} runId={runId} />
               </div>
             </div>
           </>
@@ -445,6 +522,53 @@ export function RunScreen() {
       </div>
     </AppShell>
   );
+}
+
+/**
+ * The rail's CHANGES card, summary-only (turn 7 D1): number, file count and ± totals, anchoring
+ * to the block in the body. Shares the body's query key, so no second read happens.
+ */
+function RunChangesSummary({ projectId, runId }: { projectId: string; runId: string }) {
+  const changes = useRunChanges(projectId, runId);
+  const change = changes.data?.change ?? null;
+  if (!change) return null;
+
+  const additions = change.files.reduce((sum, file) => sum + file.additions, 0);
+  const deletions = change.files.reduce((sum, file) => sum + file.deletions, 0);
+
+  return (
+    <Card className="gap-0 py-0">
+      <div className="border-b px-4 py-3">
+        <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+          {t("run.section.changes")}
+        </h2>
+      </div>
+      <div className="px-4 py-3">
+        <a
+          href="#run-changes"
+          className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+        >
+          <span className="font-mono">#{change.number}</span> ·{" "}
+          {tCount(change.files.length, "run.changes.file.one", "run.changes.file.other")} ·{" "}
+          <span className="font-mono text-success">+{additions}</span>{" "}
+          <span className="font-mono text-destructive">−{deletions}</span> ↓
+        </a>
+      </div>
+    </Card>
+  );
+}
+
+/**
+ * The closed cause→remedy map (turn 7, design D2). Matched against the executor's own stable
+ * sentences — see RunExecutor's refusals: "Credential could not be resolved: …" and
+ * "The prompt at '…' has no body…". A changed message degrades to a banner without a link,
+ * never a wrong link.
+ */
+function remedyFor(reason: string | null): "settings" | "automations" | null {
+  if (!reason) return null;
+  if (reason.includes("Credential could not be resolved")) return "settings";
+  if (reason.includes("The prompt at ")) return "automations";
+  return null;
 }
 
 /** One rail row: muted label left, value right, the design system's em dash for absence. */
