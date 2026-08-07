@@ -17,8 +17,10 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// renders as "unknown" — a wrong hypothesis degrades to honesty, not to a failed Run.
 /// </para>
 /// </summary>
-public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime> logger)
-    : IAgentRuntime
+public sealed class ClaudeCodeHeadlessRuntime(
+    IAgentProcessHost processHost,
+    ILogger<ClaudeCodeHeadlessRuntime> logger
+) : IAgentRuntime
 {
     /// <summary>One name for the binary; the image pins its version (design D5).</summary>
     public const string Command = "claude";
@@ -38,24 +40,20 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
         // The values live in the child's environment for its lifetime and nowhere else — never
         // in the image, the template, or a file (BR-010, design D1). The AI key only when one
         // was resolved (#279): an exported empty ANTHROPIC_API_KEY shadows the CLI's own session
-        // auth, which is exactly what the switched-off credential exists to use.
-        var environment = new Dictionary<string, string>();
-        // Only when there is a value to carry (#244 AC6): a Local Run resolves no vendor token,
-        // and an exported empty GITHUB_TOKEN shadows whatever auth the host's own tooling holds
-        // — the same shadowing rule the AI key already follows.
-        if (!string.IsNullOrEmpty(instruction.Credentials.VendorAccessToken))
-        {
-            environment["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken;
-        }
-        if (!string.IsNullOrEmpty(instruction.Credentials.AiApiKey))
-        {
-            environment["ANTHROPIC_API_KEY"] = instruction.Credentials.AiApiKey;
-        }
+        // auth, which is exactly what the switched-off credential exists to use — and #244 AC6
+        // extends the same shadowing rule to the vendor token, which a Local Run never resolves.
+        // Both rules live in the helper now; a host that authenticates the agent itself receives
+        // no values at all (design D2).
+        var environment = AgentCredentialEnvironment.For(
+            processHost,
+            instruction.Credentials,
+            aiKeyVariable: "ANTHROPIC_API_KEY"
+        );
 
-        HeadlessProcess.Outcome outcome;
+        AgentProcessOutcome outcome;
         try
         {
-            outcome = await HeadlessProcess.Run(
+            outcome = await processHost.Run(
                 CommandPath,
                 // stream-json rather than json (#130): `json` prints one document when the process exits,
                 // so the live window stayed empty for the whole Run and then filled with one unbroken
@@ -82,6 +80,17 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
                     Command,
                     AgentRuntimeRemedies.InstallClaudeCode
                 ),
+                OutputLink: null,
+                Usage: null
+            );
+        }
+        catch (AgentProcessHostException exception)
+        {
+            // The boundary refused before any agent ran. Its message already names the remedy,
+            // and nothing retries (BR-004) — so it becomes the Run's failure verbatim.
+            return new AgentResult(
+                Succeeded: false,
+                Log: exception.Message,
                 OutputLink: null,
                 Usage: null
             );
@@ -218,6 +227,11 @@ public static class AgentRuntimeComposition
     public static TBuilder AddAgentRuntime<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        // WHERE the agent CLI runs (design D1/D5). The local host is the default and the
+        // behaviour of every habitat that names nothing; a sandbox launcher named in
+        // configuration replaces it, and naming both a pod image and a launcher is refused.
+        AgentSandboxComposition.AddAgentProcessHost(builder);
+
         builder.Services.AddSingleton<ClaudeCodeHeadlessRuntime>();
         builder.Services.AddSingleton(
             new OpenCodeOptions
@@ -244,23 +258,39 @@ public static class AgentRuntimeComposition
             defaultValue: null
         );
 
-        builder.Services.AddSingleton<IAgentRuntimeSelector>(provider => new AgentRuntimeSelector(
-            new Dictionary<string, AgentRuntimeSelection>(StringComparer.Ordinal)
-            {
-                ["ClaudeCodeHeadless"] = new(
-                    provider.GetRequiredService<ClaudeCodeHeadlessRuntime>(),
-                    string.IsNullOrWhiteSpace(claudeCredential) ? null : claudeCredential,
-                    ClaudeCodeHeadlessRuntime.Command,
-                    AgentRuntimeRemedies.InstallClaudeCode
-                ),
-                ["OpenCode"] = new(
-                    provider.GetRequiredService<OpenCodeRuntime>(),
-                    string.IsNullOrWhiteSpace(openCodeCredential) ? null : openCodeCredential,
-                    OpenCodeRuntime.Command,
-                    AgentRuntimeRemedies.InstallOpenCode
-                ),
-            }
-        ));
+        builder.Services.AddSingleton<IAgentRuntimeSelector>(provider =>
+        {
+            // The chosen host is what decides whether a credential ever reaches the agent, and
+            // the transcript must say so (design D2). Carried on the selection because that is
+            // the seam the Runs module can see — it cannot reference composition types.
+            var credentialSource = provider
+                .GetRequiredService<IAgentProcessHost>()
+                .CredentialSource;
+
+            return new AgentRuntimeSelector(
+                new Dictionary<string, AgentRuntimeSelection>(StringComparer.Ordinal)
+                {
+                    ["ClaudeCodeHeadless"] = new(
+                        provider.GetRequiredService<ClaudeCodeHeadlessRuntime>(),
+                        string.IsNullOrWhiteSpace(claudeCredential) ? null : claudeCredential,
+                        ClaudeCodeHeadlessRuntime.Command,
+                        AgentRuntimeRemedies.InstallClaudeCode
+                    )
+                    {
+                        CredentialSource = credentialSource,
+                    },
+                    ["OpenCode"] = new(
+                        provider.GetRequiredService<OpenCodeRuntime>(),
+                        string.IsNullOrWhiteSpace(openCodeCredential) ? null : openCodeCredential,
+                        OpenCodeRuntime.Command,
+                        AgentRuntimeRemedies.InstallOpenCode
+                    )
+                    {
+                        CredentialSource = credentialSource,
+                    },
+                }
+            );
+        });
 
         return builder;
     }

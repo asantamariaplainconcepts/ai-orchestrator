@@ -102,7 +102,7 @@ public class RunLog_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         // The executor's runtime header (project-runtimes #244, design D2) opens every
         // transcript; the agent's own lines follow untouched.
         log.Content.ShouldBe(
-            "Runtime 'ClaudeCodeHeadless' — credential source: deployment.\n"
+            "Runtime 'ClaudeCodeHeadless' — credential source: deployment, carried in the agent process's environment.\n"
                 + "reading the story\nweighing options\nwriting the comment"
         );
     }
@@ -145,7 +145,9 @@ public class RunLog_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         // newline is the fake forwarding its one empty line, as the real wrappers would.
         var log = await Log(runId);
         log!.Complete.ShouldBeTrue();
-        log.Content.ShouldBe("Runtime 'ClaudeCodeHeadless' — credential source: deployment.\n");
+        log.Content.ShouldBe(
+            "Runtime 'ClaudeCodeHeadless' — credential source: deployment, carried in the agent process's environment.\n"
+        );
     }
 
     sealed record ProjectResponse(Guid Id, string Name);

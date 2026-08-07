@@ -14,7 +14,10 @@ namespace AiOrchestrator.DispatchTests;
 public class ClaudeStreamedResult_Should_Constraint
 {
     static ClaudeCodeHeadlessRuntime Runtime(string script) =>
-        new(NullLogger<ClaudeCodeHeadlessRuntime>.Instance) { CommandPath = script };
+        new(new LocalAgentProcessHost(), NullLogger<ClaudeCodeHeadlessRuntime>.Instance)
+        {
+            CommandPath = script,
+        };
 
     static AgentInstruction Instruction() =>
         new(

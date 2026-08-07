@@ -11,8 +11,11 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// <c>step_finish</c> events carry <c>part.tokens</c> and <c>part.cost</c>. Free models
 /// (<c>opencode/*-free</c>) run with no credential — absence is configuration, not an error.
 /// </summary>
-public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRuntime> logger)
-    : IAgentRuntime
+public sealed class OpenCodeRuntime(
+    OpenCodeOptions options,
+    IAgentProcessHost processHost,
+    ILogger<OpenCodeRuntime> logger
+) : IAgentRuntime
 {
     public const string Command = "opencode";
 
@@ -24,23 +27,20 @@ public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRun
         CancellationToken cancellationToken
     )
     {
-        var environment = new Dictionary<string, string>();
-        // Only when there is a value to carry (#244 AC6): a Local Run resolves no vendor token,
-        // and an exported empty GITHUB_TOKEN shadows whatever auth the host's own tooling holds
-        // — the same shadowing rule the AI key already follows.
-        if (!string.IsNullOrEmpty(instruction.Credentials.VendorAccessToken))
-        {
-            environment["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken;
-        }
-        if (!string.IsNullOrEmpty(instruction.Credentials.AiApiKey))
-        {
-            environment["OPENCODE_API_KEY"] = instruction.Credentials.AiApiKey;
-        }
+        // Values only where the host cannot authenticate for us (design D2); a free model has
+        // no key to omit either way (DEC-044). The helper also carries #244 AC6's rule: a Local
+        // Run resolves no vendor token, and an exported empty GITHUB_TOKEN would shadow the
+        // host tooling's own auth.
+        var environment = AgentCredentialEnvironment.For(
+            processHost,
+            instruction.Credentials,
+            aiKeyVariable: "OPENCODE_API_KEY"
+        );
 
-        HeadlessProcess.Outcome outcome;
+        AgentProcessOutcome outcome;
         try
         {
-            outcome = await HeadlessProcess.Run(
+            outcome = await processHost.Run(
                 CommandPath,
                 ["run", "-m", options.Model, "--format", "json", instruction.Prompt],
                 instruction.WorkspacePath,
@@ -61,6 +61,16 @@ public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRun
                 Usage: null
             );
         }
+        catch (AgentProcessHostException exception)
+        {
+            // The boundary refused before any agent ran; its message names the remedy (BR-004).
+            return new AgentResult(
+                Succeeded: false,
+                Log: exception.Message,
+                OutputLink: null,
+                Usage: null
+            );
+        }
 
         if (outcome.TimedOut)
         {
@@ -75,7 +85,7 @@ public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRun
         return Parse(outcome);
     }
 
-    AgentResult Parse(HeadlessProcess.Outcome outcome)
+    AgentResult Parse(AgentProcessOutcome outcome)
     {
         var log = new List<string>();
         long inputTokens = 0;

@@ -12,6 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- The process hosts and the sandbox driver stay internal: they are composition detail, and
+         only the seam is public. Their tests need to construct them, which is what this is for. -->
+    <InternalsVisibleTo Include="AiOrchestrator.DispatchTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Aspire.Azure.Security.KeyVault" />
     <PackageReference Include="Aspire.Azure.Storage.Queues" />
     <PackageReference Include="Docker.DotNet" />

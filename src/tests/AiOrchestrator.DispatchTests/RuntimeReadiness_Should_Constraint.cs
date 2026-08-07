@@ -54,7 +54,10 @@ public class RuntimeReadiness_Should_Constraint
         // child's environment (ignoring the runtime's arguments); its output is unparseable as
         // a result stream, so the runtime fails the run and quotes the raw stdout — which must
         // not name the variable.
-        var runtime = new ClaudeCodeHeadlessRuntime(NullLogger<ClaudeCodeHeadlessRuntime>.Instance)
+        var runtime = new ClaudeCodeHeadlessRuntime(
+            new LocalAgentProcessHost(),
+            NullLogger<ClaudeCodeHeadlessRuntime>.Instance
+        )
         {
             CommandPath = PrintEnvScript(),
         };
@@ -72,7 +75,10 @@ public class RuntimeReadiness_Should_Constraint
     [Fact]
     public async Task AResolvedKey_Should_StillTravel()
     {
-        var runtime = new ClaudeCodeHeadlessRuntime(NullLogger<ClaudeCodeHeadlessRuntime>.Instance)
+        var runtime = new ClaudeCodeHeadlessRuntime(
+            new LocalAgentProcessHost(),
+            NullLogger<ClaudeCodeHeadlessRuntime>.Instance
+        )
         {
             CommandPath = PrintEnvScript(),
         };
@@ -102,12 +108,16 @@ public class RuntimeReadiness_Should_Constraint
     {
         // The raw ENOENT told nobody anything (#279): the failure carries the binary and the
         // pinned install command, for both runtimes, from the one place the sentences live.
-        var claude = new ClaudeCodeHeadlessRuntime(NullLogger<ClaudeCodeHeadlessRuntime>.Instance)
+        var claude = new ClaudeCodeHeadlessRuntime(
+            new LocalAgentProcessHost(),
+            NullLogger<ClaudeCodeHeadlessRuntime>.Instance
+        )
         {
             CommandPath = "/nonexistent/claude",
         };
         var opencode = new OpenCodeRuntime(
             new OpenCodeOptions { Model = "m" },
+            new LocalAgentProcessHost(),
             NullLogger<OpenCodeRuntime>.Instance
         )
         {

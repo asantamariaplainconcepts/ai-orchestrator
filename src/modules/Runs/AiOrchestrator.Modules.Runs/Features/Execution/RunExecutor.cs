@@ -344,7 +344,15 @@ sealed class RunExecutor(
             projectCredential is not null ? "project"
             : selection.CredentialSecretName is not null ? "deployment"
             : "none";
-        onOutput($"Runtime '{runtimeName}' — credential source: {credentialSource}.");
+        // One header, two facts, because they answer one question together: WHICH credential was
+        // chosen (#244) and whether its value reaches the agent at all — which is a property of
+        // where the agent runs, not of which secret was picked. A second always-on line would
+        // have been a second thing to keep in sync, and every exact-content transcript assertion
+        // would have paid for it twice.
+        onOutput(
+            $"Runtime '{runtimeName}' — credential source: {credentialSource}, "
+                + $"{selection.CredentialSource}."
+        );
 
         // The AI credential fails with its own sentence (#279): unlike the vendor's, it has a
         // switched-off alternative — no name configured means the machine's own session — and

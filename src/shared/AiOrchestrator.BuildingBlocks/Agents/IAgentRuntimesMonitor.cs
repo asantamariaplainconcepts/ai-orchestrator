@@ -34,7 +34,23 @@ public sealed record AgentRuntimesSnapshot(
     /// <summary>The answer of a process that does not execute Runs itself.</summary>
     public static AgentRuntimesSnapshot Unhosted { get; } =
         new(Hosted: false, CheckedAt: null, ProbeInterval: TimeSpan.Zero, Runtimes: []);
+
+    /// <summary>
+    /// Which machine the runtimes below describe, and whether that machine is itself ready.
+    /// Null where the question does not arise — an unhosted process, or one whose agents are
+    /// its own children. Where agents run in sandboxes, "the CLI is ready" is meaningless until
+    /// this says the sandbox host is (#279's promise, extended by the sandboxing change).
+    /// </summary>
+    public AgentHostState? Host { get; init; }
 }
+
+/// <summary>
+/// The machine the agents run on, when that is not simply this process.
+/// </summary>
+/// <param name="Where">Named for a reader: "this process", "a per-Run sandbox on this machine".</param>
+/// <param name="Ready">The host's own preconditions are met.</param>
+/// <param name="Remedy">What to do when they are not — never a value, always an action.</param>
+public sealed record AgentHostState(string Where, bool Ready, string? Remedy);
 
 /// <summary>
 /// One runtime's readiness. <paramref name="CredentialReady"/> is three-valued on purpose:

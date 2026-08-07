@@ -3521,3 +3521,54 @@ the repairs in tasks.md — a deliberate ripple should never surface as a red su
 **Decisions recorded:** D3's narrowing is in the design doc — approval shows the resolved
 runtime and deliberately does not re-choose it (an approved plan executed by another agent's
 hands would not be the approved plan).
+
+## 2026-08-07 — split-run-pod-into-executor-and-sandbox
+
+**Time (telemetry, by session id):** ~134 min agent (8 064 s cli, $95.54, 291k output tokens),
+recovered by hand. The automated join found nothing: `map-session-change.mjs` matches the
+**branch name** against active change directories, and this session ran on
+`claude/sandboxes-source-of-truth-ea2327`, which contains no change name — so `change=""`, the
+exact failure its own header documents. `{type=user}` absent for the EIGHTH consecutive change.
+
+**What worked:** the boundary landed as a substitution, not a rewrite. Both runtimes already
+funnelled through one chokepoint (`HeadlessProcess`, extracted so BR-005's timeout could not
+drift), so putting `IAgentProcessHost` there left every flag, parser and usage rule untouched —
+and the pre-existing suites passed with no assertion edited, which is what proved the extraction
+was a no-op rather than a claim that it was. Then D6 paid for itself inside the same session:
+readiness reports from *where the CLI will run*, so bringing the dev loop up in sandbox mode
+showed both runtimes not ready while both were installed on the Mac — the driver was creating
+every sandbox from sbx's generic `shell` template, which carries no agent CLI. Every Run would
+have failed with a missing binary. A check built to be honest about which machine it describes
+caught the bug that check exists for, on its first real outing.
+
+**What didn't:** the end-to-end Run went unexercised for the SECOND consecutive change, at the
+identical wall — the only runnable project targets the real repository and DEC-062 has the agent
+publish its own work. Both times the verification was downgraded rather than the obstacle
+removed, which is how a whole substrate accumulated with its central claim unproven. That
+graduated to **ADR-0014**.
+
+Worse, and the honest headline: **the previous entry's "one change next time" was exactly the
+mistake this change then made.** #244 ended with "when a change adds a line to every transcript,
+grep the test suites for exact-content assertions on that stream at PLAN time and list the
+repairs in tasks.md". This change added a line to every transcript, did not grep, and CI caught
+three broken exact-content assertions after the PR was open. The advice was right, sat one entry
+above, and did nothing — so it graduated too: **ADR-0015** (one owner for always-on output; assert its shape). The fix turned out to be better than
+the repair anyway: #244 already had an always-on header naming the credential, so the second
+line was redundant; the two facts are now one sentence in one place. A local `sh --version`
+probe also passed on macOS and failed on Linux CI — the same dash trap this change had already
+found on the sandbox side and did not generalise. And three separate times a green-looking
+result was false: `rtk` reported Prettier clean over a non-zero exit, and reported "ok" on a
+commit whose success had to be confirmed with `git log`.
+
+**One change next time:** run the functional suites — not just the unit ones — before opening a
+PR when a change touches shared output. Every failure CI found here was reachable locally in
+25 seconds (`Runs.FunctionalTests`, 148 tests); the loop that missed them ran only the fast
+suites and trusted a green build. Speed chose which tests ran, and the slow ones were the ones
+that mattered.
+
+**Decisions recorded:** D6 gained a second cadence during implementation — the host's own
+preconditions probe every 30 s because they move, while the CLI-in-the-template verdict refreshes
+every 15 min, because creating a sandbox costs ~4.5 s and that answer belongs to an image that
+changes on deploy. And the credential-source sentence moved from the runtimes to the executor:
+announcing it from the runtime polluted the agent's own output stream and broke the streaming
+contract test — the right signal, caught by an existing test.

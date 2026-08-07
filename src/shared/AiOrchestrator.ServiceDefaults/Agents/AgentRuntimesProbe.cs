@@ -21,16 +21,11 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 public sealed class AgentRuntimesProbe(
     AgentRuntimesHost host,
     IAgentRuntimeSelector selector,
+    IAgentProcessHost processHost,
     ISecretResolver secrets,
     ILogger<AgentRuntimesProbe> logger
 ) : BackgroundService
 {
-    /// <summary>
-    /// Generous for a local <c>--version</c>, but a wedged machine can hang instead of refuse —
-    /// and a probe that hangs forever reports nothing, which is the silence it exists to end.
-    /// </summary>
-    static readonly TimeSpan ProbeTimeout = TimeSpan.FromSeconds(10);
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         // Transitions are logged, states are not: a healthy machine probed every 30 seconds
@@ -39,13 +34,18 @@ public sealed class AgentRuntimesProbe(
 
         while (!stoppingToken.IsCancellationRequested)
         {
+            // The machine first (design D6): where agents run in sandboxes, a runtime's CLI
+            // readiness is a statement about that machine, and asking it while the machine is
+            // unreachable would answer for the wrong one.
+            var hostState = await CheckHost(stoppingToken);
+
             var current = new List<AgentRuntimeState>(selector.Registered.Count);
             foreach (var (name, selection) in selector.Registered.OrderBy(pair => pair.Key))
             {
-                current.Add(await Probe(name, selection, stoppingToken));
+                current.Add(await Probe(name, selection, hostState.Ready, stoppingToken));
             }
 
-            host.RecordProbe(current);
+            host.RecordProbe(current, hostState);
 
             if (previous is null || !current.SequenceEqual(previous))
             {
@@ -83,13 +83,40 @@ public sealed class AgentRuntimesProbe(
         }
     }
 
+    async Task<AgentHostState> CheckHost(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var readiness = await processHost.CheckReadiness(cancellationToken);
+            return new AgentHostState(readiness.Where, readiness.Ready, readiness.Remedy);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // A host that cannot even answer is not a ready host — saying so beats reporting
+            // the runtimes as though this process were the one that runs them.
+            return new AgentHostState(
+                Where: "the agent host",
+                Ready: false,
+                Remedy: $"The agent host could not be asked whether it is ready: {exception.Message}"
+            );
+        }
+    }
+
     async Task<AgentRuntimeState> Probe(
         string name,
         AgentRuntimeSelection selection,
+        bool hostReady,
         CancellationToken cancellationToken
     )
     {
-        var cliReady = await CliAnswers(selection.Command, cancellationToken);
+        // An unready host cannot answer for its CLIs, and guessing from this process's PATH
+        // would state a truth no Run depends on (design D6). Not-ready here is the honest
+        // reading: the host's own remedy is the one that has to be applied first.
+        var cliReady = hostReady && await CliAnswers(selection.Command, cancellationToken);
 
         bool? credentialReady = null;
         if (selection.CredentialSecretName is { } secretName)
@@ -121,19 +148,15 @@ public sealed class AgentRuntimesProbe(
         );
     }
 
-    static async Task<bool> CliAnswers(string command, CancellationToken cancellationToken)
+    /// <summary>
+    /// Asked of the host, never of this process (design D6): the CLI that matters is the one on
+    /// the machine where Runs execute.
+    /// </summary>
+    async Task<bool> CliAnswers(string command, CancellationToken cancellationToken)
     {
         try
         {
-            var outcome = await HeadlessProcess.Run(
-                command,
-                ["--version"],
-                Path.GetTempPath(),
-                new Dictionary<string, string>(),
-                ProbeTimeout,
-                cancellationToken
-            );
-            return !outcome.TimedOut && outcome.ExitCode == 0;
+            return await processHost.CliAnswers(command, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -142,7 +165,7 @@ public sealed class AgentRuntimesProbe(
         catch (Exception)
         {
             // Missing, not executable, or refusing to start — one verdict, because the
-            // operator's first move is identical: install the CLI where this process runs.
+            // operator's first move is identical: install the CLI where Runs execute.
             return false;
         }
     }
