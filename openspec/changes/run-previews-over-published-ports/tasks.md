@@ -22,20 +22,23 @@
 
 ## 2. The read that cannot lie (design D2)
 
-- [ ] 2.1 An endpoint answers "does this Run have a live preview right now", reading the ledger
+- [x] 2.1 An endpoint answers "does this Run have a live preview right now", reading the ledger
       and the Run's state — never a stored field. A terminal Run answers no by construction, not
-      by a branch that could be forgotten.
-- [ ] 2.2 A process holding no sandboxes answers that previews are unavailable in this habitat,
+      by a branch that could be forgotten. (Terminality reads `RunStates.IsTerminal`, not a third
+      hand-written copy — the comment on RunStates records that such copies have drifted twice.)
+- [x] 2.2 A process holding no sandboxes answers that previews are unavailable in this habitat,
       distinct from a Run having none — the "not hosted here" sentence the pods panel already
       owes.
 
 ## 3. The relay (design D4)
 
-- [ ] 3.1 A proxy endpoint scoped to one Run's published port: it resolves the port from the
+- [x] 3.1 A proxy endpoint scoped to one Run's published port: it resolves the port from the
       ledger, refuses any other target, and applies the Run's own authorization at the relay.
       Tests cover the refusals, not only the happy path.
-- [ ] 3.2 Nothing is serving yet is a state with its own answer, distinguishable from the Run
-      having no preview and from the relay refusing.
+- [x] 3.2 Nothing is serving yet is a state with its own answer, distinguishable from the Run
+      having no preview and from the relay refusing. (503 from the relay when the port is
+      published but nothing is listening — the ordinary state of a Run whose agent has not
+      started its server yet.)
 
 ## 4. The surface (design D4, D5, aio-design)
 

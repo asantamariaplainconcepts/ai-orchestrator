@@ -117,6 +117,17 @@ public sealed class RunsModule : ModuleBase
         // spawns as missing.
         services.TryAddSingleton<IAgentRuntimesMonitor, UnhostedAgentRuntimesMonitor>();
 
+        // And previews, for the same reason again (run-previews): the read and the relay must
+        // always resolve, so a habitat that holds no sandboxes answers "not hosted here" instead
+        // of failing — the ability is absent, never the answer.
+        services.TryAddSingleton<IRunPreviewMonitor, UnhostedRunPreviewMonitor>();
+
+        // The relay's own client, bounded: a preview that hangs must not hold a portal request
+        // open, and the timeout is short because the target is loopback on this machine.
+        services
+            .AddHttpClient(nameof(Features.Observation.UseCases.RelayRunPreview))
+            .ConfigureHttpClient(client => client.Timeout = TimeSpan.FromSeconds(10));
+
         // The worker-facing execution surface (agent-execution spec).
         services.AddScoped<IRunExecutor, RunExecutor>();
 
