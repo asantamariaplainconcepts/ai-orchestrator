@@ -48,7 +48,7 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
                 automation.Id,
                 automation.TriggerLabel,
                 automation.Action.ToString(),
-                automation.Runtime.ToString(),
+                automation.Runtime?.ToString(),
                 automation.RequiresApproval,
                 automation.Timeout,
                 automation.PromptPath,

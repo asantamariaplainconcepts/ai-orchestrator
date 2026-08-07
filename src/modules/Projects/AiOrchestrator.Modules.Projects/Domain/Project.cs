@@ -28,10 +28,62 @@ sealed class Project : Aggregate
 
     public bool IsArchived => ArchivedAt is not null;
 
+    /// <summary>
+    /// The runtime an Automation with no explicit one resolves to at execution time
+    /// (project-runtimes). Null means the deployment default — absence is an answer here, the
+    /// same way an unset Automation runtime is.
+    /// </summary>
+    public string? DefaultRuntime { get; private set; }
+
+    /// <summary>
+    /// Credential secret <b>names</b> per runtime (BR-010: names stored, values never). The
+    /// project's billing identity where one exists; the deployment's config supplies the
+    /// fallback.
+    /// </summary>
+    public List<ProjectRuntimeCredential> RuntimeCredentials { get; private set; } = [];
+
+    /// <summary>
+    /// Full replace, like the Automation update: the form always shows every field, so a field
+    /// it omitted would silently reset — the same reasoning #151 recorded.
+    /// </summary>
+    public void ConfigureRuntimes(
+        string? defaultRuntime,
+        IReadOnlyDictionary<string, string> credentialNames
+    )
+    {
+        DefaultRuntime = string.IsNullOrWhiteSpace(defaultRuntime) ? null : defaultRuntime.Trim();
+        RuntimeCredentials.Clear();
+        foreach (var (runtime, secretName) in credentialNames)
+        {
+            if (!string.IsNullOrWhiteSpace(secretName))
+            {
+                RuntimeCredentials.Add(new ProjectRuntimeCredential(runtime, secretName.Trim()));
+            }
+        }
+    }
+
     public static Project Create(string name) => new(name);
 
     /// <summary>Idempotent: archiving an archived Project keeps the original moment.</summary>
     public void Archive(DateTimeOffset at) => ArchivedAt ??= at;
 
     public void Restore() => ArchivedAt = null;
+}
+
+/// <summary>One runtime's credential name on a Project — a name, never a value (BR-010).</summary>
+sealed class ProjectRuntimeCredential
+{
+    ProjectRuntimeCredential() { }
+
+    public ProjectRuntimeCredential(string runtime, string secretName)
+    {
+        Runtime = runtime;
+        SecretName = secretName;
+    }
+
+    public Guid Id { get; private set; }
+
+    public string Runtime { get; private set; } = string.Empty;
+
+    public string SecretName { get; private set; } = string.Empty;
 }

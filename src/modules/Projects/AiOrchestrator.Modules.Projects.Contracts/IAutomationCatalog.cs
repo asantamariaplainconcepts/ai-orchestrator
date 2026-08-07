@@ -32,7 +32,8 @@ public sealed record AutomationDetail(
     Guid AutomationId,
     string TriggerLabel,
     string Action,
-    string Runtime,
+    /// <summary>Null means the Project default, resolved at execution time (project-runtimes).</summary>
+    string? Runtime,
     bool RequiresApproval,
     TimeSpan Timeout,
     /// <summary>Grill only; null means the framework's convention (grill design D5).</summary>
