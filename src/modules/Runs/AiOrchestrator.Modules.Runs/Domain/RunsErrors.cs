@@ -54,6 +54,26 @@ static class RunsErrors
             $"Run '{runId}' is {state} — a finished Run cannot be cancelled."
         );
 
+    public static Error ChangeNotOpen(int changeNumber) =>
+        Error.NotFound(
+            "Runs.ChangeNotOpen",
+            $"Change #{changeNumber} is not among this repository's open changes — what a number "
+                + "means is the vendor's answer, and the vendor does not list it."
+        );
+
+    public static Error ChangeHasActiveRun(int changeNumber) =>
+        Error.Conflict(
+            "Runs.ChangeHasActiveRun",
+            $"Change #{changeNumber} already has an active Run — one at a time per change, the "
+                + "same rule a Story has."
+        );
+
+    public static Error ChangesUnavailable(string reason) =>
+        Error.Failure(
+            "Runs.ChangesUnavailable",
+            $"The repository's open changes could not be read: {reason}"
+        );
+
     public static Error RunNotFound(Guid runId) =>
         Error.NotFound("Runs.NotFound", $"Run '{runId}' does not exist.");
 

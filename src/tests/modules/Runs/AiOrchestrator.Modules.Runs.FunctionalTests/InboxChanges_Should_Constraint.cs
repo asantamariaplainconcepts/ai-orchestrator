@@ -81,22 +81,43 @@ public class InboxChanges_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
     [Fact]
     public async Task AProductCreatedChange_Should_CarryItsRun()
     {
+        // Seeded the way production actually writes it (ADR-0013 — the first version of this
+        // test seeded OutputLink by hand, a column the retired publish step (DEC-062) means
+        // nothing writes any more, so the marker it proved could never fire for real). What the
+        // ceremony does own is the branch: run/<id> carries the Run's id.
+        var runId = await SeedRun();
+
         fixture.Vendor.Open.Add(
             new OpenChange(
                 1,
                 "the product's own work",
-                fixture.Workspace.PullRequestUrl,
-                "run/00000000-0000-0000-0000-000000000000",
+                "https://github.com/acme/portal/pull/1",
+                $"run/{runId}",
                 DateTimeOffset.UtcNow
             )
         );
 
-        // A Run whose recorded output link is the listed URL — written the way the executor
-        // writes it (BR-014), set here through the same persistence the executor uses.
-        var runId = await SeedRunWithOutputLink(fixture.Workspace.PullRequestUrl);
-
         var entry = (await Read()).Changes.ShouldHaveSingleItem();
         entry.RunId.ShouldBe(runId);
+    }
+
+    [Fact]
+    public async Task ABranchThatMerelyLooksLikeTheCeremonys_Should_ClaimNoRun()
+    {
+        // A run/<guid> branch whose guid is no Run of this project must not be marked — the
+        // branch pattern alone is a claim anybody can make with a git push.
+        fixture.Vendor.Open.Add(
+            new OpenChange(
+                2,
+                "an impostor branch",
+                "https://github.com/acme/portal/pull/2",
+                $"run/{Guid.NewGuid()}",
+                DateTimeOffset.UtcNow
+            )
+        );
+
+        var entry = (await Read()).Changes.ShouldHaveSingleItem();
+        entry.RunId.ShouldBeNull();
     }
 
     [Fact]
@@ -143,12 +164,8 @@ public class InboxChanges_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         return project.Id;
     }
 
-    /// <summary>
-    /// A Run with a recorded output link. Created through the API and finished by hand at the
-    /// persistence layer: the executor's own writing of the link is covered by the execution
-    /// suites, and this suite is about the read that joins on it.
-    /// </summary>
-    async Task<Guid> SeedRunWithOutputLink(string url)
+    /// <summary>An ordinary story Run, created through the API — the id is what the test needs.</summary>
+    async Task<Guid> SeedRun()
     {
         await CreateAutomation(_projectId, "ai:implement");
         fixture.Vendor.Stories.Add(new("41", "A story", "open", [], "Body."));
@@ -161,13 +178,6 @@ public class InboxChanges_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         );
         created.EnsureSuccessStatusCode();
         var run = (await created.Content.ReadFromJsonAsync<RunCreatedResponse>())!;
-
-        using var scope = fixture.Services.CreateScope();
-        var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
-        var entity = await database.Runs.SingleAsync(candidate => candidate.Id == run.Id);
-        database.Entry(entity).Property("OutputLink").CurrentValue = url;
-        await database.SaveChangesAsync();
-
         return run.Id;
     }
 
