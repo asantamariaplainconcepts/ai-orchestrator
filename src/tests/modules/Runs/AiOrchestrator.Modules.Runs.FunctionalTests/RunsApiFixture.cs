@@ -104,8 +104,18 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
                 new FakeRuntimeSelector(
                     new Dictionary<string, AgentRuntimeSelection>(StringComparer.Ordinal)
                     {
-                        ["ClaudeCodeHeadless"] = new(Agent, "anthropic-api-key"),
-                        ["OpenCode"] = new(OpenCodeAgent, null),
+                        ["ClaudeCodeHeadless"] = new(
+                            Agent,
+                            "anthropic-api-key",
+                            "claude",
+                            AgentRuntimeRemedies.InstallClaudeCode
+                        ),
+                        ["OpenCode"] = new(
+                            OpenCodeAgent,
+                            null,
+                            "opencode",
+                            AgentRuntimeRemedies.InstallOpenCode
+                        ),
                     }
                 )
             );
@@ -425,6 +435,8 @@ sealed class FakeRuntimeSelector(IReadOnlyDictionary<string, AgentRuntimeSelecti
 {
     public AgentRuntimeSelection? For(string runtimeName) =>
         runtimes.TryGetValue(runtimeName, out var selection) ? selection : null;
+
+    public IReadOnlyDictionary<string, AgentRuntimeSelection> Registered => runtimes;
 }
 
 /// <summary>
