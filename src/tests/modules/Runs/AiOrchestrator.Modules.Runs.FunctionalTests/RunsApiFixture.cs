@@ -143,6 +143,8 @@ sealed class StubBacklogConnector : IBacklogConnector
         Comments.Clear();
         WriteStateError = null;
         Change = null;
+        Open.Clear();
+        OpenChangesError = null;
         StoryComments.Clear();
         ReadCommentsError = null;
         Documents.Clear();
@@ -156,6 +158,22 @@ sealed class StubBacklogConnector : IBacklogConnector
 
     /// <summary>The change a Run's Story links to, when a test wants one.</summary>
     public LinkedChange? Change { get; set; }
+
+    /// <summary>The repository's open changes, appendable by tests (inbox-open-prs).</summary>
+    public List<OpenChange> Open { get; } = [];
+
+    public Error? OpenChangesError { get; set; }
+
+    public Task<ErrorOr<IReadOnlyList<OpenChange>>> OpenChanges(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    ) =>
+        Task.FromResult<ErrorOr<IReadOnlyList<OpenChange>>>(
+            OpenChangesError is { } error
+                ? error
+                : ErrorOrFactory.From<IReadOnlyList<OpenChange>>([.. Open])
+        );
 
     /// <summary>
     /// Labels that exist in the *repository*, as distinct from labels on a Story. The

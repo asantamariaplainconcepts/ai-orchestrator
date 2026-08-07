@@ -371,6 +371,68 @@ sealed class AzureDevOpsBacklogConnector(IAzureDevOpsClientFactory clientFactory
         );
     }
 
+    /// <summary>
+    /// Stated hypothesis, like every REST call in this class (ADR-0005): the pull-requests API
+    /// with an active status filter lists the repository's open changes. Unexercised against a
+    /// real organisation.
+    /// </summary>
+    public async Task<ErrorOr<IReadOnlyList<OpenChange>>> OpenChanges(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(coordinates.Owner, token);
+
+        return await Guarded<IReadOnlyList<OpenChange>>(
+            coordinates,
+            async () =>
+            {
+                var response = await client.GetAsync(
+                    $"{Uri.EscapeDataString(coordinates.Repository)}/_apis/git/repositories/"
+                        + $"{Uri.EscapeDataString(coordinates.Repository)}/pullrequests"
+                        + $"?searchCriteria.status=active&api-version={ApiVersion}",
+                    cancellationToken
+                );
+
+                if (Translate(response, coordinates) is { } failure)
+                {
+                    return failure;
+                }
+
+                using var document = JsonDocument.Parse(
+                    await response.Content.ReadAsStringAsync(cancellationToken)
+                );
+
+                return ErrorOrFactory.From<IReadOnlyList<OpenChange>>([
+                    .. document
+                        .RootElement.GetProperty("value")
+                        .EnumerateArray()
+                        .Select(entry => new OpenChange(
+                            entry.GetProperty("pullRequestId").GetInt32(),
+                            entry.TryGetProperty("title", out var title)
+                                ? title.GetString() ?? string.Empty
+                                : string.Empty,
+                            entry.TryGetProperty("url", out var url)
+                                ? url.GetString() ?? string.Empty
+                                : string.Empty,
+                            // refs/heads/ stripped so the name compares like GitHub's.
+                            entry.TryGetProperty("sourceRefName", out var source)
+                                ? (source.GetString() ?? string.Empty).Replace(
+                                    "refs/heads/",
+                                    string.Empty
+                                )
+                                : string.Empty,
+                            entry.TryGetProperty("creationDate", out var created)
+                                ? created.GetDateTimeOffset()
+                                : DateTimeOffset.MinValue
+                        ))
+                        .OrderByDescending(change => change.CreatedAt),
+                ]);
+            }
+        );
+    }
+
     public async Task<ErrorOr<IReadOnlyList<ChangedFile>>> ListChangeFiles(
         BacklogCoordinates coordinates,
         int changeNumber,

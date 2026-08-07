@@ -136,6 +136,15 @@ public sealed class GitHubStub : IAsyncDisposable
             return;
         }
 
+        // The review queue's read (inbox-open-prs): this stub hosts no pull requests, and an
+        // empty list is the honest answer — "no changes", never a 404 the seam would surface
+        // as a vendor refusal on every Inbox load.
+        if (segments is [.., "pulls"])
+        {
+            Write(context, HttpStatusCode.OK, "[]");
+            return;
+        }
+
         // The licensed write (UC-008), as Octokit performs it:
         //   POST   /issues/{number}/labels          — add-to-set
         //   DELETE /issues/{number}/labels/{name}   — remove

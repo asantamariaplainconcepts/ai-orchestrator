@@ -10,8 +10,8 @@ because Azure DevOps does not call it a pull request either.
 A project with no connected code repository SHALL answer with an empty result rather than an
 error — there is nothing to list, and that is a state, not a failure. A vendor refusal SHALL
 travel as a readable reason the caller can show, following the seam's existing degradation shape.
-The Azure DevOps path SHALL answer with its existing unexercised-path reason until it is exercised
-for real.
+The Azure DevOps path SHALL follow the connector's own discipline: implemented as a stated
+hypothesis and labelled unexercised until run against a real organisation (ADR-0005).
 
 #### Scenario: open changes arrive vendor-neutrally
 

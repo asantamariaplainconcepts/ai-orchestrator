@@ -387,6 +387,41 @@ sealed class GitHubBacklogConnector(IGitHubClientFactory clientFactory) : IBackl
         }
     }
 
+    public async Task<ErrorOr<IReadOnlyList<OpenChange>>> OpenChanges(
+        BacklogCoordinates coordinates,
+        string token,
+        CancellationToken cancellationToken
+    )
+    {
+        var client = clientFactory.Create(token);
+
+        try
+        {
+            var open = await client.PullRequest.GetAllForRepository(
+                coordinates.Owner,
+                coordinates.Repository,
+                new PullRequestRequest { State = ItemStateFilter.Open }
+            );
+
+            return ErrorOrFactory.From<IReadOnlyList<OpenChange>>([
+                .. open.OrderByDescending(pullRequest => pullRequest.CreatedAt)
+                    .Select(pullRequest => new OpenChange(
+                        pullRequest.Number,
+                        pullRequest.Title,
+                        pullRequest.HtmlUrl,
+                        // The branch name, not the SHA a linked change carries: the caller's
+                        // question is "is this a product branch?", and only the name answers.
+                        pullRequest.Head.Ref,
+                        pullRequest.CreatedAt
+                    )),
+            ]);
+        }
+        catch (Exception exception)
+        {
+            return Translate(exception, coordinates);
+        }
+    }
+
     /// <summary>The vendor omits patches for binary files; large ones we omit ourselves.</summary>
     const int PatchSizeLimit = 200_000;
 

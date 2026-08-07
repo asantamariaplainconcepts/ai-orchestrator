@@ -20,4 +20,12 @@ sealed class ProjectCatalog(ProjectsDbContext database) : IProjectCatalog
             .Projects.Where(project => project.Id == projectId)
             .Select(project => (string?)project.Name)
             .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<Guid>> ActiveProjectIds(
+        CancellationToken cancellationToken = default
+    ) =>
+        await database
+            .Projects.Where(project => project.ArchivedAt == null)
+            .Select(project => project.Id)
+            .ToListAsync(cancellationToken);
 }

@@ -22,4 +22,13 @@ public interface IProjectCatalog
 
     /// <summary>The Project's display name, or null when it does not exist.</summary>
     Task<string?> Name(Guid projectId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Every active Project's id (inbox-open-prs). Exists for cross-project surfaces whose caller
+    /// may see everything: <c>IProjectPermissions.VisibleProjects</c> answers null for the owner
+    /// and the self-host habitat precisely so "all" costs no query — which leaves such a surface
+    /// with no list to iterate, and a per-project vendor read needs one. Archived projects are
+    /// excluded: their repositories are not anyone's review queue.
+    /// </summary>
+    Task<IReadOnlyList<Guid>> ActiveProjectIds(CancellationToken cancellationToken = default);
 }

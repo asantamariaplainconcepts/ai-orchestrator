@@ -382,6 +382,43 @@ const routes: [string, RegExp, Handler][] = [
   ],
   [
     "GET",
+    /^\/api\/inbox\/changes$/,
+    // The review queue's four states in one answer (inbox-open-prs): entries, a product-created
+    // one linking its Run, and a per-project refusal beside working rows — the empty state is
+    // reachable by a project with nothing open, which Beta plays here.
+    () => ({
+      changes: [
+        {
+          projectId: projectAlpha,
+          projectName: "Alpha portal",
+          number: 118,
+          title: "feat(portal): the estimate explains itself on the story",
+          url: "https://github.com/acme/portal/pull/118",
+          createdAt: new Date(Date.now() - 40 * 60_000).toISOString(),
+          // The product's own: matches runs[0]'s recorded output link below.
+          runId: runs[0]?.id ?? null,
+        },
+        {
+          projectId: projectAlpha,
+          projectName: "Alpha portal",
+          number: 117,
+          title: "chore(deps): bump the ui-theme package",
+          url: "https://github.com/acme/portal/pull/117",
+          createdAt: new Date(Date.now() - 26 * 3_600_000).toISOString(),
+          runId: null,
+        },
+      ],
+      refusals: [
+        {
+          projectId: projectBeta,
+          projectName: "Beta warehouse",
+          reason: "the API rate limit was exceeded",
+        },
+      ],
+    }),
+  ],
+  [
+    "GET",
     /^\/api\/projects\/([^/]+)\/backlog$/,
     // A project created in this session has no Connector yet — the state the settings form's
     // essentials-first shape (#220) and the onboarding checklist (#211) both exist for.
