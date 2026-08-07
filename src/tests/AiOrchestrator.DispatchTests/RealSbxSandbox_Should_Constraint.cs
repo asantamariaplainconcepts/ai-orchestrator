@@ -34,6 +34,7 @@ public class RealSbxSandbox_Should_Constraint
                 Memory = "4g",
                 InjectedSecrets = ["github"],
             },
+            new RunPreviewHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 

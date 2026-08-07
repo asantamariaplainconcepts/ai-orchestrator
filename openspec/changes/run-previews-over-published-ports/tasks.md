@@ -8,13 +8,17 @@
       so every existing row reads as no preview. The bound (1–65535) is validated at save, where
       the Admin is looking, rather than by docker at Run time in front of somebody who did not
       choose the number.)
-- [ ] 1.2 The sandbox host publishes that port when it creates the sandbox — `-p <sandboxPort>`
+- [x] 1.2 The sandbox host publishes that port when it creates the sandbox — `-p <sandboxPort>`
       with the host port **omitted**, which is the ephemeral form (`-p 0:` is rejected outright:
-      "port 0 out of range"), then reads back the allocated host port.
-- [ ] 1.3 The allocated port is recorded in a per-process ledger beside the pods ledger, written
+      "port 0 out of range"), then reads back the allocated host port. (A preview that cannot be
+      resolved is logged and the Run proceeds WITHOUT one — the agent's work is the Run, and a
+      missing window is a missing window, not a failure.)
+- [x] 1.3 The allocated port is recorded in a per-process ledger beside the pods ledger, written
       on publish and removed in the same `finally` that disposes the sandbox — so no code path
       exists in which a record outlives its sandbox. A test that cancels mid-Run asserts the
-      record is gone.
+      record is gone. (`RunPreviewHost`, in memory for the pods ledger's stated reason. Removal
+      happens BEFORE disposal is attempted, so a failed removal cannot leave a reachable-looking
+      entry pointing at a port nothing serves.)
 
 ## 2. The read that cannot lie (design D2)
 

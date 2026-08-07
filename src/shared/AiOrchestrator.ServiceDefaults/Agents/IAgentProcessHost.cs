@@ -33,7 +33,13 @@ public interface IAgentProcessHost
         IReadOnlyDictionary<string, string> environment,
         TimeSpan timeout,
         CancellationToken cancellationToken,
-        Action<string>? onOutput = null
+        Action<string>? onOutput = null,
+        /// <summary>
+        /// Publish this for the life of the agent, where the host can (run-previews). A host with
+        /// no sandbox has no port to publish and ignores it; the preview read then answers "not
+        /// hosted here" rather than implying the Run failed to make one.
+        /// </summary>
+        BuildingBlocks.Agents.RunPreview? preview = null
     );
 
     /// <summary>
