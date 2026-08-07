@@ -99,7 +99,12 @@ public class RunLog_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
 
         var log = await Log(runId);
         log!.Complete.ShouldBeTrue();
-        log.Content.ShouldBe("reading the story\nweighing options\nwriting the comment");
+        // The executor's runtime header (project-runtimes #244, design D2) opens every
+        // transcript; the agent's own lines follow untouched.
+        log.Content.ShouldBe(
+            "Runtime 'ClaudeCodeHeadless' — credential source: deployment.\n"
+                + "reading the story\nweighing options\nwriting the comment"
+        );
     }
 
     [Fact]
@@ -129,15 +134,18 @@ public class RunLog_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ARunWithNoOutput_Should_ServeAnEmptyCompleteLog()
+    public async Task ARunWithNoOutput_Should_ServeOnlyTheRuntimeHeaderMarkedComplete()
     {
         fixture.Agent.Result = new AgentResult(true, "", null, null);
 
         var runId = await DispatchAndExecute();
 
+        // The agent wrote nothing, so the transcript is exactly the executor's runtime header
+        // (#244, design D2) — still served complete, never a hanging stream. The trailing
+        // newline is the fake forwarding its one empty line, as the real wrappers would.
         var log = await Log(runId);
         log!.Complete.ShouldBeTrue();
-        log.Content.ShouldBe(string.Empty);
+        log.Content.ShouldBe("Runtime 'ClaudeCodeHeadless' — credential source: deployment.\n");
     }
 
     sealed record ProjectResponse(Guid Id, string Name);

@@ -24,7 +24,8 @@ export interface Automation {
   /** null means "any state" — the trigger places no state constraint. */
   triggerState: string | null;
   action: AutomationAction;
-  runtime: AgentRuntime;
+  /** Null means the Project default, resolved at execution time (#244). */
+  runtime: AgentRuntime | null;
   requiresApproval: boolean;
   timeoutMinutes: number;
   enabled: boolean;
@@ -38,7 +39,7 @@ export interface CreateAutomationRequest {
   triggerLabel: string;
   triggerState: string | null;
   action: AutomationAction;
-  runtime: AgentRuntime;
+  runtime: AgentRuntime | null;
   requiresApproval: boolean;
   timeoutMinutes: number | null;
   /** Grill only: where the readiness document lives. Null means the framework's convention. */

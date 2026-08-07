@@ -21,13 +21,13 @@ public class OpenCodeRuntime_Should_Constraint
             CommandPath = script,
         };
 
-    static AgentInstruction Instruction() =>
+    static AgentInstruction Instruction(AgentCredentials? credentials = null) =>
         new(
             "irrelevant",
             "RepositoryPrompt",
             TimeSpan.FromSeconds(30),
             Path.GetTempPath(),
-            new AgentCredentials("token", string.Empty)
+            credentials ?? new AgentCredentials("token", string.Empty)
         );
 
     static async Task<string> Script(string body)
@@ -111,6 +111,42 @@ public class OpenCodeRuntime_Should_Constraint
         result.Succeeded.ShouldBeFalse();
         result.Log.ShouldContain("garbage-not-json");
         result.Usage.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task EmptyCredentials_Should_NeverBeExportedIntoTheProcessEnvironment()
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        // #244 AC6 / design D5 — the shadowing defect's pin: a Local Run resolves no vendor
+        // token, and a variable EXPORTED EMPTY shadows whatever auth the host's own tooling
+        // holds. Set-to-empty is what the defect looked like, so set-to-empty is what the script
+        // reports — a value the host shell happens to export is inheritance, not shadowing.
+        var script = await Script(
+            """
+            g=ok; [ -n "${GITHUB_TOKEN+x}" ] && [ -z "$GITHUB_TOKEN" ] && g=empty
+            k=ok; [ -n "${OPENCODE_API_KEY+x}" ] && [ -z "$OPENCODE_API_KEY" ] && k=empty
+            echo "{\"type\":\"text\",\"timestamp\":1,\"sessionID\":\"s\",\"part\":{\"type\":\"text\",\"text\":\"github:$g key:$k gv:${GITHUB_TOKEN-none} kv:${OPENCODE_API_KEY-none}\"}}"
+            """
+        );
+
+        var bare = await Runtime(script)
+            .Execute(
+                Instruction(new AgentCredentials(string.Empty, string.Empty)),
+                CancellationToken.None
+            );
+        bare.Log.ShouldStartWith("github:ok key:ok");
+
+        // And the mirror: a real value still travels — absence is about emptiness, not the vars.
+        var credentialed = await Runtime(script)
+            .Execute(
+                Instruction(new AgentCredentials("vendor-token", "ai-key")),
+                CancellationToken.None
+            );
+        credentialed.Log.ShouldBe("github:ok key:ok gv:vendor-token kv:ai-key");
     }
 
     [Fact]
