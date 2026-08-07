@@ -61,7 +61,15 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
         {
             run.ToTable("runs");
             run.HasKey(entity => entity.Id);
-            run.Property(entity => entity.VendorStoryId).HasMaxLength(200).IsRequired();
+            // Nullable since run-on-a-pr: a change-targeted Run has no Story, by shape.
+            run.Property(entity => entity.VendorStoryId).HasMaxLength(200);
+
+            // The change target (run-on-a-pr). Sizes mirror their story-side cousins.
+            run.Property(entity => entity.TargetChangeUrl).HasMaxLength(500);
+            run.Property(entity => entity.TargetChangeTitle).HasMaxLength(500);
+            run.Property(entity => entity.TargetChangeBranch).HasMaxLength(200);
+            run.Property(entity => entity.Instruction).HasMaxLength(65536);
+            run.Property(entity => entity.RuntimeName).HasMaxLength(50);
 
             // Names, not ordinals — the same self-describing-column rule Projects adopted
             // after #7's "0" projection.
@@ -83,6 +91,14 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
             // written out so the day a terminal state exists, this index already excludes it
             // only if someone consciously edits the list — the rule stays chosen, not drifted.
             run.HasIndex(entity => new { entity.ProjectId, entity.VendorStoryId })
+                .IsUnique()
+                .HasFilter(RunStates.ActiveStateFilter());
+
+            // The BR-001 analogue for change-targeted Runs (run-on-a-pr): one active Run per
+            // change, generated from the same state list so the two rules cannot drift. Each
+            // rule's index covers only rows where its identity column is non-null, which is why
+            // story Runs and change Runs cannot contend by construction.
+            run.HasIndex(entity => new { entity.ProjectId, entity.TargetChangeNumber })
                 .IsUnique()
                 .HasFilter(RunStates.ActiveStateFilter());
 

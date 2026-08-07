@@ -15,17 +15,9 @@ sealed class Run : Aggregate
 {
     Run() { }
 
-    Run(
-        Guid projectId,
-        string vendorStoryId,
-        Guid automationId,
-        RunLocus locus,
-        DateTimeOffset createdAt
-    )
+    Run(Guid projectId, RunLocus locus, DateTimeOffset createdAt)
     {
         ProjectId = projectId;
-        VendorStoryId = vendorStoryId;
-        AutomationId = automationId;
         Locus = locus;
         State = RunState.Queued;
         CreatedAt = createdAt;
@@ -33,9 +25,38 @@ sealed class Run : Aggregate
 
     public Guid ProjectId { get; private set; }
 
-    public string VendorStoryId { get; private set; } = string.Empty;
+    /// <summary>Null exactly when this Run targets a change instead (run-on-a-pr).</summary>
+    public string? VendorStoryId { get; private set; }
 
-    public Guid AutomationId { get; private set; }
+    /// <summary>Null exactly when this Run targets a change: ad-hoc text has no Automation.</summary>
+    public Guid? AutomationId { get; private set; }
+
+    /// <summary>
+    /// The open change this Run updates, or null for a story Run. A Run targets exactly one of a
+    /// Story or a change — never both, never neither — and the two Create shapes are the whole of
+    /// that invariant's enforcement.
+    /// </summary>
+    public int? TargetChangeNumber { get; private set; }
+
+    public string? TargetChangeUrl { get; private set; }
+
+    /// <summary>The change's title at launch, for the Agent's framing and the surfaces' label.</summary>
+    public string? TargetChangeTitle { get; private set; }
+
+    /// <summary>The change's head branch at launch — what the workspace checks out by name.</summary>
+    public string? TargetChangeBranch { get; private set; }
+
+    /// <summary>
+    /// The Member's ad-hoc instruction, recorded on the Run (a record, never configuration): the
+    /// prompt body a change Run executes, readable in its detail afterwards.
+    /// </summary>
+    public string? Instruction { get; private set; }
+
+    /// <summary>
+    /// The runtime the launch named, or null for the default — a change Run has no Automation to
+    /// carry one (design D4).
+    /// </summary>
+    public string? RuntimeName { get; private set; }
 
     public RunState State { get; private set; }
 
@@ -53,7 +74,34 @@ sealed class Run : Aggregate
         Guid automationId,
         RunLocus locus,
         DateTimeOffset createdAt
-    ) => new(projectId, vendorStoryId, automationId, locus, createdAt);
+    ) =>
+        new(projectId, locus, createdAt)
+        {
+            VendorStoryId = vendorStoryId,
+            AutomationId = automationId,
+        };
+
+    /// <summary>The change-targeted shape (run-on-a-pr): no Story, no Automation, one change.</summary>
+    public static Run CreateForChange(
+        Guid projectId,
+        int changeNumber,
+        string changeUrl,
+        string changeTitle,
+        string changeBranch,
+        string instruction,
+        string? runtimeName,
+        RunLocus locus,
+        DateTimeOffset createdAt
+    ) =>
+        new(projectId, locus, createdAt)
+        {
+            TargetChangeNumber = changeNumber,
+            TargetChangeUrl = changeUrl,
+            TargetChangeTitle = changeTitle,
+            TargetChangeBranch = changeBranch,
+            Instruction = instruction,
+            RuntimeName = runtimeName,
+        };
 
     public void MarkDispatched(DateTimeOffset at) => DispatchedAt = at;
 

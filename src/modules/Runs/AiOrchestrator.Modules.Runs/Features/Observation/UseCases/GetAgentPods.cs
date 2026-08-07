@@ -66,7 +66,7 @@ sealed class GetAgentPods : IUseCase
         Guid RunId,
         Guid ProjectId,
         string? ProjectName,
-        string VendorStoryId,
+        string? VendorStoryId,
         string? TriggerLabel,
         string? Runtime,
         bool Executing,
@@ -122,11 +122,9 @@ sealed class GetAgentPods : IUseCase
                         names[run.ProjectId] = projectName;
                     }
 
-                    var automation = await automations.Detail(
-                        run.ProjectId,
-                        run.AutomationId,
-                        cancellationToken
-                    );
+                    var automation = run.AutomationId is { } automationId
+                        ? await automations.Detail(run.ProjectId, automationId, cancellationToken)
+                        : null;
 
                     entries.Add(
                         new PodView(

@@ -291,8 +291,8 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
 
     sealed record RunRow(
         Guid Id,
-        string VendorStoryId,
-        Guid AutomationId,
+        string? VendorStoryId,
+        Guid? AutomationId,
         string State,
         DateTimeOffset? DispatchedAt
     );

@@ -175,11 +175,14 @@ sealed class RunExecutor(
             return false;
         }
 
-        var automation = await automations.Detail(
-            run.ProjectId,
-            run.AutomationId,
-            cancellationToken
-        );
+        // A change-targeted Run never plans: the launch is the human intent (run-on-a-pr,
+        // UC-012's reasoning), and there is no Automation to carry an approval flag anyway.
+        if (run.AutomationId is not { } automationId)
+        {
+            return false;
+        }
+
+        var automation = await automations.Detail(run.ProjectId, automationId, cancellationToken);
         return automation?.RequiresApproval ?? false;
     }
 
@@ -204,11 +207,13 @@ sealed class RunExecutor(
     /// </summary>
     async Task<string?> HandOn(Run run, CancellationToken cancellationToken)
     {
-        var automation = await automations.Detail(
-            run.ProjectId,
-            run.AutomationId,
-            cancellationToken
-        );
+        // Labels are a Story concept: a change-targeted Run has nothing to hand on to (run-on-a-pr).
+        if (run.AutomationId is not { } automationId || run.VendorStoryId is not { } vendorStoryId)
+        {
+            return null;
+        }
+
+        var automation = await automations.Detail(run.ProjectId, automationId, cancellationToken);
 
         // No default any more (#162): the grill was the one action that defaulted an output label,
         // and with the catalogue gone an Automation that names none hands nothing on. What it hands
@@ -221,7 +226,7 @@ sealed class RunExecutor(
         {
             var refusal = await storyWriter.ApplyLabel(
                 run.ProjectId,
-                run.VendorStoryId,
+                vendorStoryId,
                 label,
                 cancellationToken
             );
@@ -259,20 +264,32 @@ sealed class RunExecutor(
         CancellationToken cancellationToken
     )
     {
-        var story = await stories.Find(run.ProjectId, run.VendorStoryId, cancellationToken);
-        if (story is null)
-        {
-            return new Outcome(Failure("The mirrored story no longer exists."));
-        }
+        // The target fork (run-on-a-pr, design D4): a change Run has no Story to read and no
+        // Automation to load — its instruction is recorded on the Run, its runtime was named at
+        // launch or defaults, and its branch is the change's own. Everything after this block —
+        // credentials, transcript, usage, terminal states — is one path again.
+        var targetsChange = run.TargetChangeNumber is not null;
 
-        var automation = await automations.Detail(
-            run.ProjectId,
-            run.AutomationId,
-            cancellationToken
-        );
-        if (automation is null)
+        AutomationDetail? automation = null;
+        StorySnapshot? story = null;
+
+        if (!targetsChange)
         {
-            return new Outcome(Failure("The automation is no longer enabled on this project."));
+            story = await stories.Find(run.ProjectId, run.VendorStoryId!, cancellationToken);
+            if (story is null)
+            {
+                return new Outcome(Failure("The mirrored story no longer exists."));
+            }
+
+            automation = await automations.Detail(
+                run.ProjectId,
+                run.AutomationId!.Value,
+                cancellationToken
+            );
+            if (automation is null)
+            {
+                return new Outcome(Failure("The automation is no longer enabled on this project."));
+            }
         }
 
         var connector = await connectors.Find(run.ProjectId, cancellationToken);
@@ -282,11 +299,13 @@ sealed class RunExecutor(
         }
 
         // Selection is composition (opencode-runtime D1): the Automation's runtime names the
-        // implementation and its credential — which MAY be absent for free providers (D3).
-        var selection = runtimes.For(automation.Runtime);
+        // implementation and its credential — which MAY be absent for free providers (D3). A
+        // change Run carries the name the launch chose, or the same default the form defaults to.
+        var runtimeName = automation?.Runtime ?? run.RuntimeName ?? "ClaudeCodeHeadless";
+        var selection = runtimes.For(runtimeName);
         if (selection is null)
         {
-            return new Outcome(Failure($"No runtime named '{automation.Runtime}' is registered."));
+            return new Outcome(Failure($"No runtime named '{runtimeName}' is registered."));
         }
 
         var vendorToken = string.Empty;
@@ -311,36 +330,69 @@ sealed class RunExecutor(
             return new Outcome(Failure($"Credential could not be resolved: {exception.Message}"));
         }
 
-        // One description, shared with the conversation path (#189, design D3) — so a prompt tried
-        // in the scratchpad is tried against the input the Run will give it.
-        var context = StoryDescription.Of(story);
-
-        // The prompt is read before the workspace, because both of its refusals must land before any
-        // money is spent — cloning to discover a file is missing is spend for nothing (design D4).
-        var (body, refusal) = await RepositoryPrompt(run.ProjectId, automation, cancellationToken);
-        if (refusal is not null)
+        string instruction;
+        if (targetsChange)
         {
-            return new Outcome(Failure(refusal));
+            // The Member's ad-hoc text is the prompt body (run-on-a-pr); the orchestrator adds
+            // only the change's framing — which change, which branch — the way it only ever adds
+            // a Story's framing. Pushing the result is the Agent's own act (DEC-062).
+            instruction =
+                $"{run.Instruction}\n\nYou are working on the open pull request "
+                + $"#{run.TargetChangeNumber} (\"{run.TargetChangeTitle}\") of this repository. "
+                + $"The workspace is already on its head branch '{run.TargetChangeBranch}'. "
+                + "Commit your work and push it to that same branch; do not open a new pull "
+                + "request and do not create a new branch.";
         }
+        else
+        {
+            // One description, shared with the conversation path (#189, design D3) — so a prompt
+            // tried in the scratchpad is tried against the input the Run will give it.
+            var context = StoryDescription.Of(story!);
 
-        // What the orchestrator still says, and it is only ever framing: which story, which phase,
-        // and the approved plan when there is one. What to *do* is entirely the project's prompt.
-        var instruction = planning
-            ? $"{body}\n\n{context}\n\nThis is a planning phase: a human will review what you "
-                + "produce before any work is carried out."
-            : $"{body}\n\n{context}\n\n{PlanSection(run.Plan)}".TrimEnd();
+            // The prompt is read before the workspace, because both of its refusals must land
+            // before any money is spent — cloning to discover a file is missing is spend for
+            // nothing (design D4).
+            var (body, refusal) = await RepositoryPrompt(
+                run.ProjectId,
+                automation!,
+                cancellationToken
+            );
+            if (refusal is not null)
+            {
+                return new Outcome(Failure(refusal));
+            }
+
+            // What the orchestrator still says, and it is only ever framing: which story, which
+            // phase, and the approved plan when there is one. What to *do* is entirely the
+            // project's prompt.
+            instruction = planning
+                ? $"{body}\n\n{context}\n\nThis is a planning phase: a human will review what you "
+                    + "produce before any work is carried out."
+                : $"{body}\n\n{context}\n\n{PlanSection(run.Plan)}".TrimEnd();
+        }
 
         // The workspace is the locus decision (#210, design D1): same queue, same worker, same
         // runtime — a Local run works in the Connector's folder, a Pod run in a fresh clone.
         if (run.Locus == RunLocus.Local)
         {
+            if (targetsChange)
+            {
+                // Scoped out at grill: a local Run never pushes (BR-016's lane), and a change Run
+                // whose work cannot reach the change is a promise the record would break.
+                return new Outcome(
+                    Failure(
+                        "A change-targeted Run executes on the pod lane; the local lane never pushes."
+                    )
+                );
+            }
+
             // Said where a reader will look for it: the transcript (BR-016's companion promise).
             onOutput(
                 $"Running as a local process against '{connector.LocalPath}' — the host's own "
                     + "credentials; no vendor token was resolved for this run."
             );
 
-            var branch = $"ai/{run.VendorStoryId}-{Slug(story.Title)}";
+            var branch = $"ai/{run.VendorStoryId}-{Slug(story!.Title)}";
             var local = await localWorkspace.Prepare(
                 connector.LocalPath!,
                 branch,
@@ -361,7 +413,7 @@ sealed class RunExecutor(
             var localResult = await selection.Runtime.Execute(
                 new AgentInstruction(
                     instruction,
-                    automation.Action,
+                    automation!.Action,
                     automation.Timeout,
                     local.Value.Path,
                     new AgentCredentials(vendorToken, aiKey),
@@ -374,7 +426,7 @@ sealed class RunExecutor(
             // owner's checkout. A commit that fails turns a claimed success into the truth.
             var concluded = await localWorkspace.Conclude(
                 local.Value,
-                $"ai: {story.Title}",
+                $"ai: {story!.Title}",
                 localResult.Succeeded,
                 cancellationToken
             );
@@ -386,12 +438,18 @@ sealed class RunExecutor(
             return new Outcome(localResult);
         }
 
-        var prepared = await workspace.Prepare(
-            new CodeCoordinates(connector.Owner, connector.Repository),
-            run.Id,
-            vendorToken,
-            cancellationToken
-        );
+        // A change Run is prepared on the change's own head branch — the named-branch checkout
+        // the install path already performs — instead of cutting a fresh run/<id> branch. The
+        // push stays the Agent's own act either way (DEC-062).
+        var coordinates = new CodeCoordinates(connector.Owner, connector.Repository);
+        var prepared = targetsChange
+            ? await workspace.Prepare(
+                coordinates,
+                run.TargetChangeBranch!,
+                vendorToken,
+                cancellationToken
+            )
+            : await workspace.Prepare(coordinates, run.Id, vendorToken, cancellationToken);
         if (prepared.IsError)
         {
             // Stage-named refusal (design D4): the reason says "clone", not "something".
@@ -401,8 +459,8 @@ sealed class RunExecutor(
         var agentResult = await selection.Runtime.Execute(
             new AgentInstruction(
                 instruction,
-                automation.Action,
-                automation.Timeout,
+                automation?.Action ?? "ChangeInstruction",
+                automation?.Timeout ?? DefaultChangeTimeout,
                 prepared.Value.Path,
                 new AgentCredentials(vendorToken, aiKey),
                 onOutput
@@ -415,6 +473,13 @@ sealed class RunExecutor(
         // longer a consequence sitting between the spend and the record.
         return new Outcome(agentResult);
     }
+
+    /// <summary>
+    /// BR-005's default, for the Run kind that has no Automation to carry a configured one
+    /// (run-on-a-pr): the same thirty minutes an Automation gets when its Admin leaves the
+    /// field blank.
+    /// </summary>
+    static readonly TimeSpan DefaultChangeTimeout = TimeSpan.FromMinutes(30);
 
     /// <summary>
     /// The story's title as a branch-safe fragment: lowercase alphanumerics and dashes, bounded.

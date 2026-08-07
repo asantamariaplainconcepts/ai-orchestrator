@@ -40,8 +40,8 @@ sealed class ListRuns : IUseCase
 
     internal sealed record Response(
         Guid Id,
-        string VendorStoryId,
-        Guid AutomationId,
+        string? VendorStoryId,
+        Guid? AutomationId,
         string State,
         DateTimeOffset CreatedAt,
         DateTimeOffset? DispatchedAt,
@@ -61,7 +61,13 @@ sealed class ListRuns : IUseCase
         /// <summary>The host folder a Local run worked in; null for Pod runs.</summary>
         string? WorkingFolder,
         /// <summary>The branch a Local run left behind — its output, where Pod runs carry a PR.</summary>
-        string? BranchName
+        string? BranchName,
+        /// <summary>The open change a change-targeted Run updates (run-on-a-pr); null for story Runs.</summary>
+        int? TargetChangeNumber = null,
+        string? TargetChangeUrl = null,
+        string? TargetChangeTitle = null,
+        /// <summary>The ad-hoc instruction a change Run executed — its record, readable here.</summary>
+        string? Instruction = null
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -106,7 +112,11 @@ sealed class ListRuns : IUseCase
                     run.DismissedAt,
                     run.Locus.ToString(),
                     run.WorkingFolder,
-                    run.BranchName
+                    run.BranchName,
+                    run.TargetChangeNumber,
+                    run.TargetChangeUrl,
+                    run.TargetChangeTitle,
+                    run.Instruction
                 )),
             ];
         }

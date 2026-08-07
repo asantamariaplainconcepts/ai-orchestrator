@@ -16,6 +16,17 @@ public interface IChangeFileReader
         string vendorStoryId,
         CancellationToken cancellationToken = default
     );
+
+    /// <summary>
+    /// The same view for a change known by number (run-on-a-pr): a change-targeted Run already
+    /// holds its number, so resolving through a Story it does not have would be a detour through
+    /// an absence. Null when the change cannot be read.
+    /// </summary>
+    Task<ChangeFiles?> ForChange(
+        Guid projectId,
+        int changeNumber,
+        CancellationToken cancellationToken = default
+    );
 }
 
 public sealed record ChangeFiles(int Number, string Url, IReadOnlyList<ChangedFileView> Files);
