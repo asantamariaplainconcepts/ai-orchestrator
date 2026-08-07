@@ -39,6 +39,6 @@
 - [x] 5.1 Gates: csharpier, frontend, design validator, production build; module suites local.
 - [x] 5.2 Mock mode: settings surface, the form's default option, the dialog pre-selection —
       explicit `resize_window` first (the viewport lesson).
-- [ ] 5.3 CI green on the PR head (verified job-by-job), at sync.
+- [x] 5.3 CI green on the PR head (verified job-by-job), at sync.
 - [x] 5.4 AC6's real Local run: recorded as exercised only when actually run on this machine
       (ADR-0005); otherwise it ships as the stated hypothesis the unit pin backs.
