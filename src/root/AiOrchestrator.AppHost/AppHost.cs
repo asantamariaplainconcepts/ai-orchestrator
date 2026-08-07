@@ -1,25 +1,11 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-// The self-host output (#99, DEC-049): `aspire publish` emits docker-compose from this same
-// composition, so run mode and the distributable can never describe two different systems.
-// Publish-only — in run mode this adds nothing.
-//
-// Every compose fact lives on the resource it describes (#252): the environment itself carries
-// no file surgery, because a global patch block is where a removed service's name keeps living
-// after the service is gone — the dead `dispatch` entries this change deleted were exactly that.
 builder.AddDockerComposeEnvironment("compose");
 
-// PostgreSQL — one database, one schema per module.
-// The volume is named so the generated compose is byte-stable across machines — the default
-// name embeds a path hash, which would make the drift check (#99) fail wherever the checkout
-// path differs.
 var postgres = builder
     .AddPostgres("postgres")
     .WithDataVolume("aio-postgres-data")
-    // Two things `aspire run` does that raw compose does not, discovered by booting the output
-    // (#99): Aspire creates the AddDatabase database itself, and it health-gates startup.
-    // Declared here, on the container they describe — without them, migrations raced postgres
-    // and then failed against a database nothing had created.
+    .WithLifetime(ContainerLifetime.Persistent)
     .PublishAsDockerComposeService(
         (_, service) =>
         {
@@ -36,28 +22,10 @@ var postgres = builder
     );
 var database = postgres.AddDatabase("aiorchestratordb");
 
-// Azurite stands in for Azure Storage Queues, the Run dispatch substrate KEDA scales on
-// (DEC-013). It is here from day 0 so the queue contract is exercised locally, never mocked.
-//
-// Two shapes for one stand-in: run mode uses the Aspire emulator resource; publish mode adds
-// Azurite as a plain container, because AddAzureStorage in publish emits Azure provisioning —
-// and the compose output must contact zero Azure (#99 AC4). The connection string below is
-// Azurite's PUBLISHED well-known dev credential, the same constant every Azurite quickstart
-// carries — a documented emulator constant, not a secret (BR-010 untouched).
-// Neither shape composes one any more (#225, DEC-054): with no queue connection string the
-// Server's AddRunDispatch composes the outbox pair and consumes in its own process.
-
-// The Vite dev server exists only in run mode: published/deployed, the SPA is a build artifact
-// served same-origin by the Server from wwwroot, so the compose output must not carry it (#99).
 var frontend = builder.ExecutionContext.IsRunMode
     ? builder.AddViteApp("frontend", "../../frontend").WithPnpm()
     : null;
 
-// Migrations are a bootstrap step in the composition graph, not a side effect of the Server
-// starting: this resource runs once against a healthy database and exits, and the Server waits
-// for its completion. That ordering is what makes a fresh clone — or a deleted data volume —
-// boot with an up-to-date schema, deterministically, in dev and E2E alike. In production the
-// same executable runs as a deploy job (#8); the Server never migrates anywhere.
 var migrations = builder
     .AddProject<Projects.AiOrchestrator_MigrationService>("migrations")
     .WithReference(database)
@@ -65,25 +33,10 @@ var migrations = builder
     .PublishAsDockerComposeService(
         (_, service) =>
         {
-            // The distribution story is clone + `docker compose up`, images published by CI
-            // (#257, DEC-049's published-images lane): the operator pulls, builds nothing —
-            // no Dockerfile exists to build. The tag is overridable in the operator's .env;
-            // the inline default keeps the quickstart at zero new variables.
             service.Image = PublishedImage("migrations");
-
-            // Waiting for a HEALTHY postgres is this dependent's requirement (#99): plain
-            // depends_on starts it against a database still initialising.
             WaitForHealthyPostgres(service);
         }
     );
-
-// No dispatch worker here. It exists to drain a queue, and this habitat has none: the Server
-// consumes the outbox in its own process, which is the container this change removes. The
-// project still builds and still deploys — the Azure template composes it from its own file.
-
-// The server's endpoints come from its launchSettings "http" profile — without that profile the
-// resource has no named endpoint and nothing can resolve it. ASPNETCORE_ENVIRONMENT is left out
-// of that profile on purpose, so the AppHost and the E2E fixture stay in charge of it.
 
 var server = builder
     .AddProject<Projects.AiOrchestrator_Server>("server")
@@ -95,28 +48,17 @@ var server = builder
         (_, service) =>
         {
             service.Image = PublishedImage("server");
-
-            // A fixed host mapping: the quickstart says "open localhost:$SERVER_PORT", which a
-            // random host port would turn into a scavenger hunt (#99).
             service.Ports = ["${SERVER_PORT}:${SERVER_PORT}"];
 
             WaitForHealthyPostgres(service);
         }
     );
 
-// Deliberately no queue connection string on the Server: its absence is the configuration that
-// composes the outbox substrate and its in-process consumer (ADR-0010 — asked, never inferred).
-
 if (frontend is not null)
 {
-    // Same-origin in dev: the host proxies unmatched paths to the Vite dev server.
     server.WithReference(frontend);
 }
 
-// The AppHost owning the environment is the other half of that launchSettings decision — and the
-// half that was missing: with neither party setting it, the Server silently ran as Production
-// under `aspire run`, which skipped the dev conveniences and proxied nothing to Vite. Run mode
-// means development; the E2E fixture's own WithEnvironment lands later and therefore wins.
 if (builder.ExecutionContext.IsRunMode)
 {
     server.WithEnvironment("ASPNETCORE_ENVIRONMENT", "Development");
