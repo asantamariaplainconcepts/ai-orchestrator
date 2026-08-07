@@ -15,6 +15,7 @@ public class OpenCodeRuntime_Should_Constraint
     static OpenCodeRuntime Runtime(string script) =>
         new(
             new OpenCodeOptions { Model = "opencode/deepseek-v4-flash-free" },
+            new LocalAgentProcessHost(),
             NullLogger<OpenCodeRuntime>.Instance
         )
         {

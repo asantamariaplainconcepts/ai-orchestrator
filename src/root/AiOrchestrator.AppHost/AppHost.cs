@@ -34,10 +34,18 @@ if (builder.ExecutionContext.IsRunMode)
 
     var habitat = builder.Configuration["Parameters:habitat"] ?? "local";
 
+    // Opt-in, and only in the dev loop: the server shape isolates whole Runs in pods already,
+    // and a habitat naming both substrates is refused at startup.
+    var sandboxAgents = string.Equals(
+        builder.Configuration["Parameters:sandbox"],
+        "true",
+        StringComparison.OrdinalIgnoreCase
+    );
+
     switch (habitat)
     {
         case "local":
-            AppHostHabitats.DeclareDevLoop(server);
+            AppHostHabitats.DeclareDevLoop(server, sandboxAgents);
             break;
         case "server":
             AppHostHabitats.DeclareServerShape(server);

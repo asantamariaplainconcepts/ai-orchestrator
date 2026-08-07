@@ -4,7 +4,7 @@ import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { CopyLine } from "@/shared/ui/copy-line";
-import { runtimeNotReady, type RuntimeRow, type RuntimesView } from "./usePods";
+import { type AgentHostRow, runtimeNotReady, type RuntimeRow, type RuntimesView } from "./usePods";
 
 /**
  * The agent runtimes of the process that executes Runs (#279) — the pods panel's sibling
@@ -12,6 +12,10 @@ import { runtimeNotReady, type RuntimeRow, type RuntimesView } from "./usePods";
  * runtime's CLI is absent or its named secret resolves to nothing. Each not-ready row carries
  * its remedy, and the remedy for a missing CLI is copyable — the same command the failure
  * reason names, because both read the one place the sentences live.
+ *
+ * Where those runtimes live is now a habitat's choice, decided when the server starts, so the
+ * host is named above the rows: the rows describe THAT machine, and reading them without
+ * knowing which one would be reading them about the wrong place.
  */
 export function RuntimesReadiness({ view }: { view: RuntimesView }) {
   if (!view.hosted) return null;
@@ -23,6 +27,7 @@ export function RuntimesReadiness({ view }: { view: RuntimesView }) {
         <span className="text-xs text-muted-foreground">{t("pods.onThisMachine")}</span>
       </span>
       <Card className="gap-0 py-0">
+        {view.host ? <AgentHostRowItem host={view.host} /> : null}
         {view.runtimes.length === 0 ? (
           <p className="px-4 py-3 text-sm text-muted-foreground">{t("runtimes.empty")}</p>
         ) : (
@@ -33,6 +38,41 @@ export function RuntimesReadiness({ view }: { view: RuntimesView }) {
           </ul>
         )}
       </Card>
+    </div>
+  );
+}
+
+/**
+ * The machine the runtimes below describe. Its state is not decoration: while it cannot answer,
+ * every row under it is moot, so its remedy is the one to apply first — said in that order.
+ */
+function AgentHostRowItem({ host }: { host: AgentHostRow }) {
+  return (
+    <div className="flex flex-col gap-1.5 border-b bg-muted/40 px-3.5 py-2.5">
+      <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        {host.ready ? (
+          <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
+            {t("runtimes.ready")}
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">
+            <TriangleAlert aria-hidden="true" className="size-3" />
+            {t("runtimes.hostNotReady")}
+          </Badge>
+        )}
+        <span className="min-w-0 flex-1 text-xs">
+          <span className="text-muted-foreground">{t("runtimes.hostLabel")}</span>{" "}
+          <span className="font-semibold">{host.where}</span>
+        </span>
+      </span>
+      {host.remedy ? (
+        <span className="flex flex-col gap-1.5">
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            {t("runtimes.hostNotReadyBody")}
+          </span>
+          <CopyLine text={host.remedy} />
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -91,11 +131,24 @@ function RuntimeRowItem({ runtime }: { runtime: RuntimeRow }) {
  */
 export function RuntimesUnavailableCard({ view }: { view: RuntimesView }) {
   if (!view.hosted) return null;
+  const hostDown = view.host?.ready === false ? view.host : null;
   const notReady = view.runtimes.filter(runtimeNotReady);
-  if (notReady.length === 0) return null;
+  if (!hostDown && notReady.length === 0) return null;
 
   return (
     <div className="flex flex-col gap-1.5">
+      {/* First, because while the host cannot answer the rows below it are moot. */}
+      {hostDown ? (
+        <div className="flex items-start gap-2.5 rounded-lg border border-warning/40 bg-warning/10 p-3">
+          <TriangleAlert aria-hidden="true" className="mt-0.5 size-3.5 shrink-0 text-warning" />
+          <span className="flex min-w-0 flex-col gap-1">
+            <span className="text-[13px] font-semibold">
+              {t("runtimes.hostLabel")} {hostDown.where} — {t("runtimes.hostNotReady")}
+            </span>
+            {hostDown.remedy ? <CopyLine text={hostDown.remedy} /> : null}
+          </span>
+        </div>
+      ) : null}
       {notReady.map((runtime) => (
         <div
           key={runtime.name}

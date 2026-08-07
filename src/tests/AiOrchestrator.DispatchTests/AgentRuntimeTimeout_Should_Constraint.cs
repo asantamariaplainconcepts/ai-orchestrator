@@ -32,7 +32,10 @@ public class AgentRuntimeTimeout_Should_Constraint
             UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
         );
 
-        var runtime = new ClaudeCodeHeadlessRuntime(NullLogger<ClaudeCodeHeadlessRuntime>.Instance)
+        var runtime = new ClaudeCodeHeadlessRuntime(
+            new LocalAgentProcessHost(),
+            NullLogger<ClaudeCodeHeadlessRuntime>.Instance
+        )
         {
             CommandPath = script,
         };
@@ -71,7 +74,10 @@ public class AgentRuntimeTimeout_Should_Constraint
             UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute
         );
 
-        var runtime = new ClaudeCodeHeadlessRuntime(NullLogger<ClaudeCodeHeadlessRuntime>.Instance)
+        var runtime = new ClaudeCodeHeadlessRuntime(
+            new LocalAgentProcessHost(),
+            NullLogger<ClaudeCodeHeadlessRuntime>.Instance
+        )
         {
             CommandPath = script,
         };

@@ -522,15 +522,23 @@ const routes: [string, RegExp, Handler][] = [
       // `?cliMissing` renders the missing-CLI remedy, `?secretMissing` the unresolvable secret.
       const cliMissing = search.has("cliMissing");
       const secretMissing = search.has("secretMissing");
+      // The sandboxing change: where agents run is a habitat's choice made at startup, so both
+      // shapes must be reachable. `?sandboxed` puts the agents in a per-Run sandbox;
+      // `?sandboxDown` adds the host being unreachable, which makes every runtime below moot.
+      const sandboxDown = search.has("sandboxDown");
+      const sandboxed = sandboxDown || search.has("sandboxed");
       return {
-        hosted: true,
+        // The two substrates are mutually exclusive by composition (the sandboxing change's
+        // D5 refuses a habitat naming both), so the fixture must not render an impossible
+        // machine: in sandbox mode the pod host is simply not hosted here.
+        hosted: !sandboxed,
         dockerReady: !down,
         imagePresent: down ? null : !noImage,
         checkedAt: at(0.3),
         retrySeconds: 30,
         maxConcurrentPods: 1,
         pods:
-          down || noImage
+          down || noImage || sandboxed
             ? []
             : [
                 {
@@ -576,6 +584,15 @@ const routes: [string, RegExp, Handler][] = [
               credentialReady: secretMissing ? false : null,
             },
           ],
+          host: sandboxed
+            ? {
+                where: "a per-Run sandbox on this machine",
+                ready: !sandboxDown,
+                remedy: sandboxDown
+                  ? "The sandbox daemon is not running, so no Run can execute here. Start it with `sbx daemon start`."
+                  : null,
+              }
+            : null,
         },
       };
     },

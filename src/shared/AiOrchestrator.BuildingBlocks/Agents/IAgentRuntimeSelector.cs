@@ -30,4 +30,15 @@ public sealed record AgentRuntimeSelection(
     string? CredentialSecretName,
     string Command,
     string InstallCommand
-);
+)
+{
+    /// <summary>
+    /// How the agent will authenticate, in words a transcript can carry: the values this Run
+    /// resolved, or a sandbox host that authenticates on the agent's behalf so no value enters
+    /// its reach. Composition knows which, because composition chose the host; the executor
+    /// writes it beside its other credential sentences, and a reader never has to infer whether
+    /// a secret entered the agent's reach.
+    /// </summary>
+    public string CredentialSource { get; init; } =
+        "the credentials resolved for this Run, in the agent process's environment";
+}

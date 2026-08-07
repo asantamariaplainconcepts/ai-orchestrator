@@ -25,6 +25,19 @@ export interface RuntimeRow {
   credentialReady: boolean | null;
 }
 
+/**
+ * Where the agents actually run, when that is not simply the orchestrator's own process. A
+ * habitat that executes agents in sandboxes has preconditions of its own, and a runtime's
+ * readiness means nothing until they are met — so this is read before the rows below it.
+ */
+export interface AgentHostRow {
+  /** Named in words: "this process", "a per-Run sandbox on this machine". */
+  where: string;
+  ready: boolean;
+  /** What to do when it is not ready — an action, never a value. */
+  remedy: string | null;
+}
+
 /** The runtimes of the process that executes Runs — beside the pods, because the operator's
  * question is one: "can this machine run my Automations?". */
 export interface RuntimesView {
@@ -32,6 +45,8 @@ export interface RuntimesView {
   checkedAt: string | null;
   retrySeconds: number;
   runtimes: RuntimeRow[];
+  /** Null where the question does not arise: the agents are this process's own children. */
+  host: AgentHostRow | null;
 }
 
 export interface AgentPodsView {
@@ -78,5 +93,8 @@ export function runtimeNotReady(runtime: RuntimeRow): boolean {
 
 /** The runtimes' half of the same question (#279), for the chip's warning dot. */
 export function runtimesBlocked(view: AgentPodsView | undefined): boolean {
-  return Boolean(view?.runtimes.hosted && view.runtimes.runtimes.some(runtimeNotReady));
+  return Boolean(
+    view?.runtimes.hosted &&
+    (view.runtimes.host?.ready === false || view.runtimes.runtimes.some(runtimeNotReady)),
+  );
 }

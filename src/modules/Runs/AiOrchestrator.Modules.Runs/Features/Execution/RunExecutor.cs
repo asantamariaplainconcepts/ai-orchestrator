@@ -347,6 +347,11 @@ sealed class RunExecutor(
             }
         }
 
+        // Both lanes, said once, where a reader looks for it: whether a credential value reaches
+        // the agent at all is a property of where it runs, and inferring it from silence is
+        // exactly what this sentence exists to prevent.
+        onOutput($"The agent is authenticating with {selection.CredentialSource}.");
+
         string instruction;
         if (targetsChange)
         {

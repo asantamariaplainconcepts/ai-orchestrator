@@ -69,8 +69,21 @@ sealed class GetAgentPods : IUseCase
         bool Hosted,
         DateTimeOffset? CheckedAt,
         int RetrySeconds,
-        IReadOnlyList<RuntimeView> Runtimes
+        IReadOnlyList<RuntimeView> Runtimes,
+        /// <summary>
+        /// The machine those runtimes describe, when it is not simply this process — a habitat
+        /// that executes agents in sandboxes has preconditions of its own, and a runtime's
+        /// readiness means nothing until they are met. Null where the question does not arise.
+        /// </summary>
+        AgentHostView? Host
     );
+
+    /// <summary>
+    /// Where the agents actually run, for a panel that must not imply this process (the
+    /// sandboxing change's D6): <paramref name="Where"/> names the machine in words,
+    /// <paramref name="Remedy"/> is the action when it is not ready — never a value.
+    /// </summary>
+    internal sealed record AgentHostView(string Where, bool Ready, string? Remedy);
 
     /// <summary>
     /// One runtime's readiness with its remedies attached: <paramref name="InstallCommand"/> is
@@ -197,7 +210,10 @@ sealed class GetAgentPods : IUseCase
                             state.CredentialSecretName,
                             state.CredentialReady
                         )),
-                    ]
+                    ],
+                    runtimesSnapshot.Host is { } agentHost
+                        ? new AgentHostView(agentHost.Where, agentHost.Ready, agentHost.Remedy)
+                        : null
                 )
             );
         }

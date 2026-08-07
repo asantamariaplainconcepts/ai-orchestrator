@@ -276,6 +276,13 @@ export const en = {
     "The named secret doesn't resolve in this machine's store. Add it, or clear the runtime's credential setting to use this machine's own session.",
   "runtimes.sessionAuth": "this machine's session",
   "runtimes.secret": "secret",
+  // Where the agents run is chosen when the server starts, and the rows above describe THAT
+  // machine — so it is stated before them rather than left to inference. A host that isn't
+  // ready makes every runtime below it moot, which is why its remedy comes first.
+  "runtimes.hostLabel": "Agents run in",
+  "runtimes.hostNotReady": "Not reachable",
+  "runtimes.hostNotReadyBody":
+    "Runs can't start until this is fixed — the runtimes below describe that machine, so their state is unknown while it can't answer.",
   // Composed: "Checked 20s · retries every 30s".
   "pods.checked": "Checked",
   "pods.retries": "retries every",

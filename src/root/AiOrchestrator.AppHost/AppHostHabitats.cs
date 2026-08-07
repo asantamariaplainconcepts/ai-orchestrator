@@ -4,8 +4,29 @@ static class AppHostHabitats
 {
     // The dev loop: a machine one person owns, worked on from the keyboard. Everything here exists
     // to make the first `aspire run` clickable and the local loop exercisable.
-    public static void DeclareDevLoop(IResourceBuilder<ProjectResource> server)
+    public static void DeclareDevLoop(IResourceBuilder<ProjectResource> server, bool sandboxAgents)
     {
+        // Where the agents run, asked rather than inferred (ADR-0010). The dev loop's default is
+        // the agent as a child of the Server process, which is what it has always been; naming
+        // the sandbox launcher moves the CLI into a per-Run microVM with the executor left
+        // outside. Opt-in on purpose: it needs sbx installed and its daemon running, and a
+        // developer who has not set that up must not have their loop start refusing Runs.
+        //
+        // This is also what makes the substrate exercisable from the keyboard at all — the
+        // failure ADR-0001 exists to prevent is shipping a habitat nobody ever ran.
+        if (sandboxAgents)
+        {
+            server.WithEnvironment("Agents__Sandbox__Launcher", "sbx");
+
+            // A machine where sbx is not on the Server process's PATH names it. Real case, not
+            // hypothetical: Docker's own brew cask refuses macOS versions past Sonoma, so a
+            // manual install under ~/.local/bin is the ordinary way to have it today.
+            if (Environment.GetEnvironmentVariable("SBX_PATH") is { Length: > 0 } sbxPath)
+            {
+                server.WithEnvironment("Agents__Sandbox__CommandPath", sbxPath);
+            }
+        }
+
         // The demo seeder runs only here (local-agent-loop design D3). No deployed template sets
         // this, and the seeder refuses without it — a property rather than a promise. A dev-loop
         // declaration, not a run-mode one: rehearsing the server shape means seeing the empty

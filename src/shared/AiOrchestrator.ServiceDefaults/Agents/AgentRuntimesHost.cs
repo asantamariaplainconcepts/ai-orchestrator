@@ -18,13 +18,15 @@ public sealed class AgentRuntimesHost(TimeProvider time) : IAgentRuntimesMonitor
 
     readonly Lock _gate = new();
     IReadOnlyList<AgentRuntimeState> _runtimes = [];
+    AgentHostState? _host;
     DateTimeOffset? _checkedAt;
 
-    public void RecordProbe(IReadOnlyList<AgentRuntimeState> runtimes)
+    public void RecordProbe(IReadOnlyList<AgentRuntimeState> runtimes, AgentHostState? host = null)
     {
         lock (_gate)
         {
             _runtimes = runtimes;
+            _host = host;
             _checkedAt = time.GetUtcNow();
         }
     }
@@ -38,7 +40,10 @@ public sealed class AgentRuntimesHost(TimeProvider time) : IAgentRuntimesMonitor
                 CheckedAt: _checkedAt,
                 ProbeInterval: ProbeInterval,
                 Runtimes: _runtimes
-            );
+            )
+            {
+                Host = _host,
+            };
         }
     }
 }
