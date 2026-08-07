@@ -25,7 +25,11 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
         IReadOnlyDictionary<string, string> environment,
         TimeSpan timeout,
         CancellationToken cancellationToken,
-        Action<string>? onOutput = null
+        Action<string>? onOutput = null,
+        // Ignored, and honestly so: a child process of this one has no port to publish. The
+        // preview read reports previews unhosted here, which is a different sentence from a Run
+        // having none (run-previews design D2).
+        BuildingBlocks.Agents.RunPreview? preview = null
     ) =>
         HeadlessProcess.Run(
             fileName,

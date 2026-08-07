@@ -92,6 +92,15 @@ public static class AgentSandboxComposition
                     ?? SbxSandboxOptions.DefaultAgentTemplates,
             }
         );
+        // The preview ledger belongs to the process that holds the sandboxes, and only that
+        // process can honestly answer whether a Run has a window open (run-previews design D2).
+        // Registered here rather than beside the module's unhosted default, so a habitat with no
+        // launcher keeps answering "previews are not hosted here".
+        builder.Services.AddSingleton<RunPreviewHost>();
+        builder.Services.AddSingleton<BuildingBlocks.Agents.IRunPreviewMonitor>(provider =>
+            provider.GetRequiredService<RunPreviewHost>()
+        );
+
         builder.Services.AddSingleton<IAgentProcessHost, SbxAgentProcessHost>();
     }
 }

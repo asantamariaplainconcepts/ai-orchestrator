@@ -42,7 +42,12 @@ public sealed record AutomationDetail(
     /// Applied to the Story when a Run succeeds (#165). Empty means the Automation ends silently —
     /// except for a grill, whose documented default lives in the executor (grill design D5).
     /// </summary>
-    IReadOnlyList<string>? OutputLabels = null
+    IReadOnlyList<string>? OutputLabels = null,
+    /// <summary>
+    /// The sandbox port to publish while a Run of this Automation executes (run-previews). Null
+    /// means no preview, which is every Automation until an Admin names one.
+    /// </summary>
+    int? PreviewPort = null
 );
 
 /// <summary>

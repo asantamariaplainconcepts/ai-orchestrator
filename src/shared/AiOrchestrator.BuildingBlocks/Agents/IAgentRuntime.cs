@@ -25,8 +25,21 @@ public sealed record AgentInstruction(
     /// caller is unchanged; runtimes that support it forward stdout as it arrives. Callbacks
     /// fire on process threads — implementations must be thread-safe and must not block.
     /// </summary>
-    Action<string>? OnOutput = null
+    Action<string>? OnOutput = null,
+    /// <summary>
+    /// What to publish while the agent works, so a Member can look at the change running
+    /// (run-previews). Null means no preview — every Run until an Automation names a port, and
+    /// every Run in a habitat whose host cannot publish, because only a sandbox has a port.
+    /// </summary>
+    RunPreview? Preview = null
 );
+
+/// <summary>
+/// A preview to publish for the life of one agent: which port inside the sandbox serves it, and
+/// which Run it belongs to. The two travel together because the ledger is keyed by the Run and
+/// the publish is keyed by the port, and separating them invites recording one without the other.
+/// </summary>
+public sealed record RunPreview(Guid RunId, int SandboxPort);
 
 /// <summary>Values, never names — the inverse of everything stored (BR-010).</summary>
 public sealed record AgentCredentials(string VendorAccessToken, string AiApiKey);

@@ -52,7 +52,8 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
                 automation.RequiresApproval,
                 automation.Timeout,
                 automation.PromptPath,
-                automation.OutputLabels
+                automation.OutputLabels,
+                automation.PreviewPort
             );
     }
 }

@@ -231,6 +231,46 @@ public class AgentSandbox_Should_Constraint
         refusal.Message.ShouldContain("Remove whichever is not intended");
     }
 
+    // ---- The preview lives exactly as long as its sandbox (run-previews design D1/D2) ----
+
+    [Fact]
+    public async Task AFailedRun_Should_LeaveNoPreviewBehind()
+    {
+        // The property the whole feature rests on: there is no path in which the record outlives
+        // the sandbox. The stub refuses to create one, so the Run cannot even start — and the
+        // ledger must still be empty afterwards, not merely "usually".
+        var previews = new RunPreviewHost();
+        var host = SbxHost(SbxScript(secretsListed: "github"), previews);
+        var runId = Guid.CreateVersion7();
+
+        await Should.ThrowAsync<AgentProcessHostException>(() =>
+            host.Run(
+                "claude",
+                ["-p", "x"],
+                Path.GetTempPath(),
+                new Dictionary<string, string>(),
+                TimeSpan.FromSeconds(5),
+                CancellationToken.None,
+                onOutput: null,
+                preview: new RunPreview(runId, SandboxPort: 8000)
+            )
+        );
+
+        previews.PortFor(runId).ShouldBeNull();
+    }
+
+    [Fact]
+    public void AnUnhostedProcess_Should_SayPreviewsAreNotHostedHere()
+    {
+        // Distinct from "this Run has no preview": a portal that is not the sandbox host must not
+        // imply the Run failed to make one.
+        IRunPreviewMonitor unhosted = new UnhostedRunPreviewMonitor();
+
+        unhosted.Hosted.ShouldBeFalse();
+        unhosted.PortFor(Guid.CreateVersion7()).ShouldBeNull();
+        new RunPreviewHost().Hosted.ShouldBeTrue();
+    }
+
     // ---- Readiness answers for the right machine (design D6) ----
 
     [Fact]
@@ -286,7 +326,7 @@ public class AgentSandbox_Should_Constraint
 
     // ---- Stand-ins ----
 
-    static SbxAgentProcessHost SbxHost(string commandPath) =>
+    static SbxAgentProcessHost SbxHost(string commandPath, RunPreviewHost? previews = null) =>
         new(
             new SbxSandboxOptions
             {
@@ -294,6 +334,7 @@ public class AgentSandbox_Should_Constraint
                 Memory = "1g",
                 InjectedSecrets = ["github"],
             },
+            previews ?? new RunPreviewHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 

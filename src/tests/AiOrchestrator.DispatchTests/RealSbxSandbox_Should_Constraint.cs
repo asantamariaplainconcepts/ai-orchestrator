@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.ServiceDefaults.Agents;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
@@ -34,6 +35,7 @@ public class RealSbxSandbox_Should_Constraint
                 Memory = "4g",
                 InjectedSecrets = ["github"],
             },
+            new RunPreviewHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 
@@ -124,5 +126,101 @@ public class RealSbxSandbox_Should_Constraint
 
         (await host.CliAnswers("git", CancellationToken.None)).ShouldBeTrue();
         (await host.CliAnswers("definitely-not-a-cli", CancellationToken.None)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ARealPreviewPort_Should_BePublishedAndReachableThenGone()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        // The whole feature, against the real CLI: publish a port, serve something inside the
+        // sandbox, reach it from this machine, and find the record gone when the agent finishes.
+        var previews = new RunPreviewHost();
+        var host = new SbxAgentProcessHost(
+            new SbxSandboxOptions
+            {
+                CommandPath =
+                    Environment.GetEnvironmentVariable("SBX_PATH")
+                    ?? Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                        ".local/bin/sbx"
+                    ),
+                Memory = "4g",
+                InjectedSecrets = ["github"],
+            },
+            previews,
+            NullLogger<SbxAgentProcessHost>.Instance
+        );
+
+        var runId = Guid.CreateVersion7();
+        var workspace = Directory.CreateTempSubdirectory("sbx-preview-").FullName;
+        await File.WriteAllTextAsync(
+            Path.Combine(workspace, "index.html"),
+            "<h1>served from inside the sandbox</h1>"
+        );
+
+        string? reached = null;
+        int? publishedWhileRunning = null;
+
+        // Read the port WHILE the agent runs, not after: the record is removed in the same
+        // finally that disposes the sandbox, so awaiting first would always find it gone —
+        // which is the disposal working, not the publish failing.
+        var running = host.Run(
+            "sh",
+            // Serves, then exits on its own — the agent finishing is what disposes the sandbox
+            // and the preview with it.
+            ["-c", "python3 -m http.server 8000 --bind 0.0.0.0 >/dev/null 2>&1 & sleep 20"],
+            workspace,
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(3),
+            CancellationToken.None,
+            onOutput: null,
+            preview: new RunPreview(runId, SandboxPort: 8000)
+        );
+
+        using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) })
+        {
+            for (var attempt = 0; attempt < 40 && reached is null; attempt++)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(1));
+                publishedWhileRunning ??= previews.PortFor(runId);
+
+                if (publishedWhileRunning is not { } port)
+                {
+                    continue;
+                }
+
+                try
+                {
+                    reached = await client.GetStringAsync(
+                        $"http://127.0.0.1:{port}/index.html",
+                        CancellationToken.None
+                    );
+                }
+                catch (HttpRequestException)
+                {
+                    // Nothing listening yet — the ordinary early state of a Run whose server has
+                    // not started. Keep waiting; the assertions below judge the outcome.
+                }
+                catch (TaskCanceledException)
+                {
+                    // The client's own timeout, same meaning.
+                }
+            }
+        }
+
+        var outcome = await running;
+
+        outcome.TimedOut.ShouldBeFalse();
+        publishedWhileRunning.ShouldNotBeNull(
+            "the sandbox should have published an ephemeral host port while the agent ran"
+        );
+        reached.ShouldNotBeNull().ShouldContain("served from inside the sandbox");
+
+        // And gone with the sandbox — the property the whole design rests on.
+        previews.PortFor(runId).ShouldBeNull();
     }
 }

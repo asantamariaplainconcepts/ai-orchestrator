@@ -19,8 +19,11 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// class cannot see them.
 /// </para>
 /// </summary>
-sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProcessHost> logger)
-    : IAgentProcessHost
+sealed class SbxAgentProcessHost(
+    SbxSandboxOptions options,
+    RunPreviewHost previews,
+    ILogger<SbxAgentProcessHost> logger
+) : IAgentProcessHost
 {
     /// <summary>
     /// The proxy authenticates the agent's outbound requests from the host's own keychain, so
@@ -38,7 +41,8 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
         IReadOnlyDictionary<string, string> environment,
         TimeSpan timeout,
         CancellationToken cancellationToken,
-        Action<string>? onOutput = null
+        Action<string>? onOutput = null,
+        BuildingBlocks.Agents.RunPreview? preview = null
     )
     {
         // The contract, asserted rather than trusted: a caller that still passes values would be
@@ -57,7 +61,7 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
 
         var sandbox = $"aio-run-{Guid.NewGuid():N}"[..24];
 
-        await Create(sandbox, workingDirectory, fileName, cancellationToken);
+        await Create(sandbox, workingDirectory, fileName, preview, cancellationToken);
         try
         {
             // The workspace must be visible at the path the command will use before the agent
@@ -77,6 +81,15 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
         }
         finally
         {
+            // The preview dies with the sandbox, in the same finally, so no code path exists in
+            // which the record outlives what it describes (run-previews design D1/D2). Removed
+            // BEFORE disposal is attempted: a failed removal must not leave a reachable-looking
+            // entry pointing at a port nothing serves.
+            if (preview is not null)
+            {
+                previews.Gone(preview.RunId);
+            }
+
             // An abandoned sandbox is the leak; the Run's truth is in the database. Disposal
             // survives cancellation on purpose — the PodRunLauncher precedent.
             await Dispose(sandbox);
@@ -149,7 +162,7 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
 
         try
         {
-            await Create(sandbox, Path.GetTempPath(), command, cancellationToken);
+            await Create(sandbox, Path.GetTempPath(), command, preview: null, cancellationToken);
         }
         catch (AgentProcessHostException)
         {
@@ -225,9 +238,16 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
         string sandbox,
         string workspace,
         string command,
+        BuildingBlocks.Agents.RunPreview? preview,
         CancellationToken cancellationToken
     )
     {
+        // The host port is OMITTED, which is sbx's ephemeral form — `-p 0:<port>` is rejected
+        // outright ("port 0 out of range", observed 2026-08-07). Ephemeral because N concurrent
+        // Runs must not contend for one number, and loopback-bound because only this machine's
+        // Server relays it.
+        string[] publish = preview is null ? [] : ["-p", preview.SandboxPort.ToString()];
+
         var created = await Sbx(
             [
                 "run",
@@ -236,6 +256,7 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
                 sandbox,
                 "--memory",
                 options.Memory,
+                .. publish,
                 Template(command),
                 workspace,
             ],
@@ -251,6 +272,63 @@ sealed class SbxAgentProcessHost(SbxSandboxOptions options, ILogger<SbxAgentProc
         }
 
         SandboxLog.Created(logger, sandbox);
+
+        if (preview is not null)
+        {
+            await RecordPreview(sandbox, preview, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Reads back the port sbx actually allocated and records it. A preview that cannot be
+    /// resolved is NOT a Run failure: the agent's work is the Run, and a missing window is a
+    /// missing window. It is logged and the Run proceeds without one, which the read then
+    /// reports as no preview — the honest answer.
+    /// </summary>
+    async Task RecordPreview(
+        string sandbox,
+        BuildingBlocks.Agents.RunPreview preview,
+        CancellationToken cancellationToken
+    )
+    {
+        var listed = await Sbx(["ports", sandbox], Brief, cancellationToken);
+
+        if (listed.ExitCode != 0 || HostPort(listed.Stdout, preview.SandboxPort) is not { } port)
+        {
+            SandboxLog.PreviewUnavailable(logger, sandbox, Detail(listed));
+            return;
+        }
+
+        previews.Published(preview.RunId, port);
+        SandboxLog.PreviewPublished(logger, sandbox, port);
+    }
+
+    /// <summary>
+    /// `sbx ports` prints a table: HOST IP, HOST PORT, SANDBOX PORT, PROTOCOL — and lists the
+    /// same mapping once per address family (127.0.0.1 and ::1), so the first row for our sandbox
+    /// port is the answer and the rest are the same answer again.
+    /// </summary>
+    static int? HostPort(string stdout, int sandboxPort)
+    {
+        foreach (var line in stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var columns = line.Split(
+                (char[])[' ', '\t'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            );
+
+            if (
+                columns.Length >= 3
+                && int.TryParse(columns[1], out var host)
+                && int.TryParse(columns[2], out var inside)
+                && inside == sandboxPort
+            )
+            {
+                return host;
+            }
+        }
+
+        return null;
     }
 
     async Task VerifyWorkspace(
@@ -440,6 +518,20 @@ static partial class SandboxLog
         Message = "Removed sandbox {Sandbox}"
     )]
     public static partial void Disposed(ILogger logger, string sandbox);
+
+    [LoggerMessage(
+        EventId = 4113,
+        Level = LogLevel.Information,
+        Message = "Sandbox {Sandbox} is serving a preview on host port {Port}"
+    )]
+    public static partial void PreviewPublished(ILogger logger, string sandbox, int port);
+
+    [LoggerMessage(
+        EventId = 4114,
+        Level = LogLevel.Warning,
+        Message = "Sandbox {Sandbox} published a preview port that could not be resolved, so this Run has no preview: {Detail}"
+    )]
+    public static partial void PreviewUnavailable(ILogger logger, string sandbox, string detail);
 
     [LoggerMessage(
         EventId = 4112,

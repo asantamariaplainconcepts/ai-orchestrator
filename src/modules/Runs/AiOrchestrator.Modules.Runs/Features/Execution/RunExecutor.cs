@@ -463,6 +463,8 @@ sealed class RunExecutor(
                     local.Value.Path,
                     new AgentCredentials(vendorToken, aiKey),
                     onOutput
+                // No Preview: the local lane runs the agent against the owner's own folder,
+                // where there is no sandbox and therefore no port to publish (run-previews).
                 ),
                 cancellationToken
             );
@@ -508,7 +510,14 @@ sealed class RunExecutor(
                 automation?.Timeout ?? DefaultChangeTimeout,
                 prepared.Value.Path,
                 new AgentCredentials(vendorToken, aiKey),
-                onOutput
+                onOutput,
+                // Only where the Automation named one. A host with no sandbox ignores it and the
+                // preview read answers "not hosted here" — the honest sentence for a habitat that
+                // cannot publish, rather than a Run that looks like it failed to.
+                automation?.PreviewPort
+                    is { } previewPort
+                    ? new RunPreview(run.Id, previewPort)
+                    : null
             ),
             cancellationToken
         );

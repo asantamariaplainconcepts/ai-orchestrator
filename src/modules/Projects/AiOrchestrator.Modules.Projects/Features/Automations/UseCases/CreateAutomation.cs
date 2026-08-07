@@ -76,7 +76,8 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? PromptPath = null,
-        IReadOnlyList<string>? OutputLabels = null
+        IReadOnlyList<string>? OutputLabels = null,
+        int? PreviewPort = null
     );
 
     internal sealed record Response(
@@ -95,7 +96,10 @@ sealed class CreateAutomation : IUseCase
         /// <summary>Grill only. Readable for the same reason: the update endpoint replaces the
         /// whole Automation, so a caller that cannot read this field would silently clear it on
         /// every edit.</summary>
-        string? PromptPath
+        string? PromptPath,
+        /// <summary>The sandbox port published while a Run executes; null means no preview.
+        /// Readable for the same reason PromptPath is.</summary>
+        int? PreviewPort
     );
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -108,7 +112,8 @@ sealed class CreateAutomation : IUseCase
         bool RequiresApproval,
         int? TimeoutMinutes,
         string? PromptPath = null,
-        IReadOnlyList<string>? OutputLabels = null
+        IReadOnlyList<string>? OutputLabels = null,
+        int? PreviewPort = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -127,6 +132,12 @@ sealed class CreateAutomation : IUseCase
                 .MaximumLength(300);
             // Each member bounded exactly as the single label was, and the collection bounded too:
             // a set is a field a caller controls the size of.
+            // A port is a port. Refused at save rather than by docker at Run time, where the
+            // person reading the failure did not choose the number.
+            RuleFor(command => command.PreviewPort!.Value)
+                .InclusiveBetween(1, 65535)
+                .WithMessage("A preview port must be between 1 and 65535.")
+                .When(command => command.PreviewPort is not null);
             RuleForEach(command => command.OutputLabels!)
                 .NotEmpty()
                 .MaximumLength(200)
@@ -220,7 +231,8 @@ sealed class CreateAutomation : IUseCase
                     ? TimeSpan.FromMinutes(minutes)
                     : DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
-                command.OutputLabels is null ? [] : Clean(command.OutputLabels)
+                command.OutputLabels is null ? [] : Clean(command.OutputLabels),
+                command.PreviewPort
             );
 
             var overlap = await overlaps.Check(
@@ -270,6 +282,7 @@ sealed class CreateAutomation : IUseCase
             (int)automation.Timeout.TotalMinutes,
             automation.Enabled,
             automation.OutputLabels,
-            automation.PromptPath
+            automation.PromptPath,
+            automation.PreviewPort
         );
 }
