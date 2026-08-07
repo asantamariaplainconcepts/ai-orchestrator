@@ -390,6 +390,7 @@ export function RunScreen() {
                   // log has not arrived on the first render, so the preview query fires and its
                   // answer would otherwise stick — a frame on a Run that ended.
                   available={!runFinished && (preview.data?.available ?? false)}
+                  runFinished={runFinished}
                 />
 
                 <Card className="gap-0 py-0">

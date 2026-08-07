@@ -105,6 +105,17 @@ const run = (
   ...extra,
 });
 
+/**
+ * `?previewEnds` needs the Run to END while somebody watches, which is a moment in time rather
+ * than a state — so it is the one fixture keyed on elapsed time since load. Six seconds is long
+ * enough to see the frame and short enough that nobody waits for it.
+ */
+const loadedAt = Date.now();
+const PREVIEW_ENDS_AFTER_MS = 6_000;
+const previewEnded = () =>
+  new URLSearchParams(window.location.search).has("previewEnds") &&
+  Date.now() - loadedAt > PREVIEW_ENDS_AFTER_MS;
+
 /** BR-001's terminal set, mirrored so the mock cannot claim a finished Run is still live. */
 const TERMINAL = ["Succeeded", "Failed", "Cancelled"];
 
@@ -965,7 +976,9 @@ const routes: [string, RegExp, Handler][] = [
       // Derived from the Run's own state, as the server derives it from RunStates.IsTerminal.
       // It was hardcoded false, which taught the UI that a Succeeded Run is still live — the
       // exact fault the note below warns about, one field over.
-      complete: TERMINAL.includes(runs.find((candidate) => candidate.id === match[1])?.state ?? ""),
+      complete:
+        previewEnded() ||
+        TERMINAL.includes(runs.find((candidate) => candidate.id === match[1])?.state ?? ""),
       // Four lines read, so the next chunk is 4 (#144): the mock has to carry the field the
       // contract carries, or it teaches the UI a shape the server does not send.
       nextSequence: 4,
@@ -979,8 +992,12 @@ const routes: [string, RegExp, Handler][] = [
     // must not read as "this Run failed to make one". `?preview` hosts one and shows the frame.
     () => {
       const search = new URLSearchParams(window.location.search);
-      const hosted = search.has("preview") || search.has("previewIdle");
-      return { hosted, available: search.has("preview") };
+      const hosted =
+        search.has("preview") || search.has("previewIdle") || search.has("previewEnds");
+      return {
+        hosted,
+        available: (search.has("preview") || search.has("previewEnds")) && !previewEnded(),
+      };
     },
   ],
   [

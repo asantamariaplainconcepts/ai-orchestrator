@@ -47,11 +47,14 @@
       application is being rendered. i18n as contract; routed through the design system.
       (Verified in the browser: sandbox="allow-scripts allow-forms allow-popups", no
       allow-same-origin, referrerPolicy=no-referrer.)
-- [ ] 4.2 The terminal transition: a Run that finishes while its preview is open reports that and
+- [x] 4.2 The terminal transition: a Run that finishes while its preview is open reports that and
       offers the diff, rather than a broken frame. Reachable in the mock, like every other state.
-      (NOT done: the frame currently vanishes when the Run ends, which satisfies 4.3 but not the
-      spec's "reports that the Run finished" scenario — a Member watching would see it disappear
-      with no explanation.)
+      (Done: the frame is replaced by one sentence — the preview closed with its sandbox, and
+      the output and file changes are below. Only for a reader who WAS watching; a Run already
+      finished on arrival still shows nothing, which is 4.3. `?previewEnds` makes the transition
+      reachable by hand — the one fixture keyed on elapsed time, because the moment is a
+      transition rather than a state. Verified in the browser: iframe present, then gone with the
+      sentence in its place.)
 - [x] 4.3 No affordance on a terminal Run — verified by opening one, not by reading the code.
 
 ## 5. Proof
