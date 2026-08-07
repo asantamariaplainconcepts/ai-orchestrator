@@ -33,8 +33,12 @@
       degradation, the no-repository state, and that nothing is persisted.
 - [x] 4.2 GitHubStub gains a `/pulls` route (empty list), so E2E flows read "no changes" rather
       than 404.
-- [ ] 4.3 Backlog unit/functional coverage for the GitHub mapping per the module's existing
-      connector test pattern.
+- [x] 4.3 Backlog coverage for the vendor mapping, per the module's actual pattern — which turned
+      out to be: no unit seam exists for either connector's HTTP mapping (the AzDO unit suite
+      covers pure translation helpers; GitHub's Octokit calls are exercised at the E2E tier
+      through the stub, which now answers `/pulls`). The seam contract itself is pinned in the
+      Runs functional suite through the stub connector. A unit test invented against a seam that
+      does not exist would be an assertion unable to fail (ADR-0013), so none was written.
 
 ## 5. Verification
 
