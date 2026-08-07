@@ -59,10 +59,15 @@
 
 ## 5. Proof
 
-- [ ] 5.1 Unit and functional coverage: publish/dispose lifecycle, the terminal-Run answer, the
+- [x] 5.1 Unit and functional coverage: publish/dispose lifecycle, the terminal-Run answer, the
       relay's three refusals, and the unavailable-habitat sentence. Fakes that can fail.
-- [ ] 5.2 The manual exercise on a machine with sbx, recorded as evidence (ADR-0001): a real Run
+      (`RunPreview_Should_Constraint` 4 functional + the ledger-lifetime facts in
+      `AgentSandbox_Should_Constraint`.)
+- [x] 5.2 The manual exercise on a machine with sbx, recorded as evidence (ADR-0001): a real Run
       serving a real page, viewed in the portal, then the Run ending and the affordance
-      disappearing — including anything that did not work.
-- [ ] 5.3 Full gates: build, tests, CSharpier, ESLint, tsc, the design-system validator, spec
-      validation.
+      disappearing — including anything that did not work. (Done for the boundary and the
+      surface — see evidence.md, including the bug the browser caught and the test whose first
+      version failed *because* disposal works. **Not done:** a Run dispatched through the
+      orchestrator, same wall as the sandboxing change, which ADR-0014 exists to remove.)
+- [x] 5.3 Full gates: build, tests, CSharpier, ESLint, tsc, the design-system validator, spec
+      validation. (All green — counts in evidence.md.)
