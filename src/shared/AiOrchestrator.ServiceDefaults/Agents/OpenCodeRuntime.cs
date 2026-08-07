@@ -33,15 +33,30 @@ public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRun
             environment["OPENCODE_API_KEY"] = instruction.Credentials.AiApiKey;
         }
 
-        var outcome = await HeadlessProcess.Run(
-            CommandPath,
-            ["run", "-m", options.Model, "--format", "json", instruction.Prompt],
-            instruction.WorkspacePath,
-            environment,
-            instruction.Timeout,
-            cancellationToken,
-            instruction.OnOutput
-        );
+        HeadlessProcess.Outcome outcome;
+        try
+        {
+            outcome = await HeadlessProcess.Run(
+                CommandPath,
+                ["run", "-m", options.Model, "--format", "json", instruction.Prompt],
+                instruction.WorkspacePath,
+                environment,
+                instruction.Timeout,
+                cancellationToken,
+                instruction.OnOutput
+            );
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // The executable is not there to start — the raw ENOENT told nobody anything
+            // (#279): the failure carries the remedy, because nothing retries (BR-004).
+            return new AgentResult(
+                Succeeded: false,
+                Log: AgentRuntimeRemedies.MissingCli(Command, AgentRuntimeRemedies.InstallOpenCode),
+                OutputLink: null,
+                Usage: null
+            );
+        }
 
         if (outcome.TimedOut)
         {

@@ -7,6 +7,13 @@
       "runtimeArgs": ["--dir", "src/frontend", "dev:mock"],
       "port": 5173,
       "autoPort": true
+    },
+    {
+      "name": "dev-loop",
+      "runtimeExecutable": "aspire",
+      "runtimeArgs": ["run", "--project", "src/root/AiOrchestrator.AppHost"],
+      "port": 5080,
+      "url": "http://localhost:5080"
     }
   ]
 }

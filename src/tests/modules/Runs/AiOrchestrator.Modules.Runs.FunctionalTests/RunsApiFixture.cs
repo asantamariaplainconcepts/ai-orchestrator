@@ -52,6 +52,8 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// </summary>
     internal FakeAgentPodsMonitor Pods { get; } = new();
 
+    internal FakeAgentRuntimesMonitor Runtimes { get; } = new();
+
     /// <summary>
     /// The conversation runtime, faked at its seam (#166). Faked rather than driven through the
     /// in-process implementation, because what these tests are about is what the module does with a
@@ -104,8 +106,18 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
                 new FakeRuntimeSelector(
                     new Dictionary<string, AgentRuntimeSelection>(StringComparer.Ordinal)
                     {
-                        ["ClaudeCodeHeadless"] = new(Agent, "anthropic-api-key"),
-                        ["OpenCode"] = new(OpenCodeAgent, null),
+                        ["ClaudeCodeHeadless"] = new(
+                            Agent,
+                            "anthropic-api-key",
+                            "claude",
+                            AgentRuntimeRemedies.InstallClaudeCode
+                        ),
+                        ["OpenCode"] = new(
+                            OpenCodeAgent,
+                            null,
+                            "opencode",
+                            AgentRuntimeRemedies.InstallOpenCode
+                        ),
                     }
                 )
             );
@@ -115,6 +127,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
             services.RemoveAll<IAgentPodsMonitor>();
             services.AddSingleton<IAgentPodsMonitor>(Pods);
+
+            services.RemoveAll<IAgentRuntimesMonitor>();
+            services.AddSingleton<IAgentRuntimesMonitor>(Runtimes);
         });
     }
 }
@@ -127,6 +142,15 @@ sealed class FakeAgentPodsMonitor : IAgentPodsMonitor
     public void Reset() => Next = AgentPodsSnapshot.Unhosted;
 
     public AgentPodsSnapshot Snapshot() => Next;
+}
+
+sealed class FakeAgentRuntimesMonitor : IAgentRuntimesMonitor
+{
+    public AgentRuntimesSnapshot Next { get; set; } = AgentRuntimesSnapshot.Unhosted;
+
+    public void Reset() => Next = AgentRuntimesSnapshot.Unhosted;
+
+    public AgentRuntimesSnapshot Snapshot() => Next;
 }
 
 /// <summary>A vendor whose responses the test decides.</summary>
@@ -425,6 +449,8 @@ sealed class FakeRuntimeSelector(IReadOnlyDictionary<string, AgentRuntimeSelecti
 {
     public AgentRuntimeSelection? For(string runtimeName) =>
         runtimes.TryGetValue(runtimeName, out var selection) ? selection : null;
+
+    public IReadOnlyDictionary<string, AgentRuntimeSelection> Registered => runtimes;
 }
 
 /// <summary>

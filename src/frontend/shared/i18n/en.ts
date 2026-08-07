@@ -261,6 +261,21 @@ export const en = {
   "pods.tryCommand.compose": "docker compose up -d",
   "pods.tryCommand.pull":
     "docker pull ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest",
+  // The runtimes' half of the machine question (#279): docker can be ready and an Automation
+  // still unable to run, because the runtime's CLI is absent or its named secret resolves to
+  // nothing. The remedy command comes from the API — the same pinned sentence the failure
+  // reason carries — so the panel and the failure cannot drift.
+  "runtimes.heading": "Agent runtimes",
+  "runtimes.empty": "No runtimes are registered.",
+  "runtimes.ready": "Ready",
+  "runtimes.cliMissing": "CLI not installed",
+  "runtimes.cliMissingBody":
+    "The command isn't on this machine's PATH. Runs using this runtime fail until it exists — install it once and they run again.",
+  "runtimes.secretMissing": "Secret missing",
+  "runtimes.secretMissingBody":
+    "The named secret doesn't resolve in this machine's store. Add it, or clear the runtime's credential setting to use this machine's own session.",
+  "runtimes.sessionAuth": "this machine's session",
+  "runtimes.secret": "secret",
   // Composed: "Checked 20s · retries every 30s".
   "pods.checked": "Checked",
   "pods.retries": "retries every",

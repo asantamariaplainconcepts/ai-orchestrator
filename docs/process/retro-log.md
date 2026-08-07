@@ -3462,3 +3462,32 @@ trusting an unset value.
 
 **Decisions recorded:** none new. The cause→remedy map is deliberately a closed list against the
 executor's own sentences (design D2); widening it is content work, not a decision.
+
+## 2026-08-07 — runtime-readiness (#279)
+
+**Time (telemetry):** ~79 min agent, $140.94, 129k output tokens — the session-total delta for
+this change's day, and the FIRST change measured by its own mapping: sessions.jsonl carries
+`change=runtime-readiness` because #255's UserPromptSubmit re-mapping fired on the branch
+switch, exactly as designed. (Per-change splits within one session remain approximate; the
+mapping records when a session touched a change, not per-prompt attribution.)
+
+**What worked:** evidence before code, again — ten minutes of reading the failing Runs' actual
+API responses and grepping the machine (`which` in the right shells, `mdfind` for the apps)
+turned "it's failing" into two precise defects: desktop logins without CLIs, and a hard-coded
+credential default with no off switch. The pods panel as a template made the panel half almost
+mechanical: probe/host/read/chip each had a sibling to mirror, and the mirror held (D1's
+no-premature-abstraction call kept it cheap). CI's own e2e run doubled as the absent-CLI matrix
+cell for free — the ubuntu runner has neither CLI, and every journey survived the not-ready
+panel.
+
+**What didn't:** the live dev-loop matrix cell never ran — first the preview harness killed the
+interactive aspire CLI silently, then the machine's own aio-postgres-data volume refused the
+fresh password (the exact hazard the E2E fixture documents, still unfixed at the machine level).
+The proof is honestly bounded in tasks.md, but two environments in a row failing for
+environmental reasons cost ~30 min of the change's time. And the owner's "no" to the real Run
+was asked too late — the plan assumed a GitHub side effect the owner never signed up for.
+
+**One change next time:** proofs that touch the owner's external accounts get their yes/no at
+PLAN time, not at execution time — the decision changes the task list, not just the moment. And
+a dev-loop proof step starts by checking the postgres volume matches the session's password
+(`docker volume rm` is the documented fresh start) before burning time on the app layers above.

@@ -319,15 +319,32 @@ sealed class RunExecutor(
             {
                 vendorToken = await secrets.Resolve(connector.SecretName, cancellationToken);
             }
-            if (selection.CredentialSecretName is { } credentialName)
-            {
-                aiKey = await secrets.Resolve(credentialName, cancellationToken);
-            }
         }
         catch (SecretNotFoundException exception)
         {
             // The name that failed is safe to state; a value never appears (BR-010).
             return new Outcome(Failure($"Credential could not be resolved: {exception.Message}"));
+        }
+
+        // The AI credential fails with its own sentence (#279): unlike the vendor's, it has a
+        // switched-off alternative — no name configured means the machine's own session — and
+        // a failure that hides the alternative sends the operator hunting for a key they may
+        // not need. Nothing retries (BR-004), so the failure carries the whole remedy.
+        if (selection.CredentialSecretName is { } credentialName)
+        {
+            try
+            {
+                aiKey = await secrets.Resolve(credentialName, cancellationToken);
+            }
+            catch (SecretNotFoundException)
+            {
+                return new Outcome(
+                    Failure(
+                        "Credential could not be resolved: "
+                            + AgentRuntimeRemedies.MissingAiCredential(credentialName, runtimeName)
+                    )
+                );
+            }
         }
 
         string instruction;

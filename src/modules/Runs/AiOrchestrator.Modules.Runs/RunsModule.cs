@@ -112,6 +112,11 @@ public sealed class RunsModule : ModuleBase
         // whether this habitat has docker; it only guarantees the question is answerable.
         services.TryAddSingleton<IAgentPodsMonitor, UnhostedAgentPodsMonitor>();
 
+        // The runtimes' default answer is the same sentence one seam over (#279): a process
+        // that does not execute Runs itself says so, rather than rendering runtimes it never
+        // spawns as missing.
+        services.TryAddSingleton<IAgentRuntimesMonitor, UnhostedAgentRuntimesMonitor>();
+
         // The worker-facing execution surface (agent-execution spec).
         services.AddScoped<IRunExecutor, RunExecutor>();
 

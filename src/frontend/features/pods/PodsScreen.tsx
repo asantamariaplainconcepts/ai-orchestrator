@@ -4,6 +4,7 @@ import { AppShell } from "@/shared/ui/AppShell";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { PodsHealthBadge, PodsUnavailableCard } from "./PodsHealth";
+import { RuntimesReadiness } from "./RuntimesReadiness";
 import { usePods, type PodRow } from "./usePods";
 
 /** Minutes-first: a pod's working life is minutes, and "0s" churn would read as a glitch. */
@@ -37,6 +38,11 @@ export function PodsScreen() {
         {pods.data && !pods.data.hosted && (
           <p className="text-sm text-muted-foreground">{t("pods.notHosted")}</p>
         )}
+
+        {/* The runtimes ride the same page whichever way Runs execute here (#279): the dev
+            loop has runtimes and no pods, the compose habitat has both. Unhosted renders
+            nothing — the worker's image carries its own. */}
+        {pods.data && <RuntimesReadiness view={pods.data.runtimes} />}
 
         {pods.data && pods.data.hosted && (
           <>

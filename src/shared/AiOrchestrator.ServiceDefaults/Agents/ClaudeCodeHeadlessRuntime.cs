@@ -35,28 +35,53 @@ public sealed class ClaudeCodeHeadlessRuntime(ILogger<ClaudeCodeHeadlessRuntime>
         CancellationToken cancellationToken
     )
     {
-        var outcome = await HeadlessProcess.Run(
-            CommandPath,
-            // stream-json rather than json (#130): `json` prints one document when the process exits,
-            // so the live window stayed empty for the whole Run and then filled with one unbroken
-            // line. `--verbose` is what makes the CLI emit the intermediate events at all.
-            //
-            // This flag and Parse below are ONE change. `json` bought a single well-formed document,
-            // and the parser was built on it — swapping the flag alone makes that parse throw, and the
-            // catch reports a perfectly good Run as a failure.
-            ["-p", instruction.Prompt, "--output-format", "stream-json", "--verbose"],
-            instruction.WorkspacePath,
-            new Dictionary<string, string>
-            {
-                // The values live in the child's environment for its lifetime and nowhere
-                // else — never in the image, the template, or a file (BR-010, design D1).
-                ["ANTHROPIC_API_KEY"] = instruction.Credentials.AiApiKey,
-                ["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken,
-            },
-            instruction.Timeout,
-            cancellationToken,
-            instruction.OnOutput
-        );
+        // The values live in the child's environment for its lifetime and nowhere else — never
+        // in the image, the template, or a file (BR-010, design D1). The AI key only when one
+        // was resolved (#279): an exported empty ANTHROPIC_API_KEY shadows the CLI's own session
+        // auth, which is exactly what the switched-off credential exists to use.
+        var environment = new Dictionary<string, string>
+        {
+            ["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken,
+        };
+        if (!string.IsNullOrEmpty(instruction.Credentials.AiApiKey))
+        {
+            environment["ANTHROPIC_API_KEY"] = instruction.Credentials.AiApiKey;
+        }
+
+        HeadlessProcess.Outcome outcome;
+        try
+        {
+            outcome = await HeadlessProcess.Run(
+                CommandPath,
+                // stream-json rather than json (#130): `json` prints one document when the process exits,
+                // so the live window stayed empty for the whole Run and then filled with one unbroken
+                // line. `--verbose` is what makes the CLI emit the intermediate events at all.
+                //
+                // This flag and Parse below are ONE change. `json` bought a single well-formed document,
+                // and the parser was built on it — swapping the flag alone makes that parse throw, and the
+                // catch reports a perfectly good Run as a failure.
+                ["-p", instruction.Prompt, "--output-format", "stream-json", "--verbose"],
+                instruction.WorkspacePath,
+                environment,
+                instruction.Timeout,
+                cancellationToken,
+                instruction.OnOutput
+            );
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // The executable is not there to start — the raw ENOENT told nobody anything
+            // (#279): the failure carries the remedy, because nothing retries (BR-004).
+            return new AgentResult(
+                Succeeded: false,
+                Log: AgentRuntimeRemedies.MissingCli(
+                    Command,
+                    AgentRuntimeRemedies.InstallClaudeCode
+                ),
+                OutputLink: null,
+                Usage: null
+            );
+        }
 
         if (outcome.TimedOut)
         {
@@ -201,6 +226,11 @@ public static class AgentRuntimeComposition
         );
         builder.Services.AddSingleton<OpenCodeRuntime>();
 
+        // BOTH credentials normalize whitespace→null (#279): empty means switched off — no
+        // secret resolved, the machine's own session. Claude's default stays the secret name,
+        // but the default's grip ends where the operator sets the key to empty; before this,
+        // the hard default could not be turned off at all, and a session-authenticated machine
+        // could not run the runtime it was signed into.
         var claudeCredential = builder.Configuration.GetValue(
             ClaudeCredentialKey,
             defaultValue: "anthropic-api-key"
@@ -215,11 +245,15 @@ public static class AgentRuntimeComposition
             {
                 ["ClaudeCodeHeadless"] = new(
                     provider.GetRequiredService<ClaudeCodeHeadlessRuntime>(),
-                    claudeCredential
+                    string.IsNullOrWhiteSpace(claudeCredential) ? null : claudeCredential,
+                    ClaudeCodeHeadlessRuntime.Command,
+                    AgentRuntimeRemedies.InstallClaudeCode
                 ),
                 ["OpenCode"] = new(
                     provider.GetRequiredService<OpenCodeRuntime>(),
-                    string.IsNullOrWhiteSpace(openCodeCredential) ? null : openCodeCredential
+                    string.IsNullOrWhiteSpace(openCodeCredential) ? null : openCodeCredential,
+                    OpenCodeRuntime.Command,
+                    AgentRuntimeRemedies.InstallOpenCode
                 ),
             }
         ));
@@ -232,6 +266,8 @@ public static class AgentRuntimeComposition
     {
         public AgentRuntimeSelection? For(string runtimeName) =>
             runtimes.TryGetValue(runtimeName, out var selection) ? selection : null;
+
+        public IReadOnlyDictionary<string, AgentRuntimeSelection> Registered => runtimes;
     }
 }
 
