@@ -24,10 +24,14 @@ public sealed class OpenCodeRuntime(OpenCodeOptions options, ILogger<OpenCodeRun
         CancellationToken cancellationToken
     )
     {
-        var environment = new Dictionary<string, string>
+        var environment = new Dictionary<string, string>();
+        // Only when there is a value to carry (#244 AC6): a Local Run resolves no vendor token,
+        // and an exported empty GITHUB_TOKEN shadows whatever auth the host's own tooling holds
+        // — the same shadowing rule the AI key already follows.
+        if (!string.IsNullOrEmpty(instruction.Credentials.VendorAccessToken))
         {
-            ["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken,
-        };
+            environment["GITHUB_TOKEN"] = instruction.Credentials.VendorAccessToken;
+        }
         if (!string.IsNullOrEmpty(instruction.Credentials.AiApiKey))
         {
             environment["OPENCODE_API_KEY"] = instruction.Credentials.AiApiKey;

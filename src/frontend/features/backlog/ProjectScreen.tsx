@@ -4,6 +4,7 @@ import { AutomationsSection } from "@/features/automations/AutomationsSection";
 import { StarterPromptsSection } from "@/features/automations/StarterPromptsSection";
 import { ConversationPanel } from "@/features/conversations/ConversationPanel";
 import { RolesPanel } from "@/features/identity/RolesPanel";
+import { RuntimeSettingsPanel } from "@/features/projects/RuntimeSettingsPanel";
 import { OperateStrip } from "@/features/runs/OperateStrip";
 import { RunNowDialog } from "@/features/runs/RunNowDialog";
 import { RunsSection } from "@/features/runs/RunsSection";
@@ -192,6 +193,8 @@ export function ProjectScreen() {
               projectId={projectId}
               connector={connector}
             />
+            {/* Where a Run's agent executes and bills (#244). Admin-only like Roles below. */}
+            <RuntimeSettingsPanel projectId={projectId} />
             {/* Who may do what here (#13, UC-002). Admin-only, and the server refuses the read
                 too — this decides what is worth showing, never what is allowed. */}
             <RolesPanel projectId={projectId} canManage={role === "Admin"} />
@@ -425,12 +428,11 @@ function BacklogPanel({
                     <RunNowControl
                       automations={enabledAutomations}
                       pending={runNow.isPending}
-                      onRun={(automationId) =>
-                        // With a local folder the choice is real, so the gesture opens the
-                        // dialog instead of dispatching; without one, nothing changes.
-                        localPath
-                          ? setRunNowStory(story.vendorId)
-                          : runNow.mutate({ vendorStoryId: story.vendorId, automationId })
+                      onRun={() =>
+                        // The dialog is every launch's home since #244: the runtime choice
+                        // exists for every project, and the locus one joins it where a local
+                        // folder makes it real.
+                        setRunNowStory(story.vendorId)
                       }
                     />
                   </div>
@@ -442,7 +444,7 @@ function BacklogPanel({
       )}
 
       {/* Mounted only while a choice is being made — mock 3b. */}
-      {runNowStory && localPath ? (
+      {runNowStory ? (
         <RunNowDialog
           open
           onOpenChange={(next) => {
@@ -456,9 +458,14 @@ function BacklogPanel({
           localPath={localPath}
           pending={runNow.isPending}
           error={runNow.error}
-          onRun={(automationId, locus) =>
+          onRun={(automationId, locus, runtime) =>
             runNow.mutate(
-              { vendorStoryId: runNowStory, automationId, locus },
+              {
+                vendorStoryId: runNowStory,
+                automationId,
+                locus: locus ?? undefined,
+                runtime: runtime ?? undefined,
+              },
               // A refusal keeps the dialog open with its reason; a success closes it.
               { onSuccess: () => setRunNowStory(null) },
             )

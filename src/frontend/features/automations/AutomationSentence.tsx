@@ -24,7 +24,8 @@ export function AutomationSentence({
   triggerLabel: string;
   triggerState: string;
   promptPath: string;
-  runtime: AgentRuntime;
+  /** "" means the Project default (#244) — named as such in the sentence. */
+  runtime: AgentRuntime | "";
   requiresApproval: boolean;
   /** The answer to question three, which is not the same as having named a label yet. */
   handsOn: boolean;
@@ -56,7 +57,8 @@ export function AutomationSentence({
       ) : (
         <Missing>{t("automations.sentence.missingPrompt")}</Missing>
       )}{" "}
-      {t("automations.sentence.on")} <Token>{runtime}</Token>{" "}
+      {t("automations.sentence.on")}{" "}
+      <Token>{runtime === "" ? t("automations.runtimeProjectDefault") : runtime}</Token>{" "}
       {handsOn ? (
         <>
           {t("automations.sentence.handsOn")}{" "}

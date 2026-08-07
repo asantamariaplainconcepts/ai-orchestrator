@@ -15,7 +15,7 @@ sealed class Automation : Aggregate
         string triggerLabel,
         string? triggerState,
         AutomationAction action,
-        AgentRuntime runtime,
+        AgentRuntime? runtime,
         bool requiresApproval,
         TimeSpan timeout
     )
@@ -78,7 +78,11 @@ sealed class Automation : Aggregate
 
     public AutomationAction Action { get; private set; }
 
-    public AgentRuntime Runtime { get; private set; }
+    /// <summary>
+    /// Null means the Project default, resolved at execution time (project-runtimes) — changing
+    /// the default changes future Runs without touching this row.
+    /// </summary>
+    public AgentRuntime? Runtime { get; private set; }
 
     /// <summary>Per-Automation, not global (DEC-039): true routes the Run through a Plan (BR-007).</summary>
     public bool RequiresApproval { get; private set; }
@@ -97,7 +101,7 @@ sealed class Automation : Aggregate
         string triggerLabel,
         string? triggerState,
         AutomationAction action,
-        AgentRuntime runtime,
+        AgentRuntime? runtime,
         bool requiresApproval,
         TimeSpan timeout,
         string? promptPath = null,
@@ -114,7 +118,7 @@ sealed class Automation : Aggregate
         string triggerLabel,
         string? triggerState,
         AutomationAction action,
-        AgentRuntime runtime,
+        AgentRuntime? runtime,
         bool requiresApproval,
         TimeSpan timeout,
         string? promptPath = null,

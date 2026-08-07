@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Check, X } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
@@ -12,6 +12,7 @@ import { AppShell } from "@/shared/ui/AppShell";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { LocusChip } from "@/shared/ui/locus";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { Card } from "@/shared/ui/card";
 import { RunChanges } from "./RunChanges";
 import { useRunChanges } from "./useRuns";
@@ -73,6 +74,8 @@ export function RunScreen() {
   // Run-now path (design D1), so BR-001, BR-002 and the approval gate apply without this screen
   // knowing they exist.
   const runAgain = useRunNow(projectId);
+  // The re-run's per-Run runtime choice (#244): "" is "as resolved", the honest default.
+  const [runAgainRuntime, setRunAgainRuntime] = useState("");
   const dismiss = useDismissFailure(projectId);
 
   const run = runs.data?.find((candidate) => candidate.id === runId);
@@ -220,18 +223,36 @@ export function RunScreen() {
                 </div>
                 <span className="flex shrink-0 items-center gap-2">
                   {run.vendorStoryId !== null && run.automationId !== null ? (
-                    <Button
-                      size="sm"
-                      disabled={runAgain.isPending}
-                      onClick={() =>
-                        runAgain.mutate({
-                          vendorStoryId: run.vendorStoryId!,
-                          automationId: run.automationId!,
-                        })
-                      }
-                    >
-                      {runAgain.isPending ? t("run.again.pending") : t("run.again")}
-                    </Button>
+                    <>
+                      {/* The re-run is a launch point too (#244): the resolution pre-selected,
+                          changeable for this Run only. */}
+                      <NativeSelect
+                        aria-label={t("automations.runtime")}
+                        className="h-8 text-xs"
+                        value={runAgainRuntime}
+                        onChange={(event) => setRunAgainRuntime(event.target.value)}
+                      >
+                        <option value="">{t("runs.runNow.projectDefaultRuntime")}</option>
+                        {(["ClaudeCodeHeadless", "OpenCode"] as const).map((candidate) => (
+                          <option key={candidate} value={candidate}>
+                            {candidate}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                      <Button
+                        size="sm"
+                        disabled={runAgain.isPending}
+                        onClick={() =>
+                          runAgain.mutate({
+                            vendorStoryId: run.vendorStoryId!,
+                            automationId: run.automationId!,
+                            runtime: runAgainRuntime || undefined,
+                          })
+                        }
+                      >
+                        {runAgain.isPending ? t("run.again.pending") : t("run.again")}
+                      </Button>
+                    </>
                   ) : null}
                   {run.dismissedAt ? (
                     <Badge variant="outline">

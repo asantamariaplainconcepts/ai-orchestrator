@@ -17,16 +17,20 @@ export function useRunNow(projectId: string) {
       vendorStoryId,
       automationId,
       locus,
+      runtime,
     }: {
       vendorStoryId: string;
       automationId: string;
       /** #211: absent means the project's default — Local for a local-folder project. */
       locus?: "Local" | "Pod";
+      /** #244: the human's choice for this Run only; absent means "as resolved". */
+      runtime?: string;
     }) =>
       api.post<RunNowResult>(`/api/projects/${projectId}/runs`, {
         vendorStoryId,
         automationId,
         locus: locus ?? null,
+        runtime: runtime ?? null,
       }),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
   });

@@ -37,7 +37,8 @@ sealed class RunNow : IUseCase
                             projectId,
                             request.VendorStoryId,
                             request.AutomationId,
-                            request.Locus
+                            request.Locus,
+                            request.Runtime
                         ),
                         cancellationToken
                     );
@@ -57,7 +58,14 @@ sealed class RunNow : IUseCase
 
     // Locus is optional (#210): absent means the project's default — Local for a local-folder
     // code source, Pod otherwise. Only Run now offers the choice; matching never does.
-    internal sealed record Request(string VendorStoryId, Guid AutomationId, string? Locus = null);
+    // Runtime optional (#244): the human's choice for this Run only, pre-selected from the
+    // resolution in the dialog; absent records the resolution itself.
+    internal sealed record Request(
+        string VendorStoryId,
+        Guid AutomationId,
+        string? Locus = null,
+        string? Runtime = null
+    );
 
     internal sealed record Response(
         Guid Id,
@@ -72,7 +80,8 @@ sealed class RunNow : IUseCase
         Guid ProjectId,
         string VendorStoryId,
         Guid AutomationId,
-        string? Locus = null
+        string? Locus = null,
+        string? Runtime = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(
@@ -126,7 +135,8 @@ sealed class RunNow : IUseCase
                 command.VendorStoryId,
                 automation,
                 cancellationToken,
-                locus
+                locus,
+                string.IsNullOrWhiteSpace(command.Runtime) ? null : command.Runtime.Trim()
             );
 
             return outcome switch
