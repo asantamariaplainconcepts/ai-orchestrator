@@ -510,6 +510,10 @@ const routes: [string, RegExp, Handler][] = [
       const search = new URLSearchParams(window.location.search);
       const down = search.has("podsDown");
       const noImage = search.has("noImage");
+      // #279 — the runtimes' not-ready shapes, reachable without uninstalling anything:
+      // `?cliMissing` renders the missing-CLI remedy, `?secretMissing` the unresolvable secret.
+      const cliMissing = search.has("cliMissing");
+      const secretMissing = search.has("secretMissing");
       return {
         hosted: true,
         dockerReady: !down,
@@ -542,6 +546,29 @@ const routes: [string, RegExp, Handler][] = [
                   sightedAt: at(2),
                 },
               ],
+        runtimes: {
+          hosted: true,
+          checkedAt: at(0.3),
+          retrySeconds: 30,
+          runtimes: [
+            {
+              name: "OpenCode",
+              command: "opencode",
+              cliReady: !cliMissing,
+              installCommand: "npm install -g opencode-ai@1.18.6",
+              credentialSecretName: null,
+              credentialReady: null,
+            },
+            {
+              name: "ClaudeCodeHeadless",
+              command: "claude",
+              cliReady: true,
+              installCommand: "npm install -g @anthropic-ai/claude-code@2.0.44",
+              credentialSecretName: secretMissing ? "anthropic-api-key" : null,
+              credentialReady: secretMissing ? false : null,
+            },
+          ],
+        },
       };
     },
   ],
