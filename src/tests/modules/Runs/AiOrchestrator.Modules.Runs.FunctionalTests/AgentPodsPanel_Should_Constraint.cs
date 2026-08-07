@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Dispatch;
 using AiOrchestrator.Modules.Backlog.Connectors;
 using Shouldly;
@@ -25,6 +26,7 @@ public class AgentPodsPanel_Should_Constraint(RunsApiFixture fixture) : IAsyncLi
         fixture.Agent.Reset();
         fixture.Workspace.Reset();
         fixture.Pods.Reset();
+        fixture.Runtimes.Reset();
         await fixture.ResetDatabase();
         await fixture.ResetQueue();
 
@@ -140,6 +142,62 @@ public class AgentPodsPanel_Should_Constraint(RunsApiFixture fixture) : IAsyncLi
         view.Pods.ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task TheRuntimes_Should_TravelWithThePanelAndCarryTheirRemedy()
+    {
+        // #279 — the runtimes' readiness rides the same read, remedies attached: a missing CLI
+        // names its install command, a switched-off credential is null (a different sentence
+        // from "does not resolve"), and the cadence restates the probe's behaviour.
+        fixture.Runtimes.Next = new AgentRuntimesSnapshot(
+            Hosted: true,
+            CheckedAt: DateTimeOffset.UtcNow,
+            ProbeInterval: TimeSpan.FromSeconds(30),
+            Runtimes:
+            [
+                new AgentRuntimeState(
+                    Name: "OpenCode",
+                    Command: "opencode",
+                    CliReady: false,
+                    InstallCommand: AgentRuntimeRemedies.InstallOpenCode,
+                    CredentialSecretName: null,
+                    CredentialReady: null
+                ),
+                new AgentRuntimeState(
+                    Name: "ClaudeCodeHeadless",
+                    Command: "claude",
+                    CliReady: true,
+                    InstallCommand: AgentRuntimeRemedies.InstallClaudeCode,
+                    CredentialSecretName: "anthropic-api-key",
+                    CredentialReady: false
+                ),
+            ]
+        );
+
+        var view = (await _client.GetFromJsonAsync<PodsResponse>("/api/pods"))!;
+
+        view.Runtimes.Hosted.ShouldBeTrue();
+        view.Runtimes.RetrySeconds.ShouldBe(30);
+        var opencode = view.Runtimes.Runtimes.Single(r => r.Name == "OpenCode");
+        opencode.CliReady.ShouldBeFalse();
+        opencode.InstallCommand.ShouldBe(AgentRuntimeRemedies.InstallOpenCode);
+        opencode.CredentialReady.ShouldBeNull();
+        var claude = view.Runtimes.Runtimes.Single(r => r.Name == "ClaudeCodeHeadless");
+        claude.CliReady.ShouldBeTrue();
+        claude.CredentialSecretName.ShouldBe("anthropic-api-key");
+        claude.CredentialReady.ShouldBe(false);
+    }
+
+    [Fact]
+    public async Task AnUnhostedRuntimesProcess_Should_SaySo()
+    {
+        // "These runtimes are not ready here" and "Runs execute somewhere this process cannot
+        // see" are different sentences; the default is the second.
+        var view = (await _client.GetFromJsonAsync<PodsResponse>("/api/pods"))!;
+
+        view.Runtimes.Hosted.ShouldBeFalse();
+        view.Runtimes.Runtimes.ShouldBeEmpty();
+    }
+
     sealed record ProjectResponse(Guid Id, string Name);
 
     sealed record AutomationResponse(Guid Id);
@@ -153,7 +211,24 @@ public class AgentPodsPanel_Should_Constraint(RunsApiFixture fixture) : IAsyncLi
         DateTimeOffset? CheckedAt,
         int RetrySeconds,
         int MaxConcurrentPods,
-        IReadOnlyList<PodEntry> Pods
+        IReadOnlyList<PodEntry> Pods,
+        RuntimesEntry Runtimes
+    );
+
+    sealed record RuntimesEntry(
+        bool Hosted,
+        DateTimeOffset? CheckedAt,
+        int RetrySeconds,
+        IReadOnlyList<RuntimeEntry> Runtimes
+    );
+
+    sealed record RuntimeEntry(
+        string Name,
+        string Command,
+        bool CliReady,
+        string InstallCommand,
+        string? CredentialSecretName,
+        bool? CredentialReady
     );
 
     sealed record PodEntry(

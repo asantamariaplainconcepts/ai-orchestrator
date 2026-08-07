@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.CQS;
 using AiOrchestrator.BuildingBlocks.Dispatch;
 using AiOrchestrator.BuildingBlocks.Identity;
@@ -53,7 +54,38 @@ sealed class GetAgentPods : IUseCase
         DateTimeOffset? CheckedAt,
         int RetrySeconds,
         int MaxConcurrentPods,
-        IReadOnlyList<PodView> Pods
+        IReadOnlyList<PodView> Pods,
+        RuntimesView Runtimes
+    );
+
+    /// <summary>
+    /// The agent runtimes of the process that executes Runs (#279), beside the pods because the
+    /// operator's question is one: "can this machine run my Automations?". Machine facts like
+    /// the pods' own — anyone's to see, no Story named. <paramref name="Hosted"/> false means
+    /// Runs execute somewhere this process cannot see (a pods habitat's worker, a queue's job),
+    /// which the panel must not render as "nothing is ready".
+    /// </summary>
+    internal sealed record RuntimesView(
+        bool Hosted,
+        DateTimeOffset? CheckedAt,
+        int RetrySeconds,
+        IReadOnlyList<RuntimeView> Runtimes
+    );
+
+    /// <summary>
+    /// One runtime's readiness with its remedies attached: <paramref name="InstallCommand"/> is
+    /// the copyable fix for a missing CLI, pinned where the sentences live (#279 design D3);
+    /// <paramref name="CredentialReady"/> is null when no credential is configured — the
+    /// switched-off state that runs with the machine's own session, a different sentence from
+    /// both "resolves" and "does not".
+    /// </summary>
+    internal sealed record RuntimeView(
+        string Name,
+        string Command,
+        bool CliReady,
+        string InstallCommand,
+        string? CredentialSecretName,
+        bool? CredentialReady
     );
 
     /// <summary>
@@ -75,6 +107,7 @@ sealed class GetAgentPods : IUseCase
 
     internal sealed class Handler(
         IAgentPodsMonitor monitor,
+        IAgentRuntimesMonitor runtimes,
         RunsDbContext database,
         IProjectCatalog projects,
         IAutomationCatalog automations,
@@ -141,6 +174,8 @@ sealed class GetAgentPods : IUseCase
                 }
             }
 
+            var runtimesSnapshot = runtimes.Snapshot();
+
             return new Response(
                 snapshot.Hosted,
                 snapshot.DockerReady,
@@ -148,7 +183,22 @@ sealed class GetAgentPods : IUseCase
                 snapshot.CheckedAt,
                 (int)snapshot.ProbeInterval.TotalSeconds,
                 snapshot.MaxConcurrentPods,
-                entries
+                entries,
+                new RuntimesView(
+                    runtimesSnapshot.Hosted,
+                    runtimesSnapshot.CheckedAt,
+                    (int)runtimesSnapshot.ProbeInterval.TotalSeconds,
+                    [
+                        .. runtimesSnapshot.Runtimes.Select(state => new RuntimeView(
+                            state.Name,
+                            state.Command,
+                            state.CliReady,
+                            state.InstallCommand,
+                            state.CredentialSecretName,
+                            state.CredentialReady
+                        )),
+                    ]
+                )
             );
         }
     }

@@ -78,6 +78,18 @@ public static class DispatchComposition
         if (string.IsNullOrWhiteSpace(podImage))
         {
             builder.Services.AddSingleton<IDispatchedRunHandler, InProcessRunHandler>();
+
+            // In-process execution spawns the agent CLIs in THIS process, so this is the
+            // process whose runtime readiness is worth probing (#279): the ledger the probe
+            // writes, the monitor registration the panel's endpoint reads. Registered after
+            // the module's unhosted default, deliberately — the later registration resolves,
+            // exactly as the pods monitor does one branch down.
+            builder.Services.TryAddSingleton(TimeProvider.System);
+            builder.Services.AddSingleton<Agents.AgentRuntimesHost>();
+            builder.Services.AddSingleton<BuildingBlocks.Agents.IAgentRuntimesMonitor>(provider =>
+                provider.GetRequiredService<Agents.AgentRuntimesHost>()
+            );
+            builder.Services.AddHostedService<Agents.AgentRuntimesProbe>();
             return builder;
         }
 
