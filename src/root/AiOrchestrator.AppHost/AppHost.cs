@@ -4,8 +4,15 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddDockerComposeEnvironment("compose");
 
+var postgresPassword = builder.AddParameter(
+    "postgres-password",
+    new GenerateParameterDefault { MinLength = 22 },
+    secret: true,
+    persist: true
+);
+
 var postgres = builder
-    .AddPostgres("postgres")
+    .AddPostgres("postgres", password: postgresPassword)
     .WithDataVolume("aio-postgres-data")
     .WithLifetime(ContainerLifetime.Persistent)
     .PublishAsDockerComposeService((_, service) => AppHostCompose.ConfigurePostgres(service));

@@ -55,6 +55,21 @@ public class HabitatParameter_Should_Constraint
     }
 
     [Fact]
+    public async Task Postgres_Should_UseThePersistedSecretPassword()
+    {
+        var builder =
+            await DistributedApplicationTestingBuilder.CreateAsync<Projects.AiOrchestrator_AppHost>();
+        var postgres = builder.Resources.OfType<PostgresServerResource>().Single();
+
+        // The named secret is the other half of the persistent data volume: Aspire writes its
+        // generated value to AppHost user secrets in run mode, so a later composition supplies
+        // the hash already stored in PostgreSQL instead of generating a mismatched password.
+        postgres.PasswordParameter.Name.ShouldBe("postgres-password");
+        postgres.PasswordParameter.Secret.ShouldBeTrue();
+        postgres.PasswordParameter.Default!.GetType().Name.ShouldBe("UserSecretsParameterDefault");
+    }
+
+    [Fact]
     public async Task TheServerHabitat_Should_CarryTheComposeDeclarations()
     {
         var environment = await ServerEnvironment("server");
