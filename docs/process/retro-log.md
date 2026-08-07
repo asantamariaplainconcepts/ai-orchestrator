@@ -3369,3 +3369,34 @@ join can attribute by interval. Decide before the next multi-change session, not
 
 **Decisions recorded:** none new — the methodology decision itself is #273's grill record and the
 added `default-automations` requirement.
+
+## 2026-08-07 — inbox-open-prs (#274)
+
+**Time (telemetry, delta):** 34 min agent (2 014 s cli, $69.65, 79k output tokens), by delta
+against the previous entry's session totals — same shared-session caveat as spec-first-chain's,
+same absent `{type=user}` datapoint, now the **fourth** consecutive occurrence.
+
+**What worked:** exploring before proposing. A read-only agent mapped the Inbox, the seam and the
+Run→PR join before the proposal was written, and it surfaced the two facts the design turned on:
+the seam's vocabulary rule ("change", never "PullRequest") and the shell badge polling the inbox
+array from every page every 30 s — which is what made "its own endpoint, page-scoped, slower" a
+requirement rather than a preference. The browser console then caught a real defect the eyes had
+approved: an `<a>` nested in an `<a>` for the "by a Run" link, which React refuses to hydrate.
+Reading the console after every screen change is now paying for itself — this is the second
+change in a row where the accessibility/DOM layer held the defect the pixels hid.
+
+**What didn't:** I shipped the handler with `VisibleProjects() == null` treated as "nothing
+visible" when the contract says null means **all** projects — the owner and the self-host habitat,
+i.e. the product's primary user (DEC-016). The functional test caught it in minutes, but the shape
+of the mistake is worth naming: the inbox filters a *query* with null-means-all semantics that cost
+nothing to honour, while this surface iterates *projects*, and I copied the guard without copying
+the semantics. The fix added `IProjectCatalog.ActiveProjectIds` — a Contracts widening ADR-0006
+would have demanded eventually anyway, since a capability the primary user cannot reach is not a
+capability.
+
+**One change next time:** when a use case consumes `VisibleProjects`, write the null-path test
+first — "the owner sees everything" is the semantics most likely to be silently wrong, and it is
+one test.
+
+**Decisions recorded:** none new. The rate-limit-driven narrowing (the ambient count neither
+includes changes nor triggers vendor reads) is contract in the delta spec, decided in #274.

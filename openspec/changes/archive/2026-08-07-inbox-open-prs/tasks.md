@@ -46,4 +46,5 @@
 - [x] 5.2 `dotnet build src/AiOrchestrator.slnx` — 0 errors; affected module suites pass locally.
 - [x] 5.3 Mock mode: the four states on screen (entries, product marker, failure reason, empty),
       both themes, and the badge unchanged while changes exist.
-- [ ] 5.4 CI green on the PR head (verified job-by-job), at sync.
+- [x] 5.4 CI green on the PR head (verified job-by-job), at sync. Run 31134369329 on 79b7c84:
+      every job success, terraform correctly skipped.
