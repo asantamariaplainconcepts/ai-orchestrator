@@ -5,7 +5,8 @@ import { cn } from "@/shared/lib/utils";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { podsHealth, podsHealthLabel, PodsUnavailableCard } from "./PodsHealth";
-import { podsBlocked, usePods } from "./usePods";
+import { RuntimesUnavailableCard } from "./RuntimesReadiness";
+import { podsBlocked, runtimesBlocked, usePods } from "./usePods";
 
 /**
  * The self-host posture as an environment chip (design review 5a). The permanent ⚠ banner
@@ -34,7 +35,7 @@ export function EnvironmentChip({
   if (!owner) return null;
 
   const health = pods.data?.hosted ? podsHealth(pods.data) : null;
-  const blocked = podsBlocked(pods.data);
+  const blocked = podsBlocked(pods.data) || runtimesBlocked(pods.data);
 
   if (inline) {
     return (
@@ -130,16 +131,15 @@ function EnvironmentFacts() {
         ) : null}
       </dl>
 
-      {pods.data?.hosted ? (
-        <>
-          <PodsUnavailableCard view={pods.data} compact />
-          <Link
-            className="self-start text-xs text-primary underline-offset-4 hover:underline"
-            to="/pods"
-          >
-            {t("env.viewPods")}
-          </Link>
-        </>
+      {pods.data?.hosted ? <PodsUnavailableCard view={pods.data} compact /> : null}
+      {pods.data ? <RuntimesUnavailableCard view={pods.data.runtimes} /> : null}
+      {pods.data && (pods.data.hosted || pods.data.runtimes.hosted) ? (
+        <Link
+          className="self-start text-xs text-primary underline-offset-4 hover:underline"
+          to="/pods"
+        >
+          {t("env.viewPods")}
+        </Link>
       ) : null}
 
       <p className="rounded-md border border-warning/50 bg-warning/10 p-2 text-[11px] leading-snug">
