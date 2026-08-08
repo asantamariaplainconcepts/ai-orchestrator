@@ -61,10 +61,22 @@
 
 ## 6. Retiring the pod path (design D6)
 
-- [ ] 6.1 Remove `Dispatch:PodImage`, its launcher, the docker-socket grant and the compose warning
+- [x] 6.1 Remove `Dispatch:PodImage`, its launcher, the docker-socket grant and the compose warning
       that went with it.
-- [ ] 6.2 A habitat naming a pod image is refused at composition, naming what replaced it.
-- [ ] 6.3 Confirm in-process execution is untouched — a machine somebody owns keeps its answer.
+- [x] 6.2 A habitat naming a pod image is refused at composition, naming what replaced it.
+- [x] 6.3 **selfhost adopts sbx**, because retiring the pod would otherwise leave it with nothing:
+      the Server image carries no agent CLI on purpose, so in-process is not an option there.
+      `DeclareServerShape` names the sbx launcher where it named a pod image.
+- [x] 6.4 **Record the selfhost leg as NOT VERIFIED, loudly.** Every measurement behind sbx is
+      macOS; the spike's own findings name Linux x86_64 + KVM as the prerequisite and call the
+      selfhost leg an afternoon's work on a Linux VM that has not happened. Shipping this makes
+      that hypothesis load-bearing for a habitat nobody has run it in (ADR-0005). The refusal a
+      selfhost operator meets if KVM is absent must name it, and `selfhost/README.md` must say what
+      the machine needs before the operator finds out from a failed Run. **Recorded** in the
+      habitat declaration itself and in design D6; `selfhost/README.md` still needs the sentence
+      about x86_64 + KVM, which is the operator-facing half and is not written yet.
+- [x] 6.5 Confirm in-process execution still works for a habitat that names no launcher at all —
+      it stops being selfhost's answer, but it is still the default and the local lane's.
 
 ## 7. Proof
 

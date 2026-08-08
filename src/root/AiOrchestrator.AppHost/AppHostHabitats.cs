@@ -97,23 +97,19 @@ static class AppHostHabitats
                 + "on this machine"
         );
 
-        // Runs execute in pods here (#246): the Server's own image carries no agent CLI on purpose
-        // — fattening it was rejected at grill — so each Run gets a container from the worker image
-        // instead. Named here, and honestly incomplete by default: without the docker socket (the
-        // operator's explicit grant, root-equivalent, made in their own compose override) a Run
-        // fails naming exactly that. A named failure beats a silent in-process fallback that would
-        // erase the isolation the operator asked for. selfhost/README.md carries the grant.
-        // Since #257 the default is the published worker image — the operator pulls it rather than
-        // building it, and overriding the name in their own compose still works. The tag is spelled
-        // plain here, not as the compose placeholder: this method also declares the `aspire run`
-        // rehearsal, where nothing interpolates `${...}` — an operator pinning a SHA overrides the
-        // whole variable in their own compose, which wins over this default either way.
-        server.WithEnvironment(
-            "Dispatch__PodImage",
-            "ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest"
-        );
-        // `docker compose` prefixes networks with the project name, which defaults to the
-        // directory: selfhost/. An operator running with -p overrides this too.
-        server.WithEnvironment("Dispatch__PodNetwork", "selfhost_aspire");
+        // Runs execute in a per-Run microVM here (#296). The pod substrate this replaced put each
+        // Run in a container launched over the docker socket — a grant its own requirement called
+        // root-equivalent on the host, into a container sharing that host's kernel. Both are gone.
+        //
+        // In-process was never an option for this habitat: the Server's image carries no agent CLI
+        // on purpose (fattening it was rejected at grill), so retiring the pod without naming a
+        // substrate would have left `docker compose up` unable to run an agent at all.
+        //
+        // NOT VERIFIED on Linux. Every measurement behind sbx is macOS; its own spike records the
+        // prerequisite as x86_64 + KVM and names the selfhost leg as an afternoon on a Linux VM
+        // that has not happened. The operator meets a named refusal if the daemon is unreachable,
+        // and selfhost/README.md says what the machine needs — but this is a hypothesis carrying a
+        // habitat until somebody runs it (ADR-0005).
+        server.WithEnvironment("Agents__Sandbox__Launcher", "sbx");
     }
 }

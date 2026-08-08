@@ -70,128 +70,49 @@ public static class DispatchComposition
         RequireOutbox(builder);
         builder.Services.AddSingleton<OutboxRunSubscriber>();
 
-        // WHERE the claimed Run executes (#246, design D1/D2): a pod image named in
-        // configuration selects the pod launcher; nothing named keeps in-process execution —
-        // presence of configuration, never an environment name (ADR-0010), exactly as the
-        // queue/outbox split above.
-        var podImage = builder.Configuration.GetValue<string?>(PodImageKey);
-        if (string.IsNullOrWhiteSpace(podImage))
-        {
-            builder.Services.AddSingleton<IDispatchedRunHandler, InProcessRunHandler>();
+        // WHERE the claimed Run executes. The pod substrate is gone (#296): it put each Run in a
+        // container launched over the docker socket, a grant its own requirement called
+        // root-equivalent on the host, into a container sharing that host's kernel. What replaced
+        // it is a sandbox launcher, selected in AgentSandboxComposition — so this composition no
+        // longer decides where an agent runs, only that a claimed Run is handled in this process.
+        builder.Services.AddSingleton<IDispatchedRunHandler, InProcessRunHandler>();
 
-            // In-process execution spawns the agent CLIs in THIS process, so this is the
-            // process whose runtime readiness is worth probing (#279): the ledger the probe
-            // writes, the monitor registration the panel's endpoint reads. Registered after
-            // the module's unhosted default, deliberately — the later registration resolves,
-            // exactly as the pods monitor does one branch down.
-            builder.Services.TryAddSingleton(TimeProvider.System);
-            builder.Services.AddSingleton<Agents.AgentRuntimesHost>();
-            builder.Services.AddSingleton<BuildingBlocks.Agents.IAgentRuntimesMonitor>(provider =>
-                provider.GetRequiredService<Agents.AgentRuntimesHost>()
+        // The runtimes this process could spawn are worth probing wherever the handler lives in
+        // it (#279): the ledger the probe writes and the monitor registration the panel reads.
+        // Registered after the module's unhosted default, deliberately — the later one resolves.
+        builder.Services.TryAddSingleton(TimeProvider.System);
+        builder.Services.AddSingleton<Agents.AgentRuntimesHost>();
+        builder.Services.AddSingleton<BuildingBlocks.Agents.IAgentRuntimesMonitor>(provider =>
+            provider.GetRequiredService<Agents.AgentRuntimesHost>()
+        );
+        builder.Services.AddHostedService<Agents.AgentRuntimesProbe>();
+
+        // A habitat still naming a pod image is refused rather than silently ignored: an operator
+        // upgrading needs the sentence more than the error, and a key that quietly stopped meaning
+        // anything is how a deployment ends up running something nobody chose.
+        var podImage = builder.Configuration.GetValue<string?>(PodImageKey);
+        if (!string.IsNullOrWhiteSpace(podImage))
+        {
+            throw new InvalidOperationException(
+                $"This habitat names '{PodImageKey}', a substrate that no longer exists. Each Run "
+                    + "used to execute in a container launched over the docker socket; it now runs "
+                    + "in a per-Run microVM, and no socket is granted anywhere. Name a sandbox "
+                    + $"launcher instead ('{Agents.AgentSandboxComposition.LauncherKey}' = "
+                    + $"'{Agents.AgentSandboxComposition.SbxLauncher}' on a machine you own, "
+                    + $"'{Agents.AgentSandboxComposition.AcaLauncher}' in a deployment), and remove "
+                    + "the docker socket grant from your compose."
             );
-            builder.Services.AddHostedService<Agents.AgentRuntimesProbe>();
-            return builder;
         }
 
-        builder.Services.AddSingleton(PodOptions(builder, podImage));
-        builder.Services.AddSingleton<IDispatchedRunHandler, PodRunLauncher>();
-
-        // The pod host becomes observable the moment it exists (design review 5b/5c): the ledger
-        // the launcher writes sightings into, the probe that asks docker on the panel's cadence,
-        // and the monitor registration the panel's endpoint reads. Registered after the module's
-        // unhosted default, deliberately — the later registration is the one that resolves, so a
-        // habitat with pods answers with them and every other habitat keeps the honest "not
-        // hosted here".
-        builder.Services.TryAddSingleton(TimeProvider.System);
-        builder.Services.AddSingleton<AgentPodsHost>();
-        builder.Services.AddSingleton<IAgentPodsMonitor>(provider =>
-            provider.GetRequiredService<AgentPodsHost>()
-        );
-        builder.Services.AddHostedService<AgentPodsProbe>();
         return builder;
     }
 
-    /// <summary>Naming the worker image is what opts a habitat into pods (#246, design D2).</summary>
-    public const string PodImageKey = "Dispatch:PodImage";
-
     /// <summary>
-    /// Everything a pod receives, decided here — the launcher knows containers, never habitats.
-    /// The database travels because the worker reads the Run from it; the secret store paths
-    /// travel when this host has them (BR-010's resolution happens inside the pod); the model
-    /// configuration travels so the pod's runtime is the one the Automation named.
+    /// The retired substrate's key, kept only so a habitat still naming it is refused by name
+    /// (#296). A key that quietly stopped meaning anything is how a deployment ends up running
+    /// something nobody chose.
     /// </summary>
-    static PodLaunchOptions PodOptions(IHostApplicationBuilder builder, string image)
-    {
-        var configuration = builder.Configuration;
-
-        var environment = new Dictionary<string, string>();
-
-        // An explicit pod-side connection string wins: on a developer machine the host's own
-        // value says "localhost", which inside a container is the container. The compose network
-        // needs no rewrite, so there the host's value is the pod's.
-        var database =
-            configuration.GetValue<string?>("Dispatch:PodDatabaseConnectionString")
-            ?? configuration.GetConnectionString("aiorchestratordb");
-        environment["ConnectionStrings__aiorchestratordb"] = database!;
-
-        foreach (
-            var key in (string[])
-                [
-                    "Secrets:LocalStorePath",
-                    "Secrets:LocalKeyRingPath",
-                    "Agents:OpenCode:Model",
-                    "Agents:OpenCode:CredentialSecretName",
-                    "Agents:ClaudeCodeHeadless:CredentialSecretName",
-                ]
-        )
-        {
-            if (configuration.GetValue<string?>(key) is { } value)
-            {
-                environment[key.Replace(":", "__")] = value;
-            }
-        }
-
-        var mounts = new List<string>(
-            configuration.GetSection("Dispatch:PodMounts").Get<string[]>() ?? []
-        );
-
-        // The host's sessions, by deliberate default (#246 grill, design D5): pod Runs act and
-        // bill as those sessions, and the off switch is one key. The source is the HOST's home —
-        // the docker daemon resolves -v paths on the host — so a containerised Server needs the
-        // operator to name it; a process host can name its own.
-        if (configuration.GetValue("Dispatch:PodSessions", defaultValue: true))
-        {
-            var home =
-                configuration.GetValue<string?>("Dispatch:PodSessionsHome")
-                ?? (
-                    OperatingSystem.IsWindows()
-                        ? null
-                        : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                );
-
-            if (!string.IsNullOrWhiteSpace(home))
-            {
-                // The observed set (#246 tasks 3.1): opencode keeps its credentials in
-                // ~/.local/share/opencode/auth.json — NOT in ~/.config/opencode, which holds
-                // agents and commands — so both travel. Read-only, per the same observation;
-                // note it also found that macOS Docker Desktop can refuse a dot-directory bind
-                // outright (Permission denied as root), so a host where these mounts fail needs
-                // Dispatch:PodSessions=false and named secrets instead.
-                mounts.Add($"{home}/.config/opencode:/root/.config/opencode:ro");
-                mounts.Add($"{home}/.local/share/opencode:/root/.local/share/opencode:ro");
-                mounts.Add($"{home}/.claude:/root/.claude:ro");
-            }
-        }
-
-        return new PodLaunchOptions
-        {
-            Image = image,
-            Network = configuration.GetValue<string?>("Dispatch:PodNetwork"),
-            Environment = environment,
-            Mounts = mounts,
-            MaxConcurrentPods = configuration.GetValue("Dispatch:MaxConcurrentPods", 2),
-        };
-    }
+    public const string PodImageKey = "Dispatch:PodImage";
 
     static bool HasQueue(IHostApplicationBuilder builder) =>
         !string.IsNullOrWhiteSpace(

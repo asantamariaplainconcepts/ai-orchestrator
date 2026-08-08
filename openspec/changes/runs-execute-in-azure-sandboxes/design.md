@@ -102,7 +102,23 @@ would keep the docker socket in the product's supported surface. A habitat still
 is refused, naming what replaced it — the same shape as every other refusal here, because an
 operator upgrading needs the sentence more than the error.
 
-In-process execution remains for a machine somebody owns, so nothing is left without an answer.
+**A hole found on contact with the code, and the decision that closed it.** The sentence above was
+originally "in-process execution remains for a machine somebody owns, so nothing is left without an
+answer." That is false. The Server's own image **deliberately carries no agent CLI** — fattening it
+was rejected at grill, and only the conversation image installs `claude` and `opencode`. Retiring
+the pod would have left a `docker compose up` selfhost with no substrate at all: not in-process,
+because there is no CLI to run; not the pod, because it is being removed.
+
+So **selfhost adopts sbx**. One isolation model everywhere, and the docker socket leaves the
+product entirely rather than surviving in a corner — which was the point of the exercise that
+started all of this.
+
+**This makes an unverified claim load-bearing, and that is stated rather than absorbed.** All of
+`spike-sbx-sandbox`'s evidence is macOS. Its own findings record the Linux prerequisite as
+x86_64 + KVM and name the selfhost leg as needing "one afternoon on a Linux VM" before the
+follow-up's selfhost tasks are trustworthy. That afternoon has not happened. Until it does, the
+selfhost habitat's substrate is a **hypothesis** (ADR-0005), and this change carries a task for it
+rather than a claim.
 
 ## Risks / Trade-offs
 

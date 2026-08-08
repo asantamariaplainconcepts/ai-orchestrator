@@ -77,8 +77,11 @@ public class HabitatParameter_Should_Constraint
         // The same set the generated compose carries (#246, #247) — one method, both routes,
         // so the rehearsal and the artifact cannot drift.
         environment["Identity__Mode"].ShouldBe("LocalOwner");
-        environment["Dispatch__PodImage"]
-            .ShouldBe("ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest");
+        // A per-Run microVM since #296, where it used to be a container launched over the docker
+        // socket. The key changing is the whole point: an operator's compose no longer grants a
+        // socket to anything.
+        environment["Agents__Sandbox__Launcher"].ShouldBe("sbx");
+        environment.ShouldNotContainKey("Dispatch__PodImage");
         environment["Habitat__LocalFolderUnavailableReason"].ShouldContain("container");
         // …and none of the dev loop's: an operator's first boot has no demo project.
         environment.ShouldNotContainKey("LocalLoop:Seed");

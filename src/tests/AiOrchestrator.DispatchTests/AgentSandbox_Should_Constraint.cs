@@ -1,5 +1,7 @@
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.ServiceDefaults.Agents;
+using AiOrchestrator.ServiceDefaults.Dispatch;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -304,21 +306,84 @@ public class AgentSandbox_Should_Constraint
 
         refusal.Message.ShouldContain("sbxx");
         refusal.Message.ShouldContain(AgentSandboxComposition.SbxLauncher);
+        refusal.Message.ShouldContain(AgentSandboxComposition.AcaLauncher);
+    }
+
+    // ---- The Azure launcher, and what it refuses to guess (#296, design D3) ----
+
+    [Fact]
+    public void TheAzureLauncher_Should_BeSelectedByItsPresenceAlone()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[AgentSandboxComposition.SandboxGroupKey] = "aio-project-1";
+        builder.Configuration[$"{AgentSandboxComposition.EgressAllowKey}:0"] = "github.com";
+        builder.AddAgentRuntime();
+
+        var host = builder.Build().Services.GetRequiredService<IAgentProcessHost>();
+
+        host.SuppliesCredentials.ShouldBeTrue();
+        host.CredentialSource.ShouldContain("no value enters the sandbox");
+        // No machine owner exists on a remote host, so #288's question does not arise here.
+        host.SessionUnavailableFor("ClaudeCodeHeadless", "claude", null).ShouldBeNull();
     }
 
     [Fact]
-    public void BothIsolationSubstrates_Should_BeRefusedNamingBoth()
+    public void TheAzureLauncherWithNoGroup_Should_RefuseNamingWhy()
     {
+        // Per Project, because the platform scopes credentials to the group and #244 promises a
+        // Run bills as its own Project. A shared group would break that silently.
         var builder = Host.CreateApplicationBuilder();
-        builder.Configuration["Dispatch:PodImage"] = "ghcr.io/example/worker:latest";
         builder.Configuration[AgentSandboxComposition.LauncherKey] =
-            AgentSandboxComposition.SbxLauncher;
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[$"{AgentSandboxComposition.EgressAllowKey}:0"] = "github.com";
 
         var refusal = Should.Throw<InvalidOperationException>(() => builder.AddAgentRuntime());
 
-        refusal.Message.ShouldContain("Dispatch:PodImage");
-        refusal.Message.ShouldContain(AgentSandboxComposition.LauncherKey);
-        refusal.Message.ShouldContain("Remove whichever is not intended");
+        refusal.Message.ShouldContain(AgentSandboxComposition.SandboxGroupKey);
+        refusal.Message.ShouldContain("own Project's identity");
+    }
+
+    [Fact]
+    public void TheAzureLauncherWithNoEgressList_Should_RefuseRatherThanRunUnrestricted()
+    {
+        // The refusal that matters most. Deny-by-default is OPT-IN on that platform — measured
+        // 2026-08-08, a sandbox with no policy reached example.com and pypi.org with 200s — so a
+        // habitat that says nothing would run its agents unrestricted while believing otherwise.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[AgentSandboxComposition.SandboxGroupKey] = "aio-project-1";
+
+        var refusal = Should.Throw<InvalidOperationException>(() => builder.AddAgentRuntime());
+
+        refusal.Message.ShouldContain(AgentSandboxComposition.EgressAllowKey);
+        refusal.Message.ShouldContain("unrestricted");
+    }
+
+    [Fact]
+    public void ARetiredPodImage_Should_BeRefusedNamingWhatReplacedIt()
+    {
+        // A key that quietly stopped meaning anything is how a deployment ends up running
+        // something nobody chose — so an operator upgrading meets the sentence, not silence.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[DispatchComposition.PodImageKey] = "ghcr.io/example/worker:latest";
+        builder.Configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:aiorchestratordb"] = "Host=localhost;Database=x",
+            }
+        );
+
+        var refusal = Should.Throw<InvalidOperationException>(() =>
+            builder.AddRunDispatchConsumer()
+        );
+
+        refusal.Message.ShouldContain(DispatchComposition.PodImageKey);
+        refusal.Message.ShouldContain("no longer exists");
+        refusal.Message.ShouldContain(AgentSandboxComposition.SbxLauncher);
+        refusal.Message.ShouldContain(AgentSandboxComposition.AcaLauncher);
     }
 
     // ---- The preview lives exactly as long as its sandbox (run-previews design D1/D2) ----
