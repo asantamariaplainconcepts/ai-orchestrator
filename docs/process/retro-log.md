@@ -3723,3 +3723,59 @@ observation and an assumption wearing an observation's clothes.
 **Time invested:** ≤6.64 h agent, ≤$441.94, 840 530 output tokens (source: **telemetry**, two
 mapped sessions — see the attribution caveat above; these totals overlap #288's). Human time **not
 captured** — the export carries only `type=cli` datapoints, the same gap #288 recorded.
+
+## 2026-08-08 — drag-to-chain-the-workflow (#293)
+
+Design review turn 8, built: a standalone Automation drags into the chain, every gap states the
+wiring its drop would perform before it happens, a refused drop names its rule at the gap, and a
+read-only preview underneath shows the Backlog columns the workflow produces.
+
+**Worked: the design review was implementable as written.** Its sentences became the product's
+sentences almost unchanged — "ai:grill will hand to ai:estimate · ai:estimate will hand to
+ready-for-proposal" is the review's own phrasing. Where it did not survive contact, the review was
+right and the first implementation was wrong: the end-of-chain gap read "ready-for-proposal will
+hand to ai:implement will hand to it", which is two hand-offs where there is one, and the review
+had already written the correct single clause.
+
+**Worked: putting the rules where the gesture is not.** Playwright cannot perform an HTML5 drag
+(#110) and this repository has no frontend unit runner, so the gesture cannot be tested at all.
+What could be salvaged was its *decisions* — what a drop rewrites, what refuses it — which now live
+as pure functions of the Automations, with no React and no DOM. They are testable the moment a
+runner exists, and the change says plainly that they are **not tested**, in an open task rather than
+in a hedge.
+
+**What didn't: the process ran backwards.** The implementation was written first, from the design
+review, and the issue, the spec and this bundle came afterwards to land it through the normal path.
+That is recorded in the change's own `tasks.md` section 0 rather than smoothed over. It was fine
+here — the design review is itself a spec, written and reviewed before any code — but it means the
+spec gate reviewed a decision already made, which is not what the gate is for.
+
+**What didn't, structurally: a field went missing for the third time.** The Automation endpoint
+replaces the resource wholesale, so a caller that omits a field clears it with a 200. `previewPort`
+is dropped by the create endpoint and never sent by the form; `model` was dropped by the create
+endpoint (caught in #291 by a test that asserted on what the runtime was *handed*) and then again
+by the workflow canvas, a third caller nobody had thought about — so any drag or approval toggle
+silently reverted a chosen model to the deployment's. The API's own comments have warned about this
+since the field before last and the warning was not enough, because the failure is invisible at the
+call site by construction. Graduated:
+**[ADR-0019](../adr/0019-a-whole-object-replace-has-one-builder.md)** — one request builder per
+client for a wholesale replace, and a client that cannot carry a field must not be able to write
+the resource.
+
+**What didn't: the mock had never been able to perform the gesture it draws.** There was no update
+route for Automations at all, so every canvas gesture — including the human block shipped in #137 —
+404'd in mock mode and the picture never moved. Adding one, the first version mutated the array in
+place, and the result was the exact disagreement `workflowMembers` was written to prevent: the
+chain showed three steps while the catalogue still said "standalone" and the header still said
+"2 steps". React Query keeps previous data when a refetch returns the same reference, so an
+in-place fixture shows the change to whichever component happens to re-render. ADR-0016's rule
+arriving by a route it had not come by before.
+
+**One change next time:** when a change adds a field to a wholesale-replace resource, grep for the
+resource's other writers before finishing. Both `model` losses would have been one grep.
+
+**Time invested:** not measured (source: **manual**). Telemetry is being captured — the verifier
+passes all five checks — but **zero sessions map to this change**: the branch was created mid-session
+and the mapping hook runs at session start. #291's entry recorded the opposite face of the same
+defect, where one session spanning two branches was counted against both. Attribution is
+per-session and the work is per-branch, and those are not the same thing.
