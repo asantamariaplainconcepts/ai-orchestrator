@@ -1,13 +1,16 @@
 ## 0. Preconditions, named before starting (ADR-0017)
 
-- [ ] 0.1 Confirm an Azure subscription where `Microsoft.App/SandboxGroups` can actually be created:
-      the preview may be gated by region or enrolment, and **this programme's Azure access is
-      currently suspect** — the deploy pipeline has failed at `Initialise` for several days because
-      the Terraform state storage account is disabled. Assume broken until checked. If it is
-      broken, fixing it is this spike's first task and not a footnote discovered at step four.
+- [x] 0.1 Confirm an Azure subscription where `Microsoft.App/sandboxGroups` can actually be
+      created. **Done 2026-08-08, and it overturned this spike's own premise.** The proposal
+      assumed access was suspect because the deploy fails at `Initialise`; that is a disabled
+      Terraform state storage account and says nothing about creating sandboxes. Observed: Azure
+      CLI 2.82.0 signed in to a Visual Studio Enterprise subscription, `Microsoft.App`
+      **Registered**, and the provider offering `sandboxGroups`, `sandboxGroups/vnetConnections`
+      and `sandboxes` at api-version **`2026-02-01-preview`** in a region list including **Spain
+      Central**. The subscription was never the blocker.
 - [ ] 0.2 Confirm a registry the platform can pull from, and whether a private one needs a
       user-assigned managed identity as the announcement suggests.
-- [ ] 0.3b Install the `aca` CLI — it is a **separate surface, not `az containerapp`** — and run
+- [ ] 0.3b **The actual blocker.** Install the `aca` CLI — it is a **separate surface, not `az containerapp`** — and run
       `aca doctor`. Reported install is `curl -fsSL https://aka.ms/aca-cli-install | sh` followed
       by `aca auth login`; verify the current one rather than trusting a quoted line.
 - [ ] 0.4b Mint the credentials the provider paths need, and name them here before starting
@@ -20,7 +23,8 @@
 
 ## 1. H1 — our own image boots and runs an agent
 
-- [ ] 1.1a Cheapest first probe: create a sandbox from the **public prebuilt disk** (`--disk
+- [ ] 1.1a Cheapest first probe (the image is already built and exercised locally — see
+      `findings.md`; what is unverified is the platform's import of it): create a sandbox from the **public prebuilt disk** (`--disk
       copilot` is the one reported) and confirm the basic loop — create, exec, delete — before any
       image of ours exists. A failure here is about access, not about our packaging.
 - [ ] 1.1 Then build a minimal OCI image with `node`, `git` and `opencode`, push it, and create a
