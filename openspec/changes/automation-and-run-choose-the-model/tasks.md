@@ -1,12 +1,14 @@
 ## 0. The rehearsal's preconditions (ADR-0017)
 
-- [ ] 0.1 This change's proof needs no real Run against a remote repository: every acceptance
+- [x] 0.1 This change's proof needs no real Run against a remote repository: every acceptance
       criterion is reachable through the running dev loop and the gated real-sbx exercise. **Named
       anyway, per ADR-0017:** the enumeration path needs a machine that runs agents (the dev loop
       with `Parameters:sandbox=true`, already the default) and, to see the seat-dependent half, the
       carried session from #288 — both exist and resolve on the authoring machine today. No
       human-only credential step is required. If that turns out to be wrong, it is recorded here
-      before implementation rather than discovered at proof time.
+      before implementation rather than discovered at proof time. **This claim was wrong** — see
+      5.2. A Run needs the Connector's PAT like every other Run, and saying otherwise is precisely
+      the mistake ADR-0017 exists to catch. Recorded rather than quietly corrected.
 
 ## 1. Observe before claiming (ADR-0001)
 
@@ -78,9 +80,27 @@
       its command, so a model saved through the API silently vanished. It does not forward
       `request.PreviewPort` either — a pre-existing defect of the same shape, left alone and
       spawned as its own task rather than widened into this change.
-- [ ] 5.2 Exercised end to end on the running dev loop in sandbox mode: an Automation given a
-      `github-copilot/*` model that only the carried seat reaches, a Run launched with a different
-      model overriding it, and the Run's usage naming what actually ran. Recorded verbatim,
-      including anything that did not work.
+- [x] 5.2 Exercised on the running dev loop in sandbox mode. **What was observed, verbatim:**
+      - `GET /api/agent-runtimes/OpenCode/models` → `source: enumerated`, **495 models**, 24 of
+        them `github-copilot/*` — the whole chain live: HTTP → catalog → sbx host → a real
+        sandbox → the session #288 carries in. The host's own `opencode models` answers 41, so
+        the endpoint is demonstrably answering from the machine that runs agents (D2).
+      - `GET .../ClaudeCodeHeadless/models` → `source: declared`, `[]` before the habitat declared
+        anything, then `["sonnet"]` after — configuration changing the offer with no code change.
+      - An unregistered runtime → `declared`, `[]`. No invented failure.
+      - Second ask: 10 ms against seconds for the first. The cache is doing its job.
+      - The Automation form on the real server: "Asking the machine that runs agents…" for
+        several seconds — the pending state is load-bearing here, not decoration, because the
+        first ask genuinely builds a microVM — then the 495-model select with its enumerated
+        sentence.
+
+      **What this does NOT cover, and my own task 0.1 got wrong.** 0.1 claimed no human-only
+      credential step was needed. It was mistaken: launching a real Run still needs the Connector's
+      PAT, exactly the obstacle ADR-0017 was written about — so the first change planned under that
+      ADR mis-stated its own credential precondition. A real CLI receiving a real `--model` /
+      `-m <model>` from a real Run has therefore not been seen. What stands in for it is
+      `ModelChain_Should_Constraint`, which drives a Run through the API end to end and asserts on
+      the instruction the runtime was **handed** — the orchestration is proven, the last inch to
+      the CLI is not.
 - [x] 5.3 Full gates — build, tests, CSharpier, ESLint, Prettier, tsc, `openspec validate --strict`,
       design-system validator — and a deployment that sets nothing behaves exactly as before.
