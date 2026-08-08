@@ -22,18 +22,21 @@ public class RealSbxSandbox_Should_Constraint
 {
     static bool Enabled => Environment.GetEnvironmentVariable("AIO_SBX_EXERCISE") == "1";
 
-    static SbxAgentProcessHost Host() =>
+    static string SbxPath =>
+        Environment.GetEnvironmentVariable("SBX_PATH")
+        ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            ".local/bin/sbx"
+        );
+
+    static SbxAgentProcessHost Host(IReadOnlyList<string>? sessionFiles = null) =>
         new(
             new SbxSandboxOptions
             {
-                CommandPath =
-                    Environment.GetEnvironmentVariable("SBX_PATH")
-                    ?? Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                        ".local/bin/sbx"
-                    ),
+                CommandPath = SbxPath,
                 Memory = "4g",
                 InjectedSecrets = ["github"],
+                SessionFiles = sessionFiles ?? [],
             },
             new RunPreviewHost(),
             NullLogger<SbxAgentProcessHost>.Instance
@@ -222,5 +225,92 @@ public class RealSbxSandbox_Should_Constraint
 
         // And gone with the sandbox — the property the whole design rests on.
         previews.PortFor(runId).ShouldBeNull();
+    }
+
+    // ---- The carried session, against the real CLI (#288) ----
+
+    [Fact]
+    public async Task ACarriedSession_Should_AuthenticateTheAgentAsTheMachineOwner()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        // The claim the whole change rests on: with carriage declared, the agent inside the
+        // sandbox is signed in as the person at this keyboard — no API key stored anywhere, and
+        // no value passed in the environment. Asserted through the SHIPPED host, so what is
+        // exercised is what a Run would use.
+        var before = await Sandboxes();
+        var streamed = new List<string>();
+
+        var outcome = await Host(SbxSandboxOptions.DefaultSessionFiles)
+            .Run(
+                "opencode",
+                ["auth", "list"],
+                Directory.CreateTempSubdirectory("sbx-carriage-").FullName,
+                new Dictionary<string, string>(),
+                TimeSpan.FromMinutes(5),
+                CancellationToken.None,
+                streamed.Add
+            );
+
+        outcome.TimedOut.ShouldBeFalse();
+        outcome.ExitCode.ShouldBe(0);
+
+        // A CLI that found no session still exits cleanly and lists nothing, so the exit code
+        // alone would pass while proving the opposite of the claim.
+        var said = string.Join("\n", streamed);
+        // The CLI prints the provider's display name, not its slug — asserting the slug passed
+        // the negative case for free and would have made that test prove nothing (ADR-0013).
+        said.ShouldContain("GitHub Copilot");
+
+        // Nothing outlives the Run — the copy died with the sandbox (design D1).
+        (await Sandboxes()).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task WithoutCarriage_Should_LeaveTheSandboxSignedOut()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        // The assertion above can fail, and this is what proves it: the identical command in a
+        // habitat that declared nothing finds no session at all.
+        var streamed = new List<string>();
+
+        await Host()
+            .Run(
+                "opencode",
+                ["auth", "list"],
+                Directory.CreateTempSubdirectory("sbx-no-carriage-").FullName,
+                new Dictionary<string, string>(),
+                TimeSpan.FromMinutes(5),
+                CancellationToken.None,
+                streamed.Add
+            );
+
+        string.Join("\n", streamed).ShouldNotContain("GitHub Copilot");
+    }
+
+    /// <summary>
+    /// What the host has running right now, asked of sbx itself — the only witness to a sandbox
+    /// that outlived its Run.
+    /// </summary>
+    static async Task<string> Sandboxes()
+    {
+        using var process = System.Diagnostics.Process.Start(
+            new System.Diagnostics.ProcessStartInfo(SbxPath, "ls")
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            }
+        )!;
+
+        var listed = await process.StandardOutput.ReadToEndAsync();
+        await process.WaitForExitAsync();
+        return listed;
     }
 }

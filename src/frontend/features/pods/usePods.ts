@@ -23,6 +23,14 @@ export interface RuntimeRow {
   /** Null when no credential is configured — the machine's own session, not a failure. */
   credentialSecretName: string | null;
   credentialReady: boolean | null;
+  /**
+   * Why this runtime's session could not be carried to the machine that runs it (#288). Null when
+   * the question does not arise. Kept apart from a missing secret because on a machine you are
+   * signed into, "the secret is not stored" is the confusing half of the truth.
+   */
+  sessionUnavailableReason: string | null;
+  /** The copyable command that starts the way out; null exactly when the reason is. */
+  sessionUnavailableRemedy: string | null;
 }
 
 /**
@@ -88,7 +96,13 @@ export function podsBlocked(view: AgentPodsView | undefined): boolean {
 
 /** A runtime that would fail a Run right now: its CLI absent, or its named secret unresolvable. */
 export function runtimeNotReady(runtime: RuntimeRow): boolean {
-  return !runtime.cliReady || runtime.credentialReady === false;
+  // A session that cannot reach the machine that runs the agent is not-ready too (#288) — the
+  // CLI answers and the store may hold nothing to miss, yet no Run on it can authenticate.
+  return (
+    !runtime.cliReady ||
+    runtime.credentialReady === false ||
+    runtime.sessionUnavailableReason !== null
+  );
 }
 
 /** The runtimes' half of the same question (#279), for the chip's warning dot. */

@@ -85,14 +85,22 @@ function AgentHostRowItem({ host }: { host: AgentHostRow }) {
 function RuntimeRowItem({ runtime }: { runtime: RuntimeRow }) {
   const cliMissing = !runtime.cliReady;
   const secretMissing = runtime.credentialReady === false;
+  // Said instead of the secret state, not beside it: a reader signed into this CLI needs to
+  // learn their login cannot travel to where the agent runs, not to chase a secret they never
+  // meant to store (#288).
+  const sessionStuck = !cliMissing && runtime.sessionUnavailableReason !== null;
 
   return (
     <li className="flex flex-col gap-1.5 border-b px-3.5 py-2.5 last:border-0">
       <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        {cliMissing || secretMissing ? (
+        {cliMissing || sessionStuck || secretMissing ? (
           <Badge variant="outline" className="border-warning/40 bg-warning/15 text-warning">
             <TriangleAlert aria-hidden="true" className="size-3" />
-            {cliMissing ? t("runtimes.cliMissing") : t("runtimes.secretMissing")}
+            {cliMissing
+              ? t("runtimes.cliMissing")
+              : sessionStuck
+                ? t("runtimes.sessionCantTravel")
+                : t("runtimes.secretMissing")}
           </Badge>
         ) : (
           <Badge variant="outline" className="border-success/40 bg-success/10 text-success">
@@ -101,7 +109,10 @@ function RuntimeRowItem({ runtime }: { runtime: RuntimeRow }) {
         )}
         <span className="min-w-0 flex-1 text-xs font-semibold">{runtime.name}</span>
         <span
-          className={cn("text-[11px]", secretMissing ? "text-warning" : "text-muted-foreground")}
+          className={cn(
+            "text-[11px]",
+            secretMissing && !sessionStuck ? "text-warning" : "text-muted-foreground",
+          )}
         >
           {runtime.credentialSecretName === null
             ? t("runtimes.sessionAuth")
@@ -116,7 +127,16 @@ function RuntimeRowItem({ runtime }: { runtime: RuntimeRow }) {
           <CopyLine text={runtime.installCommand} />
         </span>
       ) : null}
-      {!cliMissing && secretMissing ? (
+      {sessionStuck ? (
+        <span className="flex flex-col gap-1.5">
+          <span className="text-xs leading-relaxed text-muted-foreground">
+            {runtime.sessionUnavailableReason}
+          </span>
+          {runtime.sessionUnavailableRemedy ? (
+            <CopyLine text={runtime.sessionUnavailableRemedy} />
+          ) : null}
+        </span>
+      ) : !cliMissing && secretMissing ? (
         <span className="text-xs leading-relaxed text-muted-foreground">
           {t("runtimes.secretMissingBody")}
         </span>
@@ -158,14 +178,24 @@ export function RuntimesUnavailableCard({ view }: { view: RuntimesView }) {
           <span className="flex min-w-0 flex-col gap-1">
             <span className="text-[13px] font-semibold">
               {runtime.name} —{" "}
-              {runtime.cliReady ? t("runtimes.secretMissing") : t("runtimes.cliMissing")}
+              {!runtime.cliReady
+                ? t("runtimes.cliMissing")
+                : runtime.sessionUnavailableReason
+                  ? t("runtimes.sessionCantTravel")
+                  : t("runtimes.secretMissing")}
             </span>
-            {runtime.cliReady ? (
-              <span className="text-xs leading-relaxed text-muted-foreground">
-                {t("runtimes.secret")} {runtime.credentialSecretName}
-              </span>
-            ) : (
+            {!runtime.cliReady ? (
               <CopyLine text={runtime.installCommand} />
+            ) : (
+              <span className="flex flex-col gap-1">
+                <span className="text-xs leading-relaxed text-muted-foreground">
+                  {runtime.sessionUnavailableReason ??
+                    `${t("runtimes.secret")} ${runtime.credentialSecretName}`}
+                </span>
+                {runtime.sessionUnavailableRemedy ? (
+                  <CopyLine text={runtime.sessionUnavailableRemedy} />
+                ) : null}
+              </span>
             )}
           </span>
         </div>

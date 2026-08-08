@@ -284,6 +284,10 @@ export const en = {
   "runtimes.secretMissingBody":
     "The named secret doesn't resolve in this machine's store. Add it, or clear the runtime's credential setting to use this machine's own session.",
   "runtimes.sessionAuth": "this machine's session",
+  // #288: on a machine you are signed into, "secret missing" is the confusing half of the
+  // truth. This state says the honest thing — the login exists, it just cannot be copied to
+  // where the agent runs — and the reason itself comes from the host, which knows why.
+  "runtimes.sessionCantTravel": "Session can't travel",
   "runtimes.secret": "secret",
   // Where the agents run is chosen when the server starts, and the rows above describe THAT
   // machine — so it is stated before them rather than left to inference. A host that isn't

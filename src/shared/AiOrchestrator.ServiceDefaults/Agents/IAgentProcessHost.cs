@@ -55,7 +55,30 @@ public interface IAgentProcessHost
     /// process's PATH when Runs execute elsewhere would state a truth no Run depends on.
     /// </summary>
     Task<bool> CliAnswers(string command, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Why this runtime's session could NOT be carried into the sandbox, or null when the
+    /// question does not arise — carriage is off, or this runtime's credential is a file the copy
+    /// reaches (#288).
+    /// <para>
+    /// It exists because "secret missing" is a confusing thing to read on a machine you are
+    /// signed into. A developer whose Claude Code session lives in the macOS keychain needs to
+    /// learn that no copy can carry it, not to wonder why the product cannot see a login they can.
+    /// </para>
+    /// </summary>
+    SessionCarriageGap? SessionUnavailableFor(
+        string runtimeName,
+        string command,
+        string? credentialSecretName
+    );
 }
+
+/// <summary>
+/// A runtime this host cannot carry the owner's session for (#288): why, and the one command
+/// that starts the way out. Both, because a reason without a remedy leaves the developer where
+/// the old silence did.
+/// </summary>
+public sealed record SessionCarriageGap(string Reason, string Remedy);
 
 /// <summary>
 /// What the host itself needs before any agent can run. <paramref name="Where"/> names the
