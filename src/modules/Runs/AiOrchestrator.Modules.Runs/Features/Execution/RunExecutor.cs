@@ -433,7 +433,7 @@ sealed class RunExecutor(
         }
 
         // The workspace is the locus decision (#210, design D1): same queue, same worker, same
-        // runtime — a Local run works in the Connector's folder, a Pod run in a fresh clone.
+        // runtime — a Local run works in the Connector's folder, a Sandbox run in a fresh clone.
         if (run.Locus == RunLocus.Local)
         {
             if (targetsChange)
@@ -442,7 +442,7 @@ sealed class RunExecutor(
                 // whose work cannot reach the change is a promise the record would break.
                 return new Outcome(
                     Failure(
-                        "A change-targeted Run executes on the pod lane; the local lane never pushes."
+                        "A change-targeted Run executes on the sandbox lane; the local lane never pushes."
                     )
                 );
             }

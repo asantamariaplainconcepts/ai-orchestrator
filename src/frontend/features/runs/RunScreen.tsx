@@ -3,7 +3,7 @@ import { Check, X } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { useAutomations } from "@/features/automations/useAutomations";
-import { runtimesBlocked, usePods } from "@/features/pods/usePods";
+import { runtimesBlocked, useRuntimes } from "@/features/runtimes/useRuntimes";
 import { RunTranscript, TranscriptSpend } from "./RunTranscript";
 import { ApiError } from "@/shared/http/client";
 import { t, tCount, type TranslationKey } from "@/shared/i18n";
@@ -101,13 +101,12 @@ export function RunScreen() {
     run !== undefined &&
     ["Queued", "Planning", "AwaitingApproval", "Executing"].includes(run.state);
 
-  // Design review 5c, resited by #296: a queued Run whose machine cannot take work explains
-  // itself with a pointer, never with destructive styling — the cause lives on the readiness
-  // panel, not on the Run. The blocked question is the runtimes' now; the pod substrate whose
-  // docker health used to answer it was retired.
-  const queuedForPods = run?.state === "Queued" && run.locus === "Pod";
-  const pods = usePods({ enabled: queuedForPods });
-  const waitingForPods = queuedForPods && runtimesBlocked(pods.data);
+  // Design review 5c: a queued Run whose machine cannot take work explains itself with a
+  // pointer, never with destructive styling — the cause lives on the readiness panel, not on
+  // the Run.
+  const queuedForSandbox = run?.state === "Queued" && run.locus === "Sandbox";
+  const runtimes = useRuntimes({ enabled: queuedForSandbox });
+  const waitingForRuntimes = queuedForSandbox && runtimesBlocked(runtimes.data);
 
   return (
     <AppShell
@@ -289,11 +288,11 @@ export function RunScreen() {
               </Badge>
               {/* Mock 3c: locus beside the state, in the vocabulary the projects list uses. */}
               <LocusChip locus={run.locus} />
-              {waitingForPods ? (
+              {waitingForRuntimes ? (
                 <span className="text-xs text-muted-foreground">
-                  {t("run.queuedPods")}{" "}
-                  <Link className="text-primary underline-offset-4 hover:underline" to="/pods">
-                    {t("run.queuedPods.seeWhy")}
+                  {t("run.queuedRuntimes")}{" "}
+                  <Link className="text-primary underline-offset-4 hover:underline" to="/runtimes">
+                    {t("run.queuedRuntimes.seeWhy")}
                   </Link>
                 </span>
               ) : null}
@@ -518,7 +517,7 @@ export function RunScreen() {
                 </Card>
 
                 {/* Mock 3c (#211): where it executed, between Details and Changes. Both kinds
-                    read the same page — a local run names its folder and branch where a pod run
+                    read the same page — a local run names its folder and branch where a sandbox run
                     carries the job's fresh clone and a PR. */}
                 <Card className="gap-0 py-0">
                   <div className="border-b px-4 py-3">
@@ -549,7 +548,7 @@ export function RunScreen() {
                         run.locus === "Local"
                           ? t("run.execution.localOutput")
                           : run.outputLink
-                            ? t("run.execution.podOutput")
+                            ? t("run.execution.sandboxOutput")
                             : null
                       }
                     />

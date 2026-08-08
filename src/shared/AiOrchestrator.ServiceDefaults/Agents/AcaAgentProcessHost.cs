@@ -104,6 +104,11 @@ sealed class AcaAgentProcessHost(
                 previews.Gone(preview.RunId);
             }
 
+            // Asked before the sandbox is deleted, because deletion takes the log with it — and
+            // asked in the finally, because a Run that timed out or was cancelled is exactly when
+            // "what did it reach for" is worth having.
+            await ReportDeniedEgress(sandbox, onOutput);
+
             await Dispose(sandbox);
         }
     }
@@ -296,6 +301,75 @@ sealed class AcaAgentProcessHost(
                     + "policy has unrestricted outbound access, so the Run refuses rather than "
                     + $"executing an agent that can reach anything. ({Detail(set)})"
             );
+        }
+    }
+
+    /// <summary>
+    /// What the agent reached for and was refused (task 2.3). The platform keeps an auditable
+    /// decision log per sandbox — timestamp, host, method and path — and a deny-default policy is
+    /// only half a security story if nobody can see what it denied: an operator tightening an
+    /// allow list needs the list of things that hit the wall, and a Member whose Run failed
+    /// mysteriously deserves to see that its agent tried to reach somewhere it may not.
+    /// <para>
+    /// Forwarded through <c>onOutput</c> rather than logged host-side, so it lands where a Member
+    /// already looks — in the Run's own output, beside the agent's.
+    /// </para>
+    /// <para>
+    /// **This never fails a Run.** The work is finished by the time this is asked; a decision log
+    /// that could not be read is worth a line in the output, never a Run marked failed for it.
+    /// The cancellation token is deliberately not passed: a cancelled Run is precisely one whose
+    /// denials are interesting.
+    /// </para>
+    /// </summary>
+    async Task ReportDeniedEgress(string sandbox, Action<string>? onOutput)
+    {
+        if (onOutput is null)
+        {
+            return;
+        }
+
+        AgentProcessOutcome decisions;
+        try
+        {
+            decisions = await Aca(
+                ["sandbox", "egress", "decisions", "--id", sandbox],
+                CancellationToken.None
+            );
+        }
+        catch (AgentProcessHostException)
+        {
+            return;
+        }
+
+        if (decisions.ExitCode != 0)
+        {
+            onOutput(
+                "[egress] the sandbox's decision log could not be read, so what this Run reached "
+                    + $"for is not recorded. ({Detail(decisions)})"
+            );
+            return;
+        }
+
+        var denied = decisions
+            .Stdout.Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            )
+            .Where(line => line.Contains("Deny", StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+        if (denied.Length == 0)
+        {
+            return;
+        }
+
+        onOutput(
+            $"[egress] {denied.Length} outbound request(s) were denied by this habitat's policy:"
+        );
+
+        foreach (var line in denied)
+        {
+            onOutput($"[egress] {line}");
         }
     }
 

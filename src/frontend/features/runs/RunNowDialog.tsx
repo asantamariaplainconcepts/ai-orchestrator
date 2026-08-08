@@ -13,14 +13,14 @@ import {
 } from "@/shared/ui/dialog";
 import { NativeSelect } from "@/shared/ui/native-select";
 
-export type Locus = "Local" | "Pod";
+export type Locus = "Local" | "Sandbox";
 
 /**
- * Mock 3b (#211) — the pod-vs-local choice, made where the Run starts.
+ * Mock 3b (#211) — the sandbox-vs-local choice, made where the Run starts.
  *
  * The dialog exists **only when a choice exists**: a project with no local folder dispatches
  * exactly as before, and the caller never mounts this. Each radio card states its consequences
- * in plain words, the pod card is disabled with its reason on a LocalFolder project, and the
+ * in plain words, the sandbox card is disabled with its reason on a LocalFolder project, and the
  * primary button repeats the choice — so there is never a surprise about where work executed.
  */
 const RUNTIMES = ["ClaudeCodeHeadless", "OpenCode"] as const;
@@ -56,7 +56,7 @@ export function RunNowDialog({
   ) => void;
 }) {
   const [automationId, setAutomationId] = useState(automations[0]?.id ?? "");
-  // A local-folder project defaults to Local — the pod physically cannot see the folder.
+  // A local-folder project defaults to Local — a sandbox physically cannot see the folder.
   const [locus, setLocus] = useState<Locus>("Local");
   // The human's choice for this Run only (#244, AC3). Empty means "as resolved": the
   // Automation's explicit runtime or the Project default, decided at execution time.
@@ -133,8 +133,8 @@ export function RunNowDialog({
               selected={false}
               disabled
               onSelect={() => undefined}
-              title={t("runs.locus.pod.title")}
-              description={t("runs.locus.pod.unavailable")}
+              title={t("runs.locus.sandbox.title")}
+              description={t("runs.locus.sandbox.unavailable")}
             />
           </div>
         ) : null}
@@ -169,7 +169,7 @@ export function RunNowDialog({
                 ? t("runs.runNow.confirm")
                 : locus === "Local"
                   ? t("runs.runNow.confirmLocal")
-                  : t("runs.runNow.confirmPod")}
+                  : t("runs.runNow.confirmSandbox")}
           </Button>
         </DialogFooter>
       </DialogContent>

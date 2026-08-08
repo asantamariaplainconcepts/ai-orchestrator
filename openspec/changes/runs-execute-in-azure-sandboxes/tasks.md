@@ -34,7 +34,10 @@
 - [x] 2.2 Egress is declared deny-default with an allow list, and composition **refuses** a habitat
       that names this launcher without one. Measured: a sandbox with no policy reached
       `example.com` and `pypi.org` with 200s, whatever the documentation says.
-- [ ] 2.3 A denied request is recordable, so a habitat can show what its agents reached for.
+- [x] 2.3 A denied request is recordable, so a habitat can show what its agents reached for.
+      The platform keeps an auditable decision log per sandbox, which means it must be asked for
+      **before** the sandbox is deleted — a test pins that ordering, and a second pins that an
+      unreadable log says so in the output rather than failing a Run whose work already finished.
 
 ## 3. The workspace (design D2, and the spike's H2)
 
@@ -135,3 +138,36 @@
       execution, no separate execution identity. Either can return by placing a consumer
       elsewhere; the seam does not close.
 
+## 9. No pod survives its substrate (owner's sweep, 2026-08-09)
+
+Asked for directly: *"no quiero código comentado en mi repo … prefiero eliminar todo el código
+al máximo"*. Retiring a substrate and leaving its vocabulary behind is the same defect as leaving
+its code — a reader cannot tell which of the two the product still means.
+
+- [x] 9.1 The frontend's `features/pods/` becomes `features/runtimes/`: `usePods` → `useRuntimes`,
+      `PodsScreen` → `RuntimesScreen`, the query key, the route `/pods` → `/runtimes`, and every
+      `pods.*` copy key.
+- [x] 9.2 The endpoint follows: `GetAgentPods` → `GetAgentRuntimes`, `/api/pods` →
+      `/api/runtimes`. It has answered for runtimes alone since the pod half retired.
+- [x] 9.3 **The Run locus value `Pod` becomes `Sandbox`, with the migration that makes it safe.**
+      Found by the sweep and bigger than a rename: the value is persisted as a string, so EF's
+      model diff sees only a moving column default while every existing row still reads `Pod` and
+      the next `Enum.Parse` on it throws. The migration carries the `UPDATE`; the scaffolded
+      `AlterColumn` is the footnote. DEC-005 has said *Agent — never "pod"* since the beginning,
+      and the interface said "Agent pod" anyway.
+- [x] 9.4 Copy a Member reads: "In a sandbox", "Run in a sandbox", "an Agent in a sandbox cannot
+      see this machine's disk". The user manual and the domain glossary follow — the glossary's
+      Agent entry still described DEC-013's KEDA-scaled job.
+- [x] 9.5 The duplicate pod-image refusal in `AgentSandboxComposition` is deleted. It said "you
+      named both", which stopped being constructible: there is no second substrate to layer, and
+      a refusal that cannot fire teaches its reader the two still coexist. The retirement refusal
+      in `DispatchComposition` is the one that survives, and it names the launchers.
+- [x] 9.6 Stale cross-references to deleted types (`AgentPodsHost`, `PodRunLauncher`, "the pods
+      probe's sibling") and present-tense claims about the pod as a live option are gone from the
+      comments.
+- [x] 9.7 Spec deltas for what the sweep changed: `agent-execution` (the locus value, plus the
+      scenario that a row written before the rename still loads), `frontend-architecture` (the
+      dialog's card and the code-source constraint), `dev-orchestration` (the server shape names
+      a launcher, not a pod image; and the compose description drops the worker and the queue
+      emulator the queue retirement had already deleted), and `agent-sandboxing` REMOVED for the
+      layering refusal.

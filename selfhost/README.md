@@ -47,7 +47,7 @@ the SPA built into the server's `wwwroot` first (`pnpm build`).
   - **Your CLI sessions do not enter these sandboxes by default.** A sandboxed Run authenticates
     with the credentials this deployment stores, not with your own logins.
   - Runs against a **repository** code source clone with the Connector's credential inside the
-    pod, exactly as the cloud habitat does.
+    sandbox, exactly as the cloud habitat does.
 - **Local folders are not available here** (#247). The Server runs in a container, and a folder
   on this machine is not visible to it. The compose declares this
   (`Habitat__LocalFolderUnavailableReason` on the `server` service), the portal withholds the

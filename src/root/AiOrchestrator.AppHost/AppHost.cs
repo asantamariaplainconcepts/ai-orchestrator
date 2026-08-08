@@ -41,7 +41,7 @@ if (builder.ExecutionContext.IsRunMode)
 
     var habitat = builder.Configuration["Parameters:habitat"] ?? "local";
 
-    // Opt-in, and only in the dev loop: the server shape isolates whole Runs in pods already,
+    // Opt-in, and only in the dev loop: the server shape isolates whole Runs in sandboxes already,
     // and a habitat naming both substrates is refused at startup.
     var sandboxAgents = string.Equals(
         builder.Configuration["Parameters:sandbox"],
@@ -61,7 +61,7 @@ if (builder.ExecutionContext.IsRunMode)
             throw new InvalidOperationException(
                 $"Parameters:habitat is '{habitat}', which is not a habitat. Valid values: "
                     + "'local' (the dev loop — seeder, local secret store, Local locus) and "
-                    + "'server' (the compose shape — pods, no seeder, Local locus declared out)."
+                    + "'server' (the compose shape — sandboxes, no seeder, Local locus declared out)."
             );
     }
 }

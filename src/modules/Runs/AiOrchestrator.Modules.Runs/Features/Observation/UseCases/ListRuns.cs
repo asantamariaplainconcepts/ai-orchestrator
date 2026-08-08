@@ -56,11 +56,11 @@ sealed class ListRuns : IUseCase
         decimal? CostUsd,
         /// <summary>When a human decided this failure needs no re-run (#145); null until they do.</summary>
         DateTimeOffset? DismissedAt,
-        /// <summary>Pod | Local (#210) — where this Run executes, fixed at creation.</summary>
+        /// <summary>Sandbox | Local (#210) — where this Run executes, fixed at creation.</summary>
         string Locus,
-        /// <summary>The host folder a Local run worked in; null for Pod runs.</summary>
+        /// <summary>The host folder a Local run worked in; null for Sandbox runs.</summary>
         string? WorkingFolder,
-        /// <summary>The branch a Local run left behind — its output, where Pod runs carry a PR.</summary>
+        /// <summary>The branch a Local run left behind — its output, where Sandbox runs carry a PR.</summary>
         string? BranchName,
         /// <summary>The open change a change-targeted Run updates (run-on-a-pr); null for story Runs.</summary>
         int? TargetChangeNumber = null,

@@ -4,10 +4,15 @@ import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Card } from "@/shared/ui/card";
 import { CopyLine } from "@/shared/ui/copy-line";
-import { type AgentHostRow, runtimeNotReady, type RuntimeRow, type RuntimesView } from "./usePods";
+import {
+  type AgentHostRow,
+  runtimeNotReady,
+  type RuntimeRow,
+  type RuntimesView,
+} from "./useRuntimes";
 
 /**
- * The agent runtimes of the process that executes Runs (#279) — the pods panel's sibling
+ * The agent runtimes of the process that executes Runs (#279)
  * question: docker can be ready and the machine still unable to run an Automation, because the
  * runtime's CLI is absent or its named secret resolves to nothing. Each not-ready row carries
  * its remedy, and the remedy for a missing CLI is copyable — the same command the failure
@@ -24,7 +29,7 @@ export function RuntimesReadiness({ view }: { view: RuntimesView }) {
     <div className="flex flex-col gap-2">
       <span className="flex items-baseline gap-2">
         <h2 className="text-sm font-semibold">{t("runtimes.heading")}</h2>
-        <span className="text-xs text-muted-foreground">{t("pods.onThisMachine")}</span>
+        <span className="text-xs text-muted-foreground">{t("runtimes.onThisMachine")}</span>
       </span>
       <Card className="gap-0 py-0">
         {view.host ? <AgentHostRowItem host={view.host} /> : null}

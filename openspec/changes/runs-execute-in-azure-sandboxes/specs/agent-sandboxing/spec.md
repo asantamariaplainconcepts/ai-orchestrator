@@ -76,3 +76,20 @@ instead, and the Run's transcript SHALL name that source (BR-010).
 - **WHEN** an agent executes with a credential attached at the boundary
 - **THEN** no credential value is readable inside the sandbox, and the transcript names the
   injection as the source
+
+## REMOVED Requirements
+
+### Requirement: two isolation substrates are refused rather than layered
+
+**Reason**: there is no second substrate. The requirement existed because a habitat could name a
+pod image *and* a sandbox launcher, and one silently winning would make the operator's other
+choice an invisible no-op. The pod substrate is retired by this change, so the ambiguity it
+guarded against cannot be constructed — and a refusal that can never fire is worse than none: it
+tells a reader the two things still coexist.
+
+What replaces it is narrower and true: a habitat naming the retired `Dispatch:PodImage` is
+refused at composition naming the launchers that replaced it (already specified above), which is
+one sentence about an upgrade rather than two about a choice.
+
+**Migration**: none. Any habitat that would have met this refusal now meets the retirement
+refusal, which names what to do.

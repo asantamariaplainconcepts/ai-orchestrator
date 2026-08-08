@@ -18,7 +18,7 @@ namespace AiOrchestrator.Modules.Runs.Features.Observation.UseCases;
 /// answers.
 /// </para>
 /// <para>
-/// Read-only and machine-shaped — like docker's health on the pods panel, what this machine can
+/// Read-only and machine-shaped — like the runtimes panel's readiness, what this machine can
 /// run is anybody's to see. No Story or project is named in the answer.
 /// </para>
 /// </summary>
@@ -35,7 +35,7 @@ sealed class GetAgentModels : IUseCase
             .WithTags("Runs");
 
     // Nothing to scope it to: what this machine can run names no project and no Story. The same
-    // declaration the pods panel's machine facts would carry if they were asked one at a time.
+    // declaration the runtimes panel's machine facts would carry if they were asked one at a time.
     [Requires(Access.AnyCaller)]
     internal sealed record Query(string RuntimeName) : IQuery<Response>;
 

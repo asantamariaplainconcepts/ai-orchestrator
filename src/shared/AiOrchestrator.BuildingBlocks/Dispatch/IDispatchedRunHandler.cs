@@ -2,7 +2,7 @@ namespace AiOrchestrator.BuildingBlocks.Dispatch;
 
 /// <summary>
 /// What happens to a Run the outbox consumer claimed (#246): executed in this process, or in a
-/// pod of its own. The seam exists so the consumer stays one class while the habitat decides the
+/// sandbox of its own. The seam exists so the consumer stays one class while the habitat decides the
 /// arrangement in composition — the same shape the dispatcher seam already has, one level down.
 /// <para>
 /// Product vocabulary only: no docker type appears here, so the consumer can be tested against a

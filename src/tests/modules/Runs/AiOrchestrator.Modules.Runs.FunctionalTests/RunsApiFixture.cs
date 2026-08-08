@@ -46,7 +46,7 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     internal FakeCodeWorkspace Workspace { get; } = new();
 
     /// <summary>
-    /// The pod host faked at the monitor seam (design review 5b): the panel's endpoint is about
+    /// The runtimes host faked at the monitor seam (design review 5b): the panel's endpoint is about
     /// joining sightings to Runs, never about docker — so the tests hand it sightings directly.
     /// </summary>
     internal FakeAgentRuntimesMonitor Runtimes { get; } = new();

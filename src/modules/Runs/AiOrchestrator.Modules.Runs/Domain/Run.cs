@@ -136,10 +136,10 @@ sealed class Run : Aggregate
     /// </summary>
     public RunLocus Locus { get; private set; }
 
-    /// <summary>The host folder a Local run worked in (BR-014's audit, extended). Null for Pod.</summary>
+    /// <summary>The host folder a Local run worked in (BR-014's audit, extended). Null for Sandbox.</summary>
     public string? WorkingFolder { get; private set; }
 
-    /// <summary>The branch a Local run left behind — its output, where Pod runs carry a PR link.</summary>
+    /// <summary>The branch a Local run left behind — its output, where Sandbox runs carry a PR link.</summary>
     public string? BranchName { get; private set; }
 
     /// <summary>Stamped at execution, when the workspace actually existed — never predicted.</summary>
@@ -335,13 +335,20 @@ enum RunState
 }
 
 /// <summary>
-/// Where a Run executes (#210). Not a routing fact — the queue and the worker are identical for
-/// both — but a workspace fact: <see cref="Pod"/> clones fresh, <see cref="Local"/> works in the
-/// Connector's configured folder on the host (self-host flavour, DEC-049).
+/// Where a Run executes (#210). Not a routing fact — dispatch is identical for both — but a
+/// workspace fact: <see cref="Sandbox"/> clones fresh into an isolated machine of its own,
+/// <see cref="Local"/> works in the Connector's configured folder on the host (self-host
+/// flavour, DEC-049).
+/// <para>
+/// Named <c>Pod</c> until #296. The glossary always said "never pod", the substrate it was
+/// named after is gone, and every substrate that replaced it — sbx locally, Azure sandboxes in a
+/// deployment — is literally a sandbox. Renaming a persisted value costs a migration; leaving a
+/// Member reading "Agent pod" for a thing that has not existed since the rename costs more.
+/// </para>
 /// </summary>
 enum RunLocus
 {
-    Pod = 1,
+    Sandbox = 1,
     Local = 2,
 }
 

@@ -92,7 +92,7 @@ public sealed record AgentRuntimeState(
 /// <summary>
 /// The default every habitat starts from; the host that executes Runs in-process replaces it.
 /// Registered by the Runs module so the panel's endpoint always resolves, exactly like the
-/// pods monitor: the ability is absent, never the answer.
+/// previews monitor: the ability is absent, never the answer.
 /// </summary>
 public sealed class UnhostedAgentRuntimesMonitor : IAgentRuntimesMonitor
 {

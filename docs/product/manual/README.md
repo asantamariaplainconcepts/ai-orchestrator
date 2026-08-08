@@ -21,7 +21,7 @@ project is a name and nothing else at first — the connection comes next.
 
 The environment chip at the sidebar's foot is the deployment telling you what it is. Where no
 sign-in is configured it says so plainly rather than pretending: _this machine, owner, no
-sign-in_ — and its popover carries the identity, the address, the Agent pods' health and the
+sign-in_ — and its popover carries the identity, the address, the Agent runtimes' readiness and the
 network warning. Reach the page from another machine and a red banner appears instead: on an
 exposed port with no sign-in, anyone who connects is the administrator.
 
@@ -139,8 +139,9 @@ Two things in every screenshot above belong to the **local habitat**, and they a
 The environment chip — _this machine, owner · no sign-in_, in the sidebar's foot — is the
 deployment telling you what it is. Where no sign-in is configured the product says so rather
 than pretending there is security it does not have; the chip's popover adds the address, the
-Agent pods' health and the network warning, and links to the **Agent pods** panel — what
-`docker ps` would show, joined to the Runs it is about. The projects list's **Local** badge on
+Agent runtimes' readiness and the network warning, and links to the **Agent runtimes** panel —
+whether each Runtime's CLI answers on the machine that executes Runs, and what to do when it does
+not. The projects list's **Local** badge on
 _Alpha portal_ is the other: that project's code does not come from a clone.
 
 ### A folder instead of a clone
@@ -160,10 +161,10 @@ you are actually configuring rather than the widest one.
 ### Where each Run executed
 
 Every Run records where it ran, and says so with one vocabulary wherever it appears — a monitor for
-_this machine_, a container for _an agent pod_, always beside the word and never colour alone.
+_this machine_, a container for _a sandbox_, always beside the word and never colour alone.
 
 It matters because the two are not equivalent. A Run on this machine works in your checkout and can
-see work you have not pushed; a Run in a pod works in a fresh clone and cannot. When a result
+see work you have not pushed; a Run in a sandbox works in a fresh clone and cannot. When a result
 surprises you, this is the first thing to check.
 
 ### What the habitat is

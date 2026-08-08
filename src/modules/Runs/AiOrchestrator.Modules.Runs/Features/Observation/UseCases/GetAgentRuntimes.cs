@@ -13,23 +13,18 @@ using Microsoft.EntityFrameworkCore;
 namespace AiOrchestrator.Modules.Runs.Features.Observation.UseCases;
 
 /// <summary>
-/// The agent runtimes of the machine that executes Runs (#279, reshaped by #296). It answered for
-/// pods too until the pod substrate was retired — a container per Run, watched over the docker
-/// socket — at which point the pods half of this endpoint could only ever have said "not hosted
-/// here", in every habitat, forever. A seam kept alive to say nothing teaches its reader to stop
-/// reading, so it went with its substrate. What a Run waiting at the cap looks like now is what it
-/// always really was: a Queued Run on the Runs list.
+/// The agent runtimes of the machine that executes Runs (#279).
 /// </summary>
-sealed class GetAgentPods : IUseCase
+sealed class GetAgentRuntimes : IUseCase
 {
     public static void AddRoutes(IEndpointRouteBuilder endpoints) =>
         endpoints
             .MapGet(
-                "/api/pods",
+                "/api/runtimes",
                 async (ISender sender, CancellationToken cancellationToken) =>
                     Results.Ok(await sender.Send(new Query(), cancellationToken))
             )
-            .WithName(nameof(GetAgentPods))
+            .WithName(nameof(GetAgentRuntimes))
             .WithTags("Runs");
 
     [Requires(Access.FiltersToCaller)]
@@ -38,8 +33,7 @@ sealed class GetAgentPods : IUseCase
     /// <summary>
     /// The agent runtimes of the process that executes Runs (#279). Machine facts — anyone's to
     /// see, no Story named. <paramref name="Hosted"/> false means Runs execute somewhere this
-    /// process cannot see (a queue's worker), which the panel must not render as "nothing is
-    /// ready".
+    /// process cannot see, which the panel must not render as "nothing is ready".
     /// </summary>
     internal sealed record Response(
         bool Hosted,

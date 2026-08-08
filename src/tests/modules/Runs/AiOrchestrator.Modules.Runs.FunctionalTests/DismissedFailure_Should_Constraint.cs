@@ -66,7 +66,7 @@ public class DismissedFailure_Should_Constraint(RunsApiFixture fixture) : IAsync
             _projectId,
             storyId,
             _automationId,
-            RunLocus.Pod,
+            RunLocus.Sandbox,
             DateTimeOffset.UtcNow
         );
         run.MarkExecuting(DateTimeOffset.UtcNow);
@@ -143,7 +143,13 @@ public class DismissedFailure_Should_Constraint(RunsApiFixture fixture) : IAsync
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
-        var run = Run.Create(_projectId, "24", _automationId, RunLocus.Pod, DateTimeOffset.UtcNow);
+        var run = Run.Create(
+            _projectId,
+            "24",
+            _automationId,
+            RunLocus.Sandbox,
+            DateTimeOffset.UtcNow
+        );
         run.MarkExecuting(DateTimeOffset.UtcNow);
         database.Runs.Add(run);
         await database.SaveChangesAsync();

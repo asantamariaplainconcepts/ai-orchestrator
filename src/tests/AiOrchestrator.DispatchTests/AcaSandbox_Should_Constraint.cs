@@ -175,6 +175,61 @@ public class AcaSandbox_Should_Constraint
         Invocations(calls, "delete").ShouldHaveSingleItem();
     }
 
+    [Fact]
+    public async Task WhatTheAgentWasRefused_Should_ReachTheRunsOwnOutput()
+    {
+        // A deny-default policy is half a security story until somebody can see what it denied
+        // (task 2.3). The platform keeps the log per sandbox, which means it has to be asked for
+        // before the sandbox is deleted — so this also pins the ordering.
+        var (host, calls) = Host(finishAfterPolls: 1);
+        var streamed = new List<string>();
+
+        await host.Run(
+            "opencode",
+            [],
+            "/workspace",
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None,
+            streamed.Add
+        );
+
+        // The denials, named — and the allowed request not dressed up as one.
+        streamed.ShouldContain(line => line.Contains("2 outbound request(s) were denied"));
+        streamed.ShouldContain(line => line.Contains("pypi.org"));
+        streamed.ShouldContain(line => line.Contains("api.openai.com"));
+        streamed.ShouldNotContain(line => line.Contains("[egress]") && line.Contains("github.com"));
+
+        // Asked while there was still a sandbox to ask.
+        var ledger = File.ReadAllLines(calls);
+        Array
+            .FindIndex(ledger, line => line.Contains("decisions"))
+            .ShouldBeLessThan(Array.FindIndex(ledger, line => line.Contains(" delete ")));
+    }
+
+    [Fact]
+    public async Task AnUnreadableDecisionLog_Should_SayNothingIsRecordedRatherThanFailTheRun()
+    {
+        // The work is finished by the time this is asked. A Run marked failed because an audit
+        // query did not answer would be the tail wagging the dog — but silence would let a habitat
+        // believe nothing was denied when in truth nothing was read.
+        var (host, _) = Host(finishAfterPolls: 1, decisionsExitCode: 4);
+        var streamed = new List<string>();
+
+        var outcome = await host.Run(
+            "opencode",
+            [],
+            "/workspace",
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None,
+            streamed.Add
+        );
+
+        outcome.ExitCode.ShouldBe(0);
+        streamed.ShouldContain(line => line.Contains("could not be read"));
+    }
+
     // ---- Stand-ins ----
 
     static IReadOnlyList<string> Invocations(string ledger, string verb) =>
@@ -191,7 +246,8 @@ public class AcaSandbox_Should_Constraint
     /// </summary>
     static (AcaAgentProcessHost Host, string Ledger) Host(
         int finishAfterPolls,
-        string group = "aio-shared"
+        string group = "aio-shared",
+        int decisionsExitCode = 0
     )
     {
         var directory = Directory.CreateTempSubdirectory("aca-stub-").FullName;
@@ -209,6 +265,12 @@ public class AcaSandbox_Should_Constraint
             esac
             # Any exec whose command reads the log is a poll; count them and answer accordingly.
             case "$*" in
+              *"egress decisions"*)
+                if [ "{decisionsExitCode}" -ne 0 ]; then exit {decisionsExitCode}; fi
+                echo "2026-08-09T10:00:01Z Deny pypi.org GET /simple/requests/"
+                echo "2026-08-09T10:00:04Z Allow github.com GET /acme/portal.git/info/refs"
+                echo "2026-08-09T10:00:09Z Deny api.openai.com POST /v1/chat/completions"
+                exit 0 ;;
               *".exit"*)
                 n=$(cat "{polls}" 2>/dev/null || echo 0)
                 if [ "$n" -ge "{finishAfterPolls}" ]; then echo 0; fi

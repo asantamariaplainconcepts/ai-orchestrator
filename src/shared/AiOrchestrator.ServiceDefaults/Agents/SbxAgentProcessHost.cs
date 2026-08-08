@@ -98,7 +98,7 @@ sealed class SbxAgentProcessHost(
             }
 
             // An abandoned sandbox is the leak; the Run's truth is in the database. Disposal
-            // survives cancellation on purpose — the PodRunLauncher precedent.
+            // survives cancellation on purpose: a cancelled Run must not leak a sandbox.
             await Dispose(sandbox);
         }
     }

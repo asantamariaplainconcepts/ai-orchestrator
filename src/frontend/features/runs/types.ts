@@ -44,11 +44,11 @@ export interface RunView {
   resolvedModel: string | null;
   /** When a human decided this failure needs no re-run (#145); null until they do. */
   dismissedAt: string | null;
-  /** Pod | Local (#210) — where this Run executes, fixed at creation. */
-  locus: "Pod" | "Local";
-  /** The host folder a Local run worked in; null for Pod runs. */
+  /** Sandbox | Local (#210) — where this Run executes, fixed at creation. */
+  locus: "Sandbox" | "Local";
+  /** The host folder a Local run worked in; null for Sandbox runs. */
   workingFolder: string | null;
-  /** The branch a Local run left behind — its output, where Pod runs carry a PR. */
+  /** The branch a Local run left behind — its output, where Sandbox runs carry a PR. */
   branchName: string | null;
 }
 

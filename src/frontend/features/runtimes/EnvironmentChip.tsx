@@ -5,7 +5,7 @@ import { cn } from "@/shared/lib/utils";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { RuntimesUnavailableCard } from "./RuntimesReadiness";
-import { runtimesBlocked, usePods } from "./usePods";
+import { runtimesBlocked, useRuntimes } from "./useRuntimes";
 
 /**
  * The self-host posture as an environment chip (design review 5a). The permanent ⚠ banner
@@ -29,11 +29,11 @@ export function EnvironmentChip({
   const me = useCurrentPrincipal();
   const owner = me.data?.id === "local-owner";
   // Ambient cadence — the runtimes panel itself re-polls at run cadence when watched.
-  const pods = usePods({ enabled: owner });
+  const runtimes = useRuntimes({ enabled: owner });
 
   if (!owner) return null;
 
-  const blocked = runtimesBlocked(pods.data);
+  const blocked = runtimesBlocked(runtimes.data);
 
   if (inline) {
     return (
@@ -95,7 +95,7 @@ export function EnvironmentChip({
  * not-ready card when it applies (mock 5c§4), the way to the panel, and the warning.
  */
 function EnvironmentFacts() {
-  const pods = usePods();
+  const runtimes = useRuntimes();
 
   return (
     <>
@@ -112,13 +112,13 @@ function EnvironmentFacts() {
         </div>
       </dl>
 
-      {pods.data ? <RuntimesUnavailableCard view={pods.data} /> : null}
-      {pods.data?.hosted ? (
+      {runtimes.data ? <RuntimesUnavailableCard view={runtimes.data} /> : null}
+      {runtimes.data?.hosted ? (
         <Link
           className="self-start text-xs text-primary underline-offset-4 hover:underline"
-          to="/pods"
+          to="/runtimes"
         >
-          {t("env.viewPods")}
+          {t("env.viewRuntimes")}
         </Link>
       ) : null}
 

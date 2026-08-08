@@ -184,7 +184,7 @@ export function CodeSourceSection({
             <span aria-hidden="true" className="text-warning mt-0.5 text-sm leading-none">
               ⚠
             </span>
-            <span className="text-sm">{t("connector.codeSource.podConstraint")}</span>
+            <span className="text-sm">{t("connector.codeSource.sandboxConstraint")}</span>
           </div>
         </>
       ) : null}

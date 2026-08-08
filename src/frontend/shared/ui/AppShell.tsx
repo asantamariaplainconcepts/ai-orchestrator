@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/sh
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { ApiError } from "@/shared/http/client";
 import { useInbox } from "@/features/inbox/useInbox";
-import { EnvironmentChip } from "@/features/pods/EnvironmentChip";
+import { EnvironmentChip } from "@/features/runtimes/EnvironmentChip";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 
 /**

@@ -34,8 +34,7 @@ export interface AgentHostRow {
   remedy: string | null;
 }
 
-/** The runtimes of the process that executes Runs (#279; the endpoint's whole answer since #296,
- * when the pod substrate was retired and its half of this panel went with it). */
+/** The runtimes of the process that executes Runs (#279). */
 export interface RuntimesView {
   hosted: boolean;
   checkedAt: string | null;
@@ -50,10 +49,10 @@ export interface RuntimesView {
  * consumers (the environment chip) pass a slower interval — same query key, so the cache is one
  * and the fastest visible consumer sets the pace.
  */
-export function usePods(options?: { enabled?: boolean; refetchInterval?: number }) {
+export function useRuntimes(options?: { enabled?: boolean; refetchInterval?: number }) {
   return useQuery({
-    queryKey: ["pods"] as const,
-    queryFn: () => api.get<RuntimesView>("/api/pods"),
+    queryKey: ["runtimes"] as const,
+    queryFn: () => api.get<RuntimesView>("/api/runtimes"),
     refetchInterval: options?.refetchInterval ?? 30_000,
     enabled: options?.enabled ?? true,
   });

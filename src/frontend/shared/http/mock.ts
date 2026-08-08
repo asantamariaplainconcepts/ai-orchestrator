@@ -137,7 +137,7 @@ const runs = [
       targetChangeUrl: "https://github.com/acme/portal/pull/118",
       targetChangeTitle: "feat(portal): the estimate explains itself on the story",
       instruction: "apply the review comments about naming",
-      locus: "Pod",
+      locus: "Sandbox",
       workingFolder: null,
       branchName: null,
     }),
@@ -163,7 +163,7 @@ const runs = [
   run("Failed", "13", 90, {
     failureReason:
       "Credential could not be resolved: No secret named 'anthropic-api-key' was found.",
-    locus: "Pod",
+    locus: "Sandbox",
     workingFolder: null,
     branchName: null,
   }),
@@ -541,15 +541,13 @@ const routes: [string, RegExp, Handler][] = [
       };
     },
   ],
-  // #279 — the runtimes of the machine that executes Runs. The pods half of this endpoint went
-  // with its substrate (#296): a container per Run over the docker socket no longer exists, so
-  // there is nothing for a fixture to render. The runtimes' not-ready shapes stay reachable
+  // #279 — the runtimes of the machine that executes Runs. Their not-ready shapes stay reachable
   // without uninstalling anything: `?cliMissing` renders the missing-CLI remedy, `?secretMissing`
   // the unresolvable secret, `?sandboxed` puts the agents in a per-Run sandbox, `?sandboxDown`
   // adds the host being unreachable, and `?sessionStuck` the session no copy can carry (#288).
   [
     "GET",
-    /^\/api\/pods$/,
+    /^\/api\/runtimes$/,
     () => {
       const search = new URLSearchParams(window.location.search);
       const cliMissing = search.has("cliMissing");

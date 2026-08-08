@@ -99,21 +99,6 @@ public static class AgentSandboxComposition
             );
         }
 
-        // Two isolation substrates at once is a question, not a configuration (design D5):
-        // the pod already isolates the whole worker, and a sandbox inside it would make one of
-        // the operator's two choices an invisible no-op. Refusing names both, exactly as a host
-        // holding both sides of the queue boundary is refused.
-        var podImage = builder.Configuration.GetValue<string?>("Dispatch:PodImage");
-        if (!string.IsNullOrWhiteSpace(podImage))
-        {
-            throw new InvalidOperationException(
-                $"This habitat names both a pod image (Dispatch:PodImage = {podImage}) and an "
-                    + $"agent sandbox ({LauncherKey} = {launcher}). Each isolates the agent on its "
-                    + "own terms, and running both would nest one inside the other while making "
-                    + "one of the two invisible. Remove whichever is not intended."
-            );
-        }
-
         // The preview ledger belongs to the process that holds the sandboxes, and only that
         // process can honestly answer whether a Run has a window open (run-previews design D2).
         // Registered before either launcher's options, because both hosts take it.

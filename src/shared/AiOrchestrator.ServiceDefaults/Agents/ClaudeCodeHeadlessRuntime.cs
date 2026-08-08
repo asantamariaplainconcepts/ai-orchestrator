@@ -253,7 +253,7 @@ public static class AgentRuntimeComposition
     {
         // WHERE the agent CLI runs (design D1/D5). The local host is the default and the
         // behaviour of every habitat that names nothing; a sandbox launcher named in
-        // configuration replaces it, and naming both a pod image and a launcher is refused.
+        // configuration replaces it.
         AgentSandboxComposition.AddAgentProcessHost(builder);
 
         builder.Services.AddSingleton<ClaudeCodeHeadlessRuntime>();
