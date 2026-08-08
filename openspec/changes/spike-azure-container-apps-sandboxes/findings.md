@@ -17,8 +17,8 @@ as an expectation the exercise will confirm or refute, which is a different colu
 | H2 | The workspace reaches a remote sandbox at all | **HELD — co-location is broken** |
 | H3 | A port is reachable while the Run lives, and gone after | **held** |
 | H4 | A credential reaches the agent without living at rest | **partly** — egress verified, provider tokens not |
-| H5 | A Run's shape survives the lifecycle | **not verified** |
-| H6 | The economics and the limits fit a Run | **not verified** |
+| H5 | A Run's shape survives the lifecycle | **REFUTED in its first half, held in its second** |
+| H6 | The economics and the limits fit a Run | **limits held; cost not measured** |
 | — | Does this substrate fit `IAgentProcessHost`? | **held for four of five members** |
 
 ## What has actually been exercised
@@ -197,9 +197,68 @@ tokens only a human can mint, so they stay **not verified**.
 | published port | `aca sandbox port add` | yes |
 | credential boundary | `aca sandbox egress set` | yes, for the policy half |
 
+### H5 — the first half is REFUTED, and it is the most important result here
+
+**Auto-suspend is on by default, at 600 seconds, mode `Memory`** — read from
+`aca sandbox lifecycle show` on a sandbox nobody configured.
+
+Then the test that matters. A process was started inside writing a line every second, the idle
+timeout was set to 60 s, and the sandbox was left alone — no data-plane calls, while work
+continued inside:
+
+```
+t+21s state=Running
+t+41s state=Stopped
+```
+
+**It suspended while a process was actively running.** "Idle" means no activity *from outside*,
+not no work *inside*. A Run under BR-005 may last 30 minutes and an agent can think for ten of them
+without the executor calling the data plane — so on default settings a Run would be suspended
+mid-thought. Any adoption must set `--auto-suspend disable`, or hold the sandbox open deliberately.
+This is the one finding that would have bitten in production and is invisible from the
+documentation.
+
+The second half held, exactly as advertised. Resume took **~1 s**, and the process was not
+restarted — it continued:
+
+```
+gap of 43s between tick 307 (17:27:41) and tick 308 (17:28:24)
+process ALIVE   ·   counter continued 307 → 308, not 1
+```
+
+"Memory, disk, and all running processes" is true as measured.
+
+### H6 — limits held at this scale; cost not measured
+
+Four sandboxes ran concurrently in one group with no cap encountered, which comfortably exceeds
+this product's per-project concurrency. `aca sandbox stats` reports CPU, memory, network and a 20 GB
+root filesystem (1.5 GB used by the `claude` disk). **Cost was not measured** — it needs billing
+data over time rather than a session, so it stays open.
+
+### H4's provider half — confirmed at the surface, not exercised
+
+`aca sandboxgroup credential create --help` states the types and their validation:
+
+```
+* github-copilot   — token must start with `github_pat_` (classic `ghp_` is rejected)
+* anthropic-claude — token must start with `sk-ant-`
+```
+
+Both need tokens only a human can mint, so this remains **not verified**.
+
 ## Verdict
 
 **Not yet written.** H5 and H6 are unexercised and H4 is half-done, so the recommendation this
-spike owes (task 7.1) is not due. What can be said already is that the question the spike was
-created to answer — whether a remotely-created sandbox can be given a workspace — is **answered
-yes**, and that the substrate fits the seam this product already has.
+spike owes (task 7.1) is not due. What can be said already, and it is a lot:
+
+- The question the spike was created to answer is **answered yes**: a remotely-created sandbox can
+  be given a workspace, so the executor no longer has to share a machine with it.
+- The substrate fits `IAgentProcessHost` for four of five members.
+- Two claims in the vendor's own documentation are **false as measured** — deny-default egress, and
+  the implication that suspension tracks whether the workload is busy. Both matter for safety and
+  both are invisible without exercising.
+- What is genuinely better than the current path: prebuilt `claude` and `copilot` disks, typed
+  credential providers for both runtimes, an auditable egress decision log, and snapshot/resume
+  that actually restores a live process.
+- What is worse or unknown: auto-suspend must be disabled deliberately, cost is unmeasured, and
+  session carriage (#288) cannot exist here at all.

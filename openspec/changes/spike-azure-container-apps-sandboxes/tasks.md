@@ -74,7 +74,7 @@
       deployed habitat's credential story is better than a generic secret, not worse. Confirm the
       value is injected through the platform path and **prove the negative the way #288's tests
       do**: run something inside that prints the variable and confirm it is empty.
-- [ ] 4.1b Record the consequence for Claude specifically. #288 could not carry a Claude Code
+- [x] 4.1b Record the consequence for Claude specifically. #288 could not carry a Claude Code
       session on macOS because it lives in the system keychain with no file to copy; if
       `anthropic-claude` is a first-class provider here, the substrate that **cannot** do session
       carriage solves the Claude problem another way. That is a finding about the product's shape,
@@ -88,16 +88,20 @@
 
 ## 5. H5 — the lifecycle against a real Run
 
-- [ ] 5.1 Run an agent that thinks for several minutes with no I/O and confirm the idle timeout
+- [x] 5.1 Run an agent that thinks for several minutes with no I/O and confirm the idle timeout
       does not suspend it mid-work.
-- [ ] 5.2 Suspend and resume deliberately, mid-run, and confirm whether a live CLI actually
+- [x] 5.2 Suspend and resume deliberately, mid-run, and confirm whether a live CLI actually
       continues — the announcement claims memory, disk and running processes are restored.
 - [ ] 5.3 Confirm a phase can be killed at BR-005's timeout, and that nothing retries (BR-004).
+      **Still open**, and now urgent: H5 showed a sandbox suspends on outside-idleness regardless
+      of work happening inside, so how a timeout interacts with a suspended sandbox is no longer a
+      formality.
 
 ## 6. H6 — economics and limits
 
-- [ ] 6.1 Record what a thirty-minute Run costs, and what idle actually costs.
-- [ ] 6.2 Check a Sandbox Group's maximum sandbox count against this product's per-project
+- [ ] 6.1 Record what a thirty-minute Run costs, and what idle actually costs. **Still open** —
+      needs billing data over days, not a session.
+- [x] 6.2 Check a Sandbox Group's maximum sandbox count against this product's per-project
       concurrency cap.
 
 ## 6b. The seam
@@ -108,7 +112,7 @@
       streamed stdout/stderr, ports and a CLI to shell out to suggest yes. If it does not fit, say
       exactly which member of the interface it breaks, because that is the difference between a
       change and a programme.
-- [ ] 6.2b Decide what a **C# executor** drives this with, which is not the same question as
+- [x] 6.2b Decide what a **C# executor** drives this with, which is not the same question as
       "is there an SDK". There are two clients — a control plane over ARM that creates groups, and
       a data plane (`SandboxGroupClient`) that owns exec, files, ports, secrets and egress — and
       everything a Run needs is in the second. Python (`azure-containerapps-sandbox`, `0.1.0b3`)
