@@ -28,11 +28,11 @@
 
 ## 3. The runtime that cannot be carried (design D6)
 
-- [ ] 3.1 Readiness reports a runtime whose credential cannot be copied as not ready in a
+- [x] 3.1 Readiness reports a runtime whose credential cannot be copied as not ready in a
       session-carrying habitat, naming the reason (the Keychain) and the copyable remedy
       (`sbx secret set -g anthropic`). This is what turns the sbx spike's unverified box into an
       answer, and it is the half that survives even if carriage were dropped.
-- [ ] 3.2 The panel renders it beside the existing runtime states, i18n as contract, routed
+- [x] 3.2 The panel renders it beside the existing runtime states, i18n as contract, routed
       through the design system (aio-design).
 
 ## 4. The transcript (design D3)
@@ -42,7 +42,7 @@
 
 ## 5. Proof
 
-- [ ] 5.1 Unit and functional coverage: the habitat rule, the off switch, the minimum-set copy,
+- [x] 5.1 Unit and functional coverage: the habitat rule, the off switch, the minimum-set copy,
       and the not-carryable remedy. Fakes that can fail.
 - [ ] 5.2 **The definitive Run** (#288 AC7, design D5, ADR-0014). Point a project's Connector at
       `asantamariaplainconcepts/ai-orchestrator-rehearsal`, give it an opencode Automation, and

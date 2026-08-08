@@ -138,6 +138,10 @@ public sealed class AgentRuntimesProbe(
             }
         }
 
+        // Only when it actually explains something: the host answers null unless carriage is on
+        // AND this runtime's session is one a copy cannot reach (#288).
+        var carriageGap = processHost.SessionUnavailableFor(name, selection.Command);
+
         return new AgentRuntimeState(
             Name: name,
             Command: selection.Command,
@@ -145,7 +149,11 @@ public sealed class AgentRuntimesProbe(
             InstallCommand: selection.InstallCommand,
             CredentialSecretName: selection.CredentialSecretName,
             CredentialReady: credentialReady
-        );
+        )
+        {
+            SessionUnavailableReason = carriageGap?.Reason,
+            SessionUnavailableRemedy = carriageGap?.Remedy,
+        };
     }
 
     /// <summary>

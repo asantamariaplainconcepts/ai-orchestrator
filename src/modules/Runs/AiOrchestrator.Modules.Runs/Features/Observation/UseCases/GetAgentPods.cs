@@ -98,7 +98,16 @@ sealed class GetAgentPods : IUseCase
         bool CliReady,
         string InstallCommand,
         string? CredentialSecretName,
-        bool? CredentialReady
+        bool? CredentialReady,
+        /// <summary>
+        /// Why this runtime's session could not be carried to the machine that runs it (#288);
+        /// null when the question does not arise. Distinct from a missing secret, because on a
+        /// machine you are signed into "the secret is not stored" is the confusing half of the
+        /// truth.
+        /// </summary>
+        string? SessionUnavailableReason,
+        /// <summary>The copyable command that starts the way out; null exactly when the reason is.</summary>
+        string? SessionUnavailableRemedy
     );
 
     /// <summary>
@@ -208,7 +217,9 @@ sealed class GetAgentPods : IUseCase
                             state.CliReady,
                             state.InstallCommand,
                             state.CredentialSecretName,
-                            state.CredentialReady
+                            state.CredentialReady,
+                            state.SessionUnavailableReason,
+                            state.SessionUnavailableRemedy
                         )),
                     ],
                     runtimesSnapshot.Host is { } agentHost

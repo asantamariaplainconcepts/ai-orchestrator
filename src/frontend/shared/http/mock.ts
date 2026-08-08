@@ -551,6 +551,9 @@ const routes: [string, RegExp, Handler][] = [
       // shapes must be reachable. `?sandboxed` puts the agents in a per-Run sandbox;
       // `?sandboxDown` adds the host being unreachable, which makes every runtime below moot.
       const sandboxDown = search.has("sandboxDown");
+      // #288 — a runtime signed in on this machine whose session cannot travel to the sandbox,
+      // which reads very differently from a secret nobody stored.
+      const sessionStuck = search.has("sessionStuck");
       const sandboxed = sandboxDown || search.has("sandboxed");
       return {
         // The two substrates are mutually exclusive by composition (the sandboxing change's
@@ -599,6 +602,8 @@ const routes: [string, RegExp, Handler][] = [
               installCommand: "npm install -g opencode-ai@1.18.6",
               credentialSecretName: null,
               credentialReady: null,
+              sessionUnavailableReason: null,
+              sessionUnavailableRemedy: null,
             },
             {
               name: "ClaudeCodeHeadless",
@@ -607,6 +612,10 @@ const routes: [string, RegExp, Handler][] = [
               installCommand: "npm install -g @anthropic-ai/claude-code@2.0.44",
               credentialSecretName: secretMissing ? "anthropic-api-key" : null,
               credentialReady: secretMissing ? false : null,
+              sessionUnavailableReason: sessionStuck
+                ? "'claude' keeps its session in this machine's keychain, not in a file, so the sandbox cannot be given a copy of it. Store an API key in the sandbox host and point Agents:ClaudeCodeHeadless:CredentialSecretName at 'claude', or run this Automation on a runtime whose session travels."
+                : null,
+              sessionUnavailableRemedy: sessionStuck ? "sbx secret set -g claude" : null,
             },
           ],
           host: sandboxed

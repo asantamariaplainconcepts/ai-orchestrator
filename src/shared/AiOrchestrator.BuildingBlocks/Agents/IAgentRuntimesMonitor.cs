@@ -70,7 +70,25 @@ public sealed record AgentRuntimeState(
     string InstallCommand,
     string? CredentialSecretName,
     bool? CredentialReady
-);
+)
+{
+    /// <summary>
+    /// Why this runtime's session could not be carried to the machine that runs it, when that is
+    /// the reason it is not ready (#288). Null when the question does not arise.
+    /// <para>
+    /// Distinct from a missing secret on purpose: "the secret is not stored" and "you are signed
+    /// in but your session lives somewhere a copy cannot reach" send a reader to different
+    /// places, and only one of them is surprising on a machine you just logged into.
+    /// </para>
+    /// </summary>
+    public string? SessionUnavailableReason { get; init; }
+
+    /// <summary>
+    /// The copyable command that starts the way out of <see cref="SessionUnavailableReason"/>.
+    /// Null exactly when the reason is: they are one fact, said in two registers.
+    /// </summary>
+    public string? SessionUnavailableRemedy { get; init; }
+}
 
 /// <summary>
 /// The default every habitat starts from; the host that executes Runs in-process replaces it.

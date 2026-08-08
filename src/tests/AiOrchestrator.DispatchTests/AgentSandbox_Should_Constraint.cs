@@ -222,6 +222,46 @@ public class AgentSandbox_Should_Constraint
         SbxSandboxOptions.DefaultSessionFiles.ShouldNotContain(file => file.Contains(".claude"));
     }
 
+    [Fact]
+    public void ARuntimeWhoseSessionCannotTravel_Should_SayWhyAndHowToFixIt()
+    {
+        // The half that survives even if carriage were dropped (#288 D6). Claude Code on macOS
+        // keeps its session in the system keychain, so no copy reaches it — and "secret missing"
+        // is exactly the wrong sentence to show a developer who IS signed in.
+        var host = CarryingHost(["claude"]);
+
+        var gap = host.SessionUnavailableFor("ClaudeCodeHeadless", "claude");
+
+        gap.ShouldNotBeNull();
+        gap.Reason.ShouldContain("keychain");
+        gap.Reason.ShouldContain("cannot be given a copy");
+        // A reason without a remedy leaves the developer where the old silence did.
+        gap.Remedy.ShouldContain("secret set -g");
+        // Names only, never values (BR-010).
+        gap.Reason.ShouldNotContain("sk-");
+    }
+
+    [Fact]
+    public void ARuntimeWhoseSessionIsAFile_Should_RaiseNoSuchQuestion()
+    {
+        // opencode's session is a file the copy reaches, so there is nothing to warn about — and
+        // a panel that warned anyway would train its reader to ignore it.
+        var host = CarryingHost(["claude"]);
+
+        host.SessionUnavailableFor("OpenCode", "opencode").ShouldBeNull();
+    }
+
+    [Fact]
+    public void CarriageOff_Should_RaiseNoSuchQuestionEither()
+    {
+        // Nothing was promised, so nothing is missing: a habitat that injects credentials is not
+        // failing to carry a session it never offered to carry.
+        // Carriage off is exactly "no session files declared" — the same switch the habitat flips.
+        var host = SbxHost("sbx", keychainRuntimes: ["claude"]);
+
+        host.SessionUnavailableFor("ClaudeCodeHeadless", "claude").ShouldBeNull();
+    }
+
     // ---- Composition (design D1, D5) ----
 
     [Fact]
@@ -374,13 +414,28 @@ public class AgentSandbox_Should_Constraint
 
     // ---- Stand-ins ----
 
-    static SbxAgentProcessHost SbxHost(string commandPath, RunPreviewHost? previews = null) =>
+    /// <summary>A host in a habitat that carries the owner's session (#288).</summary>
+    static SbxAgentProcessHost CarryingHost(IReadOnlyList<string> keychainRuntimes) =>
+        SbxHost(
+            "sbx",
+            sessionFiles: SbxSandboxOptions.DefaultSessionFiles,
+            keychainRuntimes: keychainRuntimes
+        );
+
+    static SbxAgentProcessHost SbxHost(
+        string commandPath,
+        RunPreviewHost? previews = null,
+        IReadOnlyList<string>? sessionFiles = null,
+        IReadOnlyList<string>? keychainRuntimes = null
+    ) =>
         new(
             new SbxSandboxOptions
             {
                 CommandPath = commandPath,
                 Memory = "1g",
                 InjectedSecrets = ["github"],
+                SessionFiles = sessionFiles ?? [],
+                KeychainRuntimes = keychainRuntimes ?? [],
             },
             previews ?? new RunPreviewHost(),
             NullLogger<SbxAgentProcessHost>.Instance

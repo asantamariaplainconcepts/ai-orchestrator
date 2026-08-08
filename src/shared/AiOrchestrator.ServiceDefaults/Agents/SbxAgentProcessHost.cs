@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Agents;
 using Microsoft.Extensions.Logging;
 
 namespace AiOrchestrator.ServiceDefaults.Agents;
@@ -286,6 +287,24 @@ sealed class SbxAgentProcessHost(
     }
 
     /// <summary>
+    /// Why this runtime's session cannot travel, when carriage is on and it cannot (#288). Null
+    /// where carriage is off — no promise was made — or where the runtime's credential is a file
+    /// the copy reaches.
+    /// </summary>
+    public SessionCarriageGap? SessionUnavailableFor(string runtimeName, string command) =>
+        options.SessionFiles.Count == 0 || !options.KeychainRuntimes.Contains(command)
+            ? null
+            : new SessionCarriageGap(
+                AgentRuntimeRemedies.SessionCannotTravel(
+                    command,
+                    "this machine's keychain",
+                    runtimeName,
+                    command
+                ),
+                AgentRuntimeRemedies.StoreSandboxSecret(options.CommandPath, command)
+            );
+
+    /// <summary>
     /// Copies the machine owner's agent-CLI credentials into the sandbox, where the habitat asked
     /// for it (#288). A copy, never a mount: it lives exactly as long as the sandbox and an agent
     /// cannot write back into the developer's own session state.
@@ -562,6 +581,19 @@ sealed class SbxSandboxOptions
     /// </para>
     /// </summary>
     public IReadOnlyList<string> SessionFiles { get; init; } = [];
+
+    /// <summary>
+    /// Runtimes whose session a copy cannot reach because the machine keeps it in a keychain
+    /// rather than a file. Observed on macOS 2026-08-08: Claude Code has no
+    /// <c>~/.claude/.credentials.json</c>, and copying its directory in produced "Not logged in".
+    /// <para>
+    /// Configuration rather than a constant because it is platform-dependent — the same CLI on
+    /// Linux writes a credentials file, which this list would then wrongly exclude. Defaulted for
+    /// the platform this was measured on, and overridable by whoever measures another.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> KeychainRuntimes { get; init; } =
+        OperatingSystem.IsMacOS() ? ["claude"] : [];
 
     /// <summary>
     /// What the dev loop carries when it opts in: opencode's credential file, and GitHub
