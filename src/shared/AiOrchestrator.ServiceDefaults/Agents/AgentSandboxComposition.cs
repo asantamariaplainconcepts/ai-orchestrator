@@ -53,6 +53,30 @@ public static class AgentSandboxComposition
 
     public const string SbxLauncher = "sbx";
 
+    /// <summary>
+    /// Azure Container Apps Sandboxes (#296): microVMs created over an authenticated API, so this
+    /// habitat's agents run somewhere the executor is not, and no socket exists on either machine.
+    /// </summary>
+    public const string AcaLauncher = "aca";
+
+    /// <summary>
+    /// The Project's own SandboxGroup (#296 design D4). Per project rather than per deployment,
+    /// because the platform scopes credentials to the group and #244 promises a Run bills as its
+    /// own Project — a shared group would break that silently.
+    /// </summary>
+    public const string SandboxGroupKey = "Agents:Sandbox:Group";
+
+    /// <summary>The disk image sandboxes boot from; the platform's prebuilt ones carry the CLIs.</summary>
+    public const string DiskKey = "Agents:Sandbox:Disk";
+
+    /// <summary>
+    /// The hosts a sandbox may reach. Required rather than defaulted for the ACA launcher: deny by
+    /// default is <b>opt-in</b> on that platform — measured 2026-08-08, a sandbox with no policy
+    /// reached example.com and pypi.org — so a habitat that says nothing would run its agents
+    /// unrestricted while believing otherwise.
+    /// </summary>
+    public const string EgressAllowKey = "Agents:Sandbox:EgressAllow";
+
     internal static void AddAgentProcessHost(IHostApplicationBuilder builder)
     {
         var launcher = builder.Configuration.GetValue<string?>(LauncherKey);
@@ -63,12 +87,15 @@ public static class AgentSandboxComposition
             return;
         }
 
-        if (!string.Equals(launcher, SbxLauncher, StringComparison.OrdinalIgnoreCase))
+        var sbx = string.Equals(launcher, SbxLauncher, StringComparison.OrdinalIgnoreCase);
+        var aca = string.Equals(launcher, AcaLauncher, StringComparison.OrdinalIgnoreCase);
+
+        if (!sbx && !aca)
         {
             throw new InvalidOperationException(
                 $"'{LauncherKey}' is set to '{launcher}', which is not a launcher this build "
-                    + $"knows. The supported value is '{SbxLauncher}'. Remove the key to run the "
-                    + "agent as a child of this process."
+                    + $"knows. The supported values are '{SbxLauncher}' and '{AcaLauncher}'. "
+                    + "Remove the key to run the agent as a child of this process."
             );
         }
 
@@ -85,6 +112,20 @@ public static class AgentSandboxComposition
                     + "own terms, and running both would nest one inside the other while making "
                     + "one of the two invisible. Remove whichever is not intended."
             );
+        }
+
+        // The preview ledger belongs to the process that holds the sandboxes, and only that
+        // process can honestly answer whether a Run has a window open (run-previews design D2).
+        // Registered before either launcher's options, because both hosts take it.
+        builder.Services.AddSingleton<RunPreviewHost>();
+        builder.Services.AddSingleton<BuildingBlocks.Agents.IRunPreviewMonitor>(provider =>
+            provider.GetRequiredService<RunPreviewHost>()
+        );
+
+        if (aca)
+        {
+            AddAca(builder);
+            return;
         }
 
         builder.Services.AddSingleton(
@@ -108,15 +149,55 @@ public static class AgentSandboxComposition
                     : [],
             }
         );
-        // The preview ledger belongs to the process that holds the sandboxes, and only that
-        // process can honestly answer whether a Run has a window open (run-previews design D2).
-        // Registered here rather than beside the module's unhosted default, so a habitat with no
-        // launcher keeps answering "previews are not hosted here".
-        builder.Services.AddSingleton<RunPreviewHost>();
-        builder.Services.AddSingleton<BuildingBlocks.Agents.IRunPreviewMonitor>(provider =>
-            provider.GetRequiredService<RunPreviewHost>()
+        builder.Services.AddSingleton<IAgentProcessHost, SbxAgentProcessHost>();
+    }
+
+    /// <summary>
+    /// The Azure launcher (#296). Two of its settings are <b>required</b> rather than defaulted,
+    /// which is unusual here and deliberate: they correct platform defaults that are actively wrong
+    /// for a Run, and both were found by exercise rather than documentation. A habitat that leaves
+    /// them unsaid would run agents it believes are constrained and are not, so composition refuses
+    /// instead of choosing on its behalf (ADR-0010: asked, never inferred).
+    /// </summary>
+    static void AddAca(IHostApplicationBuilder builder)
+    {
+        var group = builder.Configuration.GetValue<string?>(SandboxGroupKey);
+        if (string.IsNullOrWhiteSpace(group))
+        {
+            throw new InvalidOperationException(
+                $"This habitat runs agents in Azure sandboxes ({LauncherKey} = {AcaLauncher}) but "
+                    + $"names no sandbox group ('{SandboxGroupKey}'). A group is per Project, so a "
+                    + "Run bills and acts as its own Project's identity rather than a shared one."
+            );
+        }
+
+        var allow = builder.Configuration.GetSection(EgressAllowKey).Get<string[]>();
+        if (allow is null || allow.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"This habitat runs agents in Azure sandboxes but declares no egress allow list "
+                    + $"('{EgressAllowKey}'). Deny-by-default is opt-in on that platform — a "
+                    + "sandbox created without a policy has unrestricted outbound access — so a "
+                    + "habitat that says nothing would run its agents unrestricted while believing "
+                    + $"otherwise. Declare the hosts they may reach, starting with "
+                    + $"[{string.Join(", ", AcaSandboxOptions.DefaultEgressAllow)}]."
+            );
+        }
+
+        builder.Services.AddSingleton(
+            new AcaSandboxOptions
+            {
+                CommandPath =
+                    builder.Configuration.GetValue<string?>(CommandPathKey)
+                    ?? AcaSandboxOptions.DefaultCommand,
+                SandboxGroup = group,
+                Disk =
+                    builder.Configuration.GetValue<string?>(DiskKey)
+                    ?? AcaSandboxOptions.DefaultDisk,
+                EgressAllow = allow,
+            }
         );
 
-        builder.Services.AddSingleton<IAgentProcessHost, SbxAgentProcessHost>();
+        builder.Services.AddSingleton<IAgentProcessHost, AcaAgentProcessHost>();
     }
 }
