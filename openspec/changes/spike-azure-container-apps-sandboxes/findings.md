@@ -297,10 +297,45 @@ spike owes (task 7.1) is not due. What can be said already, and it is a lot:
 - What is worse or unknown: `exec` cannot hold a Run, auto-suspend must be disabled deliberately,
   cost is unmeasured, and session carriage (#288) cannot exist here at all.
 
-### The verdict was framed against the wrong comparison
+### What this actually replaces — corrected twice, and this is the right frame
 
-The paragraph below was written as though this substrate were competing with sbx for one slot. It
-is not, and saying so is the most useful thing this spike produced.
+First the verdict compared this to sbx-in-the-cloud, which does not exist. Then it compared it to
+sbx, which lives on a laptop. Both were wrong. **The thing this would replace is the cloud path the
+programme already planned**, and against that its case is much stronger.
+
+The planned path, from the corpus: a Storage Queue with a KEDA scaler (DEC-013), ACA Jobs, and each
+Run in **its own container from a pod image**, launched over the **docker socket** — which
+`run-dispatch`'s own requirement calls the operator's explicit grant and warns is *root-equivalent
+on the host*.
+
+Point by point, against that:
+
+| | Planned: pod image on ACA Jobs | ACA Sandboxes |
+|---|---|---|
+| Isolation | container, **shared host kernel** (runc) | **hardware-isolated microVM** — the founding concern of this whole exploration |
+| How a Run starts | docker socket, **root-equivalent grant** | authenticated API + an RBAC role |
+| The image | our `dispatch-worker`: build, publish, version, pull | prebuilt `claude` / `copilot` disks, or ours |
+| Credentials | values in the container's environment | typed providers injected **at egress**, never inside |
+| Egress | unrestricted | deny-default + allowlist + an auditable decision log |
+| Previews | no story in that habitat | `port add`, Entra-gated unless `--anonymous` |
+| Idle | a job runs or it does not | scale to zero, suspend, snapshot |
+
+The sbx spike opened by naming exactly two costs of the container path: *"the container shares the
+host kernel (runc), and the socket grant to the launcher is root-equivalent on the host."* **This
+substrate removes both**, in the habitat where the pod path was the answer.
+
+### Where sbx stands in that frame
+
+Untouched. It is the dev loop's substrate, it is free, and #288's session carriage can only exist
+on a machine with an owner. Nothing here argues for removing it.
+
+Worth correcting one thing said earlier about that: the *goal* of #288 survives a move to this
+substrate even though its mechanism cannot. `--type github-copilot` takes a fine-grained PAT, and
+that PAT carries the developer's own Copilot seat — so a Run still acts and bills as that person
+rather than against an organisation's shared key. What is lost is "no token at all", not "not my
+seat". That matters if the dev loop is ever reconsidered; it is not a reason to reconsider it now.
+
+### The earlier framing, kept because it is still true of sbx
 
 **sbx cannot go to the cloud.** Its constraint is co-location: the executor prepares a directory
 and the sandbox mounts it, so "sbx in Azure" means operating a VM — one to size, patch, scale and
@@ -330,7 +365,7 @@ So the pattern the ~50 s ceiling forces is the pattern a queue-driven worker sho
 cost against the local design and a fit for the remote one. That does not make the ceiling
 harmless — it still has to be built — but it stops being an argument against.
 
-**Recommendation (task 7.1): pursue as the deployment substrate, not as a replacement.** The finding that justifies the work is
+**Recommendation (task 7.1): replace the planned pod-image cloud path with this.** The finding that justifies the work is
 H2 — co-location is broken, which is the ceiling the current design has and cannot lift. The
 finding that sizes it is the `exec` ceiling: this is a new executor shape, not a new
 `IAgentProcessHost`. Anything that follows should decide that shape first, and should not begin
