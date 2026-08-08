@@ -25,6 +25,19 @@ static class AppHostHabitats
             {
                 server.WithEnvironment("Agents__Sandbox__CommandPath", sbxPath);
             }
+
+            // The developer's own seat goes into the sandbox (#288). Declared HERE and nowhere
+            // else: DeclareServerShape never sets it, so no habitat can acquire the softening by
+            // forgetting to unset something.
+            //
+            // The consequence, where the operator reads it: a Run under carriage acts and bills
+            // as that seat, and a carried session is readable by whatever runs in the sandbox.
+            // Acceptable because a dev-loop Run works on repositories its owner already has —
+            // which is exactly what stops being true in the server shape.
+            //
+            // Only credential FILES travel. Claude Code on macOS keeps its session in the system
+            // keychain, so nothing here carries it; the runtimes panel names that and the remedy.
+            server.WithEnvironment("Agents__Sandbox__CarrySession", "true");
         }
 
         // The demo seeder runs only here (local-agent-loop design D3). No deployed template sets

@@ -39,6 +39,18 @@ public static class AgentSandboxComposition
     /// </summary>
     public const string AgentTemplatesKey = "Agents:Sandbox:AgentTemplates";
 
+    /// <summary>
+    /// Whether the machine owner's agent-CLI credentials are copied into each sandbox (#288).
+    /// Off unless a habitat declares it, and only the dev loop does: a carried session is
+    /// readable by whatever runs in the sandbox, which is acceptable where a developer runs
+    /// their own repositories and is not where a habitat runs somebody else's. A Run under
+    /// carriage acts and bills as that seat.
+    /// </summary>
+    public const string CarrySessionKey = "Agents:Sandbox:CarrySession";
+
+    /// <summary>Which credential files travel; the default is the observed set.</summary>
+    public const string SessionFilesKey = "Agents:Sandbox:SessionFiles";
+
     public const string SbxLauncher = "sbx";
 
     internal static void AddAgentProcessHost(IHostApplicationBuilder builder)
@@ -90,6 +102,10 @@ public static class AgentSandboxComposition
                 AgentTemplates =
                     builder.Configuration.GetSection(AgentTemplatesKey).Get<string[]>()
                     ?? SbxSandboxOptions.DefaultAgentTemplates,
+                SessionFiles = builder.Configuration.GetValue(CarrySessionKey, defaultValue: false)
+                    ? builder.Configuration.GetSection(SessionFilesKey).Get<string[]>()
+                        ?? SbxSandboxOptions.DefaultSessionFiles
+                    : [],
             }
         );
         // The preview ledger belongs to the process that holds the sandboxes, and only that

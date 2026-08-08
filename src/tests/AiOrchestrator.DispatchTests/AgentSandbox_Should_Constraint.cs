@@ -174,6 +174,54 @@ public class AgentSandbox_Should_Constraint
         sandboxedSource.ShouldContain("no value enters the sandbox");
     }
 
+    // ---- Session carriage, and the habitat that declines it (#288) ----
+
+    [Fact]
+    public void CarriageOff_Should_BeTheDefaultForEveryHabitat()
+    {
+        // The softening must be acquired deliberately, never by a habitat forgetting to unset
+        // something. Naming only the launcher gets injection, exactly as before #288.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.SbxLauncher;
+        builder.AddAgentRuntime();
+
+        var host = builder.Build().Services.GetRequiredService<IAgentProcessHost>();
+
+        host.CredentialSource.ShouldContain("no value enters the sandbox");
+        host.CredentialSource.ShouldNotContain("owner");
+    }
+
+    [Fact]
+    public void CarriageOn_Should_SayTheRunActsAsThatSeat()
+    {
+        // The transcript's third source. A Run whose spend lands on somebody's own seat has to
+        // say so, or a surprising bill is undiagnosable from the Run's own record.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.SbxLauncher;
+        builder.Configuration[AgentSandboxComposition.CarrySessionKey] = "true";
+        builder.AddAgentRuntime();
+
+        var host = builder.Build().Services.GetRequiredService<IAgentProcessHost>();
+
+        host.CredentialSource.ShouldContain("owner's own session");
+        host.CredentialSource.ShouldContain("acts as that seat");
+    }
+
+    [Fact]
+    public void TheCarriedSet_Should_BeCredentialFilesOnly()
+    {
+        // Observed 2026-08-08: opencode's whole session is one 950-byte auth.json, while its
+        // ~/.config tree is over a gigabyte of caches. Carrying the tree would move all of it for
+        // nothing, so the default names files.
+        SbxSandboxOptions.DefaultSessionFiles.ShouldContain(".local/share/opencode/auth.json");
+        SbxSandboxOptions.DefaultSessionFiles.ShouldAllBe(file => !file.EndsWith('/'));
+        // Claude Code's macOS session is in the system keychain and has no file to name; the
+        // readiness panel explains it instead of this list pretending to carry it.
+        SbxSandboxOptions.DefaultSessionFiles.ShouldNotContain(file => file.Contains(".claude"));
+    }
+
     // ---- Composition (design D1, D5) ----
 
     [Fact]

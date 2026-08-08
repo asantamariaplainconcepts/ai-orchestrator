@@ -32,7 +32,11 @@ sealed class SbxAgentProcessHost(
     public bool SuppliesCredentials => true;
 
     public string CredentialSource =>
-        "injected at egress by the sandbox host — no value enters the sandbox";
+        options.SessionFiles.Count > 0
+            // The third source (#288). Named as the machine owner's own seat because that is what
+            // a reader needs to know when a Run's spend appears on their account.
+            ? "the machine owner's own session, copied into the sandbox — this Run acts as that seat"
+            : "injected at egress by the sandbox host — no value enters the sandbox";
 
     public async Task<AgentProcessOutcome> Run(
         string fileName,
@@ -273,11 +277,68 @@ sealed class SbxAgentProcessHost(
 
         SandboxLog.Created(logger, sandbox);
 
+        await CarrySession(sandbox, cancellationToken);
+
         if (preview is not null)
         {
             await RecordPreview(sandbox, preview, cancellationToken);
         }
     }
+
+    /// <summary>
+    /// Copies the machine owner's agent-CLI credentials into the sandbox, where the habitat asked
+    /// for it (#288). A copy, never a mount: it lives exactly as long as the sandbox and an agent
+    /// cannot write back into the developer's own session state.
+    /// <para>
+    /// Only the credential FILES travel, not the CLI's configuration tree — observed 2026-08-08:
+    /// opencode's entire session is <c>~/.local/share/opencode/auth.json</c> at 950 bytes, while
+    /// <c>~/.config/opencode</c> is over a gigabyte of caches that buy nothing. With that one file
+    /// copied in, <c>opencode auth list</c> saw both configured providers and a headless run
+    /// answered on the owner's GitHub Copilot seat with no API key anywhere.
+    /// </para>
+    /// <para>
+    /// Deliberately silent about what it cannot carry: a credential held in an OS keychain — which
+    /// is where Claude Code keeps its on macOS — has no file to copy, and saying so is the
+    /// readiness panel's job, not a failure at Run time.
+    /// </para>
+    /// </summary>
+    async Task CarrySession(string sandbox, CancellationToken cancellationToken)
+    {
+        foreach (var file in options.SessionFiles)
+        {
+            var source = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+                file
+            );
+
+            if (!File.Exists(source))
+            {
+                // Not signed into that CLI, or it keeps its credential somewhere a copy cannot
+                // reach. Neither is this method's problem to report.
+                continue;
+            }
+
+            // `sbx cp` places it under the sandbox user's home, which is the only place a CLI
+            // looks. A failure is logged and the Run proceeds: an absent session degrades to the
+            // agent saying it is not logged in, which the panel already explains.
+            var copied = await Sbx(
+                ["cp", source, $"{sandbox}:{SandboxHome}/{file}"],
+                Brief,
+                cancellationToken
+            );
+
+            if (copied.ExitCode != 0)
+            {
+                SandboxLog.SessionNotCarried(logger, sandbox, file, Detail(copied));
+                continue;
+            }
+
+            SandboxLog.SessionCarried(logger, sandbox, file);
+        }
+    }
+
+    /// <summary>The sandbox user's home, where every CLI looks for its credential.</summary>
+    const string SandboxHome = "/home/agent";
 
     /// <summary>
     /// Reads back the port sbx actually allocated and records it. A preview that cannot be
@@ -489,6 +550,31 @@ sealed class SbxSandboxOptions
     /// </summary>
     public IReadOnlyList<string> AgentTemplates { get; init; } = DefaultAgentTemplates;
 
+    /// <summary>
+    /// Credential files, relative to the machine owner's home, to copy into each sandbox — the
+    /// dev loop's opt-in (#288). Empty means carry nothing, which is every habitat but the dev
+    /// loop, because a carried session is readable by whatever runs in the sandbox.
+    /// <para>
+    /// Files only, and only credential ones. Observed 2026-08-08: opencode's whole session is
+    /// <c>.local/share/opencode/auth.json</c> (950 bytes); its <c>.config/opencode</c> tree is
+    /// caches. Claude Code on macOS has no file at all — its credential is in the system
+    /// keychain — so nothing here can carry it, and the readiness panel says so instead.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> SessionFiles { get; init; } = [];
+
+    /// <summary>
+    /// What the dev loop carries when it opts in: opencode's credential file, and GitHub
+    /// Copilot's, which arrives with its runtime (#243). Both are files; Claude Code's macOS
+    /// session is not, deliberately absent rather than silently ineffective.
+    /// </summary>
+    public static readonly string[] DefaultSessionFiles =
+    [
+        ".local/share/opencode/auth.json",
+        ".config/github-copilot/apps.json",
+        ".config/github-copilot/hosts.json",
+    ];
+
     public static readonly string[] DefaultAgentTemplates = ["claude", "opencode"];
 
     /// <summary>Warm creation was ~4.5s in the spike; a cold image pull is minutes.</summary>
@@ -518,6 +604,25 @@ static partial class SandboxLog
         Message = "Removed sandbox {Sandbox}"
     )]
     public static partial void Disposed(ILogger logger, string sandbox);
+
+    [LoggerMessage(
+        EventId = 4115,
+        Level = LogLevel.Information,
+        Message = "Carried {File} into sandbox {Sandbox} — this Run acts as the machine owner's session"
+    )]
+    public static partial void SessionCarried(ILogger logger, string sandbox, string file);
+
+    [LoggerMessage(
+        EventId = 4116,
+        Level = LogLevel.Warning,
+        Message = "Could not carry {File} into sandbox {Sandbox}, so its runtime may not be signed in: {Detail}"
+    )]
+    public static partial void SessionNotCarried(
+        ILogger logger,
+        string sandbox,
+        string file,
+        string detail
+    );
 
     [LoggerMessage(
         EventId = 4113,

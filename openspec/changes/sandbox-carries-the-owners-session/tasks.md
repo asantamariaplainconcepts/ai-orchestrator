@@ -16,13 +16,13 @@
 
 ## 2. The carriage (design D1, D2, D4)
 
-- [ ] 2.1 The sbx host copies the observed **credential files** into the sandbox at creation when
+- [x] 2.1 The sbx host copies the observed **credential files** into the sandbox at creation when
       its options say to — never the configuration tree. Copy, not bind: the copy dies with the
       sandbox and an agent cannot write into the machine's session state.
-- [ ] 2.2 One setting turns it off, declared by the habitat that wants it —
+- [x] 2.2 One setting turns it off, declared by the habitat that wants it —
       `AppHostHabitats.DeclareDevLoop` sets it, `DeclareServerShape` never does. A unit test pins
       that a habitat which does not declare it gets nothing.
-- [ ] 2.3 The option's own configuration comment states the consequence where an operator reads
+- [x] 2.3 The option's own configuration comment states the consequence where an operator reads
       it: sandboxed Runs act and bill as that seat, and a carried session is readable by whatever
       runs in the sandbox.
 
@@ -37,7 +37,7 @@
 
 ## 4. The transcript (design D3)
 
-- [ ] 4.1 `CredentialSource` gains its third value and the executor's one header reads correctly
+- [x] 4.1 `CredentialSource` gains its third value and the executor's one header reads correctly
       with it — a clause, not a second line (ADR-0015). A test pins all three sources.
 
 ## 5. Proof
