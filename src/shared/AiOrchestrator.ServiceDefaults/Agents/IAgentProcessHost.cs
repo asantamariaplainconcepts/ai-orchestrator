@@ -71,6 +71,29 @@ public interface IAgentProcessHost
         string command,
         string? credentialSecretName
     );
+
+    /// <summary>
+    /// The models a runtime offers, asked of the machine that will run it (#291, design D2) —
+    /// this process where agents are its children, inside a sandbox where they are not.
+    /// <para>
+    /// Measured 2026-08-08 and this is why it is a host question rather than a process one:
+    /// <c>opencode models</c> answered 41 on the host and 495 inside a sandbox holding the
+    /// owner's carried session. Asking the wrong machine is not slightly stale — it is wrong by
+    /// an order of magnitude.
+    /// </para>
+    /// <para>
+    /// Returns null for <b>could not ask</b>, which is a different fact from an empty list and
+    /// must stay different all the way to the surface (design D6): rendering the first as the
+    /// second tells a developer their runtime has no models.
+    /// </para>
+    /// </summary>
+    /// <param name="command">The CLI to ask.</param>
+    /// <param name="arguments">How that CLI is asked — the runtime declares it, not this host.</param>
+    Task<IReadOnlyList<string>?> ListModels(
+        string command,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken
+    );
 }
 
 /// <summary>

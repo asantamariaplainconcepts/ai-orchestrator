@@ -228,6 +228,13 @@ public static class AgentRuntimeComposition
     /// <summary>opencode's credential name; EMPTY by default — free models need none (D3).</summary>
     public const string OpenCodeCredentialKey = "Agents:OpenCode:CredentialSecretName";
 
+    /// <summary>
+    /// Where an operator declares the models a runtime that cannot enumerate them should offer —
+    /// `Agents:ClaudeCodeHeadless:Models:0`, `:1`, and so on (#291). Absent means the chooser
+    /// offers nothing and says why, rather than pretending the runtime has no models.
+    /// </summary>
+    public static string ModelsKey(string runtimeName) => $"Agents:{runtimeName}:Models";
+
     public const string OpenCodeModelKey = "Agents:OpenCode:Model";
 
     /// <summary>
@@ -269,6 +276,9 @@ public static class AgentRuntimeComposition
             defaultValue: null
         );
 
+        IReadOnlyList<string> declaredModels(string runtimeName) =>
+            builder.Configuration.GetSection(ModelsKey(runtimeName)).Get<string[]>() ?? [];
+
         builder.Services.AddSingleton<IAgentRuntimeSelector>(provider =>
         {
             // The chosen host is what decides whether a credential ever reaches the agent, and
@@ -289,6 +299,10 @@ public static class AgentRuntimeComposition
                     )
                     {
                         CredentialSource = credentialSource,
+                        // No ModelListArguments: `claude --help` documents --model and no
+                        // listing command exists (observed 2026-08-08). Its offer is the
+                        // operator's list, or nothing said honestly.
+                        ConfiguredModels = declaredModels("ClaudeCodeHeadless"),
                     },
                     ["OpenCode"] = new(
                         provider.GetRequiredService<OpenCodeRuntime>(),
@@ -298,10 +312,18 @@ public static class AgentRuntimeComposition
                     )
                     {
                         CredentialSource = credentialSource,
+                        // It can be asked, so it is asked — a copied list would drift the moment
+                        // a provider ships anything, and this one is 495 entries deep.
+                        ModelListArguments = ["models"],
+                        ConfiguredModels = declaredModels("OpenCode"),
                     },
                 }
             );
         });
+
+        // The chooser's answer, for the surfaces that offer a model (#291). Registered beside
+        // the selector because it is the same question one level up.
+        builder.Services.AddSingleton<IAgentModelCatalog, AgentModelCatalog>();
 
         return builder;
     }

@@ -117,6 +117,11 @@ public sealed class RunsModule : ModuleBase
         // spawns as missing.
         services.TryAddSingleton<IAgentRuntimesMonitor, UnhostedAgentRuntimesMonitor>();
 
+        // The model chooser's default (#291), one more time for the same reason: a process that
+        // executes no Runs has no machine to ask, so it declares nothing rather than reporting a
+        // failure to reach a machine that was never there.
+        services.TryAddSingleton<IAgentModelCatalog, NoAgentModelCatalog>();
+
         // And previews, for the same reason again (run-previews): the read and the relay must
         // always resolve, so a habitat that holds no sandboxes answers "not hosted here" instead
         // of failing — the ability is absent, never the answer.

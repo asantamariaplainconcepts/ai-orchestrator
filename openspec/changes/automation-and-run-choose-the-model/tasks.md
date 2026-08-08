@@ -46,15 +46,20 @@
 
 ## 3. Where the choices come from (design D1, D2, D3, D6)
 
-- [ ] 3.1 A runtime declares whether it can enumerate its models. opencode can (`opencode models`);
+- [x] 3.1 A runtime declares whether it can enumerate its models. opencode can (`opencode models`);
       Claude Code cannot and reads `Agents:<Runtime>:Models` from configuration. Neither list lives
       in code, and a unit test pins that a runtime which can be asked is never handed a copied list.
-- [ ] 3.2 Enumeration goes through `IAgentProcessHost`, beside `CliAnswers`, so it is answered where
+- [x] 3.2 Enumeration goes through `IAgentProcessHost`, beside `CliAnswers`, so it is answered where
       agents run. In the local host that is this process; in the sbx host, inside a sandbox.
-- [ ] 3.3 The cache is keyed on everything the answer depends on — including the carried session,
-      per D3 — and a test proves it: two habitats carrying different sessions must not read each
-      other's list. This is the assertion that has to be able to fail (ADR-0013).
-- [ ] 3.4 "Could not ask" is a distinct result from "no models", all the way to the API.
+- [x] 3.3 The cache is keyed on everything the answer depends on — including the carried session,
+      per D3. **The test was re-aimed while writing it:** "two habitats must not read each other's
+      list" would have been vacuous, because each habitat builds its own host and therefore its own
+      cache — it could never have failed. The real risk is within ONE host: a developer
+      re-authenticates and keeps being served the seat they left. That is what is asserted, with a
+      stand-in that counts how many times the CLI was asked. Verified able to fail: keying on the
+      command alone turns it red (ADR-0013). "Could not ask" is deliberately not cached — caching
+      silence would keep every chooser empty for a whole probe interval after the machine returned.
+- [x] 3.4 "Could not ask" is a distinct result from "no models", all the way to the API.
 
 ## 4. The surfaces (design D6)
 

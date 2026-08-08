@@ -80,6 +80,44 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
     ) => null;
 
     /// <summary>
+    /// Asked of this process, which IS where agents run here. No caching: a local CLI answers in
+    /// milliseconds, and the reason the sandbox host caches — that each ask costs a microVM —
+    /// simply does not apply.
+    /// </summary>
+    public async Task<IReadOnlyList<string>?> ListModels(
+        string command,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken
+    )
+    {
+        try
+        {
+            var outcome = await HeadlessProcess.Run(
+                command,
+                arguments,
+                Path.GetTempPath(),
+                new Dictionary<string, string>(),
+                ProbeTimeout,
+                cancellationToken
+            );
+
+            // A non-zero exit is "could not ask", not "no models": a CLI that refused the
+            // question has told us nothing about its models (design D6).
+            return outcome.TimedOut || outcome.ExitCode != 0
+                ? null
+                : AgentModelListing.Parse(outcome.Stdout);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Generous for a local <c>--version</c>, but a wedged machine can hang instead of refuse —
     /// and a probe that hangs forever reports nothing, which is the silence it exists to end.
     /// </summary>
