@@ -50,7 +50,10 @@ sealed class CreateAutomation : IUseCase
                         request.RequiresApproval,
                         request.TimeoutMinutes,
                         request.PromptPath,
-                        request.OutputLabels
+                        request.OutputLabels,
+                        // Named, because PreviewPort sits between them and this endpoint has
+                        // never forwarded it — a separate defect, not this change's to widen.
+                        Model: request.Model
                     );
 
                     var result = await sender.Send(command, cancellationToken);

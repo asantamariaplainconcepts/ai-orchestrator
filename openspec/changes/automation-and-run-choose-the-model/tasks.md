@@ -71,12 +71,16 @@
 
 ## 5. Proof
 
-- [ ] 5.1 Unit and functional coverage: the resolution order, the no-op guarantee, the two
+- [x] 5.1 Unit and functional coverage: the resolution order, the no-op guarantee, the two
       discovery mechanisms, the cache key, the three chooser states, the rejected-model reason.
       Fakes that can fail — and for the cache, a fake that would pass if the key were wrong.
+      **Found by writing them:** the create-automation endpoint never forwarded `request.Model` to
+      its command, so a model saved through the API silently vanished. It does not forward
+      `request.PreviewPort` either — a pre-existing defect of the same shape, left alone and
+      spawned as its own task rather than widened into this change.
 - [ ] 5.2 Exercised end to end on the running dev loop in sandbox mode: an Automation given a
       `github-copilot/*` model that only the carried seat reaches, a Run launched with a different
       model overriding it, and the Run's usage naming what actually ran. Recorded verbatim,
       including anything that did not work.
-- [ ] 5.3 Full gates — build, tests, CSharpier, ESLint, Prettier, tsc, `openspec validate --strict`,
+- [x] 5.3 Full gates — build, tests, CSharpier, ESLint, Prettier, tsc, `openspec validate --strict`,
       design-system validator — and a deployment that sets nothing behaves exactly as before.
