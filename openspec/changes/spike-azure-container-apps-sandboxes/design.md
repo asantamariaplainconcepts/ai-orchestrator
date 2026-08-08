@@ -67,7 +67,7 @@ not even the option.
 *Refuted if* exposure is public-by-default, or survives the sandbox, or requires ingress this
 product would have to operate.
 
-### H4 — A credential reaches the agent without living at rest
+### H4 — A credential reaches the agent without living at rest, and the platform may already know our runtimes
 
 The documentation claims **both** shapes: an egress proxy that injects credentials at the boundary
 — *"never inside the sandbox"*, which is sbx's sentinel model in different words — and secrets
@@ -75,8 +75,21 @@ injected as environment variables at boot. Both are workable and they are not th
 which one a Run uses decides what its transcript must say (#288's third credential source exists
 because that sentence has to be true).
 
-Documentation is not evidence (ADR-0001), so this stays a hypothesis: exercise the proxy path and
-confirm no value is readable inside.
+**And a third-party report says the preview goes further than generic secrets.** A write-up by
+Tamir Dresher (2026-06-12), from someone driving the preview CLI rather than reading its
+announcement, records that credentials attach to the **sandbox group** as typed provider tokens,
+and that the types the preview exposes are **`github-copilot` and `anthropic-claude`** — which are
+exactly the two this product's runtimes authenticate against. It also reports that the Copilot
+credential validates a fine-grained `github_pat_…` prefix and rejects classic `ghp_…` tokens.
+
+If that holds, the credential story on this substrate is not a downgrade from the dev loop's — it
+is a different and arguably better one, because the platform injects a typed provider token and no
+value is baked into an image. Note the irony worth recording: the same write-up names "copy my host
+machine's token store into the sandbox" as the wrong shape, and that is precisely what #288 does —
+correctly, for a laptop. Two habitats, two right answers.
+
+Documentation and blog posts are not evidence (ADR-0001), so all of this stays a hypothesis:
+exercise the provider path for both types and confirm no value is readable inside.
 
 Also confirm the negative: **session carriage is impossible here.** #288 copies the machine
 owner's credential files into the sandbox, and there is no machine owner on a remote host. A
@@ -116,6 +129,17 @@ workspace, environment, a timeout, a line callback and an optional published por
 plus ports plus a CLI to shell out to is that interface, which means adopting this substrate would
 plausibly be a third implementation of an existing seam rather than a new architecture. The spike
 should confirm or deny that, because it is the difference between a change and a programme.
+
+**The CLI is its own surface, and it is not `az`.** Reported install:
+`curl -fsSL https://aka.ms/aca-cli-install | sh`, then `aca auth login`, with an `aca doctor` for
+preflight. `aca sandboxgroup create` is reported to auto-assign the caller the data-owner role
+unless opted out. Egress is set per sandbox — `--egress-default Deny --egress-rule "github.com:Allow"`
+— and can be changed on an existing sandbox with `aca sandbox egress set`, which is deny-all plus
+allow list, the shape sbx already gives this product. Disk images come either from public prebuilt
+ones (`--disk copilot`) or private ones (`--disk-id`).
+
+All of it is preview surface, and the same write-up says to re-read `--help` before automating any
+of it. The spike records the flags it actually ran, not the ones it read.
 
 **There are SDKs, and the interesting question is not whether but which client.** The docs offer
 Bash, PowerShell and an SDK tab whose contents are **Python**

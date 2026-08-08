@@ -7,14 +7,25 @@
       broken, fixing it is this spike's first task and not a footnote discovered at step four.
 - [ ] 0.2 Confirm a registry the platform can pull from, and whether a private one needs a
       user-assigned managed identity as the announcement suggests.
+- [ ] 0.3b Install the `aca` CLI — it is a **separate surface, not `az containerapp`** — and run
+      `aca doctor`. Reported install is `curl -fsSL https://aka.ms/aca-cli-install | sh` followed
+      by `aca auth login`; verify the current one rather than trusting a quoted line.
+- [ ] 0.4b Mint the credentials the provider paths need, and name them here before starting
+      (ADR-0017). Reported: the Copilot provider validates a fine-grained `github_pat_…` token and
+      **rejects classic `ghp_…`**, so an existing classic PAT will not do. Both are human-only
+      steps — an agent cannot mint them — which is exactly what ADR-0017 asks to be scheduled
+      rather than discovered.
 - [ ] 0.3 Record the preview version, region and date every later observation is true of
       (ADR-0018: a measurement licenses only what it measured).
 
 ## 1. H1 — our own image boots and runs an agent
 
-- [ ] 1.1 Build a minimal OCI image with `node`, `git` and `opencode`, push it, and create a
-      sandbox from it. Record what the conversion accepted and how long the first boot took versus
-      a resumed one.
+- [ ] 1.1a Cheapest first probe: create a sandbox from the **public prebuilt disk** (`--disk
+      copilot` is the one reported) and confirm the basic loop — create, exec, delete — before any
+      image of ours exists. A failure here is about access, not about our packaging.
+- [ ] 1.1 Then build a minimal OCI image with `node`, `git` and `opencode`, push it, and create a
+      sandbox from it with `--disk-id`. Record what the conversion accepted and how long the first
+      boot took versus a resumed one.
 - [ ] 1.2 Run `opencode run` to completion inside and record its output verbatim. `opencode
       models` is a cheap second probe: it answered 41 on the authoring host and 495 inside an sbx
       sandbox, so the number says something about the environment as well as the CLI.
@@ -41,12 +52,21 @@
 
 ## 4. H4 — the credential
 
-- [ ] 4.1 Exercise **both** documented paths: the egress proxy that claims to inject credentials at
-      the boundary, and secrets injected as environment variables at boot. Record which a Run would
-      use, because its transcript has to say it. For the proxy path, prove the negative the way
-      #288's tests do — run something inside that prints the variable and confirm it is empty.
-- [ ] 4.2 Exercise the egress policy: can it express deny-all plus an allow list, as sbx's does?
-      The documentation says deny-default with host allowlists; that is a claim, not a result.
+- [ ] 4.1 Exercise the **typed provider credentials** reported for this preview —
+      `aca sandboxgroup credential create --type github-copilot` and `--type anthropic-claude`.
+      Those are exactly the two this product's runtimes authenticate against, so if they work the
+      deployed habitat's credential story is better than a generic secret, not worse. Confirm the
+      value is injected through the platform path and **prove the negative the way #288's tests
+      do**: run something inside that prints the variable and confirm it is empty.
+- [ ] 4.1b Record the consequence for Claude specifically. #288 could not carry a Claude Code
+      session on macOS because it lives in the system keychain with no file to copy; if
+      `anthropic-claude` is a first-class provider here, the substrate that **cannot** do session
+      carriage solves the Claude problem another way. That is a finding about the product's shape,
+      not about Azure.
+- [ ] 4.2 Exercise the egress policy: deny-all plus allow list, reported as
+      `--egress-default Deny --egress-rule "github.com:Allow"` and changeable on a live sandbox
+      with `aca sandbox egress set`. Confirm a denied host is actually refused — an allow list
+      nobody tested the deny side of is a list, not a policy.
 - [ ] 4.3 Write down the negative explicitly: **#288's session carriage cannot work here** — there
       is no machine owner whose files to copy — so this substrate requires stored credentials.
 
