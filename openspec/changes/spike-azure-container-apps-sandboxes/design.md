@@ -151,12 +151,23 @@ The shape that matters is the split. There are **two** clients: a control plane
 plane** (`SandboxGroupClient`) that owns sandboxes, disk images, snapshots, volumes, secrets, ports,
 egress and **files**. Everything this product would do at Run time lives in the second one.
 
-For .NET, no dedicated sandbox package surfaced; `Azure.ResourceManager.AppContainers` is the
-general Container Apps ARM package, which is the control plane at best and would not cover the data
-plane regardless — data-plane clients ship per service. So the spike answers what a C# executor
-actually drives this with: the `aca` CLI (the precedent this codebase already runs on — the sbx
-host shells out to `sbx`), raw REST against the data plane, or a .NET package if one exists and the
-search missed it.
+**For .NET there is nothing, and this was measured rather than assumed.** Searched 2026-08-08 over
+`Azure/azure-sdk-for-net`'s default branch: `SandboxGroup` returns **0** results and `sandbox` in
+any path returns **0**; `sdk/containerapps` holds only `Azure.Provisioning.AppContainers` and
+`Azure.ResourceManager.AppContainers`. The same query returns 20 hits in `azure-sdk-for-python` and
+38 in `azure-sdk-for-js`. So the ARM package does not even carry a `SandboxGroup` type yet, let
+alone a data-plane client — and the data plane is where exec, files, ports, egress and secrets
+live, which is everything a Run does.
+
+*Method and its limits, so a later reader knows what this is worth:* GitHub code search over the
+default branch. A package on an unmerged branch, or shipped to NuGet from elsewhere, would not
+appear. Re-check before treating the gap as permanent.
+
+That makes the CLI path not a preference but the realistic one, and it is the shape this codebase
+already runs: `SbxAgentProcessHost` shells out to `sbx` today. The open half is whether `aca`
+covers the **data plane** — exec with streamed output, file transfer, ports — or only group
+management. If it does, adopting this substrate is a third implementation of an existing seam. If
+it does not, the answer is raw REST from C#, and the follow-up is larger than a seam.
 
 None of this counts as an answer. ADR-0001: a claim is exercised or it is a hypothesis, and a
 vendor's summary of its own preview is exactly the kind of claim that reads settled and is not.
