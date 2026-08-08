@@ -225,8 +225,7 @@ export const en = {
   "env.identity": "Identity",
   "env.identityValue": "Local owner — every action is admin",
   "env.listeningOn": "Listening on",
-  "env.agentPods": "Agent pods",
-  "env.viewPods": "View Agent pods",
+  "env.viewPods": "View Agent runtimes",
   "env.networkWarning": "Keep this port off the internet — there is no sign-in to stop anyone.",
   // The banner that remains (5a): the real hazard, not the posture. Shown only when the page
   // was reached from another machine while every caller is the administrator.
@@ -234,43 +233,15 @@ export const en = {
     "Reached from another machine with no sign-in — anyone who can reach this port is the administrator. Keep it on trusted networks, or bind it to localhost.",
   "env.exposedDismiss": "Dismiss for this session",
 
-  // The Agent pods panel (design review 5b/5c): what `docker ps` shows, joined to the Runs it
-  // is actually about. Local pods now, remote declared as coming.
-  "pods.title": "Agent pods",
-  "pods.heading": "Agent pods",
+  // The Agent runtimes page (#279; the pods half of it retired with its substrate in #296 — a
+  // container per Run over the docker socket no longer exists, so there is nothing to watch).
+  "pods.title": "Agent runtimes",
   "pods.onThisMachine": "on this machine",
   "pods.loading": "Loading…",
-  "pods.error": "Could not load the Agent pods.",
+  "pods.error": "Could not load the Agent runtimes.",
   "pods.notHosted":
-    "This deployment does not execute Runs in pods on this machine, so there is nothing to watch here.",
-  "pods.empty": "No pods right now. A dispatched Run appears here while it waits and executes.",
-  "pods.checking": "Checking…",
-  "pods.dockerReady": "Docker ready",
-  "pods.dockerDown": "Docker unreachable",
-  "pods.imageMissing": "Image not built",
-  // Mid-sentence, before the linked Story id: "Phoenix · Run #491".
-  "pods.run": "Run",
-  "pods.waitsForSlot": "waits for a slot",
-  "pods.concurrency": "Concurrency",
-  "pods.concurrency.one": "pod at a time",
-  "pods.concurrency.other": "pods at a time",
-  "pods.concurrencyNote": "this machine's setting — remote pods lift it",
-  "pods.remoteTitle": "Remote pods",
-  "pods.remoteComing": "coming",
-  "pods.remoteNote": "The same Runs, dispatched to cloud infrastructure. Nothing here changes.",
-  // The rule the not-ready card leads with (5c): the Run never fails for absent infrastructure.
-  "pods.unavailableTitle": "Agent pods unavailable — Docker isn't reachable",
-  "pods.unavailableBody":
-    "The Run stays Queued and dispatches on its own once pods are back. Nothing is lost.",
-  "pods.imageMissingTitle": "The pod image isn't pulled yet",
-  "pods.imageMissingBody":
-    "Docker answers, but the Agent image is missing. Runs stay Queued until it exists — pull it once and they dispatch on their own.",
-  "pods.try": "Try",
-  // The commands are copy so the panel and the self-hosting guide cannot drift apart silently.
-  "pods.tryCommand.compose": "docker compose up -d",
-  "pods.tryCommand.pull":
-    "docker pull ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest",
-  // The runtimes' half of the machine question (#279): docker can be ready and an Automation
+    "This deployment does not execute Runs on this machine, so there is nothing to watch here.",
+  // The runtimes' machine question (#279): an Automation can be unable to run because the
   // still unable to run, because the runtime's CLI is absent or its named secret resolves to
   // nothing. The remedy command comes from the API — the same pinned sentence the failure
   // reason carries — so the panel and the failure cannot drift.

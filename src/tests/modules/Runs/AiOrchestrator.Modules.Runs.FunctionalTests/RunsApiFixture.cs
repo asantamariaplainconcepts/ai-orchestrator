@@ -50,8 +50,6 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// The pod host faked at the monitor seam (design review 5b): the panel's endpoint is about
     /// joining sightings to Runs, never about docker — so the tests hand it sightings directly.
     /// </summary>
-    internal FakeAgentPodsMonitor Pods { get; } = new();
-
     internal FakeAgentRuntimesMonitor Runtimes { get; } = new();
 
     /// <summary>
@@ -125,23 +123,10 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
             services.RemoveAll<ICodeWorkspace>();
             services.AddSingleton<ICodeWorkspace>(Workspace);
 
-            services.RemoveAll<IAgentPodsMonitor>();
-            services.AddSingleton<IAgentPodsMonitor>(Pods);
-
             services.RemoveAll<IAgentRuntimesMonitor>();
             services.AddSingleton<IAgentRuntimesMonitor>(Runtimes);
         });
     }
-}
-
-/// <summary>A pod host whose snapshot the test decides; unhosted until one does.</summary>
-sealed class FakeAgentPodsMonitor : IAgentPodsMonitor
-{
-    public AgentPodsSnapshot Next { get; set; } = AgentPodsSnapshot.Unhosted;
-
-    public void Reset() => Next = AgentPodsSnapshot.Unhosted;
-
-    public AgentPodsSnapshot Snapshot() => Next;
 }
 
 sealed class FakeAgentRuntimesMonitor : IAgentRuntimesMonitor

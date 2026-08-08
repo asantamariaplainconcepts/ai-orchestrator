@@ -3,7 +3,7 @@ import { Check, X } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { useAutomations } from "@/features/automations/useAutomations";
-import { podsBlocked, usePods } from "@/features/pods/usePods";
+import { runtimesBlocked, usePods } from "@/features/pods/usePods";
 import { RunTranscript, TranscriptSpend } from "./RunTranscript";
 import { ApiError } from "@/shared/http/client";
 import { t, tCount, type TranslationKey } from "@/shared/i18n";
@@ -101,11 +101,13 @@ export function RunScreen() {
     run !== undefined &&
     ["Queued", "Planning", "AwaitingApproval", "Executing"].includes(run.state);
 
-  // Design review 5c: a pod Run queued while pods cannot take work explains itself with a
-  // pointer, never with destructive styling — the cause lives on the panel, not on the Run.
+  // Design review 5c, resited by #296: a queued Run whose machine cannot take work explains
+  // itself with a pointer, never with destructive styling — the cause lives on the readiness
+  // panel, not on the Run. The blocked question is the runtimes' now; the pod substrate whose
+  // docker health used to answer it was retired.
   const queuedForPods = run?.state === "Queued" && run.locus === "Pod";
   const pods = usePods({ enabled: queuedForPods });
-  const waitingForPods = queuedForPods && podsBlocked(pods.data);
+  const waitingForPods = queuedForPods && runtimesBlocked(pods.data);
 
   return (
     <AppShell

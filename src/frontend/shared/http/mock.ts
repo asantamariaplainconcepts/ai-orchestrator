@@ -541,100 +541,59 @@ const routes: [string, RegExp, Handler][] = [
       };
     },
   ],
-  // Design review 5b/5c — the pod host. `?podsDown` renders the docker-unreachable state and
-  // `?noImage` the unbuilt image, so both not-ready shapes are reachable without killing docker.
+  // #279 — the runtimes of the machine that executes Runs. The pods half of this endpoint went
+  // with its substrate (#296): a container per Run over the docker socket no longer exists, so
+  // there is nothing for a fixture to render. The runtimes' not-ready shapes stay reachable
+  // without uninstalling anything: `?cliMissing` renders the missing-CLI remedy, `?secretMissing`
+  // the unresolvable secret, `?sandboxed` puts the agents in a per-Run sandbox, `?sandboxDown`
+  // adds the host being unreachable, and `?sessionStuck` the session no copy can carry (#288).
   [
     "GET",
     /^\/api\/pods$/,
     () => {
       const search = new URLSearchParams(window.location.search);
-      const down = search.has("podsDown");
-      const noImage = search.has("noImage");
-      // #279 — the runtimes' not-ready shapes, reachable without uninstalling anything:
-      // `?cliMissing` renders the missing-CLI remedy, `?secretMissing` the unresolvable secret.
       const cliMissing = search.has("cliMissing");
       const secretMissing = search.has("secretMissing");
-      // The sandboxing change: where agents run is a habitat's choice made at startup, so both
-      // shapes must be reachable. `?sandboxed` puts the agents in a per-Run sandbox;
-      // `?sandboxDown` adds the host being unreachable, which makes every runtime below moot.
       const sandboxDown = search.has("sandboxDown");
-      // #288 — a runtime signed in on this machine whose session cannot travel to the sandbox,
-      // which reads very differently from a secret nobody stored.
       const sessionStuck = search.has("sessionStuck");
       const sandboxed = sandboxDown || search.has("sandboxed");
       return {
-        // The two substrates are mutually exclusive by composition (the sandboxing change's
-        // D5 refuses a habitat naming both), so the fixture must not render an impossible
-        // machine: in sandbox mode the pod host is simply not hosted here.
-        hosted: !sandboxed,
-        dockerReady: !down,
-        imagePresent: down ? null : !noImage,
+        hosted: true,
         checkedAt: at(0.3),
         retrySeconds: 30,
-        maxConcurrentPods: 1,
-        pods:
-          down || noImage || sandboxed
-            ? []
-            : [
-                {
-                  runId: runs[4]?.id ?? crypto.randomUUID(),
-                  projectId: projectAlpha,
-                  projectName: "Alpha portal",
-                  vendorStoryId: "13",
-                  triggerLabel: "ai:implement",
-                  runtime: "ClaudeCodeHeadless",
-                  executing: true,
-                  sightedAt: at(12),
-                },
-                {
-                  runId: runs[0]?.id ?? crypto.randomUUID(),
-                  projectId: projectAlpha,
-                  projectName: "Alpha portal",
-                  vendorStoryId: "11",
-                  triggerLabel: "ai:estimate",
-                  runtime: "OpenCode",
-                  executing: false,
-                  sightedAt: at(2),
-                },
-              ],
-        runtimes: {
-          hosted: true,
-          checkedAt: at(0.3),
-          retrySeconds: 30,
-          runtimes: [
-            {
-              name: "OpenCode",
-              command: "opencode",
-              cliReady: !cliMissing,
-              installCommand: "npm install -g opencode-ai@1.18.6",
-              credentialSecretName: null,
-              credentialReady: null,
-              sessionUnavailableReason: null,
-              sessionUnavailableRemedy: null,
-            },
-            {
-              name: "ClaudeCodeHeadless",
-              command: "claude",
-              cliReady: true,
-              installCommand: "npm install -g @anthropic-ai/claude-code@2.0.44",
-              credentialSecretName: secretMissing ? "anthropic-api-key" : null,
-              credentialReady: secretMissing ? false : null,
-              sessionUnavailableReason: sessionStuck
-                ? "'claude' keeps its session in this machine's keychain, not in a file, so the sandbox cannot be given a copy of it. Store an API key in the sandbox host and point Agents:ClaudeCodeHeadless:CredentialSecretName at 'claude', or run this Automation on a runtime whose session travels."
+        runtimes: [
+          {
+            name: "OpenCode",
+            command: "opencode",
+            cliReady: !cliMissing,
+            installCommand: "npm install -g opencode-ai@1.18.6",
+            credentialSecretName: null,
+            credentialReady: null,
+            sessionUnavailableReason: null,
+            sessionUnavailableRemedy: null,
+          },
+          {
+            name: "ClaudeCodeHeadless",
+            command: "claude",
+            cliReady: true,
+            installCommand: "npm install -g @anthropic-ai/claude-code@2.0.44",
+            credentialSecretName: secretMissing ? "anthropic-api-key" : null,
+            credentialReady: secretMissing ? false : null,
+            sessionUnavailableReason: sessionStuck
+              ? "'claude' keeps its session in this machine's keychain, not in a file, so the sandbox cannot be given a copy of it. Store an API key in the sandbox host and point Agents:ClaudeCodeHeadless:CredentialSecretName at 'claude', or run this Automation on a runtime whose session travels."
+              : null,
+            sessionUnavailableRemedy: sessionStuck ? "sbx secret set -g claude" : null,
+          },
+        ],
+        host: sandboxed
+          ? {
+              where: "a per-Run sandbox on this machine",
+              ready: !sandboxDown,
+              remedy: sandboxDown
+                ? "The sandbox daemon is not running, so no Run can execute here. Start it with `sbx daemon start`."
                 : null,
-              sessionUnavailableRemedy: sessionStuck ? "sbx secret set -g claude" : null,
-            },
-          ],
-          host: sandboxed
-            ? {
-                where: "a per-Run sandbox on this machine",
-                ready: !sandboxDown,
-                remedy: sandboxDown
-                  ? "The sandbox daemon is not running, so no Run can execute here. Start it with `sbx daemon start`."
-                  : null,
-              }
-            : null,
-        },
+            }
+          : null,
       };
     },
   ],
