@@ -76,9 +76,10 @@
       selfhost leg an afternoon's work on a Linux VM that has not happened. Shipping this makes
       that hypothesis load-bearing for a habitat nobody has run it in (ADR-0005). The refusal a
       selfhost operator meets if KVM is absent must name it, and `selfhost/README.md` must say what
-      the machine needs before the operator finds out from a failed Run. **Recorded** in the
-      habitat declaration itself and in design D6; `selfhost/README.md` still needs the sentence
-      about x86_64 + KVM, which is the operator-facing half and is not written yet.
+      the machine needs before the operator finds out from a failed Run. **Done**: recorded in the
+      habitat declaration, in design D6, and in `selfhost/README.md`, which now says x86_64 + KVM
+      is required, that the socket grant should be deleted, and — plainly — that every measurement
+      behind sbx here was taken on macOS and the Linux leg has not been exercised.
 - [x] 6.5 Confirm in-process execution still works for a habitat that names no launcher at all —
       it stops being selfhost's answer, but it is still the default and the local lane's.
 
@@ -93,8 +94,13 @@
 
 ## 7. Proof
 
-- [ ] 7.1 Unit and functional coverage with fakes that can fail: the ceiling absorbed, the
+- [x] 7.1 Unit and functional coverage with fakes that can fail: the ceiling absorbed, the
       declarations refused when missing, the empty credential, the per-project group.
+      **Done**: the `aca` CLI is stood in for by a script that records every invocation, so "did
+      not disable auto-suspend" is an assertion rather than an assumption, and the stand-in only
+      lets the agent finish after several polls — an implementation that ran one exec and returned
+      would never see it. Each behaviour verified able to fail by removing it: dropping the
+      auto-suspend call reddens one test, dropping disposal reddens two.
 - [ ] 7.2 **Exercised against real Azure**, gated like `RealSbxSandbox_Should_Constraint` so CI
       never runs it: a Run end to end on the substrate, longer than the `exec` ceiling, with its
       output observed arriving while it worked, its preview relayed and then gone, and no sandbox
