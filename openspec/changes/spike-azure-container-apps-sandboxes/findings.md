@@ -36,6 +36,36 @@ suspect because the deploy pipeline has been failing at `Initialise`; that failu
 Terraform state storage account and says nothing about whether the subscription can create
 sandboxes. It can. The only missing piece is the `aca` CLI, which is not installed.
 
+### Access, second look — verified 2026-08-08, and it blocks the spike
+
+The first preflight found a signed-in subscription and concluded the access question was answered.
+It was not: **signing in is not the same as being able to create**.
+
+Subscription `e2f02d95-…` ("Sandbox - Services", Enabled), CLI `aca 1.0.0-preview.1` installed.
+`aca doctor` reports only unconfigured settings, and usefully names what the region is for —
+*"required for data plane operations (exec, files, ports, egress)"*, which is the first
+confirmation from the tool itself that those four exist.
+
+Then `az group create` refused:
+
+```
+(AuthorizationFailed) The client 'asantamaria@plainconcepts.com' … does not have authorization
+to perform action 'Microsoft.Resources/subscriptions/resourcegroups/write'
+```
+
+Effective role, read from RBAC: **`Reader` at subscription scope.** So every read in this file
+works and nothing can be created. The spike cannot proceed on this subscription as it stands.
+
+**A second fact, and the more important one.** That subscription holds **34 resource groups** whose
+names read as live client environments — `acciona-dev-rg`, `mediamarkt-dev`, `puigbot-dev-rg-01`,
+`casabatllo-dev-rg`, `agbar-dev-rg`, `aliseda-dev-rg01` among them — across North Europe and West
+Europe. It is a shared company subscription rather than a personal sandbox, whatever its name says.
+Even granted the rights, creating a spike's resources there is a decision for its owner to take
+deliberately, not a corner for an agent to find. Nothing was created.
+
+Region is not a blocker either way: `sandboxGroups` is offered in both North Europe and West
+Europe, where those groups already live.
+
 ### H1, packaging half — verified 2026-08-08
 
 `docker build` of `poc/Dockerfile`, then

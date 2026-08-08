@@ -1,16 +1,22 @@
 ## 0. Preconditions, named before starting (ADR-0017)
 
-- [x] 0.1 Confirm an Azure subscription where `Microsoft.App/sandboxGroups` can actually be
+- [ ] 0.1 Confirm an Azure subscription where `Microsoft.App/sandboxGroups` can actually be
       created. **Done 2026-08-08, and it overturned this spike's own premise.** The proposal
       assumed access was suspect because the deploy fails at `Initialise`; that is a disabled
       Terraform state storage account and says nothing about creating sandboxes. Observed: Azure
       CLI 2.82.0 signed in to a Visual Studio Enterprise subscription, `Microsoft.App`
       **Registered**, and the provider offering `sandboxGroups`, `sandboxGroups/vnetConnections`
       and `sandboxes` at api-version **`2026-02-01-preview`** in a region list including **Spain
-      Central**. The subscription was never the blocker.
+      Central**. The subscription was never the blocker — **but the role is.** Second check the
+      same day, on subscription `e2f02d95-…` ("Sandbox - Services"): `az group create` refused with
+      `AuthorizationFailed`, and RBAC gives this principal **`Reader` at subscription scope**.
+      Signing in is not being able to create. Also recorded: that subscription holds 34 resource
+      groups that read as live client environments, so it is a shared company subscription rather
+      than a sandbox, and where this spike runs is a decision for its owner. **Still open**: a
+      subscription or resource group where this principal has Contributor.
 - [ ] 0.2 Confirm a registry the platform can pull from, and whether a private one needs a
       user-assigned managed identity as the announcement suggests.
-- [ ] 0.3b **The actual blocker.** Install the `aca` CLI — it is a **separate surface, not `az containerapp`** — and run
+- [x] 0.3b Install the `aca` CLI — it is a **separate surface, not `az containerapp`** — and run
       `aca doctor`. Reported install is `curl -fsSL https://aka.ms/aca-cli-install | sh` followed
       by `aca auth login`; verify the current one rather than trusting a quoted line.
 - [ ] 0.4b Mint the credentials the provider paths need, and name them here before starting
