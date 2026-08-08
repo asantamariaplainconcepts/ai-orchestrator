@@ -87,13 +87,23 @@ whose model belongs to a different runtime. The runtime rejects it and D5 says h
 
 ### D5 — A rejected model fails naming itself, and nothing retries
 
-Nothing retries (BR-004), so the failure is the whole message. The measurement helps here: both
-CLIs reject an unknown model cleanly and **name the model in the error** — an invalid model and a
-valid-but-unavailable one fail identically, which is the honest outcome, because the product cannot
-tell those apart and should not pretend to.
+Nothing retries (BR-004), so the failure is the whole message — and the measurement says the
+product must write that message itself, because **the CLIs cannot be relied on to name the model**.
 
-So the Run's failure reason names the model asked for and the runtime that refused it, in the same
-place the credential remedies already live (#279 design D3), rather than surfacing a raw 404.
+Measured 2026-08-08, and this corrects an earlier draft of this decision that generalised from one
+CLI: `claude --model definitely-not-a-model` returns `404 ... "model: definitely-not-a-model"`,
+naming it. `opencode run -m definitely/not-a-model` returns `UnknownError`, *"Unexpected server
+error. Check server logs for details."* and an opaque `ref` — the model appears nowhere. Surfacing
+that verbatim would tell a developer their Run died of a server fault when in fact they typed a
+model that does not exist.
+
+So the Run's failure reason is composed by the product from what it knows — the model it asked for
+and the runtime that refused it — in the same place the credential remedies already live (#279
+design D3), with the CLI's own text kept as detail rather than as the explanation. This was the
+nicer option when the design was written and is the necessary one now.
+
+An invalid model and a valid-but-unavailable one still fail identically, which stays the honest
+outcome: the product cannot tell those apart and should not pretend to.
 
 *Alternative rejected — validate the model at save time.* For opencode it would duplicate the
 enumeration at the wrong moment; for Claude it would require a real model call per save; and for

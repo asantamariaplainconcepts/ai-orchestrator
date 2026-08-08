@@ -10,14 +10,21 @@
 
 ## 1. Observe before claiming (ADR-0001)
 
-- [ ] 1.1 Re-run the two measurements the design rests on and record them verbatim: `opencode
+- [x] 1.1 Re-run the two measurements the design rests on and record them verbatim: `opencode
       models` on the host and inside a sandbox created from the opencode template with the session
       carried. The design records 41 and 495; confirm the gap still exists and that the
       `github-copilot/*` entries track the carried seat. If the numbers have converged, D2's
-      argument weakens and the design says so before any code depends on it.
-- [ ] 1.2 Confirm how each CLI rejects an unknown model — exit code, stream, and whether the model
-      name appears in the message — because D5's failure sentence is built from it. Recorded
-      against Claude Code 2.0.44: `--model nonsense-model` returns a 404 naming the model.
+      argument weakens and the design says so before any code depends on it. **Confirmed
+      2026-08-08:** host 41 (24 `github-copilot/*`), sandbox with the carried session 495 (21
+      `github-copilot/*`). The gap holds and D2 stands.
+- [x] 1.2 Confirm how each CLI rejects an unknown model — exit code, stream, and whether the model
+      name appears in the message — because D5's failure sentence is built from it. **Result, and
+      it falsified the design:** `claude --model definitely-not-a-model` exits 1 with
+      `404 ... "model: definitely-not-a-model"`, naming it; `opencode run -m definitely/not-a-model`
+      exits 1 with `UnknownError`, *"Unexpected server error. Check server logs for details."* and
+      an opaque `ref` — **the model is named nowhere.** D5 had generalised from Claude alone and is
+      corrected: the product composes the reason itself and keeps the CLI's text as detail. Passing
+      opencode's message through would report a typo'd model as a server fault.
 
 ## 2. The model travels (design D4, D5)
 
