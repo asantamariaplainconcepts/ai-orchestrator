@@ -24,6 +24,30 @@ export function useProjectPrompts(projectId: string, enabled: boolean) {
   });
 }
 
+/**
+ * What models a runtime offers, for the chooser (#291). Three states arrive as DATA, never as an
+ * error, because they mean different things to the reader: enumerated from the machine that will
+ * run it, declared by an operator, or "the machine could not be asked" — and rendering the last
+ * as an empty list would say a runtime has no models when nobody managed to look.
+ *
+ * Fetched only once the field is in use, like the prompt picker: asking costs a whole sandbox
+ * where agents are sandboxed.
+ */
+export interface AgentModels {
+  runtimeName: string;
+  models: string[];
+  source: "enumerated" | "declared" | "couldNotAsk";
+}
+
+export function useAgentModels(runtime: string, enabled: boolean) {
+  return useQuery({
+    // Keyed by runtime, so switching it re-asks rather than showing the previous one's answer.
+    queryKey: ["agent-models", runtime] as const,
+    queryFn: () => api.get<AgentModels>(`/api/agent-runtimes/${runtime}/models`),
+    enabled: enabled && runtime.length > 0,
+  });
+}
+
 export function useAutomations(projectId: string) {
   return useQuery({
     queryKey: automationsKey(projectId),

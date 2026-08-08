@@ -26,6 +26,7 @@ import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types"
 import type { AgentRuntime, Automation, AutomationAction } from "./types";
 import { summarise, workflowChains, workflowMembers } from "./workflowGraph";
 import {
+  useAgentModels,
   useAutomations,
   useCreateAutomation,
   useDeleteAutomation,
@@ -77,6 +78,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const [action, setAction] = useState<AutomationAction>("RepositoryPrompt");
   // "" means the Project default (#244): stored as null, resolved at execution time.
   const [runtime, setRuntime] = useState<AgentRuntime | "">("");
+  const [model, setModel] = useState("");
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [promptPath, setPromptPath] = useState("");
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
@@ -132,6 +134,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setTriggerState("");
     setAction("RepositoryPrompt");
     setRuntime("");
+    setModel("");
     setRequiresApproval(false);
     setPromptPath("");
     setOutputLabels([]);
@@ -161,6 +164,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setTriggerState(automation.triggerState ?? "");
     setAction(automation.action);
     setRuntime(automation.runtime ?? "");
+    setModel(automation.model ?? "");
     setRequiresApproval(automation.requiresApproval);
     setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
@@ -201,6 +205,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       // later and more explicit answer, and honouring a label the Admin then said not to use would
       // be obeying the field over the person.
       outputLabels: handsOn ? withDraft() : [],
+      // Always sent, never omitted: the endpoint is a full replace, so a field this form did not
+      // carry would be cleared on every edit. Blank means inherit, which is what the server
+      // normalises whitespace to anyway.
+      model: model.trim() ? model.trim() : null,
     };
 
     if (editing) {
@@ -345,6 +353,14 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               ))}
             </NativeSelect>
           </div>
+          <ModelField
+            runtime={runtime}
+            value={model}
+            onChange={setModel}
+            /* Only once the panel is open — asking costs a whole sandbox where agents are
+               sandboxed, and a closed form has nobody to offer anything to. */
+            enabled={creating}
+          />
           <div className="flex flex-col gap-2">
             <Label htmlFor="timeout-minutes">{t("automations.timeout")}</Label>
             <Input
@@ -777,6 +793,73 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           {tool === "scratchpad" ? <PromptScratchpad projectId={projectId} /> : null}
         </div>
       </ResponsiveDialog>
+    </div>
+  );
+}
+
+/**
+ * The model chooser (#291). Its whole job is telling three states apart, because they send a
+ * reader to different places and only one of them is a list:
+ *
+ * - **enumerated** — the runtime listed them itself, on the machine that will run it;
+ * - **declared** — this runtime has no listing command, so an operator's configuration decides,
+ *   and an empty one means nobody has declared any;
+ * - **couldNotAsk** — the machine could not be reached, which says nothing at all about the
+ *   runtime's models and must never be rendered as though it did.
+ *
+ * A written value is accepted in every one of them, and blank always means inherit — so a machine
+ * that is down never blocks somebody from editing an Automation.
+ */
+function ModelField({
+  runtime,
+  value,
+  onChange,
+  enabled,
+}: {
+  runtime: string;
+  value: string;
+  onChange: (model: string) => void;
+  enabled: boolean;
+}) {
+  const models = useAgentModels(runtime, enabled);
+  const offered = models.data?.models ?? [];
+  const source = models.data?.source;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <Label htmlFor="model">{t("automations.model")}</Label>
+      {offered.length > 0 ? (
+        <NativeSelect id="model" value={value} onChange={(event) => onChange(event.target.value)}>
+          <option value="">{t("automations.modelDeploymentDefault")}</option>
+          {/* A stored model the runtime no longer offers must stay selectable, or opening the
+              form would silently change what this Automation runs. */}
+          {(offered.includes(value) || !value ? offered : [value, ...offered]).map((candidate) => (
+            <option key={candidate} value={candidate}>
+              {candidate}
+            </option>
+          ))}
+        </NativeSelect>
+      ) : (
+        <Input
+          id="model"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={t("automations.modelPlaceholder")}
+        />
+      )}
+      <p className="text-xs text-muted-foreground">
+        {!runtime
+          ? t("automations.modelPickRuntimeFirst")
+          : models.isPending
+            ? t("automations.modelAsking")
+            : source === "couldNotAsk"
+              ? t("automations.modelCouldNotAsk")
+              : source === "declared" && offered.length === 0
+                ? t("automations.modelNoneDeclared")
+                : source === "declared"
+                  ? t("automations.modelDeclared")
+                  : t("automations.modelEnumerated")}
+      </p>
     </div>
   );
 }
