@@ -23,7 +23,10 @@ runtime.
 
 **Goals:**
 
-- A developer signed into Claude Code can run sandboxed Runs with no `anthropic` secret at all.
+- A developer signed into a **file-credentialled** CLI — opencode today, Copilot when #243 lands
+  — runs sandboxed Runs on their own seat, with no API key anywhere.
+- A runtime whose credential **cannot** be carried says so with its remedy, rather than meeting
+  the developer as "Not logged in" inside a microVM.
 - The arrangement is recognisably the pod's, so there is one idea to learn, not two.
 - The softening is bounded to the dev loop, structurally and visibly.
 
@@ -33,6 +36,8 @@ runtime.
   future change argues it with a different threat model.
 - Any change to vendor-PAT handling: github stays proxy-injected.
 - opencode Zen accounts, which have no sbx service secret and would forfeit the sentinel property.
+- Carrying Claude Code's macOS session by any means, including extracting it from the Keychain
+  (D4 says why that is the wrong trade rather than merely hard).
 
 ## Decisions
 
@@ -71,13 +76,30 @@ precisely so the executor can say where the agent's authority came from. It gain
 Nothing new is plumbed; the sentence composed in `RunExecutor` reads correctly with it because it
 was written as a clause, not a fixed phrase (`fix(agents)`, one header with one owner — ADR-0015).
 
-### D4 — The mechanism is observed before it is claimed
+### D4 — The mechanism was observed, and it decided the scope
 
-#246's requirement says the mechanism SHALL be fixed by observing a real CLI in a pod. The same
-applies here and is not optional: the spike's own history is the argument — a broken brew cask, a
-mandatory Docker login, and a template with no agent CLI in it, none of which any document
-mentioned. Which files a signed-in Claude Code actually needs inside a sandbox is a question for
-the machine, not for the documentation.
+#246's requirement says the mechanism SHALL be fixed by observing a real CLI. That observation
+happened before this design was written, and it removed a runtime from the change:
+
+- **opencode** keeps everything in `~/.local/share/opencode/auth.json` — 950 bytes. Copied into a
+  sandbox on its own, `opencode auth list` showed both configured providers and
+  `opencode run -m github-copilot/claude-haiku-4.5` answered and then edited a file. The
+  developer's GitHub Copilot seat, working in a microVM, no API key anywhere.
+- **GitHub Copilot** keeps files under `~/.config/github-copilot/`, so the same approach applies
+  when its runtime lands (#243).
+- **Claude Code on macOS** keeps its credential in the **system Keychain**. There is no
+  `~/.claude/.credentials.json`; copying `~/.claude` and `~/.claude.json` into a sandbox produced
+  `Not logged in · Please run /login`, verified rather than assumed.
+
+Two things follow. The set copied is the **credential file**, not the tree — `~/.config/opencode`
+is 1.4 GB of caches that buy nothing. And a runtime whose credential cannot be carried must say
+so (D6) rather than failing mute, which is precisely what the sbx spike hit.
+
+*Deliberately not done — extracting the Keychain item and writing it into the sandbox as a
+credentials file.* It would probably work, and it is the wrong trade: it converts a
+Keychain-protected token into a plain file inside a sandbox, which is worse than the API key it
+would replace. The premise of this whole change is that a session is safer than a shared key;
+defeating the Keychain would make that premise false.
 
 ### D5 — The end-to-end Run is this change's proof, and its target already exists
 
@@ -86,6 +108,16 @@ ADR-0014 exists for exactly that, the target now exists, and this change is wher
 paid — not as a bonus but as acceptance criterion 7. If it cannot be exercised, the change is not
 done; that is the difference between this and the two before it.
 
+### D6 — A runtime that cannot be carried says so, where readiness already speaks
+
+Claude Code on macOS will meet a sandbox with no session. The readiness panel already reports
+per-runtime state with a copyable remedy (#279) and already reports it from the machine the CLI
+will run on (the sandboxing change's D6), so it is where this belongs: not-ready with the reason
+(the Keychain) and the fix (`sbx secret set -g anthropic`).
+
+This is the half of the change that survives even if carriage itself were dropped, and it is what
+turns the sbx spike's unverified box into an answer.
+
 ## Risks / Trade-offs
 
 - **A carried session is exfiltrable by whatever runs in the sandbox** → bounded to the dev loop
@@ -93,11 +125,13 @@ done; that is the difference between this and the two before it.
   softening and the design says so rather than implying the boundary is unchanged.
 - **A copy can go stale** — a developer who re-authenticates mid-Run has an old copy inside →
   acceptable: the copy is per Run and a Run is minutes.
-- **The observed file set may be wrong or incomplete** → D4 makes observation a task, not an
-  assumption; a wrong guess would show up as "Not logged in" exactly as the spike saw.
-- **It may simply not work** — a session may be machine-bound in ways a copy cannot carry → then
-  the finding is that Claude Code needs an API key under sbx, recorded honestly, and the change
-  becomes a smaller one that says so in the readiness panel instead of pretending.
+- **The observed set may drift when a CLI changes where it stores things** → the set is named in
+  one place and the failure is loud (`auth list` shows nothing, the agent says not logged in),
+  not silent.
+- **A developer may expect Claude Code to work in the sandbox and find it does not** → D6 exists
+  for exactly that: the panel names the Keychain and the remedy before a Run fails.
+- **Carrying a Copilot seat means Runs consume that seat's quota** → true, and it is the point;
+  the transcript names the source so a surprising bill is diagnosable from the Run's own record.
 
 ## Migration Plan
 
@@ -106,7 +140,8 @@ turns carriage off returns to today's behaviour with one key.
 
 ## Open Questions
 
-- Whether a carried Claude Code session survives the copy at all, or needs something
-  machine-specific. D4's observation answers it before any of this is claimed.
-- Whether opencode's session is worth carrying given DEC-044's free default needs no credential.
-  Carried anyway for symmetry with the pod set, unless observation shows it costs something.
+- Whether Claude Code on **Linux** — where the credential is a file — would be carried by the
+  same mechanism. Almost certainly yes, and deliberately unclaimed: there is no Linux machine here
+  to exercise it on, and shipping an unexercised claim is what ADR-0001 forbids.
+- Whether the pod substrate should adopt the same minimum-set copy, since it currently binds
+  1.4 GB of opencode tree read-only for the sake of one file. Out of scope; worth its own look.
