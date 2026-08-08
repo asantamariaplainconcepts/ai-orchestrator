@@ -108,3 +108,30 @@
 - [ ] 7.3 Full gates, and confirm the dev loop and the local lane behave exactly as before.
 - [ ] 7.4 Delete everything the proof created and say what it cost — the number the issue accepted
       without measuring is worth capturing the moment it becomes knowable.
+
+## 8. One dispatch substrate (design D7 — scope widened by the owner, 2026-08-09)
+
+- [x] 8.1 Remove the queue substrate: `QueueRunDispatcher`, `DispatchQueueReader`,
+      `AddRunDispatchReader`, and the branches in `DispatchComposition` that chose by queue
+      presence. The outbox path — already what the dev loop, selfhost and the functional tests
+      run — becomes the only one.
+- [x] 8.2 A habitat still naming the queue connection string is refused at composition, naming
+      the outbox as its replacement, exactly as the retired pod image is.
+- [x] 8.3 Retire the `DispatchWorker` project: the csproj, the slnx entry, and its image in
+      `publish-images.yml`. Its job — consume, claim, execute — is the Server's
+      `OutboxRunSubscriber`, which already exists and already does it.
+- [x] 8.4 The functional-test fixtures drop Azurite and the queue, and pin the new race instead:
+      the outbox consumer must not auto-execute Runs the tests drive by hand.
+- [x] 8.5 Terraform drops the queue, its role assignments, the scaler's vault secret and the KEDA
+      job — **but not the storage account and not the identity**, which the sweep found have
+      second jobs the plan missed: the account hosts the portal's Data Protection key ring
+      (#180), and the identity is deliberately reused by conversation sessions so the portal
+      never gains the ability to read a project credential. Both stay, with their comments
+      rewritten to say what they are now for. The deploy is red for an unrelated reason; these
+      leave as text.
+- [x] 8.6 DEC-013 is marked superseded in the corpus, naming this change and the reasons its
+      three motivations evaporated.
+- [x] 8.7 What is given up is recorded where it is given up: no horizontal scale-out of
+      execution, no separate execution identity. Either can return by placing a consumer
+      elsewhere; the seam does not close.
+

@@ -120,6 +120,39 @@ follow-up's selfhost tasks are trustworthy. That afternoon has not happened. Unt
 selfhost habitat's substrate is a **hypothesis** (ADR-0005), and this change carries a task for it
 rather than a claim.
 
+### D7 — One dispatch substrate: the outbox, everywhere (scope widened by the owner, 2026-08-09)
+
+Added after the spec was validated, at the repository owner's direction, because the ACA move is
+what makes it possible — recorded as the scope expansion it is rather than smuggled.
+
+DEC-013 chose a Storage Queue with a KEDA scaler, and its three reasons have evaporated with the
+substrate this change adopts:
+
+- **The work was heavy.** Executing a Run meant running the agent CLI — a container, a socket, real
+  CPU. Now it means creating a sandbox over an API and polling it: the heavy half lives in the
+  sandbox, which scales itself and bills nothing idle. KEDA scaling pollers is scaling the part
+  that no longer weighs anything.
+- **Scale-to-zero of the worker.** The Server is always on anyway; a poll loop's cost is noise.
+- **The identity boundary.** The worker's own identity used to stand between the portal and a
+  root-equivalent docker socket. What it would guard now is "may create sandboxes" — and the portal
+  already launches Runs legitimately and already resolves every secret. The boundary still buys
+  something; it no longer buys much.
+
+So the queue substrate retires with the pod substrate, and dispatch has **one** shape in every
+habitat: the Postgres outbox this product already trusts as its durable half. The consumer is the
+Server's own `OutboxRunSubscriber` — the arrangement the dev loop and selfhost have always run, and
+the one 152 functional tests exercise. DEC-013 is superseded and says so in the corpus.
+
+**What is given up, stated rather than absorbed:** horizontal scale-out of execution (one process
+polls every live Run — the per-project caps bound it, and for this product's scale that is ample),
+and the worker's separate identity (gone entirely; the Server's identity holds the sandbox-group
+role). Either could come back later by putting a consumer elsewhere — the seam does not close.
+
+**Removed with it:** the `DispatchWorker` project and its published image, `QueueRunDispatcher`,
+`DispatchQueueReader`, Azurite from the test fixtures, and the queue + KEDA job + dispatch identity
+from Terraform. A habitat still naming the queue connection string is refused naming what replaced
+it, exactly as the pod image is.
+
 ## Risks / Trade-offs
 
 **Public preview.** The CLI surface is expected to move, and every measurement behind this design

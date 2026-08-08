@@ -55,7 +55,7 @@ jobs:
       - name: Publish the images
         run: |
           set -euo pipefail
-          for project in AiOrchestrator.Server AiOrchestrator.MigrationService AiOrchestrator.DispatchWorker; do
+          for project in AiOrchestrator.Server AiOrchestrator.MigrationService; do
             dotnet publish "src/root/${project}/${project}.csproj" \
               -c Release --no-restore /t:PublishContainer \
               -p:ContainerRegistry=ghcr.io \

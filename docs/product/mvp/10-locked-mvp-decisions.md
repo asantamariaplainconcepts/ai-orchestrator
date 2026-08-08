@@ -24,7 +24,14 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
 - **DEC-011 — Connectors:** GitHub + Azure DevOps in MVP, sequenced (GitHub first).
 - **DEC-012 — Runtimes:** pluggable per Automation; Claude Code headless first,
   opencode second.
-- **DEC-013 — Dispatch:** Azure Storage Queue + KEDA queue scaler; Azurite locally.
+- **DEC-013 — Dispatch:** ~~Azure Storage Queue + KEDA queue scaler; Azurite locally~~
+  *(superseded 2026-08-09 by `runs-execute-in-azure-sandboxes`, #296)*: dispatch goes through the
+  Postgres outbox in every habitat, consumed by the Server's own subscriber. The queue's three
+  reasons retired with the pod substrate — execution stopped being heavy (an API call and a poll
+  loop; the heavy half lives in a per-Run sandbox that scales itself), the worker's scale-to-zero
+  stopped saving anything, and its separate identity no longer stood between the portal and a
+  root-equivalent socket. Given up knowingly: horizontal scale-out of execution and the separate
+  execution identity; either returns by placing a consumer elsewhere.
 - **DEC-014 — AI credentials:** Key Vault, per-project secrets.
 - **DEC-015 — plain-dotnet-guardrails as-is** (Postgres the sole deviation).
 - **DEC-016..019 — Ways of working:** solo review path, WIP 2, runtimes Claude Code +

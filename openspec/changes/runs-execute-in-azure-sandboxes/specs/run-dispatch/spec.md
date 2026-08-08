@@ -42,3 +42,59 @@ remains observable, and the sandbox hosts answer their own readiness through it.
 waiting at the per-project cap is still visible as Queued on the Runs list, which is where its
 truth always lived (the sighting record was a view of it, never the source).
 
+### Requirement: a dispatched Run reaches exactly one job execution
+
+**Reason:** it specified queue-message semantics — claim-by-delete on a Storage Queue — for a
+transport that retires with DEC-013's supersession. The property it protected survives it: the
+outbox substrate's own requirement already fixes exactly-once claiming and BR-013's deliberate
+re-run, and it is the only substrate left.
+
+**Migration:** none. The outbox path is what the dev loop, selfhost and the functional tests have
+always run.
+
+### Requirement: queue length starts jobs
+
+**Reason:** there is no queue to measure and no job to start. The scale-to-zero it bought lives in
+the sandbox substrate now — a sandbox bills nothing idle — and execution itself became a poll loop
+too light to scale.
+
+**Migration:** the KEDA job, the queue and its storage account leave the Terraform. Nothing else
+observes them.
+
+### Requirement: Agent jobs run under their own identity
+
+**Reason:** the job it governed retires. Its guarantee — secrets resolved by name, no credential in
+configuration (BR-010) — is not lost: it holds for every process this product runs and is specified
+where those processes are. What retires is only the *separate principal*, whose value was standing
+between the portal and a root-equivalent socket that no longer exists.
+
+**Migration:** the dispatch identity leaves the Terraform. The Server's identity carries the
+sandbox-group data role.
+
+## MODIFIED Requirements
+
+### Requirement: the dispatch substrate follows the habitat, and ambiguity refuses
+
+Dispatch SHALL have one contract and **one substrate**: the same durable Postgres outbox the
+product's integration events already use. A Run accepted for dispatch SHALL survive the process
+dying and SHALL be redelivered after restart, because the durability is the outbox and never a
+transport.
+
+The consumer SHALL be composed only by a host that should execute Runs, never acquired by
+registering the producer.
+
+A habitat still naming the retired queue connection string SHALL be refused at startup, naming the
+substrate that replaced it — a key that quietly stopped meaning anything is how a deployment ends
+up running something nobody chose.
+
+#### Scenario: a dispatch survives the process dying
+
+- **WHEN** a Run is accepted for dispatch and the process terminates before execution
+- **THEN** it is redelivered after restart and reaches a terminal state
+
+#### Scenario: the retired queue refuses by name
+
+- **WHEN** a habitat starts with the queue connection string still configured
+- **THEN** composition refuses, naming the outbox as what replaced it — never a silently ignored
+  setting
+

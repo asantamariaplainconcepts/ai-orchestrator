@@ -103,16 +103,9 @@ public class ApprovalGate_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             .SingleAsync();
     }
 
-    async Task<List<Guid>> QueuedRunIds()
-    {
-        var peeked = await fixture.Queue.PeekMessagesAsync(maxMessages: 32);
-        return
-        [
-            .. peeked.Value.Select(message =>
-                DispatchMessage.TryParse(message.MessageText)?.RunId ?? Guid.Empty
-            ),
-        ];
-    }
+    // The outbox's published table is the observable the retired queue's PeekMessages used to
+    // be (#296): what dispatch durably wrote, read from where it wrote it.
+    Task<List<Guid>> QueuedRunIds() => fixture.DispatchedRunIds();
 
     Task<HttpResponseMessage> Decide(Guid runId, string decision) =>
         _client.PostAsync($"/api/projects/{_projectId}/runs/{runId}/{decision}", null);

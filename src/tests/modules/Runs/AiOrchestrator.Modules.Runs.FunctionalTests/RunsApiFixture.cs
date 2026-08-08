@@ -10,7 +10,6 @@ using AiOrchestrator.Modules.Backlog.Persistence;
 using AiOrchestrator.Modules.Runs.Persistence;
 using AiOrchestrator.ServiceDefaults.Dispatch;
 using AiOrchestrator.SharedFunctionalTests;
-using Azure.Storage.Queues;
 using ErrorOr;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
@@ -63,16 +62,56 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     // "projects" is spelled out: ProjectsDbContext is internal to its module, and a schema
     // constant is not worth an InternalsVisibleTo.
     protected override string[] SchemasToReset =>
-        [RunsDbContext.Schema, BacklogDbContext.Schema, "projects"];
+        // "cap" joined when the queue retired (#296): dispatch is durably in the outbox now, so a
+        // clean outbox per test is what a cleared queue used to be — without it, DispatchedRunIds
+        // reads every previous test's dispatches.
+        [RunsDbContext.Schema, BacklogDbContext.Schema, "projects", "cap"];
 
-    /// <summary>The same queue the product writes, through the same pinned wire version.</summary>
-    public QueueClient Queue =>
-        new(StorageConnectionString, DispatchQueue.Name, DispatchQueue.ClientOptions());
-
+    /// <summary>
+    /// Clears the dispatch observable, exactly as it cleared the queue before #296 retired it:
+    /// dispatch is durably in CAP's outbox now, and tests that assert "only THIS dispatch
+    /// happened" clear it mid-test the same way they always did.
+    /// </summary>
     public async Task ResetQueue()
     {
-        await Queue.CreateIfNotExistsAsync();
-        await Queue.ClearMessagesAsync();
+        await using var connection = new Npgsql.NpgsqlConnection(DatabaseConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM cap.published WHERE \"Name\" = 'aio.run.dispatched'";
+        await command.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// The Run ids dispatch actually published, read from CAP's own outbox table — the same
+    /// observable the retired queue's PeekMessages used to be, one substrate over. Raw SQL on
+    /// purpose: the assertion is about what is durably in the outbox, not about what a client
+    /// object claims.
+    /// </summary>
+    public async Task<List<Guid>> DispatchedRunIds()
+    {
+        await using var connection = new Npgsql.NpgsqlConnection(DatabaseConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "SELECT \"Content\" FROM cap.published WHERE \"Name\" = 'aio.run.dispatched'";
+
+        var ids = new List<Guid>();
+        await using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            var content = reader.GetString(0);
+            var start = content.LastIndexOf("\"value\":", StringComparison.OrdinalIgnoreCase);
+            var match = System.Text.RegularExpressions.Regex.Match(
+                start >= 0 ? content[start..] : content,
+                "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+            );
+            if (match.Success)
+            {
+                ids.Add(Guid.Parse(match.Value));
+            }
+        }
+
+        return ids;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -125,6 +164,13 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
 
             services.RemoveAll<IAgentRuntimesMonitor>();
             services.AddSingleton<IAgentRuntimesMonitor>(Runtimes);
+
+            // The tests drive execution by hand (IRunExecutor), and since the queue retired the
+            // Server composes its own outbox consumer — which would race them, auto-executing a
+            // Run the test meant to inspect while Queued. Removed here for the same reason the
+            // poller and the reaper are switched off: a background actor firing mid-assertion is
+            // a flake generator, and what the consumer does is covered by its own tests.
+            services.RemoveAll<OutboxRunSubscriber>();
         });
     }
 }

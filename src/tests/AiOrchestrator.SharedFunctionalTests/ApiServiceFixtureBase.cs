@@ -5,14 +5,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Npgsql;
 using Respawn;
-using Testcontainers.Azurite;
 using Testcontainers.PostgreSql;
 
 namespace AiOrchestrator.SharedFunctionalTests;
 
 /// <summary>
 /// The shared functional-test host: the real Server driven through <see cref="WebApplicationFactory{T}"/>
-/// against real PostgreSQL and Azurite containers — no in-memory substitutes, because a substitute
+/// against a real PostgreSQL container — no in-memory substitutes, because a substitute
 /// proves nothing about the database the product actually runs on.
 /// <para>
 /// One container stack per module via <c>ICollectionFixture</c>: per-class fixtures overwhelm the
@@ -24,27 +23,22 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
     // Canonical registry names. Behind a mirror (or on an air-gapped machine), point Testcontainers
     // at it with TESTCONTAINERS_HUB_IMAGE_NAME_PREFIX instead of editing these — CI pulls them as-is.
     public const string PostgresImage = "postgres:18-alpine";
-    public const string AzuriteImage = "mcr.microsoft.com/azure-storage/azurite:3.35.0";
 
     readonly PostgreSqlContainer _database = new PostgreSqlBuilder(PostgresImage)
         .WithDatabase("aiorchestrator")
         .Build();
-
-    readonly AzuriteContainer _storage = new AzuriteBuilder(AzuriteImage).Build();
 
     NpgsqlConnection? _respawnConnection;
     Respawner? _respawner;
 
     public string DatabaseConnectionString => _database.GetConnectionString();
 
-    public string StorageConnectionString => _storage.GetConnectionString();
-
     /// <summary>Schemas this module owns, reset between tests.</summary>
     protected abstract string[] SchemasToReset { get; }
 
     public async Task InitializeAsync()
     {
-        await Task.WhenAll(_database.StartAsync(), _storage.StartAsync());
+        await _database.StartAsync();
 
         // Boot the host, then migrate explicitly. The Server deliberately never migrates itself —
         // in the composed application that step is the AppHost's `migrations` resource — so this
@@ -85,7 +79,6 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
     {
         builder.UseEnvironment("E2E");
         builder.UseSetting("ConnectionStrings:aiorchestratordb", DatabaseConnectionString);
-        builder.UseSetting("ConnectionStrings:queues", StorageConnectionString);
     }
 
     // WebApplicationFactory already owns a ValueTask DisposeAsync; xUnit's IAsyncLifetime wants a
@@ -100,7 +93,7 @@ public abstract class ApiServiceFixtureBase : WebApplicationFactory<Program>, IA
         }
 
         await base.DisposeAsync();
-        await Task.WhenAll(_database.DisposeAsync().AsTask(), _storage.DisposeAsync().AsTask());
+        await _database.DisposeAsync();
         GC.SuppressFinalize(this);
     }
 
