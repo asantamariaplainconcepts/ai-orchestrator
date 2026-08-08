@@ -67,7 +67,13 @@ sealed class ListRuns : IUseCase
         string? TargetChangeUrl = null,
         string? TargetChangeTitle = null,
         /// <summary>The ad-hoc instruction a change Run executed — its record, readable here.</summary>
-        string? Instruction = null
+        string? Instruction = null,
+        /// <summary>
+        /// The model this Run actually thought with (#291), null where it launched with none —
+        /// which is every Run before a deployment chose one. Beside the cost on purpose: a cost
+        /// figure cannot be compared to another without knowing what produced it (BR-011).
+        /// </summary>
+        string? ResolvedModel = null
     );
 
     internal sealed class Handler(RunsDbContext database)
@@ -116,7 +122,8 @@ sealed class ListRuns : IUseCase
                     run.TargetChangeNumber,
                     run.TargetChangeUrl,
                     run.TargetChangeTitle,
-                    run.Instruction
+                    run.Instruction,
+                    run.ResolvedModel
                 )),
             ];
         }

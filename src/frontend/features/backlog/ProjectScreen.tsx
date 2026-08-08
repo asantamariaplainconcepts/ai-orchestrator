@@ -458,13 +458,14 @@ function BacklogPanel({
           localPath={localPath}
           pending={runNow.isPending}
           error={runNow.error}
-          onRun={(automationId, locus, runtime) =>
+          onRun={(automationId, locus, runtime, model) =>
             runNow.mutate(
               {
                 vendorStoryId: runNowStory,
                 automationId,
                 locus: locus ?? undefined,
                 runtime: runtime ?? undefined,
+                model: model ?? undefined,
               },
               // A refusal keeps the dialog open with its reason; a success closes it.
               { onSuccess: () => setRunNowStory(null) },

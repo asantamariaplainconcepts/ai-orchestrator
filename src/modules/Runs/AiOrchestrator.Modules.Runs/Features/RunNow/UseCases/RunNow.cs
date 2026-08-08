@@ -38,7 +38,8 @@ sealed class RunNow : IUseCase
                             request.VendorStoryId,
                             request.AutomationId,
                             request.Locus,
-                            request.Runtime
+                            request.Runtime,
+                            request.Model
                         ),
                         cancellationToken
                     );
@@ -64,7 +65,9 @@ sealed class RunNow : IUseCase
         string VendorStoryId,
         Guid AutomationId,
         string? Locus = null,
-        string? Runtime = null
+        string? Runtime = null,
+        /// <summary>#291: the human's model for this Run only; absent records the resolution.</summary>
+        string? Model = null
     );
 
     internal sealed record Response(
@@ -81,7 +84,9 @@ sealed class RunNow : IUseCase
         string VendorStoryId,
         Guid AutomationId,
         string? Locus = null,
-        string? Runtime = null
+        string? Runtime = null,
+        /// <summary>#291: the human's model for this Run only; absent records the resolution.</summary>
+        string? Model = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Handler(
@@ -136,7 +141,8 @@ sealed class RunNow : IUseCase
                 automation,
                 cancellationToken,
                 locus,
-                string.IsNullOrWhiteSpace(command.Runtime) ? null : command.Runtime.Trim()
+                string.IsNullOrWhiteSpace(command.Runtime) ? null : command.Runtime.Trim(),
+                string.IsNullOrWhiteSpace(command.Model) ? null : command.Model.Trim()
             );
 
             return outcome switch

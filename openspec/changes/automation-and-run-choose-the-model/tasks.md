@@ -65,9 +65,9 @@
 
 - [x] 4.1 The Automation form gains the model beside the runtime, re-asking when the runtime
       changes; three chooser states rendered; i18n as contract; routed through `aio-design`.
-- [ ] 4.2 Every human launch dialog that already offers the runtime offers the model, pre-selected
+- [x] 4.2 Every human launch dialog that already offers the runtime offers the model, pre-selected
       on the resolution, recorded on the Run only.
-- [ ] 4.3 The Run's usage shows the model beside tokens and cost.
+- [x] 4.3 The Run's usage shows the model beside tokens and cost.
 
 ## 5. Proof
 

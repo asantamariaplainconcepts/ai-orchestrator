@@ -96,6 +96,8 @@ const run = (
   inputTokens: null,
   outputTokens: null,
   costUsd: null,
+  // Null is the shipped state — a Run launched with no model at all (#291).
+  resolvedModel: null,
   dismissedAt: null,
   locus: "Local",
   workingFolder: "/home/ana/repos/portal",
@@ -152,6 +154,8 @@ const runs = [
     inputTokens: 48_211,
     outputTokens: 9_102,
     costUsd: 0.0,
+    // A finished Run names what spent it, which is the whole reason the field exists.
+    resolvedModel: "github-copilot/claude-opus-4.6",
     dismissedAt: null,
   }),
   run("Failed", "11", 480, { failureReason: "The readiness document could not be read." }),

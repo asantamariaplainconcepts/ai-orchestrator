@@ -36,6 +36,12 @@ export interface RunView {
   /** The ad-hoc instruction a change Run executed — its record, shown on the detail. */
   instruction: string | null;
   costUsd: number | null;
+  /**
+   * The model this Run actually thought with (#291). Null where it launched with none, which is
+   * every Run before a deployment chose one. Read beside the cost: a cost figure means little
+   * without knowing which model produced it.
+   */
+  resolvedModel: string | null;
   /** When a human decided this failure needs no re-run (#145); null until they do. */
   dismissedAt: string | null;
   /** Pod | Local (#210) — where this Run executes, fixed at creation. */

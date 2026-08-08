@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "@/shared/http/client";
 import { t } from "@/shared/i18n";
+import { ModelChoice } from "./ModelChoice";
 import { Button } from "@/shared/ui/button";
 import {
   Dialog,
@@ -37,12 +38,22 @@ export function RunNowDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   vendorStoryId: string;
-  automations: { id: string; triggerLabel: string; runtime: string | null }[];
+  automations: {
+    id: string;
+    triggerLabel: string;
+    runtime: string | null;
+    model: string | null;
+  }[];
   /** Null for a repository project: no locus choice exists, only the runtime one (#244). */
   localPath: string | null;
   pending: boolean;
   error: unknown;
-  onRun: (automationId: string, locus: Locus | null, runtime: string | null) => void;
+  onRun: (
+    automationId: string,
+    locus: Locus | null,
+    runtime: string | null,
+    model: string | null,
+  ) => void;
 }) {
   const [automationId, setAutomationId] = useState(automations[0]?.id ?? "");
   // A local-folder project defaults to Local — the pod physically cannot see the folder.
@@ -50,12 +61,15 @@ export function RunNowDialog({
   // The human's choice for this Run only (#244, AC3). Empty means "as resolved": the
   // Automation's explicit runtime or the Project default, decided at execution time.
   const [runtime, setRuntime] = useState("");
+  // The same "for this Run only" rule the runtime follows (#291): empty means the resolution.
+  const [model, setModel] = useState("");
 
   const chosen = automations.find((automation) => automation.id === automationId);
   // Pre-selection is the resolution (AC3): an explicit Automation runtime shows selected;
   // absent one, the "Project default" option is the honest pre-selection — the default itself
   // is resolved at execution time, which is what makes changing it later actually work.
   const resolved = runtime || (chosen?.runtime ?? "");
+  const resolvedModel = model || (chosen?.model ?? "");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,6 +112,8 @@ export function RunNowDialog({
           </NativeSelect>
         </div>
 
+        <ModelChoice runtime={resolved} value={resolvedModel} onChange={setModel} enabled={open} />
+
         {localPath !== null ? (
           <div
             className="flex flex-col gap-2"
@@ -138,7 +154,14 @@ export function RunNowDialog({
           <Button
             type="button"
             disabled={pending || !automationId}
-            onClick={() => onRun(automationId, localPath !== null ? locus : null, resolved || null)}
+            onClick={() =>
+              onRun(
+                automationId,
+                localPath !== null ? locus : null,
+                resolved || null,
+                resolvedModel || null,
+              )
+            }
           >
             {pending
               ? t("runs.runNow.pending")

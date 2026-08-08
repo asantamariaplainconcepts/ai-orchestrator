@@ -772,6 +772,8 @@ export const en = {
   "runs.cost.heading": "Agent cost",
   "runs.cost.reported": "across Runs that reported",
   "runs.cost.excluded": "not reported",
+  // Beside the cost, because a cost figure cannot be compared to another without it (#291).
+  "run.field.model": "Model",
   "run.field.tokens": "Tokens",
   "runs.table.openOutput": "View PR",
   "runs.table.open": "Open",
@@ -856,6 +858,9 @@ export const en = {
   "runs.runNow.failed": "Could not dispatch the Run.",
   // #244: the runtime choice at launch. "Project default" is the honest pre-selection for an
   // Automation with no explicit runtime — the default itself resolves at execution time.
+  // The launch's model, "for this Run only" like the runtime beside it (#291). Empty means the
+  // resolution — the Automation's model, or the deployment's — decided at execution time.
+  "runs.runNow.resolvedModel": "As resolved",
   "runs.runNow.projectDefaultRuntime": "Project default",
   // The Project's runtime settings (#244). Names, never values (BR-010); Admin-only (BR-009).
   "projectRuntimes.heading": "Runtimes",

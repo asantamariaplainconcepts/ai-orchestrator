@@ -18,6 +18,7 @@ export function useRunNow(projectId: string) {
       automationId,
       locus,
       runtime,
+      model,
     }: {
       vendorStoryId: string;
       automationId: string;
@@ -25,12 +26,15 @@ export function useRunNow(projectId: string) {
       locus?: "Local" | "Pod";
       /** #244: the human's choice for this Run only; absent means "as resolved". */
       runtime?: string;
+      /** #291: the human's model for this Run only; absent means "as resolved". */
+      model?: string;
     }) =>
       api.post<RunNowResult>(`/api/projects/${projectId}/runs`, {
         vendorStoryId,
         automationId,
         locus: locus ?? null,
         runtime: runtime ?? null,
+        model: model ?? null,
       }),
     onSettled: () => void queryClient.invalidateQueries({ queryKey: ["runs", projectId] }),
   });

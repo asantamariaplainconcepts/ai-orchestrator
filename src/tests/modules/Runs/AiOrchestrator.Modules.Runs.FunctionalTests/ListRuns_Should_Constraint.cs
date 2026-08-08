@@ -111,9 +111,9 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
 
         // outputLink joined in agent-implements-pr; plan/approvedAt/failureReason in
         // approval-gate; dismissedAt in #145; locus/workingFolder/branchName in #210; the change
-        // target and instruction in run-on-a-pr — each a deliberate widening, which is why this
-        // test exists. It failed on the last two, which is the whole point of asserting a set
-        // rather than a subset.
+        // target and instruction in run-on-a-pr; resolvedModel in #291 — each a deliberate
+        // widening, which is why this test exists. It failed on each of them in turn, which is
+        // the whole point of asserting a set rather than a subset.
         fields.ShouldBe([
             "approvedAt",
             "automationId",
@@ -130,6 +130,7 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             "outputLink",
             "outputTokens",
             "plan",
+            "resolvedModel",
             "state",
             "targetChangeNumber",
             "targetChangeTitle",
