@@ -92,10 +92,13 @@
       does not suspend it mid-work.
 - [x] 5.2 Suspend and resume deliberately, mid-run, and confirm whether a live CLI actually
       continues — the announcement claims memory, disk and running processes are restored.
-- [ ] 5.3 Confirm a phase can be killed at BR-005's timeout, and that nothing retries (BR-004).
-      **Still open**, and now urgent: H5 showed a sandbox suspends on outside-idleness regardless
-      of work happening inside, so how a timeout interacts with a suspended sandbox is no longer a
-      formality.
+- [x] 5.3 Confirm a phase can be killed at BR-005's timeout, and that nothing retries (BR-004).
+      **Answered, and it moved the verdict.** A long `exec` does keep the sandbox alive — state
+      stayed `Running` throughout — so suspension is not the danger during an active Run. The
+      danger is the call itself: `exec` fails between 50 and 60 seconds (3 attempts at 60 s, 3
+      failures, each giving up at 121 s with "retry policy expired"). BR-005 allows thirty
+      minutes. So a phase is not killed at its timeout — it never gets that far in one call, and
+      the executor must start the agent detached and poll, which was verified working.
 
 ## 6. H6 — economics and limits
 
@@ -125,7 +128,7 @@
 
 ## 7. The verdict
 
-- [ ] 7.1 One recommendation with its reason: pursue, park, or reject — and if pursue, what the
+- [x] 7.1 One recommendation with its reason: pursue, park, or reject — and if pursue, what the
       next change would have to decide. Hypotheses that failed are written up as fully as the ones
       that held; a spike whose record only contains good news bought nothing.
 - [x] 7.2 Delete the resource group and confirm nothing is left running. **Done**: sandbox deleted

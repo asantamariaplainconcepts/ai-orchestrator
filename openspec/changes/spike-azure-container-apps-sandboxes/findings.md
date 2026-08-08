@@ -19,7 +19,7 @@ as an expectation the exercise will confirm or refute, which is a different colu
 | H4 | A credential reaches the agent without living at rest | **partly** — egress verified, provider tokens not |
 | H5 | A Run's shape survives the lifecycle | **REFUTED in its first half, held in its second** |
 | H6 | The economics and the limits fit a Run | **limits held; cost not measured** |
-| — | Does this substrate fit `IAgentProcessHost`? | **held for four of five members** |
+| — | Does this substrate fit `IAgentProcessHost`? | **NO, not as a shell-out — `exec` caps at ~50 s** |
 
 ## What has actually been exercised
 
@@ -228,6 +228,38 @@ process ALIVE   ·   counter continued 307 → 308, not 1
 
 "Memory, disk, and all running processes" is true as measured.
 
+### The seam, corrected — `exec` cannot hold a Run, and that changes the answer
+
+The earlier entry said four of five members held. That was measured with commands that finish in
+about a second, and generalised — the mistake ADR-0018 exists to stop, made twice in one spike.
+Measured properly, with a 60 s idle timeout so suspension could be ruled out separately:
+
+```
+sleep 20 → OK  (21 s)      sleep 50 → OK  (51 s)
+sleep 30 → OK  (31 s)      sleep 60 → FAILS at 121 s   ← 3 attempts, 3 failures
+sleep 40 → OK  (40 s)      sleep 90 → FAILS at 121 s
+```
+
+`Error: Network issue — retry policy expired`. There is a hard ceiling between **50 and 60
+seconds** on a single `aca sandbox exec`, after which the client retries to ~121 s and gives up.
+The sandbox itself stays `Running` throughout — this is the call that dies, not the workload.
+
+`IAgentProcessHost.Run` must hold an agent for up to thirty minutes (BR-005) and stream its output
+line by line (#96). **One `exec` cannot do either.** So this substrate is *not* a drop-in third
+implementation of that seam the way sbx is.
+
+It is still adoptable, by a different shape — verified here:
+
+```
+exec: start the agent detached, writing to a file inside
+poll: short execs read the tail        → "work 4" … "work 7", state Running throughout
+```
+
+Start detached, poll for output and completion. That works and keeps the sandbox alive, but it is
+machinery the sbx path does not need, and it changes what the executor is: not "run a process and
+watch it", but "start work, poll it, collect it". Whether `aca sandbox shell` (PTY) or the Python
+SDK's streaming holds a longer connection was not tested, and is the obvious next question.
+
 ### H6 — limits held at this scale; cost not measured
 
 Four sandboxes ran concurrently in one group with no cap encountered, which comfortably exceeds
@@ -253,12 +285,23 @@ spike owes (task 7.1) is not due. What can be said already, and it is a lot:
 
 - The question the spike was created to answer is **answered yes**: a remotely-created sandbox can
   be given a workspace, so the executor no longer has to share a machine with it.
-- The substrate fits `IAgentProcessHost` for four of five members.
+- The substrate does **not** fit `IAgentProcessHost` as a shell-out: `exec` is capped at ~50 s and
+  a Run may last thirty minutes. Adoption needs a start-detached-and-poll executor, which is a
+  different component rather than a different implementation.
 - Two claims in the vendor's own documentation are **false as measured** — deny-default egress, and
   the implication that suspension tracks whether the workload is busy. Both matter for safety and
   both are invisible without exercising.
 - What is genuinely better than the current path: prebuilt `claude` and `copilot` disks, typed
   credential providers for both runtimes, an auditable egress decision log, and snapshot/resume
   that actually restores a live process.
-- What is worse or unknown: auto-suspend must be disabled deliberately, cost is unmeasured, and
-  session carriage (#288) cannot exist here at all.
+- What is worse or unknown: `exec` cannot hold a Run, auto-suspend must be disabled deliberately,
+  cost is unmeasured, and session carriage (#288) cannot exist here at all.
+
+**Recommendation (task 7.1): pursue, but not as a swap.** The finding that justifies the work is
+H2 — co-location is broken, which is the ceiling the current design has and cannot lift. The
+finding that sizes it is the `exec` ceiling: this is a new executor shape, not a new
+`IAgentProcessHost`. Anything that follows should decide that shape first, and should not begin
+until the cost of a thirty-minute Run is known.
+
+Three things a follow-up must carry, all measured here and none of them in the documentation:
+auto-suspend off, the ~50 s `exec` ceiling, and deny-default egress being opt-in.
