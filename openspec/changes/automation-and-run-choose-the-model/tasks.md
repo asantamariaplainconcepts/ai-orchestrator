@@ -28,16 +28,21 @@
 
 ## 2. The model travels (design D4, D5)
 
-- [ ] 2.1 `Automation` and `Run` each gain a nullable model; two additive migrations. A functional
+- [x] 2.1 `Automation` and `Run` each gain a nullable model; two additive migrations. A functional
       test pins that existing rows keep behaving exactly as before.
-- [ ] 2.2 `RunExecutor` resolves `run.Model ?? automation.Model ?? deployment`, at execution time,
+- [x] 2.2 `RunExecutor` resolves `run.Model ?? automation.Model ?? deployment`, at execution time,
       beside the runtime chain it already resolves. A test pins the order and pins that a change to
       the deployment default reaches a Run without any Automation being edited.
-- [ ] 2.3 `OpenCodeRuntime` takes the resolved model instead of the singleton option;
+- [x] 2.3 `OpenCodeRuntime` takes the resolved model instead of the singleton option;
       `ClaudeCodeHeadlessRuntime` passes `--model`, which it never has. A runtime with no resolved
       model launches byte-identically to today — pinned, because that is the whole no-op guarantee.
-- [ ] 2.4 A rejected model fails the Run naming the model and the runtime, in
+- [x] 2.4 A rejected model fails the Run naming the model and the runtime, in
       `AgentRuntimeRemedies` where the sentences already live (#279 D3) — not a raw vendor error.
+      Said on **every** failure that resolved a model, not only suspected ones: 1.2 showed the
+      product cannot tell a rejection from an outage, so recognising one before speaking would
+      leave opencode silent. Found while wiring it: the resolved model has to be written **after**
+      `Entry(run).ReloadAsync`, which the terminal path runs to let a cancellation win the race —
+      anything set in memory during `Invoke` is discarded there. It travels out on `Outcome`.
 
 ## 3. Where the choices come from (design D1, D2, D3, D6)
 

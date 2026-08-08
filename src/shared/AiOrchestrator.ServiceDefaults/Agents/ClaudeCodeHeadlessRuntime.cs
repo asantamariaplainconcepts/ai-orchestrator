@@ -62,7 +62,18 @@ public sealed class ClaudeCodeHeadlessRuntime(
                 // This flag and Parse below are ONE change. `json` bought a single well-formed document,
                 // and the parser was built on it — swapping the flag alone makes that parse throw, and the
                 // catch reports a perfectly good Run as a failure.
-                ["-p", instruction.Prompt, "--output-format", "stream-json", "--verbose"],
+                // --model ONLY when one was resolved (#291). Claude has always launched without
+                // it and picks its own default; passing an empty value would name a model called
+                // nothing, and passing a default this product invented would override a choice
+                // the CLI is entitled to make.
+                [
+                    "-p",
+                    instruction.Prompt,
+                    "--output-format",
+                    "stream-json",
+                    "--verbose",
+                    .. instruction.Model is { } model ? new[] { "--model", model } : [],
+                ],
                 instruction.WorkspacePath,
                 environment,
                 instruction.Timeout,

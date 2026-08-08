@@ -89,6 +89,10 @@ sealed class RunExecutor(
             // The human always wins the race (design D3): a cancellation that landed while the
             // agent worked must not be overwritten by the outcome that arrived afterwards.
             await database.Entry(run).ReloadAsync(cancellationToken);
+
+            // AFTER the reload, never before: the reload takes the database's values, so a
+            // resolved model written in memory during Invoke would be discarded here (#291).
+            run.RecordResolvedModel(outcome.Model);
             if (run.IsCancelled)
             {
                 ExecutionLog.CancelledDuringRun(logger, runId);
@@ -150,7 +154,9 @@ sealed class RunExecutor(
             }
             else
             {
-                run.Fail(clock.GetUtcNow(), Truncate(result.Log, FailureLimit));
+                // The model goes in the reason, not just in the log, because a failure a human
+                // reads must say what it was thinking with (#291 design D5).
+                run.Fail(clock.GetUtcNow(), Truncate(WithModel(outcome, result.Log), FailureLimit));
                 ExecutionLog.Failed(logger, runId);
             }
         }
@@ -318,6 +324,16 @@ sealed class RunExecutor(
             return new Outcome(Failure($"No runtime named '{runtimeName}' is registered."));
         }
 
+        // The model resolves beside the runtime and one level shorter (#291, design D4): the
+        // human's per-Run choice, then the Automation's, then whatever the runtime's own
+        // configuration already defaults to. No Project level, by scope — and null all the way
+        // down means the runtime launches exactly as it did before this existed.
+        //
+        // Resolved independently of the runtime, so the two CAN disagree. That is deliberate:
+        // coupling them would let a runtime change silently rewrite the model an Admin chose,
+        // and a runtime that refuses an unknown model says so with its own sentence below.
+        var model = run.Model ?? automation?.Model;
+
         var vendorToken = string.Empty;
         var aiKey = string.Empty;
         try
@@ -462,15 +478,18 @@ sealed class RunExecutor(
                     automation.Timeout,
                     local.Value.Path,
                     new AgentCredentials(vendorToken, aiKey),
-                    onOutput
-                // No Preview: the local lane runs the agent against the owner's own folder,
-                // where there is no sandbox and therefore no port to publish (run-previews).
+                    onOutput,
+                    // No Preview: the local lane runs the agent against the owner's own folder,
+                    // where there is no sandbox and therefore no port to publish (run-previews).
+                    Preview: null,
+                    Model: model
                 ),
                 cancellationToken
             );
 
             // Success leaves the branch checked out — it IS the output; failure restores the
             // owner's checkout. A commit that fails turns a claimed success into the truth.
+            // (model and runtime ride out on the Outcome — see its summary)
             var concluded = await localWorkspace.Conclude(
                 local.Value,
                 $"ai: {story!.Title}",
@@ -482,7 +501,7 @@ sealed class RunExecutor(
                 return new Outcome(Failure(concluded.FirstError.Description));
             }
 
-            return new Outcome(localResult);
+            return new Outcome(localResult, Model: model, Runtime: runtimeName);
         }
 
         // A change Run is prepared on the change's own head branch — the named-branch checkout
@@ -517,7 +536,8 @@ sealed class RunExecutor(
                 automation?.PreviewPort
                     is { } previewPort
                     ? new RunPreview(run.Id, previewPort)
-                    : null
+                    : null,
+                model
             ),
             cancellationToken
         );
@@ -525,7 +545,7 @@ sealed class RunExecutor(
         // Straight back. There is no publish step to withhold and no answer to post — which is the
         // whole of #162, and the reason the second cancellation boundary went with it: there is no
         // longer a consequence sitting between the spend and the record.
-        return new Outcome(agentResult);
+        return new Outcome(agentResult, Model: model, Runtime: runtimeName);
     }
 
     /// <summary>
@@ -600,6 +620,16 @@ sealed class RunExecutor(
 
     static AgentResult Failure(string log) =>
         new(Succeeded: false, Log: log, OutputLink: null, Usage: null);
+
+    /// <summary>
+    /// Prefixes a failure with the model the Run resolved, where it resolved one. A Run that
+    /// inherited nothing says nothing extra — which is every Run in a deployment that has chosen
+    /// no model, and keeps their reasons byte-identical to before this change.
+    /// </summary>
+    static string WithModel(Outcome outcome, string log) =>
+        outcome is { Model: { } model, Runtime: { } runtime }
+            ? $"{AgentRuntimeRemedies.FailedOnModel(model, runtime)}\n\n{log}"
+            : log;
 
     const int FailureLimit = 1000;
 
@@ -680,4 +710,15 @@ static partial class ExecutionLog
 /// What one invocation produced: the agent's result, and — grill only — the questions whose
 /// posting and wait must happen after the cancellation boundary in <see cref="RunExecutor.Execute"/>.
 /// </summary>
-sealed record Outcome(AgentResult Result, string? Questions = null);
+/// <summary>
+/// What one invocation came to. <paramref name="Model"/> and <paramref name="Runtime"/> travel
+/// out rather than being written on the Run inside <c>Invoke</c>, because the caller reloads the
+/// entity from the database before recording a terminal state — anything set in memory beforehand
+/// would be silently discarded by that reload (#291).
+/// </summary>
+sealed record Outcome(
+    AgentResult Result,
+    string? Questions = null,
+    string? Model = null,
+    string? Runtime = null
+);

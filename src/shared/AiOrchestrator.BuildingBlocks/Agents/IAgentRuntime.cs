@@ -31,7 +31,17 @@ public sealed record AgentInstruction(
     /// (run-previews). Null means no preview — every Run until an Automation names a port, and
     /// every Run in a habitat whose host cannot publish, because only a sandbox has a port.
     /// </summary>
-    RunPreview? Preview = null
+    RunPreview? Preview = null,
+    /// <summary>
+    /// The model to think with, resolved by the executor (#291). Null means the runtime launches
+    /// exactly as it did before this existed — the CLI's own default, or the deployment's — which
+    /// is what every Run does in a deployment that has chosen nothing.
+    /// <para>
+    /// Carried here rather than read from options by each runtime, because the value is a
+    /// property of the Run being executed, not of the process executing it.
+    /// </para>
+    /// </summary>
+    string? Model = null
 );
 
 /// <summary>

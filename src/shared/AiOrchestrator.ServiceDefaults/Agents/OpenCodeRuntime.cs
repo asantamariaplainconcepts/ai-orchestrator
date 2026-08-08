@@ -42,7 +42,17 @@ public sealed class OpenCodeRuntime(
         {
             outcome = await processHost.Run(
                 CommandPath,
-                ["run", "-m", options.Model, "--format", "json", instruction.Prompt],
+                // The Run's model where it named one, this deployment's otherwise (#291). The
+                // flag is always passed because opencode requires it — what changes is whose
+                // answer fills it.
+                [
+                    "run",
+                    "-m",
+                    instruction.Model ?? options.Model,
+                    "--format",
+                    "json",
+                    instruction.Prompt,
+                ],
                 instruction.WorkspacePath,
                 environment,
                 instruction.Timeout,

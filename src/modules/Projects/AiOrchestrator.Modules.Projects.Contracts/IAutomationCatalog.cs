@@ -47,7 +47,13 @@ public sealed record AutomationDetail(
     /// The sandbox port to publish while a Run of this Automation executes (run-previews). Null
     /// means no preview, which is every Automation until an Admin names one.
     /// </summary>
-    int? PreviewPort = null
+    int? PreviewPort = null,
+    /// <summary>
+    /// The model this Automation's Runs think with (#291). Null means the deployment's, resolved
+    /// at execution time — every Automation that existed before this, and every one whose Admin
+    /// has not chosen.
+    /// </summary>
+    string? Model = null
 );
 
 /// <summary>

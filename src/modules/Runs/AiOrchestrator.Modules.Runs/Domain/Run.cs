@@ -58,6 +58,25 @@ sealed class Run : Aggregate
     /// </summary>
     public string? RuntimeName { get; private set; }
 
+    /// <summary>
+    /// The model the launch named, for this Run only. Null means the resolution chain decides —
+    /// the Automation's, then the deployment's. Recorded so a later Run of the same Automation
+    /// resolves as if this choice had never happened.
+    /// </summary>
+    public string? Model { get; private set; }
+
+    /// <summary>
+    /// The model this Run actually executed on, written when execution resolves it. Distinct from
+    /// <see cref="Model"/>, which records only what a human asked for: a Run that inherited its
+    /// model has nothing in the first and something real in the second, and a cost figure is
+    /// uninterpretable without knowing which model produced it (BR-011, design D7).
+    /// <para>
+    /// Null where the runtime launched with no model at all — the state every Run was in before
+    /// this existed, and still the honest answer for a deployment that chose nothing.
+    /// </para>
+    /// </summary>
+    public string? ResolvedModel { get; private set; }
+
     public RunState State { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
@@ -74,13 +93,15 @@ sealed class Run : Aggregate
         Guid automationId,
         RunLocus locus,
         DateTimeOffset createdAt,
-        string? runtimeName = null
+        string? runtimeName = null,
+        string? model = null
     ) =>
         new(projectId, locus, createdAt)
         {
             VendorStoryId = vendorStoryId,
             AutomationId = automationId,
             RuntimeName = runtimeName,
+            Model = Normalised(model),
         };
 
     /// <summary>The change-targeted shape (run-on-a-pr): no Story, no Automation, one change.</summary>
@@ -93,10 +114,12 @@ sealed class Run : Aggregate
         string instruction,
         string? runtimeName,
         RunLocus locus,
-        DateTimeOffset createdAt
+        DateTimeOffset createdAt,
+        string? model = null
     ) =>
         new(projectId, locus, createdAt)
         {
+            Model = Normalised(model),
             TargetChangeNumber = changeNumber,
             TargetChangeUrl = changeUrl,
             TargetChangeTitle = changeTitle,
@@ -162,6 +185,17 @@ sealed class Run : Aggregate
     public long? UsageOutputTokens { get; private set; }
 
     public decimal? CostUsd { get; private set; }
+
+    /// <summary>
+    /// What execution resolved the model to, written where the resolution happens so the Run's
+    /// own record can answer "what did this cost me, on what" without re-deriving a chain whose
+    /// inputs may since have changed.
+    /// </summary>
+    public void RecordResolvedModel(string? model) => ResolvedModel = Normalised(model);
+
+    /// <summary>Whitespace is absence — the same rule the Automation applies, for the same reason.</summary>
+    static string? Normalised(string? model) =>
+        string.IsNullOrWhiteSpace(model) ? null : model.Trim();
 
     public void MarkExecuting(DateTimeOffset at)
     {
