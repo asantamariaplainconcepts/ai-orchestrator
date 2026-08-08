@@ -3614,3 +3614,61 @@ previews and says so rather than ignoring a configured port. And a Run that ends
 watches replaces the frame with a sentence instead of vanishing — the only exception to "a
 finished Run offers nothing", and it exists because a window disappearing unexplained reads as a
 glitch rather than as a rule.
+
+## 2026-08-08 — sandbox-carries-the-owners-session (#288)
+
+A sandboxed dev-loop Run now authenticates as the developer's own seat. The dev loop's habitat
+copies the machine owner's agent-CLI credential files into each sandbox, the transcript names that
+as the credential source, and a runtime whose session cannot be copied says so on the readiness
+panel instead of failing mute inside a microVM.
+
+**Worked: observing before claiming set the scope, and the scope was the finding.** Copying
+candidate files into a sandbox by hand — before writing anything — established that opencode's
+entire session is one 950-byte `auth.json`, that its `~/.config` tree is a gigabyte of caches worth
+nothing, and that Claude Code on macOS keeps its credential in the system Keychain where no copy
+reaches it. That last one looked like a blocker and was actually the shape of the change: Claude is
+out of scope, and the panel explains why, which is the half that survives even if carriage were
+dropped.
+
+**Worked: the gated real-sbx file was the right home for the proof.** Inherited from the previous
+change, it exercises the shipped host against the real CLI, and it caught what no double could.
+
+**What didn't: the by-hand observation gave false confidence, and that is a new class.** Copying by
+hand *as the machine owner* succeeded. The server copying *on the owner's behalf* did not: `sbx cp`
+preserves the host's uid and mode, so the 0600 credential owned by uid 501 landed inside the
+sandbox still 0600 and still owned by 501 — unreadable to the sandbox user, which cannot chown it
+either. `opencode auth list` then reported "0 credentials" from a file demonstrably present:
+carriage appearing to work and to fail at once. The method that exists to prevent unverified claims
+produced one. Stating the rule here so the second occurrence graduates it: **an observation holds
+for the principal that made it; if something else will act in production, nothing has been
+observed.** Fixed by staging through a 0644 copy in a 0700 directory and re-creating the file *as*
+the sandbox user.
+
+**What didn't: an assertion that could not fail, again, by the flank.** The carriage test asserted
+the provider slug (`github-copilot`) while the CLI prints the display name (`GitHub Copilot`), so
+the *negative* test — the one whose whole job is proving the positive can fail — passed vacuously.
+Caught only because the positive test failed first. ADR-0013 holds; what is new is that the dead
+assertion was in the control, not in the claim.
+
+**What didn't, structurally: the end-to-end Run is unexercised for the third consecutive change.**
+ADR-0014 was written at the second and asked for a rehearsal *target*. The target exists and was
+not enough: what stopped this one is the rehearsal *credential* — the Connector's PAT, which only a
+human may paste. ADR-0014 removed the obstacle it could see and left the one behind it. Graduated:
+**[ADR-0017](../adr/0017-a-rehearsal-needs-its-credential-not-just-its-target.md)** — a change
+whose proof needs a real Run names the credentials that rehearsal consumes, says whether each
+already resolves, and flags the ones only a human can create.
+
+**One change next time:** enumerate the human-only steps of a verification during planning. Not
+just for rehearsals — "who can actually perform this" is a question an agent-run workflow should be
+asking of every precondition, and it is cheap to ask early and impossible to answer late.
+
+**AC7 remains open**, honestly: point a project's Connector at
+`asantamariaplainconcepts/ai-orchestrator-rehearsal` with a PAT, give it an opencode Automation,
+and dispatch one Run. What was exercised instead is recorded in the change's `tasks.md` — the
+carried session authenticating as the owner against the real CLI, the same command finding nothing
+without carriage, and `sbx ls` identical before and after.
+
+**Time invested:** 6.41 h agent, $388.02, 711 500 output tokens (source: **telemetry**, five mapped
+sessions). Human time **not captured** — the export carries only `type=cli` datapoints for these
+sessions and no `type=user` ones, while `verify-telemetry.mjs` passes all five of its checks. The
+verifier confirms that telemetry *arrives*; it does not confirm that both halves of it do.
