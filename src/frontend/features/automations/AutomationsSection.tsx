@@ -20,7 +20,12 @@ import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PromptScratchpad } from "./PromptScratchpad";
 import { WorkflowSetupSection } from "./WorkflowSetupSection";
-import { HumanStepBlock, WorkflowCanvas } from "./WorkflowCanvas";
+import {
+  automationDragProps,
+  HumanStepBlock,
+  useChainRemoval,
+  WorkflowCanvas,
+} from "./WorkflowCanvas";
 import { ApiError } from "@/shared/http/client";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, Automation, AutomationAction } from "./types";
@@ -586,8 +591,18 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
    * Below xl the rail cannot sit beside the flow, so it keeps only the Automations the flow does not
    * already show — the chained ones are on screen as the chain (design review 6c).
    */
+  // The rail's half of the drag-to-chain gesture (turn 8), declared where `rows` already exists.
+  const removal = useChainRemoval(projectId, rows);
+  // Held here because the gesture starts on either surface — a catalogue row or a step's handle —
+  // and only one of them lives inside the canvas.
+  const [carried, setCarried] = useState<Automation | null>(null);
+
   const rail = (
     <aside
+      // The rail is also where a step leaves the chain (turn 8, option 8a): dropping one here
+      // clears whichever label pointed at it, which is the same edit the chain's own controls
+      // make — the gesture is sugar, never a second way to change the data.
+      {...removal}
       className={cn("min-w-0 flex-col gap-2", standalone.length === 0 ? "hidden xl:flex" : "flex")}
     >
       <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
@@ -614,6 +629,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
                     put an un-confirmed Delete a mis-aim away from Edit. */}
                 <button
                   type="button"
+                  // Draggable into the chain (8a). The row keeps being the way into the edit
+                  // panel: a click still edits, and the drag is the extra gesture rather than a
+                  // replacement for the one that was already here.
+                  {...automationDragProps(automation, setCarried)}
                   onClick={() => openEdit(automation)}
                   aria-label={`${t("automations.edit")} ${automation.triggerLabel}`}
                   className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -747,7 +766,13 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_18.75rem]">
           <section className="flex min-w-0 flex-col gap-2">
             <h3 className="text-sm font-semibold">{t("automations.workflow")}</h3>
-            <WorkflowCanvas projectId={projectId} automations={rows} onEdit={openEdit} />
+            <WorkflowCanvas
+              carried={carried}
+              onCarry={setCarried}
+              projectId={projectId}
+              automations={rows}
+              onEdit={openEdit}
+            />
           </section>
           {rail}
         </div>

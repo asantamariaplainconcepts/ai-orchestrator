@@ -479,6 +479,36 @@ export const en = {
   // The model an Automation's Runs think with (#291). Three states, because they are three
   // different things to learn: the runtime listed them, an operator declared them, or the machine
   // could not be asked — and only the last one is not an answer about the runtime.
+  // Drag-to-chain (design review turn 8). Every sentence here is said BEFORE the drop, at the
+  // slot the pointer is over, because a rule learned from a toast afterwards is a rule learned
+  // too late — and the wiring a drop performs has to be readable before it happens.
+  "canvas.dropHere": "Drop to chain here",
+  "canvas.willHandTo": "will hand to",
+  "canvas.dropAtEnd": "or drop at the end —",
+  "canvas.willHandToIt": "will hand to it",
+  "canvas.dragOut": "Drag a step here to take it out of the chain",
+  "canvas.cantDrop": "Can't drop here",
+  // The three refusals, each naming the rule rather than the symptom.
+  "canvas.refuseShared":
+    "already fires on another row — two enabled Automations cannot share a trigger (BR-003). Disable the other one or change its label.",
+  "canvas.refuseCycle":
+    "already hands work back to this step, and a loop would run forever rather than finish.",
+  "canvas.refuseSelf": "cannot hand work to itself.",
+  "canvas.refuseAlready": "already hands to it — this edge exists.",
+  "canvas.chainAfter": "Chain after…",
+  "canvas.reorder": "Reorder this step",
+  // The board preview (8b): the same chains painted as the columns they become.
+  "canvas.preview.title": "Board preview",
+  "canvas.preview.hint": "what this workflow makes of the Backlog tab",
+  "canvas.preview.live": "updates live as you wire",
+  "canvas.preview.untouched": "Untouched",
+  "canvas.preview.untouchedHint": "where Stories start",
+  "canvas.preview.noApproval": "runs without approval",
+  "canvas.preview.gate": "plan approved by a person",
+  "canvas.preview.person": "A person",
+  "canvas.preview.personHint": "carries the work onward",
+  "canvas.preview.show": "Show board preview",
+  "canvas.preview.hide": "Hide board preview",
   "automations.model": "Model",
   "automations.modelDeploymentDefault": "Deployment default",
   "automations.modelPlaceholder": "Leave blank to inherit",

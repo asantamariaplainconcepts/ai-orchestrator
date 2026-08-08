@@ -25,7 +25,7 @@ const projects: { id: string; name: string; archivedAt: string | null }[] = [
   { id: projectBeta, name: "Beta warehouse", archivedAt: null },
 ];
 
-const automations = [
+let automations = [
   // The shipped pipeline: grill hands to propose, and propose deliberately hands to nobody —
   // which is the gap the canvas draws as "a person continues" (#116).
   auto("ai:grill", "RepositoryPrompt", false, "ready-for-proposal"),
@@ -696,6 +696,32 @@ const routes: [string, RegExp, Handler][] = [
     }),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
+  // The update the canvas actually performs (ADR-0016: a fixture derives what the server
+  // derives). Without it every canvas gesture — the human block since #137, drag-to-chain since
+  // turn 8 — was undemonstrable here: the request 404'd and the picture never moved, so the mock
+  // showed a workflow that could be read and not built.
+  [
+    "PUT",
+    /^\/api\/projects\/[^/]+\/automations\/([^/]+)$/,
+    (match: RegExpMatchArray, body: unknown) => {
+      const id = match[1] ?? "";
+      const index = automations.findIndex((automation) => automation.id === id);
+      const held = automations[index];
+      if (!held) throw new Error(`No automation ${id}`);
+
+      // A whole-object replace, exactly as the endpoint behaves — which is what makes the mock
+      // able to reproduce the field-clearing hazard rather than hide it.
+      const patch = body as Partial<(typeof automations)[number]>;
+      const updated = { ...held, ...patch, id: held.id };
+
+      // A NEW array, never a mutation in place. React Query keeps the previous data when a
+      // refetch returns the same reference, so an in-place fixture shows the change on whichever
+      // component happened to re-render and leaves the rest reading the old truth — which is a
+      // disagreement the product itself would never have.
+      automations = automations.map((automation, at) => (at === index ? updated : automation));
+      return updated;
+    },
+  ],
   // The model chooser's three states (#291), which are three different things to tell somebody.
   // `?modelsUnasked` renders the unreachable machine; `?modelsUndeclared` the runtime that cannot
   // list and has nothing configured. Neither is an empty list, and the panel must not say it is.
