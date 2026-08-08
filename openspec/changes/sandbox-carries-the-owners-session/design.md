@@ -59,6 +59,15 @@ state, which is the failure `--clone` was praised for avoiding one spike ago.
 it inherits a known macOS failure and gives the agent a live view of the developer's session
 rather than a snapshot.
 
+**The copy is staged, and had to be.** Observed 2026-08-08: `sbx cp` preserves the *host's* uid
+and mode, so a 0600 credential owned by uid 501 arrives inside the sandbox still 0600 and still
+owned by 501. The sandbox user cannot read it and cannot chown it either, and the CLI then
+reports "0 credentials" from a file that is demonstrably present — carriage appearing to work and
+to fail at the same time. So the file goes in through a 0644 copy in a 0700 host directory, is
+re-created *by* the sandbox user with `cp` inside, and is returned to 0600 there. Note what this
+says about D4's method: copying by hand as the machine owner and the server copying on the
+owner's behalf are different acts, and only the second one hits this.
+
 ### D2 — The habitat rule is structural, not documentary
 
 Carriage is declared where the dev loop is declared (`AppHostHabitats.DeclareDevLoop`), not read
