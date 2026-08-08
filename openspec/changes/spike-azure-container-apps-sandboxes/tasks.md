@@ -1,20 +1,26 @@
 ## 0. Preconditions, named before starting (ADR-0017)
 
-- [ ] 0.1 Confirm an Azure subscription where `Microsoft.App/sandboxGroups` can actually be
+- [x] 0.1 Confirm an Azure subscription where `Microsoft.App/sandboxGroups` can actually be
       created. **Done 2026-08-08, and it overturned this spike's own premise.** The proposal
       assumed access was suspect because the deploy fails at `Initialise`; that is a disabled
       Terraform state storage account and says nothing about creating sandboxes. Observed: Azure
       CLI 2.82.0 signed in to a Visual Studio Enterprise subscription, `Microsoft.App`
       **Registered**, and the provider offering `sandboxGroups`, `sandboxGroups/vnetConnections`
       and `sandboxes` at api-version **`2026-02-01-preview`** in a region list including **Spain
-      Central**. The subscription was never the blocker — **but the role is.** Second check the
+      Central**. **Resolved 2026-08-08 after two wrong turns**, both recorded because the
+      sequence is the lesson: "Sandbox - Services" gave `Reader` only; the personal Visual Studio
+      Enterprise subscription turned out to be `Disabled` outright (which also explains the deploy
+      failing at `Initialise` for days — it is the whole subscription, not one storage account);
+      `Nonproduction - Services` reported Contributor but only on a single client web app. The one
+      with `*` is **`Azure subscription 1`** (`422bb77e-…`). Signing in is not being able to
+      create, and reading a role name is not reading its scope. Earlier note kept: Second check the
       same day, on subscription `e2f02d95-…` ("Sandbox - Services"): `az group create` refused with
       `AuthorizationFailed`, and RBAC gives this principal **`Reader` at subscription scope**.
       Signing in is not being able to create. Also recorded: that subscription holds 34 resource
       groups that read as live client environments, so it is a shared company subscription rather
       than a sandbox, and where this spike runs is a decision for its owner. **Still open**: a
       subscription or resource group where this principal has Contributor.
-- [ ] 0.2 Confirm a registry the platform can pull from, and whether a private one needs a
+- [x] 0.2 Confirm a registry the platform can pull from, and whether a private one needs a
       user-assigned managed identity as the announcement suggests.
 - [x] 0.3b Install the `aca` CLI — it is a **separate surface, not `az containerapp`** — and run
       `aca doctor`. Reported install is `curl -fsSL https://aka.ms/aca-cli-install | sh` followed
@@ -29,7 +35,7 @@
 
 ## 1. H1 — our own image boots and runs an agent
 
-- [ ] 1.1a Cheapest first probe (the image is already built and exercised locally — see
+- [x] 1.1a Cheapest first probe (the image is already built and exercised locally — see
       `findings.md`; what is unverified is the platform's import of it): create a sandbox from the **public prebuilt disk** (`--disk
       copilot` is the one reported) and confirm the basic loop — create, exec, delete — before any
       image of ours exists. A failure here is about access, not about our packaging.
@@ -42,22 +48,22 @@
 
 ## 2. H2 — the workspace, and whether co-location breaks
 
-- [ ] 2.1 Get a repository-sized workspace into a sandbox created from elsewhere, by **each**
+- [x] 2.1 Get a repository-sized workspace into a sandbox created from elsewhere, by **each**
       mechanism the platform offers, and time all of them: upload over the data plane, a clone the
       sandbox performs over its own egress, and a volume. Measuring one and concluding about the
       three is the mistake ADR-0018 names — and the first draft of this task did exactly that, by
       asking only about the clone.
-- [ ] 2.2 Have the agent commit and publish a branch and a pull request from inside (DEC-062), and
+- [x] 2.2 Have the agent commit and publish a branch and a pull request from inside (DEC-062), and
       confirm nothing needs to travel back to whoever created the sandbox.
-- [ ] 2.3 State the verdict in one sentence: does the executor still have to be where the sandbox
+- [x] 2.3 State the verdict in one sentence: does the executor still have to be where the sandbox
       is? Cite the `--clone` spike either way, because that is the finding this either overturns or
       confirms.
 
 ## 3. H3 — a preview port, alive and then absent
 
-- [ ] 3.1 Serve something inside on a declared port and reach it from outside for the life of the
+- [x] 3.1 Serve something inside on a declared port and reach it from outside for the life of the
       sandbox.
-- [ ] 3.2 End the sandbox and confirm there is nothing left — not an error page, not a stale
+- [x] 3.2 End the sandbox and confirm there is nothing left — not an error page, not a stale
       route. Record how exposure is scoped: public by default would be a finding, not a detail.
 
 ## 4. H4 — the credential
@@ -73,7 +79,7 @@
       `anthropic-claude` is a first-class provider here, the substrate that **cannot** do session
       carriage solves the Claude problem another way. That is a finding about the product's shape,
       not about Azure.
-- [ ] 4.2 Exercise the egress policy: deny-all plus allow list, reported as
+- [x] 4.2 Exercise the egress policy: deny-all plus allow list, reported as
       `--egress-default Deny --egress-rule "github.com:Allow"` and changeable on a live sandbox
       with `aca sandbox egress set`. Confirm a denied host is actually refused — an allow list
       nobody tested the deny side of is a list, not a policy.
@@ -96,7 +102,7 @@
 
 ## 6b. The seam
 
-- [ ] 6.1b Answer the question that decides how big any follow-up is: does this substrate fit
+- [x] 6.1b Answer the question that decides how big any follow-up is: does this substrate fit
       `IAgentProcessHost` — command, arguments, workspace, environment, timeout, line callback,
       optional published port — as a third implementation beside the local host and sbx? Exec with
       streamed stdout/stderr, ports and a CLI to shell out to suggest yes. If it does not fit, say
@@ -118,4 +124,6 @@
 - [ ] 7.1 One recommendation with its reason: pursue, park, or reject — and if pursue, what the
       next change would have to decide. Hypotheses that failed are written up as fully as the ones
       that held; a spike whose record only contains good news bought nothing.
-- [ ] 7.2 Delete the resource group and confirm nothing is left running.
+- [x] 7.2 Delete the resource group and confirm nothing is left running. **Done**: sandbox deleted
+      (its published URL went 404 and `sandbox list` came back empty), sandbox group deleted,
+      resource group `rg-aio-spike-aca` deleted.
