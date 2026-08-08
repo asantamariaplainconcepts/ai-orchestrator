@@ -117,9 +117,22 @@ plus ports plus a CLI to shell out to is that interface, which means adopting th
 plausibly be a third implementation of an existing seam rather than a new architecture. The spike
 should confirm or deny that, because it is the difference between a change and a programme.
 
-**There is no .NET SDK named.** CLI shell-out is the precedent this codebase already runs on — the
-sbx host shells out to `sbx` — so that is not a blocker, but it is a fact the spike records rather
-than discovers.
+**There are SDKs, and the interesting question is not whether but which client.** The docs offer
+Bash, PowerShell and an SDK tab whose contents are **Python**
+(`azure.containerapps.sandbox`, on PyPI at `0.1.0b3`); a JavaScript package exists too
+(`@azure/containerapps-sandbox`, `1.0.0-beta.1`). Both are beta.
+
+The shape that matters is the split. There are **two** clients: a control plane
+(`ContainerAppsSandboxManagementClient`) that creates and deletes groups over ARM, and a **data
+plane** (`SandboxGroupClient`) that owns sandboxes, disk images, snapshots, volumes, secrets, ports,
+egress and **files**. Everything this product would do at Run time lives in the second one.
+
+For .NET, no dedicated sandbox package surfaced; `Azure.ResourceManager.AppContainers` is the
+general Container Apps ARM package, which is the control plane at best and would not cover the data
+plane regardless — data-plane clients ship per service. So the spike answers what a C# executor
+actually drives this with: the `aca` CLI (the precedent this codebase already runs on — the sbx
+host shells out to `sbx`), raw REST against the data plane, or a .NET package if one exists and the
+search missed it.
 
 None of this counts as an answer. ADR-0001: a claim is exercised or it is a hypothesis, and a
 vendor's summary of its own preview is exactly the kind of claim that reads settled and is not.

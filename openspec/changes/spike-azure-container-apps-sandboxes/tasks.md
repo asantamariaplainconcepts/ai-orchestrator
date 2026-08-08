@@ -72,9 +72,16 @@
       streamed stdout/stderr, ports and a CLI to shell out to suggest yes. If it does not fit, say
       exactly which member of the interface it breaks, because that is the difference between a
       change and a programme.
-- [ ] 6.2b Record the control surfaces available and which this codebase would use: CLI, Python
-      SDK, MCP, raw REST. No .NET SDK is named; the sbx host already shells out to a CLI, so that
-      is precedent rather than a blocker.
+- [ ] 6.2b Decide what a **C# executor** drives this with, which is not the same question as
+      "is there an SDK". There are two clients — a control plane over ARM that creates groups, and
+      a data plane (`SandboxGroupClient`) that owns exec, files, ports, secrets and egress — and
+      everything a Run needs is in the second. Python (`azure-containerapps-sandbox`, `0.1.0b3`)
+      and JavaScript (`@azure/containerapps-sandbox`, `1.0.0-beta.1`) both exist and are beta; no
+      dedicated .NET package surfaced, and `Azure.ResourceManager.AppContainers` is ARM-only.
+      **So confirm the `aca` CLI covers the data plane** — exec with streamed output, file
+      transfer, ports — and not merely group management. If it does, this is the same shell-out
+      shape `SbxAgentProcessHost` already is. If it does not, the answer is raw REST and the
+      follow-up is bigger than a seam implementation.
 
 ## 7. The verdict
 
