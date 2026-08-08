@@ -21,9 +21,11 @@
 
 ## 2. H2 — the workspace, and whether co-location breaks
 
-- [ ] 2.1 Have the sandbox clone a repository over its own egress, with a credential the sandbox
-      holds — with **no directory prepared by any caller**. This is the whole spike; everything
-      else is detail around it.
+- [ ] 2.1 Get a repository-sized workspace into a sandbox created from elsewhere, by **each**
+      mechanism the platform offers, and time all of them: upload over the data plane, a clone the
+      sandbox performs over its own egress, and a volume. Measuring one and concluding about the
+      three is the mistake ADR-0018 names — and the first draft of this task did exactly that, by
+      asking only about the clone.
 - [ ] 2.2 Have the agent commit and publish a branch and a pull request from inside (DEC-062), and
       confirm nothing needs to travel back to whoever created the sandbox.
 - [ ] 2.3 State the verdict in one sentence: does the executor still have to be where the sandbox
@@ -39,9 +41,12 @@
 
 ## 4. H4 — the credential
 
-- [ ] 4.1 Determine how a secret reaches the agent: injected at egress like sbx's proxy, or carried
-      in the sandbox's environment. Record which, because the Run's transcript has to say it.
+- [ ] 4.1 Exercise **both** documented paths: the egress proxy that claims to inject credentials at
+      the boundary, and secrets injected as environment variables at boot. Record which a Run would
+      use, because its transcript has to say it. For the proxy path, prove the negative the way
+      #288's tests do — run something inside that prints the variable and confirm it is empty.
 - [ ] 4.2 Exercise the egress policy: can it express deny-all plus an allow list, as sbx's does?
+      The documentation says deny-default with host allowlists; that is a claim, not a result.
 - [ ] 4.3 Write down the negative explicitly: **#288's session carriage cannot work here** — there
       is no machine owner whose files to copy — so this substrate requires stored credentials.
 
@@ -58,6 +63,18 @@
 - [ ] 6.1 Record what a thirty-minute Run costs, and what idle actually costs.
 - [ ] 6.2 Check a Sandbox Group's maximum sandbox count against this product's per-project
       concurrency cap.
+
+## 6b. The seam
+
+- [ ] 6.1b Answer the question that decides how big any follow-up is: does this substrate fit
+      `IAgentProcessHost` — command, arguments, workspace, environment, timeout, line callback,
+      optional published port — as a third implementation beside the local host and sbx? Exec with
+      streamed stdout/stderr, ports and a CLI to shell out to suggest yes. If it does not fit, say
+      exactly which member of the interface it breaks, because that is the difference between a
+      change and a programme.
+- [ ] 6.2b Record the control surfaces available and which this codebase would use: CLI, Python
+      SDK, MCP, raw REST. No .NET SDK is named; the sbx host already shells out to a CLI, so that
+      is precedent rather than a blocker.
 
 ## 7. The verdict
 

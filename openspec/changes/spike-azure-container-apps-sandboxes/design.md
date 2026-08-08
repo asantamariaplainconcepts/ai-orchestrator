@@ -36,15 +36,22 @@ A sandbox created from an OCI image containing `opencode`, `node` and `git` star
 *Refuted if* the image conversion rejects the layers, the CLI cannot start, or the environment
 lacks something a Node CLI assumes.
 
-### H2 — The workspace is created inside, and that is what breaks co-location
+### H2 — The workspace reaches a remote sandbox at all
 
-**The load-bearing one.** A sandbox clones the repository itself, over its own egress, with a
-credential the sandbox holds — and the executor never prepares a directory. If that works, the
-executor no longer has to be on the sandbox's machine, and the `--clone` spike's verdict was about
-sbx rather than about microVMs.
+**The load-bearing one**, and it is deliberately broader than the first draft of this spike, which
+asked only whether the sandbox could clone the repository itself. The portal documentation names a
+second mechanism the first draft missed — *"upload, download, and stream files in and out of a
+running sandbox over the data plane"* — and the co-location requirement itself already listed three
+candidate escapes: a clone the sandbox performs, a shared volume, **a transport**. Asking only
+about the clone would have measured one of the three and concluded about all of them, which is the
+mistake ADR-0018 exists to stop.
 
-*Refuted if* the sandbox cannot reach GitHub, cannot be given a usable credential, or the model
-requires a volume the caller must populate from its own filesystem.
+So: a workspace reaches a sandbox created from somewhere else, by any of the three, and the agent
+works in it. Which mechanism is viable for a repository-sized tree — and what it costs in time — is
+part of the answer, not a detail after it.
+
+*Refuted if* every mechanism requires the caller's own filesystem to be reachable from the sandbox
+host, which is the constraint sbx imposes and the whole reason for asking.
 
 Note the second half, which is easy to forget: the Run's **output** has to come back. Today the
 agent publishes its own branch and pull request (DEC-062), so the answer may be that nothing needs
@@ -62,10 +69,14 @@ product would have to operate.
 
 ### H4 — A credential reaches the agent without living at rest
 
-Whether there is a host-side injection like sbx's egress proxy, or whether values travel in the
-sandbox's environment. Either is workable — the in-process lane already passes values for a
-process's lifetime — but which one it is decides what the transcript must say (#288's third
-credential source exists because that sentence has to be true).
+The documentation claims **both** shapes: an egress proxy that injects credentials at the boundary
+— *"never inside the sandbox"*, which is sbx's sentinel model in different words — and secrets
+injected as environment variables at boot. Both are workable and they are not the same promise, and
+which one a Run uses decides what its transcript must say (#288's third credential source exists
+because that sentence has to be true).
+
+Documentation is not evidence (ADR-0001), so this stays a hypothesis: exercise the proxy path and
+confirm no value is readable inside.
 
 Also confirm the negative: **session carriage is impossible here.** #288 copies the machine
 owner's credential files into the sandbox, and there is no machine owner on a remote host. A
@@ -90,6 +101,28 @@ What a 30-minute Run costs, and whether a Sandbox Group's maximum sandbox count 
 product's per-project concurrency cap.
 
 *Refuted if* preview quotas cannot express the cap the product already has.
+
+## What the documentation already suggests, and why it is not the answer
+
+Read before writing these hypotheses: the portal's own summary describes an egress proxy with
+deny-default and credential injection, exec with streamed stdout/stderr, file upload and download
+over the data plane, HTTP ports *"for inbound connections and previews"*, and control from a CLI,
+a Python SDK or MCP.
+
+Two consequences worth stating now.
+
+**The shape fits a seam this product already has.** `IAgentProcessHost` is command, arguments,
+workspace, environment, a timeout, a line callback and an optional published port. Exec-with-stream
+plus ports plus a CLI to shell out to is that interface, which means adopting this substrate would
+plausibly be a third implementation of an existing seam rather than a new architecture. The spike
+should confirm or deny that, because it is the difference between a change and a programme.
+
+**There is no .NET SDK named.** CLI shell-out is the precedent this codebase already runs on — the
+sbx host shells out to `sbx` — so that is not a blocker, but it is a fact the spike records rather
+than discovers.
+
+None of this counts as an answer. ADR-0001: a claim is exercised or it is a hypothesis, and a
+vendor's summary of its own preview is exactly the kind of claim that reads settled and is not.
 
 ## Method
 
