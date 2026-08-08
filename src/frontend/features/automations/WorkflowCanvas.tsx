@@ -10,6 +10,15 @@ import { EXECUTABLE_ACTIONS } from "./types";
 import type { Automation, CreateAutomationRequest } from "./types";
 import { useUpdateAutomation } from "./useAutomations";
 import { hasBranches, workflowChains } from "./workflowGraph";
+import { BoardPreview } from "./BoardPreview";
+import {
+  AUTOMATION_BLOCK,
+  type ChainDrop,
+  type DropRefusal,
+  refusalFor,
+  removalRewrites,
+  rewritesFor,
+} from "./chainDrag";
 
 /**
  * What a drag carries (#137). "new" is a block coming out of the catalogue; anything else is the id
@@ -42,6 +51,82 @@ export function HumanStepBlock() {
 }
 
 /**
+ * What a catalogue row needs to become draggable into the chain (turn 8, option 8a). Defined here
+ * beside the slots that accept it, so the two halves of one gesture cannot drift apart.
+ */
+export function automationDragProps(automation: Automation, onCarry: Carry) {
+  return {
+    draggable: true,
+    onDragStart: (event: React.DragEvent) => {
+      event.dataTransfer.setData(AUTOMATION_BLOCK, automation.id);
+      event.dataTransfer.effectAllowed = "move";
+      // Announced through React rather than read back from the drag: `dataTransfer.getData` is
+      // deliberately empty during `dragover` for security, so a slot cannot ask what is over it.
+      // Without this the slot could only say "something", and saying which two labels a drop
+      // rewrites is the entire point of the gesture.
+      onCarry(automation);
+    },
+    onDragEnd: () => onCarry(null),
+  };
+}
+
+/** Told what is in flight, so every slot can describe its own drop before it happens. */
+export type Carry = (automation: Automation | null) => void;
+
+/**
+ * The rail's half of the gesture: dropping a step here takes it out of the chain, which clears
+ * whichever label pointed at it (8a). Nothing is put in its place — an absence has no two ends.
+ */
+export function useChainRemoval(
+  projectId: string,
+  automations: Automation[],
+): { onDragOver: (event: React.DragEvent) => void; onDrop: (event: React.DragEvent) => void } {
+  const update = useUpdateAutomation(projectId);
+
+  return {
+    onDragOver: (event) => {
+      if (event.dataTransfer.types.includes(AUTOMATION_BLOCK)) event.preventDefault();
+    },
+    onDrop: (event) => {
+      const id = event.dataTransfer.getData(AUTOMATION_BLOCK);
+      const dragged = automations.find((candidate) => candidate.id === id);
+      if (!dragged) return;
+      event.preventDefault();
+
+      for (const rewrite of removalRewrites(dragged, automations)) {
+        update.mutate({
+          id: rewrite.automation.id,
+          request: requestFor(rewrite.automation, { outputLabels: rewrite.outputLabels }),
+        });
+      }
+    },
+  };
+}
+
+/**
+ * The whole Automation, as the endpoint needs it. Extracted because three callers now build it and
+ * a field one of them forgets is a field that caller silently clears on every gesture — which is
+ * exactly what happened to the model (#291) before this existed.
+ */
+function requestFor(
+  automation: Automation,
+  patch: Partial<CreateAutomationRequest>,
+): CreateAutomationRequest {
+  return {
+    triggerLabel: automation.triggerLabel,
+    triggerState: automation.triggerState,
+    action: automation.action,
+    runtime: automation.runtime,
+    requiresApproval: automation.requiresApproval,
+    timeoutMinutes: automation.timeoutMinutes,
+    promptPath: automation.promptPath ?? null,
+    outputLabels: automation.outputLabels,
+    model: automation.model,
+    ...patch,
+  };
+}
+
+/**
  * The pipeline as a shape (#116). Edges are label agreements — nothing about the picture is
  * stored, so the canvas cannot claim a chain that would not fire (design D1).
  * <p>
@@ -55,9 +140,18 @@ export function WorkflowCanvas({
   projectId,
   automations,
   onEdit,
+  carried,
+  onCarry,
 }: {
   projectId: string;
   automations: Automation[];
+  /**
+   * The Automation being dragged, from wherever the drag began — the rail or a step's own handle.
+   * Held above this component because both surfaces start the gesture and only one of them is
+   * inside the canvas (turn 8).
+   */
+  carried: Automation | null;
+  onCarry: Carry;
   /**
    * Opens the edit panel on a step (design review 6b). The canvas raises the intent and never owns
    * the form: the same panel answers a click here and a click in the rail, which is what keeps the
@@ -72,6 +166,8 @@ export function WorkflowCanvas({
   // Whether any step hands on to more than one place — what the BR-001 note is for.
   const branching = hasBranches(chains);
   const [dragging, setDragging] = useState(false);
+  // The step a drop just added, so the board preview can show the consequence where it landed.
+  const [justChained, setJustChained] = useState<string | null>(null);
 
   /**
    * Every canvas change is an ordinary Automation update (design D4), so BR-003's overlap check
@@ -80,20 +176,7 @@ export function WorkflowCanvas({
    * had to start returning them.
    */
   function change(automation: Automation, patch: Partial<CreateAutomationRequest>) {
-    update.mutate({
-      id: automation.id,
-      request: {
-        triggerLabel: automation.triggerLabel,
-        triggerState: automation.triggerState,
-        action: automation.action,
-        runtime: automation.runtime,
-        requiresApproval: automation.requiresApproval,
-        timeoutMinutes: automation.timeoutMinutes,
-        promptPath: automation.promptPath ?? null,
-        outputLabels: automation.outputLabels,
-        ...patch,
-      },
-    });
+    update.mutate({ id: automation.id, request: requestFor(automation, patch) });
   }
 
   // A project whose Automations all stand alone has a catalogue and no flow. That is a state, not
@@ -129,6 +212,18 @@ export function WorkflowCanvas({
     if (source && destination && !source.outputLabels.includes(destination)) {
       change(source, { outputLabels: [...source.outputLabels, destination] });
     }
+  }
+
+  /**
+   * A step dropped into the slot after `preceding` (8a). Two label rewrites where it lands between
+   * two steps, one where it lands on the end — and nothing else, because the graph is derived
+   * (design D1) and every gesture is an ordinary update (design D4).
+   */
+  function chainInto(drop: ChainDrop) {
+    for (const rewrite of rewritesFor(drop)) {
+      change(rewrite.automation, { outputLabels: rewrite.outputLabels });
+    }
+    setJustChained(drop.dragged.id);
   }
 
   /**
@@ -181,7 +276,7 @@ export function WorkflowCanvas({
               chain.branchedFrom && "pl-8",
             )}
             onDragOver={(event) => {
-              // Only our own block: any other drag passing over the flow is none of its business.
+              // Only our own blocks: any other drag passing over the flow is none of its business.
               if (event.dataTransfer.types.includes(HUMAN_BLOCK)) setDragging(true);
             }}
             onDragLeave={() => setDragging(false)}
@@ -214,6 +309,7 @@ export function WorkflowCanvas({
                 <AutomationNode
                   automation={node.automation}
                   connected={node.next !== null}
+                  onCarry={onCarry}
                   onEdit={() => onEdit(node.automation)}
                   onToggleApproval={() =>
                     change(node.automation, {
@@ -225,6 +321,25 @@ export function WorkflowCanvas({
                   automation={node.automation}
                   connected={node.next !== null}
                   dragging={dragging}
+                  following={node.next}
+                  carried={carried}
+                  refusal={
+                    carried
+                      ? refusalFor(
+                          { preceding: node.automation, following: node.next, dragged: carried },
+                          automations,
+                        )
+                      : null
+                  }
+                  onDropAutomation={(dragged) => {
+                    onCarry(null);
+                    chainInto({
+                      preceding: node.automation,
+                      following: node.next,
+                      dragged,
+                    });
+                  }}
+                  automations={automations}
                   onDropBlock={(movedFrom) => {
                     setDragging(false);
                     placeBlock(node.automation, movedFrom, node.next?.triggerLabel);
@@ -255,6 +370,11 @@ export function WorkflowCanvas({
           </div>
         ))}
       </div>
+
+      {/* The consequence of the gesture, where the gesture is (8b). Below the chain rather than in
+          another tab, because wiring the workflow and seeing what it does to the board were two
+          screens and the person wiring was never looking at the second. */}
+      <BoardPreview chains={chains} highlight={justChained} />
     </div>
   );
 }
@@ -264,12 +384,15 @@ function AutomationNode({
   connected,
   onEdit,
   onToggleApproval,
+  onCarry,
 }: {
   automation: Automation;
   /** Whether an edge leaves this step. Only the graph knows; the node cannot infer it. */
   connected: boolean;
   onEdit: () => void;
   onToggleApproval: () => void;
+  /** Picked up by its handle, to reorder it or take it out of the chain (8c). */
+  onCarry: Carry;
 }) {
   // An output label pointing at no Automation, announced on the step that owns it (#232). It used
   // to be said at the connector below, which is where the reader is looking at a *gap* — the label
@@ -292,6 +415,16 @@ function AutomationNode({
     >
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-2">
         <span className="flex min-w-0 items-center gap-2">
+          {/* The handle, not the whole card: a card that is entirely draggable cannot be
+              selected, and the text inside it stops being text (8c). */}
+          <span
+            {...automationDragProps(automation, onCarry)}
+            aria-label={`${t("canvas.reorder")} ${automation.triggerLabel}`}
+            title={t("canvas.reorder")}
+            className="shrink-0 cursor-grab text-muted-foreground active:cursor-grabbing"
+          >
+            <GripVertical className="size-3.5" aria-hidden="true" />
+          </span>
           <span className="truncate font-mono text-xs font-semibold text-primary">
             {automation.triggerLabel}
           </span>
@@ -373,6 +506,11 @@ function Connector({
   onConnect,
   onDisconnect,
   onDropBlock,
+  following,
+  carried,
+  refusal,
+  onDropAutomation,
+  automations,
 }: {
   automation: Automation;
   connected: boolean;
@@ -383,6 +521,14 @@ function Connector({
   onDisconnect: () => void;
   /** The gap the block came from, or null for one out of the catalogue. */
   onDropBlock: (movedFrom: string | null) => void;
+  /** The step after this slot, or null when the slot is the end of the chain (8a). */
+  following: Automation | null;
+  /** The Automation in flight, so this slot can say what its drop would wire before it lands. */
+  carried: Automation | null;
+  /** Why this slot cannot take the carried step, or null when it can (8c). */
+  refusal: DropRefusal | null;
+  onDropAutomation: (dragged: Automation) => void;
+  automations: Automation[];
 }) {
   // The dangling warning moved to the node that owns the label (#232) — it was announced here, at
   // the gap, which is not where the label lives or where it gets fixed.
@@ -409,8 +555,23 @@ function Connector({
       // valid target is visible before the pointer reaches it, not learned by failing.
       onDragOver={(event) => {
         if (connected && event.dataTransfer.types.includes(HUMAN_BLOCK)) event.preventDefault();
+        // A refused slot never calls preventDefault, so the cursor says no-drop before the drop
+        // is attempted — the refusal below says why, at the slot rather than in a toast after.
+        if (event.dataTransfer.types.includes(AUTOMATION_BLOCK) && carried && !refusal) {
+          event.preventDefault();
+        }
       }}
       onDrop={(event) => {
+        const chained = event.dataTransfer.getData(AUTOMATION_BLOCK);
+        if (chained) {
+          if (refusal) return;
+          const dragged = automations.find((candidate) => candidate.id === chained);
+          if (!dragged) return;
+          event.preventDefault();
+          onDropAutomation(dragged);
+          return;
+        }
+
         if (!connected) return;
         event.preventDefault();
         const payload = event.dataTransfer.getData(HUMAN_BLOCK);
@@ -422,11 +583,26 @@ function Connector({
         dragging &&
           connected &&
           "rounded-md bg-warning/10 outline-2 outline-dashed outline-warning",
+        carried && !refusal && "rounded-md bg-primary/10 outline-2 outline-dashed outline-primary",
+        carried &&
+          refusal &&
+          "rounded-md bg-destructive/10 outline-2 outline-dashed outline-destructive",
       )}
     >
       {/* The rule stands between one step and the next, broken in the middle by what it means:
           a way to require a person, or the person who is already required. */}
       <div aria-hidden="true" className={rule} />
+
+      {/* What this drop would wire, spelled out before it happens (8a) — or the rule that stops
+          it, quoted where the pointer is rather than after the gesture (8c). */}
+      {carried ? (
+        <DropSlot
+          preceding={automation}
+          following={following}
+          dragged={carried}
+          refusal={refusal}
+        />
+      ) : null}
 
       {connected ? (
         // The sentence becomes the accessible name rather than a line of wrapped text: one
@@ -494,5 +670,66 @@ function Connector({
 
       <div aria-hidden="true" className={rule} />
     </div>
+  );
+}
+
+/**
+ * The sentence a slot says while something hovers over it (8a/8c). It is the whole point of the
+ * gesture: a drop rewrites two labels, and reading which two before letting go is what makes the
+ * drag safe to perform on a workflow somebody depends on.
+ */
+function DropSlot({
+  preceding,
+  following,
+  dragged,
+  refusal,
+}: {
+  preceding: Automation;
+  following: Automation | null;
+  dragged: Automation;
+  refusal: DropRefusal | null;
+}) {
+  if (refusal) {
+    return (
+      <span className="flex flex-col gap-0.5 py-1 text-center">
+        <span className="text-[11px] font-semibold text-destructive">{t("canvas.cantDrop")}</span>
+        <span className="text-[11px] leading-snug text-muted-foreground">
+          <span className="font-mono">{dragged.triggerLabel}</span>{" "}
+          {refusal === "shared"
+            ? t("canvas.refuseShared")
+            : refusal === "cycle"
+              ? t("canvas.refuseCycle")
+              : refusal === "self"
+                ? t("canvas.refuseSelf")
+                : t("canvas.refuseAlready")}
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex flex-col gap-0.5 py-1 text-center">
+      <span className="text-[11px] font-semibold text-primary">
+        {following ? t("canvas.dropHere") : t("canvas.dropAtEnd")}
+      </span>
+      <span className="text-[11px] leading-snug text-muted-foreground">
+        {following ? (
+          // Two rewrites, both named, in the order they happen.
+          <>
+            <span className="font-mono">{preceding.triggerLabel}</span> {t("canvas.willHandTo")}{" "}
+            <span className="font-mono">{dragged.triggerLabel}</span>
+            {" · "}
+            <span className="font-mono">{dragged.triggerLabel}</span> {t("canvas.willHandTo")}{" "}
+            <span className="font-mono">{following.triggerLabel}</span>
+          </>
+        ) : (
+          // One rewrite at the end, so "it" is the step being dragged and the sentence stays a
+          // sentence: naming the dragged step twice read as two hand-offs where there is one.
+          <>
+            <span className="font-mono">{preceding.triggerLabel}</span> {t("canvas.willHandToIt")}
+          </>
+        )}
+      </span>
+    </span>
   );
 }
