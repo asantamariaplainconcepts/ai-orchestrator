@@ -297,7 +297,40 @@ spike owes (task 7.1) is not due. What can be said already, and it is a lot:
 - What is worse or unknown: `exec` cannot hold a Run, auto-suspend must be disabled deliberately,
   cost is unmeasured, and session carriage (#288) cannot exist here at all.
 
-**Recommendation (task 7.1): pursue, but not as a swap.** The finding that justifies the work is
+### The verdict was framed against the wrong comparison
+
+The paragraph below was written as though this substrate were competing with sbx for one slot. It
+is not, and saying so is the most useful thing this spike produced.
+
+**sbx cannot go to the cloud.** Its constraint is co-location: the executor prepares a directory
+and the sandbox mounts it, so "sbx in Azure" means operating a VM — one to size, patch, scale and
+keep alive — with a worker on it consuming the queue. The cloud story for sbx was always a machine
+somebody runs. This substrate has no machine at all: sandboxes are created over an API, from a
+process that can be anywhere, and cost nothing idle.
+
+So the two are not alternatives. They are two habitats:
+
+| | Dev loop (a laptop) | A deployment |
+|---|---|---|
+| Substrate | **sbx** | **ACA Sandboxes** |
+| Why | local, free, and the only place #288's session carriage can exist — there is a machine owner whose files can be copied | no VM to operate, no co-location, typed credential providers for both runtimes, scale to zero |
+| Credentials | the owner's own session | stored, platform-injected — which is what a deployment needs anyway |
+
+That is what `IAgentProcessHost` was built for: where the CLI runs is a habitat's choice. A cloud
+habitat picking a different host is the seam working, not the seam breaking.
+
+**And the `exec` ceiling reads differently in that light.** Holding an open process handle is what
+the *local* executor does, and it is fragile in a way that only matters in a deployment: if the
+worker restarts mid-Run, the Run dies with it, and nothing retries (BR-004). Start-detached-and-poll
+survives that — the sandbox keeps working independently of whoever is watching, and a restarted
+worker can pick the Run back up by polling. Combined with suspend and snapshot, a Run can outlive
+the process that started it.
+
+So the pattern the ~50 s ceiling forces is the pattern a queue-driven worker should want. It is a
+cost against the local design and a fit for the remote one. That does not make the ceiling
+harmless — it still has to be built — but it stops being an argument against.
+
+**Recommendation (task 7.1): pursue as the deployment substrate, not as a replacement.** The finding that justifies the work is
 H2 — co-location is broken, which is the ceiling the current design has and cannot lift. The
 finding that sizes it is the `exec` ceiling: this is a new executor shape, not a new
 `IAgentProcessHost`. Anything that follows should decide that shape first, and should not begin
