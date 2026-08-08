@@ -29,7 +29,8 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
         // Ignored, and honestly so: a child process of this one has no port to publish. The
         // preview read reports previews unhosted here, which is a different sentence from a Run
         // having none (run-previews design D2).
-        BuildingBlocks.Agents.RunPreview? preview = null
+        BuildingBlocks.Agents.RunPreview? preview = null,
+        Guid? projectId = null
     ) =>
         HeadlessProcess.Run(
             fileName,

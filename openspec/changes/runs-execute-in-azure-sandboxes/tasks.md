@@ -44,8 +44,12 @@
 
 ## 4. Credentials (design D4)
 
-- [ ] 4.1 One SandboxGroup per Project, its typed credentials its own, so #244's per-project
-      billing identity survives.
+- [x] 4.1 One SandboxGroup per Project, its typed credentials its own, so #244's per-project
+      billing identity survives. **A gap in the design, found on contact:** it said "per Project"
+      while `IAgentProcessHost.Run` has no Project — it takes a command, a workspace and a timeout.
+      Closed by widening the seam with an optional `projectId` that every other host ignores, and
+      templating the group name so `{project}` in one setting describes a deployment whose groups
+      are per Project. The id travels on `AgentInstruction`, beside the model #291 put there.
 - [ ] 4.2 No credential value is readable inside the sandbox. Prove the negative the way #288's
       tests do: run something inside that prints the variable and assert it is empty.
 - [ ] 4.3 The transcript names the injection as the credential source, beside the two sources it
@@ -77,6 +81,15 @@
       about x86_64 + KVM, which is the operator-facing half and is not written yet.
 - [x] 6.5 Confirm in-process execution still works for a habitat that names no launcher at all —
       it stops being selfhost's answer, but it is still the default and the local lane's.
+
+## 6b. A defect found while wiring this, already on `main`
+
+- [x] 6.1b **`instruction.Preview` was never forwarded to the host by either runtime**, so no Run
+      has ever published a preview port — the executor built the instruction with its preview and
+      the chain dropped it. run-previews' own gated test called the host **directly**, proving the
+      host publishes a port and never that a Run reaches it with one: a component test cannot see a
+      wire that was never connected. Fixed in both runtimes, with a test asserting on what a
+      runtime hands its host, verified able to fail by cutting the wire again.
 
 ## 7. Proof
 

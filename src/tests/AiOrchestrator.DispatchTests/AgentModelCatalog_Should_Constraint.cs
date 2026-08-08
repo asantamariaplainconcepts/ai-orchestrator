@@ -136,7 +136,8 @@ public class AgentModelCatalog_Should_Constraint
             TimeSpan timeout,
             CancellationToken cancellationToken,
             Action<string>? onOutput = null,
-            RunPreview? preview = null
+            RunPreview? preview = null,
+            Guid? projectId = null
         ) => throw new NotSupportedException("This test never runs an agent.");
 
         public Task<AgentHostReadiness> CheckReadiness(CancellationToken cancellationToken) =>

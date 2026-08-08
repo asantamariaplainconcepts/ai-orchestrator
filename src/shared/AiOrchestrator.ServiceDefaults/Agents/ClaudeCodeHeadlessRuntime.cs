@@ -78,7 +78,13 @@ public sealed class ClaudeCodeHeadlessRuntime(
                 environment,
                 instruction.Timeout,
                 cancellationToken,
-                instruction.OnOutput
+                instruction.OnOutput,
+                // Forwarded, and it was not before (#296): the executor built the instruction with
+                // its preview and neither runtime passed it on, so no Run ever published a port.
+                // The gated sbx test missed it by calling the host directly — it exercised the
+                // component and not the chain, which is exactly how a missing wire stays invisible.
+                instruction.Preview,
+                instruction.ProjectId
             );
         }
         catch (System.ComponentModel.Win32Exception)

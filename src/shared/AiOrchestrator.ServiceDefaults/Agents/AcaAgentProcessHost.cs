@@ -53,7 +53,8 @@ sealed class AcaAgentProcessHost(
         TimeSpan timeout,
         CancellationToken cancellationToken,
         Action<string>? onOutput = null,
-        RunPreview? preview = null
+        RunPreview? preview = null,
+        Guid? projectId = null
     )
     {
         // The same assertion the sbx host makes, for the same reason: a caller that still passes
@@ -67,7 +68,7 @@ sealed class AcaAgentProcessHost(
             );
         }
 
-        var sandbox = await Create(cancellationToken);
+        var sandbox = await Create(GroupFor(projectId), cancellationToken);
 
         try
         {
@@ -369,19 +370,33 @@ sealed class AcaAgentProcessHost(
 
     // ---- Lifecycle ----
 
-    async Task<string> Create(CancellationToken cancellationToken)
+    /// <summary>
+    /// The Project's own SandboxGroup (design D4). The configured name is a template: where it
+    /// contains <c>{project}</c> the Project's id fills it, so one setting describes a deployment
+    /// whose groups are per Project rather than requiring one key per Project.
+    /// <para>
+    /// A Run with no Project — there is no such thing today, and the readiness probe's own
+    /// sandboxes are not Runs — falls back to the template as written, which is what a habitat
+    /// that never templated it meant anyway.
+    /// </para>
+    /// </summary>
+    string GroupFor(Guid? projectId) =>
+        projectId is { } id
+            ? options.SandboxGroup.Replace(
+                "{project}",
+                id.ToString("N"),
+                StringComparison.OrdinalIgnoreCase
+            )
+            : options.SandboxGroup.Replace(
+                "{project}",
+                "shared",
+                StringComparison.OrdinalIgnoreCase
+            );
+
+    async Task<string> Create(string group, CancellationToken cancellationToken)
     {
         var created = await Aca(
-            [
-                "sandbox",
-                "create",
-                "--group",
-                options.SandboxGroup,
-                "--disk",
-                options.Disk,
-                "-o",
-                "json",
-            ],
+            ["sandbox", "create", "--group", group, "--disk", options.Disk, "-o", "json"],
             cancellationToken
         );
 
@@ -485,7 +500,7 @@ sealed class AcaAgentProcessHost(
         string? sandbox = null;
         try
         {
-            sandbox = await Create(cancellationToken);
+            sandbox = await Create(GroupFor(projectId: null), cancellationToken);
             var version = await Aca(
                 ["sandbox", "exec", "--id", sandbox, "-c", $"{command} --version"],
                 cancellationToken
@@ -533,7 +548,7 @@ sealed class AcaAgentProcessHost(
         string? sandbox = null;
         try
         {
-            sandbox = await Create(cancellationToken);
+            sandbox = await Create(GroupFor(projectId: null), cancellationToken);
             var listed = await Aca(
                 ["sandbox", "exec", "--id", sandbox, "-c", Argv(command, arguments)],
                 cancellationToken

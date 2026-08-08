@@ -47,7 +47,9 @@ sealed class SbxAgentProcessHost(
         TimeSpan timeout,
         CancellationToken cancellationToken,
         Action<string>? onOutput = null,
-        BuildingBlocks.Agents.RunPreview? preview = null
+        BuildingBlocks.Agents.RunPreview? preview = null,
+        // Ignored: sbx's sandboxes are local and its isolation is not scoped by Project.
+        Guid? projectId = null
     )
     {
         // The contract, asserted rather than trusted: a caller that still passes values would be
