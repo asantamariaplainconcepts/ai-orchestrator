@@ -47,27 +47,30 @@ public sealed class AppHostFixture : IAsyncLifetime
         var builder =
             await DistributedApplicationTestingBuilder.CreateAsync<Projects.AiOrchestrator_AppHost>();
 
-        // Containers must not outlive the run: a persistent lifetime leaks state between runs,
-        // which is a recurring source of "passes locally, fails in CI" defects.
-        builder.Configuration["DcpPublisher:ContainerLifetime"] = "Session";
-
-        // Nor may it inherit the dev loop's agent substrate. `appsettings.Development.json` puts
-        // agents in a per-Run sandbox so a developer needs no flag, and this host loads that file
-        // too — measured, not assumed: the testing builder runs as Development. CI has no sbx, no
-        // daemon and no Docker identity, so inheriting it would turn every Run red for a reason
-        // nobody chose. Declined here, beside the other dev-loop conveniences this tier declines,
-        // and pinned by DevLoopDefaults_Should_Constraint.
+        // Nor may it inherit the dev loop's agent substrate. `appsettings.json` puts agents in a
+        // per-Run sandbox so a developer needs no flag, and this host loads that file too. CI has
+        // no sbx, no daemon and no Docker identity, so inheriting it would turn every Run red for
+        // a reason nobody chose.
         builder.Configuration["Parameters:sandbox"] = "false";
 
-        // Nor may the run inherit the developer's Postgres *data volume*, which the AppHost mounts
-        // for `aspire run`. Two reasons, and the first is a hang rather than a failure: a volume
-        // keeps the cluster it was initialised with, including the password, while this host has
-        // no user secrets and so generates a fresh one every run — from the second run onwards the
-        // server cannot authenticate and simply never reports healthy. The second reason stands on
-        // its own: a tier that starts on yesterday's rows is not hermetic.
+        // Nor may the run inherit the developer's Postgres — neither the *container*, which the
+        // AppHost keeps alive between `aspire run` sessions, nor the *data volume* it mounts.
+        //
+        // Both are declined on the resource itself. The lifetime used to be asked for through
+        // `DcpPublisher:ContainerLifetime`, which did not actually stop the persistent container
+        // being reused: consecutive local runs found the previous run's rows and failed with
+        // Project.NameAlreadyTaken (observed 2026-08-07 on a clean checkout, 12 of 45 red). That
+        // was invisible for as long as the AppHost generated a fresh Postgres password each run —
+        // the second run simply could not authenticate, and the symptom was a hang. Persisting
+        // that password fixed the hang and revealed what it had been hiding, so the fix belongs
+        // here rather than in whatever made it visible.
+        //
+        // CI never saw either symptom: a fresh machine per job has no container to reuse. This is
+        // entirely a defect of the developer's own loop, which is where a test tier is read most.
         var postgres = builder
             .Resources.OfType<ContainerResource>()
             .Single(resource => resource.Name == "postgres");
+        builder.CreateResourceBuilder(postgres).WithLifetime(ContainerLifetime.Session);
         foreach (var mount in postgres.Annotations.OfType<ContainerMountAnnotation>().ToList())
         {
             postgres.Annotations.Remove(mount);
