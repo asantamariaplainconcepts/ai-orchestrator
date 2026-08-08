@@ -73,7 +73,11 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
     }
 
     /// <summary>The question does not arise: an agent here is a child of this process.</summary>
-    public SessionCarriageGap? SessionUnavailableFor(string runtimeName, string command) => null;
+    public SessionCarriageGap? SessionUnavailableFor(
+        string runtimeName,
+        string command,
+        string? credentialSecretName
+    ) => null;
 
     /// <summary>
     /// Generous for a local <c>--version</c>, but a wedged machine can hang instead of refuse —

@@ -291,18 +291,32 @@ sealed class SbxAgentProcessHost(
     /// where carriage is off — no promise was made — or where the runtime's credential is a file
     /// the copy reaches.
     /// </summary>
-    public SessionCarriageGap? SessionUnavailableFor(string runtimeName, string command) =>
-        options.SessionFiles.Count == 0 || !options.KeychainRuntimes.Contains(command)
-            ? null
-            : new SessionCarriageGap(
-                AgentRuntimeRemedies.SessionCannotTravel(
-                    command,
-                    "this machine's keychain",
-                    runtimeName,
-                    command
-                ),
-                AgentRuntimeRemedies.StoreSandboxSecret(options.CommandPath, command)
-            );
+    public SessionCarriageGap? SessionUnavailableFor(
+        string runtimeName,
+        string command,
+        string? credentialSecretName
+    )
+    {
+        if (options.SessionFiles.Count == 0 || !options.KeychainRuntimes.Contains(command))
+        {
+            return null;
+        }
+
+        // The runtime's own configured name where it has one — a remedy that invents a second
+        // name would leave the developer with a stored key nothing reads.
+        var secretName = credentialSecretName ?? command;
+
+        return new SessionCarriageGap(
+            AgentRuntimeRemedies.SessionCannotTravel(
+                command,
+                "this machine's keychain",
+                runtimeName,
+                secretName,
+                alreadyNamed: credentialSecretName is not null
+            ),
+            AgentRuntimeRemedies.StoreSandboxSecret(options.CommandPath, secretName)
+        );
+    }
 
     /// <summary>
     /// Copies the machine owner's agent-CLI credentials into the sandbox, where the habitat asked
@@ -337,22 +351,78 @@ sealed class SbxAgentProcessHost(
                 continue;
             }
 
-            // `sbx cp` places it under the sandbox user's home, which is the only place a CLI
-            // looks. A failure is logged and the Run proceeds: an absent session degrades to the
-            // agent saying it is not logged in, which the panel already explains.
-            var copied = await Sbx(
-                ["cp", source, $"{sandbox}:{SandboxHome}/{file}"],
-                Brief,
-                cancellationToken
-            );
+            // Staged through a readable copy, because `sbx cp` preserves the HOST's uid and
+            // mode — observed 2026-08-08: a 0600 credential owned by uid 501 lands inside the
+            // sandbox still 0600 and still owned by 501, so the sandbox user cannot read it and
+            // cannot chown it either. `opencode auth list` then reports "0 credentials" from a
+            // file that is demonstrably present, which reads as carriage working and failing at
+            // the same time.
+            //
+            // The staging copy is 0644 inside a 0700 directory: readable to the sandbox user
+            // once it is inside, and reachable by nobody else on this machine.
+            var staging = Directory.CreateTempSubdirectory("aio-carry-");
 
-            if (copied.ExitCode != 0)
+            try
             {
-                SandboxLog.SessionNotCarried(logger, sandbox, file, Detail(copied));
-                continue;
-            }
+                var readable = Path.Combine(staging.FullName, Path.GetFileName(file));
+                File.Copy(source, readable, overwrite: true);
+                if (!OperatingSystem.IsWindows())
+                {
+                    // The mode is what travels, so it is the mode that has to be widened. On
+                    // Windows there are no Unix bits to widen and sbx is not a host anyway.
+                    File.SetUnixFileMode(
+                        readable,
+                        UnixFileMode.UserRead
+                            | UnixFileMode.UserWrite
+                            | UnixFileMode.GroupRead
+                            | UnixFileMode.OtherRead
+                    );
+                }
 
-            SandboxLog.SessionCarried(logger, sandbox, file);
+                var landing = $"/tmp/{Guid.NewGuid():N}";
+
+                var copied = await Sbx(
+                    ["cp", readable, $"{sandbox}:{landing}"],
+                    Brief,
+                    cancellationToken
+                );
+
+                if (copied.ExitCode != 0)
+                {
+                    SandboxLog.SessionNotCarried(logger, sandbox, file, Detail(copied));
+                    continue;
+                }
+
+                // Re-created BY the sandbox user, which is what makes it readable, and returned
+                // to 0600 because a CLI's own credential file is not a world-readable thing.
+                // The landing copy is deliberately left where it is: removing it would fail for
+                // the same ownership reason, and it dies with the sandbox regardless.
+                var placed = await Sbx(
+                    [
+                        "exec",
+                        sandbox,
+                        "sh",
+                        "-c",
+                        $"mkdir -p $(dirname {SandboxHome}/{file}) && rm -f {SandboxHome}/{file} "
+                            + $"&& cp {landing} {SandboxHome}/{file} "
+                            + $"&& chmod 600 {SandboxHome}/{file}",
+                    ],
+                    Brief,
+                    cancellationToken
+                );
+
+                if (placed.ExitCode != 0)
+                {
+                    SandboxLog.SessionNotCarried(logger, sandbox, file, Detail(placed));
+                    continue;
+                }
+
+                SandboxLog.SessionCarried(logger, sandbox, file);
+            }
+            finally
+            {
+                staging.Delete(recursive: true);
+            }
         }
     }
 

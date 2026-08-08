@@ -66,7 +66,11 @@ public interface IAgentProcessHost
     /// learn that no copy can carry it, not to wonder why the product cannot see a login they can.
     /// </para>
     /// </summary>
-    SessionCarriageGap? SessionUnavailableFor(string runtimeName, string command);
+    SessionCarriageGap? SessionUnavailableFor(
+        string runtimeName,
+        string command,
+        string? credentialSecretName
+    );
 }
 
 /// <summary>

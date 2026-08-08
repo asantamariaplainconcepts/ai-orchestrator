@@ -140,7 +140,11 @@ public sealed class AgentRuntimesProbe(
 
         // Only when it actually explains something: the host answers null unless carriage is on
         // AND this runtime's session is one a copy cannot reach (#288).
-        var carriageGap = processHost.SessionUnavailableFor(name, selection.Command);
+        var carriageGap = processHost.SessionUnavailableFor(
+            name,
+            selection.Command,
+            selection.CredentialSecretName
+        );
 
         return new AgentRuntimeState(
             Name: name,

@@ -230,13 +230,15 @@ public class AgentSandbox_Should_Constraint
         // is exactly the wrong sentence to show a developer who IS signed in.
         var host = CarryingHost(["claude"]);
 
-        var gap = host.SessionUnavailableFor("ClaudeCodeHeadless", "claude");
+        var gap = host.SessionUnavailableFor("ClaudeCodeHeadless", "claude", "anthropic-api-key");
 
         gap.ShouldNotBeNull();
         gap.Reason.ShouldContain("keychain");
         gap.Reason.ShouldContain("cannot be given a copy");
         // A reason without a remedy leaves the developer where the old silence did.
-        gap.Remedy.ShouldContain("secret set -g");
+        // The name the runtime already expects — a remedy inventing a second name would leave
+        // the developer with a stored key nothing reads.
+        gap.Remedy.ShouldBe("sbx secret set -g anthropic-api-key");
         // Names only, never values (BR-010).
         gap.Reason.ShouldNotContain("sk-");
     }
@@ -248,7 +250,7 @@ public class AgentSandbox_Should_Constraint
         // a panel that warned anyway would train its reader to ignore it.
         var host = CarryingHost(["claude"]);
 
-        host.SessionUnavailableFor("OpenCode", "opencode").ShouldBeNull();
+        host.SessionUnavailableFor("OpenCode", "opencode", null).ShouldBeNull();
     }
 
     [Fact]
@@ -259,7 +261,7 @@ public class AgentSandbox_Should_Constraint
         // Carriage off is exactly "no session files declared" — the same switch the habitat flips.
         var host = SbxHost("sbx", keychainRuntimes: ["claude"]);
 
-        host.SessionUnavailableFor("ClaudeCodeHeadless", "claude").ShouldBeNull();
+        host.SessionUnavailableFor("ClaudeCodeHeadless", "claude", null).ShouldBeNull();
     }
 
     // ---- Composition (design D1, D5) ----
