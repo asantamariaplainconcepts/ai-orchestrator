@@ -45,7 +45,8 @@ sealed class UpdateAutomation : IUseCase
                             request.TimeoutMinutes,
                             request.PromptPath,
                             request.OutputLabels,
-                            request.PreviewPort
+                            request.PreviewPort,
+                            request.Model
                         ),
                         cancellationToken
                     );
@@ -108,7 +109,9 @@ sealed class UpdateAutomation : IUseCase
         int? TimeoutMinutes,
         string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null,
-        int? PreviewPort = null
+        int? PreviewPort = null,
+        /// <summary>The model this Automation's Runs think with; null inherits the deployment's (#291).</summary>
+        string? Model = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -233,7 +236,8 @@ sealed class UpdateAutomation : IUseCase
                     : CreateAutomation.DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
                 command.OutputLabels is null ? [] : CreateAutomation.Clean(command.OutputLabels),
-                command.PreviewPort
+                command.PreviewPort,
+                command.Model
             );
 
             // Excluding itself: an Automation must not be refused for colliding with the

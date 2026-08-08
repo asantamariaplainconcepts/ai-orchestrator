@@ -55,6 +55,9 @@ function auto(
     // single hand-off and inventing branches nobody asked for would be fixture noise.
     outputLabels: outputLabel === null ? [] : [outputLabel],
     promptPath: null,
+    // Null is the shipped state: an Automation thinks with the deployment's model until an Admin
+    // chooses otherwise (#291).
+    model: null,
   };
 }
 
@@ -93,6 +96,8 @@ const run = (
   inputTokens: null,
   outputTokens: null,
   costUsd: null,
+  // Null is the shipped state — a Run launched with no model at all (#291).
+  resolvedModel: null,
   dismissedAt: null,
   locus: "Local",
   workingFolder: "/home/ana/repos/portal",
@@ -149,6 +154,8 @@ const runs = [
     inputTokens: 48_211,
     outputTokens: 9_102,
     costUsd: 0.0,
+    // A finished Run names what spent it, which is the whole reason the field exists.
+    resolvedModel: "github-copilot/claude-opus-4.6",
     dismissedAt: null,
   }),
   run("Failed", "11", 480, { failureReason: "The readiness document could not be read." }),
@@ -689,6 +696,41 @@ const routes: [string, RegExp, Handler][] = [
     }),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
+  // The model chooser's three states (#291), which are three different things to tell somebody.
+  // `?modelsUnasked` renders the unreachable machine; `?modelsUndeclared` the runtime that cannot
+  // list and has nothing configured. Neither is an empty list, and the panel must not say it is.
+  [
+    "GET",
+    /^\/api\/agent-runtimes\/([^/]+)\/models$/,
+    (match: RegExpMatchArray) => {
+      const runtimeName = match[1];
+      const search = new URLSearchParams(window.location.search);
+
+      if (search.has("modelsUnasked")) {
+        return { runtimeName, models: [], source: "couldNotAsk" };
+      }
+
+      // Claude Code has no listing command, so it reads an operator's configuration — empty
+      // unless this deployment declared any.
+      if (runtimeName === "ClaudeCodeHeadless") {
+        return {
+          runtimeName,
+          models: search.has("modelsUndeclared") ? [] : ["sonnet"],
+          source: "declared",
+        };
+      }
+
+      return {
+        runtimeName,
+        models: [
+          "opencode/deepseek-v4-flash-free",
+          "github-copilot/claude-haiku-4.5",
+          "github-copilot/claude-opus-4.6",
+        ],
+        source: "enumerated",
+      };
+    },
+  ],
   // The starter set (#190), with one of each presence state so the section exercises them all.
   [
     "GET",

@@ -487,6 +487,7 @@ export function RunScreen() {
                       }
                       mono
                     />
+                    <DetailRow label={t("run.field.model")} value={run.resolvedModel} mono />
                     <DetailRow
                       label={t("run.field.tokens")}
                       value={

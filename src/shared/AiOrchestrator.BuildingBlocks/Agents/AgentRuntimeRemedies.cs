@@ -72,4 +72,22 @@ public static class AgentRuntimeRemedies
     /// </summary>
     public static string StoreSandboxSecret(string sandboxCommand, string secretName) =>
         $"{sandboxCommand} secret set -g {secretName}";
+
+    /// <summary>
+    /// What a failed Run says about the model it ran on (#291, design D5). Stated on **every**
+    /// failure where a model was resolved, not only where the model is suspected — deliberately,
+    /// because the product cannot tell the two apart.
+    /// <para>
+    /// Measured 2026-08-08: <c>claude --model definitely-not-a-model</c> answers
+    /// <c>404 … "model: definitely-not-a-model"</c>, naming it; <c>opencode run -m
+    /// definitely/not-a-model</c> answers <c>UnknownError</c>, "Unexpected server error" and an
+    /// opaque ref, naming nothing. So a product that only spoke up when it recognised a rejection
+    /// would stay silent for one of its two runtimes, and a typo would read as somebody else's
+    /// outage. Saying which model was asked for costs one clause and is never wrong.
+    /// </para>
+    /// </summary>
+    public static string FailedOnModel(string model, string runtimeName) =>
+        $"Asked for model '{model}' on runtime '{runtimeName}'. If that model does not exist "
+        + "there, or this seat cannot reach it, the failure below is what the runtime said about "
+        + "it — nothing retries, so choose another model or clear the field to inherit.";
 }

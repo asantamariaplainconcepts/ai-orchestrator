@@ -40,6 +40,17 @@ static class AppHostHabitats
             server.WithEnvironment("Agents__Sandbox__CarrySession", "true");
         }
 
+        // Claude Code has no command that lists its models (#291, design D1), so its chooser
+        // reads what a habitat declares. Exactly one entry, and it is a measurement rather than a
+        // guess: against Claude Code 2.0.44 on 2026-08-08, `sonnet` answered while `opus`
+        // resolved to a model this seat does not have and `fable` was not an alias at all — both
+        // 404. Offering those would put two broken options in front of a developer.
+        //
+        // Declared HERE and nowhere else, like every other dev-loop convenience: a deployment
+        // that wants Claude models says so itself, because which ones a seat can reach is a
+        // property of that seat rather than of this product.
+        server.WithEnvironment("Agents__ClaudeCodeHeadless__Models__0", "sonnet");
+
         // The demo seeder runs only here (local-agent-loop design D3). No deployed template sets
         // this, and the seeder refuses without it — a property rather than a promise. A dev-loop
         // declaration, not a run-mode one: rehearsing the server shape means seeing the empty

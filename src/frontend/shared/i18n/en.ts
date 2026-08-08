@@ -476,6 +476,22 @@ export const en = {
   "automations.statePlaceholder": "any state",
   "automations.action": "Action",
   "automations.runtime": "Runtime",
+  // The model an Automation's Runs think with (#291). Three states, because they are three
+  // different things to learn: the runtime listed them, an operator declared them, or the machine
+  // could not be asked — and only the last one is not an answer about the runtime.
+  "automations.model": "Model",
+  "automations.modelDeploymentDefault": "Deployment default",
+  "automations.modelPlaceholder": "Leave blank to inherit",
+  "automations.modelPickRuntimeFirst": "Choose a runtime and its models appear here.",
+  "automations.modelAsking": "Asking the machine that runs agents\u2026",
+  "automations.modelEnumerated":
+    "These are the models that machine can reach right now, asked of it directly.",
+  "automations.modelDeclared":
+    "This runtime cannot list its models, so these are the ones configured for it.",
+  "automations.modelNoneDeclared":
+    "This runtime cannot list its models and none are configured, so type one. Blank inherits.",
+  "automations.modelCouldNotAsk":
+    "The machine that runs agents could not be asked, so its models are unknown \u2014 this is not a runtime without models. Type one, or leave blank to inherit.",
   "automations.runtimeProjectDefault": "Project default",
   "automations.approval": "Needs approval",
   "automations.timeout": "Timeout (minutes)",
@@ -756,6 +772,8 @@ export const en = {
   "runs.cost.heading": "Agent cost",
   "runs.cost.reported": "across Runs that reported",
   "runs.cost.excluded": "not reported",
+  // Beside the cost, because a cost figure cannot be compared to another without it (#291).
+  "run.field.model": "Model",
   "run.field.tokens": "Tokens",
   "runs.table.openOutput": "View PR",
   "runs.table.open": "Open",
@@ -840,6 +858,9 @@ export const en = {
   "runs.runNow.failed": "Could not dispatch the Run.",
   // #244: the runtime choice at launch. "Project default" is the honest pre-selection for an
   // Automation with no explicit runtime — the default itself resolves at execution time.
+  // The launch's model, "for this Run only" like the runtime beside it (#291). Empty means the
+  // resolution — the Automation's model, or the deployment's — decided at execution time.
+  "runs.runNow.resolvedModel": "As resolved",
   "runs.runNow.projectDefaultRuntime": "Project default",
   // The Project's runtime settings (#244). Names, never values (BR-010); Admin-only (BR-009).
   "projectRuntimes.heading": "Runtimes",

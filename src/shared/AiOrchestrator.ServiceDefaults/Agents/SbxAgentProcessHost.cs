@@ -161,6 +161,81 @@ sealed class SbxAgentProcessHost(
         public bool IsStale(TimeSpan after) => DateTimeOffset.UtcNow - At > after;
     }
 
+    /// <summary>
+    /// The models a runtime offers <b>inside a sandbox</b> (#291, design D2), which is the only
+    /// answer a Run depends on.
+    /// <para>
+    /// Cached, because each ask costs a whole microVM — but NOT on <see cref="CliAnswers"/>'
+    /// reasoning (design D3). That cache is justified by its answer being a property of the
+    /// template image, which does not move. A model list is a property of the image <b>and of the
+    /// session this habitat carries in</b>: the `github-copilot/*` entries exist because #288
+    /// copied a seat. So the key includes a fingerprint of the carried session, and a developer
+    /// who re-authenticates stops being served the models of the seat they left.
+    /// </para>
+    /// </summary>
+    public async Task<IReadOnlyList<string>?> ListModels(
+        string command,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellationToken
+    )
+    {
+        var key = $"{command}\u0000{CarriedSessionFingerprint()}";
+
+        if (_models.TryGetValue(key, out var cached) && !cached.IsStale(options.CliProbeInterval))
+        {
+            return cached.Models;
+        }
+
+        var listed = await AskInASandbox(
+            command,
+            [command, .. arguments],
+            AgentModelListing.Parse,
+            cancellationToken
+        );
+
+        // A failed ask is not cached: "could not ask" is a state of this moment, and caching it
+        // would keep a chooser empty for the probe interval after the machine came back.
+        if (listed is not null)
+        {
+            _models[key] = new ModelVerdict(listed, DateTimeOffset.UtcNow);
+        }
+
+        return listed;
+    }
+
+    /// <summary>
+    /// What the carried session currently is, cheaply and without reading a credential's contents
+    /// into anything that outlives the call — size and last-write per carried file. Enough to
+    /// change when a developer re-authenticates, which is the only change that has to invalidate
+    /// the list. Empty where the habitat carries nothing.
+    /// </summary>
+    string CarriedSessionFingerprint()
+    {
+        if (options.SessionFiles.Count == 0)
+        {
+            return string.Empty;
+        }
+
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        return string.Join(
+            '|',
+            options.SessionFiles.Select(file =>
+            {
+                var info = new FileInfo(Path.Combine(home, file));
+                return info.Exists ? $"{file}:{info.Length}:{info.LastWriteTimeUtc.Ticks}" : file;
+            })
+        );
+    }
+
+    readonly System.Collections.Concurrent.ConcurrentDictionary<string, ModelVerdict> _models = new(
+        StringComparer.Ordinal
+    );
+
+    sealed record ModelVerdict(IReadOnlyList<string> Models, DateTimeOffset At)
+    {
+        public bool IsStale(TimeSpan after) => DateTimeOffset.UtcNow - At > after;
+    }
+
     async Task<bool> AskInASandbox(string command, CancellationToken cancellationToken)
     {
         var sandbox = $"aio-probe-{Guid.NewGuid():N}"[..24];
@@ -184,6 +259,43 @@ sealed class SbxAgentProcessHost(
                 cancellationToken
             );
             return !version.TimedOut && version.ExitCode == 0;
+        }
+        finally
+        {
+            await Dispose(sandbox);
+        }
+    }
+
+    /// <summary>
+    /// Runs one command inside a throwaway sandbox and reads its stdout, or null where the ask
+    /// itself failed. The sibling of <see cref="AskInASandbox(string, CancellationToken)"/> —
+    /// same create-and-dispose, different question.
+    /// </summary>
+    async Task<T?> AskInASandbox<T>(
+        string template,
+        IReadOnlyList<string> argv,
+        Func<string, T> read,
+        CancellationToken cancellationToken
+    )
+        where T : class
+    {
+        var sandbox = $"aio-probe-{Guid.NewGuid():N}"[..24];
+
+        try
+        {
+            await Create(sandbox, Path.GetTempPath(), template, preview: null, cancellationToken);
+        }
+        catch (AgentProcessHostException)
+        {
+            // The host itself is the problem, and CheckReadiness already says so with its
+            // remedy. "Could not ask" is the honest answer here.
+            return null;
+        }
+
+        try
+        {
+            var answered = await Sbx(["exec", sandbox, .. argv], Brief, cancellationToken);
+            return answered.TimedOut || answered.ExitCode != 0 ? null : read(answered.Stdout);
         }
         finally
         {

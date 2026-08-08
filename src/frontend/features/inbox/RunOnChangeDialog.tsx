@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { ModelChoice } from "@/features/runs/ModelChoice";
 import { ApiError, api } from "@/shared/http/client";
 import { t } from "@/shared/i18n";
 import { Button } from "@/shared/ui/button";
@@ -26,6 +27,8 @@ export function RunOnChangeDialog({
 }) {
   const [instruction, setInstruction] = useState("");
   const [runtime, setRuntime] = useState<(typeof RUNTIMES)[number]>("ClaudeCodeHeadless");
+  // For this Run only (#291); empty means the deployment's, resolved at execution time.
+  const [model, setModel] = useState("");
   const queryClient = useQueryClient();
 
   const launch = useMutation({
@@ -33,6 +36,7 @@ export function RunOnChangeDialog({
       api.post<{ id: string }>(`/api/projects/${target.projectId}/changes/${target.number}/runs`, {
         instruction: instruction.trim(),
         runtime,
+        model: model.trim() ? model.trim() : null,
       }),
     onSuccess: () => {
       // The run lists are what changed; the change list itself is the vendor's and stays put.
@@ -42,6 +46,7 @@ export function RunOnChangeDialog({
   });
 
   function close() {
+    setModel("");
     setInstruction("");
     launch.reset();
     onClose();
@@ -105,6 +110,13 @@ export function RunOnChangeDialog({
             ))}
           </NativeSelect>
         </div>
+
+        <ModelChoice
+          runtime={runtime}
+          value={model}
+          onChange={setModel}
+          enabled={change !== null}
+        />
 
         {launch.isError ? (
           <p className="text-sm text-destructive" role="alert">

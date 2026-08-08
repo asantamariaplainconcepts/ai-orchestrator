@@ -3672,3 +3672,54 @@ without carriage, and `sbx ls` identical before and after.
 sessions). Human time **not captured** — the export carries only `type=cli` datapoints for these
 sessions and no `type=user` ones, while `verify-telemetry.mjs` passes all five of its checks. The
 verifier confirms that telemetry *arrives*; it does not confirm that both halves of it do.
+
+## 2026-08-08 — automation-and-run-choose-the-model (#291)
+
+An Automation names the model its Runs think with, a launch can override it for that Run only, and
+where the offered models come from depends on what the runtime can actually be asked: opencode is
+asked, Claude Code reads an operator's configuration because it has no listing command.
+
+**Worked: the measurement decided the architecture rather than decorating it.** `opencode models`
+answers 41 on the host and **495 inside a sandbox** holding the carried session (#288), with the
+`github-copilot/*` entries present only there. That one number turned "ask the machine that runs
+agents" from a principle into an obligation — a list gathered in the wrong place is not slightly
+stale, it is wrong by an order of magnitude. And the Claude side was decided the same way: `sonnet`
+answers, `opus` resolves to a model this seat lacks, `fable` is not an alias at all. A hardcoded
+list of three plausible aliases would have shipped two broken options, which is why the list
+belongs to the operator.
+
+**Worked: the tests found two real defects, both by being about the right thing.** The model chain
+is asserted on the instruction the runtime was *handed*, not on what was stored — and that caught
+the create-automation endpoint silently dropping `request.Model` on its way to the command. The
+same read showed it drops `request.PreviewPort` too, which is an older defect of identical shape;
+it was left alone and spawned as its own task rather than folded in. Separately, the list
+endpoint's field whitelist failed on the new field, which is exactly what a whitelist is for, and
+it was widened deliberately rather than relaxed.
+
+**What didn't: a design decision was written from one measurement and applied to two runtimes.**
+D5 said both CLIs name the rejected model. Claude does. opencode answers `UnknownError`,
+"Unexpected server error" and an opaque ref, naming nothing — so passing its text through would
+report a typo'd model as somebody else's outage. Second occurrence of the shape #288 recorded
+(observed as one principal, claimed for another), so it graduated:
+**[ADR-0018](../adr/0018-a-measurement-licenses-only-what-it-measured.md)** — a claim is no wider
+than the measurement behind it, and where it is wider the gap is named. The correction made the
+design stronger: the product now composes the failure sentence itself instead of hoping a CLI will.
+
+**What didn't: the first change planned under ADR-0017 mis-stated its own credential
+precondition.** Task 0.1 declared that no human-only credential step was needed. It was wrong —
+launching a real Run needs the Connector's PAT like every other Run. The ADR written one change
+earlier to stop exactly this was followed in form and missed in substance. Recorded in `tasks.md`
+rather than quietly corrected, because a process step that can be filled in wrongly while looking
+complete is worth seeing.
+
+**What didn't: the usage figures below are an upper bound, not a measurement.** One session spanned
+two branches, and the session→change mapping attributes it to both, so this entry and #288's share
+their totals. Worth a look at whether attribution should be per-commit rather than per-session.
+
+**One change next time:** when a design sentence contains *both*, *every* or *any*, run the second
+one before writing it. It is nearly always one command, and it is the difference between an
+observation and an assumption wearing an observation's clothes.
+
+**Time invested:** ≤6.64 h agent, ≤$441.94, 840 530 output tokens (source: **telemetry**, two
+mapped sessions — see the attribution caveat above; these totals overlap #288's). Human time **not
+captured** — the export carries only `type=cli` datapoints, the same gap #288 recorded.

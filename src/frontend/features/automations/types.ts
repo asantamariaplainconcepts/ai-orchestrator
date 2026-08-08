@@ -33,6 +33,11 @@ export interface Automation {
   outputLabels: string[];
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
   promptPath: string | null;
+  /**
+   * The model this Automation's Runs think with (#291). Null inherits the deployment's, resolved
+   * at execution time — every Automation until an Admin chooses one.
+   */
+  model: string | null;
 }
 
 export interface CreateAutomationRequest {
@@ -47,4 +52,7 @@ export interface CreateAutomationRequest {
   /** Applied to the Story when a Run of this Automation succeeds; empty ends the chain here.
    *  Was one label until #165 made it a set, so one Automation can hand on to more than one place. */
   outputLabels?: string[];
+  /** The chosen model; null inherits. Always sent, because an update replaces the whole
+   *  Automation and a field the client cannot carry is a field every edit silently clears. */
+  model?: string | null;
 }

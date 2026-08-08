@@ -38,7 +38,9 @@ sealed class RunCreator(
         AutomationTrigger automation,
         CancellationToken cancellationToken,
         RunLocus? requestedLocus = null,
-        string? runtimeName = null
+        string? runtimeName = null,
+        /// <summary>The human's model for this Run only (#291); null records the resolution.</summary>
+        string? model = null
     )
     {
         // An archived Project starts no work (#121). Checked here because this is the one
@@ -147,7 +149,8 @@ sealed class RunCreator(
             automation.AutomationId,
             locus,
             clock.GetUtcNow(),
-            runtimeName
+            runtimeName,
+            model
         );
         database.Runs.Add(run);
 
@@ -200,6 +203,7 @@ sealed class RunCreator(
         string changeBranch,
         string instruction,
         string? runtimeName,
+        string? model,
         CancellationToken cancellationToken
     )
     {
@@ -249,7 +253,8 @@ sealed class RunCreator(
             instruction,
             runtimeName,
             RunLocus.Pod,
-            clock.GetUtcNow()
+            clock.GetUtcNow(),
+            model
         );
         database.Runs.Add(run);
 

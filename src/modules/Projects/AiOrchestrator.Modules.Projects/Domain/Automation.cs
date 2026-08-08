@@ -84,6 +84,25 @@ sealed class Automation : Aggregate
     /// </summary>
     public AgentRuntime? Runtime { get; private set; }
 
+    /// <summary>
+    /// The model this Automation's Runs think with. Null — the default, and every Automation that
+    /// existed before this — means the deployment's, resolved at execution time, so changing the
+    /// default changes future Runs without touching this row.
+    /// <para>
+    /// Deliberately a free string rather than an enum: the models a runtime offers are a property
+    /// of that runtime's CLI and of the session it holds, not of this product's vocabulary. An
+    /// enum here would have to be edited every time a provider ships anything, and #291's own
+    /// measurement showed two of three plausible hardcoded aliases already broken.
+    /// </para>
+    /// <para>
+    /// Resolved independently of <see cref="Runtime"/>, which means the two can disagree. That is
+    /// accepted (design D4): the runtime refuses and the Run says which model and which runtime,
+    /// because coupling them would let a runtime change silently rewrite the Admin's stated
+    /// intent.
+    /// </para>
+    /// </summary>
+    public string? Model { get; private set; }
+
     /// <summary>Per-Automation, not global (DEC-039): true routes the Run through a Plan (BR-007).</summary>
     public bool RequiresApproval { get; private set; }
 
@@ -123,13 +142,15 @@ sealed class Automation : Aggregate
         TimeSpan timeout,
         string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null,
-        int? previewPort = null
+        int? previewPort = null,
+        string? model = null
     ) =>
         new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
         {
             PromptPath = promptPath,
             OutputLabels = outputLabels ?? [],
             PreviewPort = previewPort,
+            Model = Normalised(model),
         };
 
     /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
@@ -142,7 +163,8 @@ sealed class Automation : Aggregate
         TimeSpan timeout,
         string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null,
-        int? previewPort = null
+        int? previewPort = null,
+        string? model = null
     )
     {
         TriggerLabel = triggerLabel;
@@ -154,7 +176,15 @@ sealed class Automation : Aggregate
         PromptPath = promptPath;
         OutputLabels = outputLabels ?? [];
         PreviewPort = previewPort;
+        Model = Normalised(model);
     }
+
+    /// <summary>
+    /// Whitespace is absence. A form that sends an empty field means "inherit", and storing "" as
+    /// though it were a model would resolve to a model named nothing at execution time.
+    /// </summary>
+    static string? Normalised(string? model) =>
+        string.IsNullOrWhiteSpace(model) ? null : model.Trim();
 
     /// <summary>
     /// One label twice is one label. The vendor compares case-insensitively (DEC-056), so a set that

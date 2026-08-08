@@ -50,7 +50,10 @@ sealed class CreateAutomation : IUseCase
                         request.RequiresApproval,
                         request.TimeoutMinutes,
                         request.PromptPath,
-                        request.OutputLabels
+                        request.OutputLabels,
+                        // Named, because PreviewPort sits between them and this endpoint has
+                        // never forwarded it — a separate defect, not this change's to widen.
+                        Model: request.Model
                     );
 
                     var result = await sender.Send(command, cancellationToken);
@@ -77,7 +80,9 @@ sealed class CreateAutomation : IUseCase
         int? TimeoutMinutes,
         string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null,
-        int? PreviewPort = null
+        int? PreviewPort = null,
+        /// <summary>The model this Automation's Runs think with; null inherits the deployment's (#291).</summary>
+        string? Model = null
     );
 
     internal sealed record Response(
@@ -99,7 +104,10 @@ sealed class CreateAutomation : IUseCase
         string? PromptPath,
         /// <summary>The sandbox port published while a Run executes; null means no preview.
         /// Readable for the same reason PromptPath is.</summary>
-        int? PreviewPort
+        int? PreviewPort,
+        /// <summary>The chosen model; null means the deployment's. Readable for the same reason
+        /// again — an update that could not read it would clear it on every edit.</summary>
+        string? Model
     );
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -113,7 +121,9 @@ sealed class CreateAutomation : IUseCase
         int? TimeoutMinutes,
         string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null,
-        int? PreviewPort = null
+        int? PreviewPort = null,
+        /// <summary>The model this Automation's Runs think with; null inherits the deployment's (#291).</summary>
+        string? Model = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -232,7 +242,8 @@ sealed class CreateAutomation : IUseCase
                     : DefaultTimeout,
                 string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
                 command.OutputLabels is null ? [] : Clean(command.OutputLabels),
-                command.PreviewPort
+                command.PreviewPort,
+                command.Model
             );
 
             var overlap = await overlaps.Check(
@@ -283,6 +294,7 @@ sealed class CreateAutomation : IUseCase
             automation.Enabled,
             automation.OutputLabels,
             automation.PromptPath,
-            automation.PreviewPort
+            automation.PreviewPort,
+            automation.Model
         );
 }

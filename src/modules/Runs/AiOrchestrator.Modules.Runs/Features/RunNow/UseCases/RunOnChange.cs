@@ -35,7 +35,13 @@ sealed class RunOnChange : IUseCase
                 ) =>
                 {
                     var result = await sender.Send(
-                        new Command(projectId, changeNumber, request.Instruction, request.Runtime),
+                        new Command(
+                            projectId,
+                            changeNumber,
+                            request.Instruction,
+                            request.Runtime,
+                            request.Model
+                        ),
                         cancellationToken
                     );
 
@@ -50,7 +56,12 @@ sealed class RunOnChange : IUseCase
 
     // Runtime is optional: absent means the same default the Automation form defaults to. The
     // instruction is the whole point and its emptiness is refused by the validator below.
-    internal sealed record Request(string Instruction, string? Runtime = null);
+    internal sealed record Request(
+        string Instruction,
+        string? Runtime = null,
+        /// <summary>#291: the human's model for this Run only; absent records the resolution.</summary>
+        string? Model = null
+    );
 
     internal sealed record Response(
         Guid Id,
@@ -65,7 +76,9 @@ sealed class RunOnChange : IUseCase
         Guid ProjectId,
         int ChangeNumber,
         string Instruction,
-        string? Runtime = null
+        string? Runtime = null,
+        /// <summary>#291: the human's model for this Run only; absent records the resolution.</summary>
+        string? Model = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -111,6 +124,7 @@ sealed class RunOnChange : IUseCase
                 change.HeadBranch,
                 command.Instruction.Trim(),
                 string.IsNullOrWhiteSpace(command.Runtime) ? null : command.Runtime.Trim(),
+                string.IsNullOrWhiteSpace(command.Model) ? null : command.Model.Trim(),
                 cancellationToken
             );
 
