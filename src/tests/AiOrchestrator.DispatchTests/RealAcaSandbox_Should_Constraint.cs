@@ -267,6 +267,72 @@ public class RealAcaSandbox_Should_Constraint
         inside.Contains("github_pat_", StringComparison.Ordinal).ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task ARealAgent_Should_AuthenticateAndAnswerThroughTheShippedHost()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        // The one thing no stand-in can do: a real model, authenticating with the group's
+        // credential, reached through the shipped host rather than the CLI by hand.
+        //
+        // **What this asserts, and what it deliberately does not.** The usage footer only exists
+        // when the model actually answered — it carries the credits the request cost — so it
+        // cannot be produced by a CLI that failed to authenticate. That makes this a real
+        // end-to-end assertion about the substrate, the credential and the poll loop together.
+        //
+        // It does **not** assert the file the agent edited. Two attempts at that failed for
+        // reasons worth recording rather than working around:
+        //
+        // 1. Asserting the agent's own sentinel passed one run in three. The agent reaches for
+        //    tools the sandbox denies — `find /`, listing parent directories — and reports
+        //    "could not request permission from user" because there is no TTY to ask; sometimes
+        //    it spends the turn on that and never prints the sentence. It had changed the file
+        //    every time. An assertion on a model's narration is an assertion on its mood.
+        // 2. Wrapping the agent in `sh -c "… ; cat task.txt"` to read the file back produced
+        //    **empty output every time**: the host builds a detached `nohup sh -c '…'` line, and
+        //    a second nested `sh -c` inside it does not survive the quoting. A real Run never
+        //    needs one — the executor invokes the agent CLI directly, which is the single-level
+        //    form used here — so this is a limit of the exercise, not of the product. It is
+        //    written down rather than papered over.
+        //
+        // The file edit itself was verified by hand in a sandbox driven directly: `task.txt`
+        // read `DONE` afterwards. See `evidence.md`.
+        Credentials.Length.ShouldBeGreaterThan(0);
+
+        var workspace = Workspace();
+        await File.WriteAllTextAsync(Path.Combine(workspace, "task.txt"), "unchanged");
+
+        var streamed = new List<string>();
+        var host = Host(
+            new RunPreviewHost(),
+            ["github.com", "api.github.com", "api.githubcopilot.com"],
+            Credentials
+        );
+
+        var outcome = await host.Run(
+            "copilot",
+            [
+                "-p",
+                "Replace the entire contents of task.txt with the single word DONE.",
+                "--allow-all-tools",
+            ],
+            workspace,
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(5),
+            CancellationToken.None,
+            streamed.Add
+        );
+
+        outcome.TimedOut.ShouldBeFalse();
+
+        var said = string.Join('\n', streamed);
+        said.Contains("AI Credits", StringComparison.Ordinal)
+            .ShouldBeTrue($"the model never answered. Output: {said}");
+    }
+
     static async Task<int> SandboxCount()
     {
         var listed = await HeadlessProcess.Run(

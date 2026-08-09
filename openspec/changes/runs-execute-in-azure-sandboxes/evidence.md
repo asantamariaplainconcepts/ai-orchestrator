@@ -132,7 +132,38 @@ as its credential source, distinctly from sbx's refusal-to-carry. Asserted on th
 than the host, because #296's own 6.1b finding was a wire nobody had connected between exactly
 those two.
 
-### A real agent Run — REFUSED, and the reason is worth having
+### A real agent Run — HELD, on the second token
+
+**The permission is real and it is personal-account only.** `Copilot Requests` does not appear on
+a fine-grained PAT owned by an organisation — a known limitation (github/copilot-cli#223) — so it
+is offered under *Account permissions* only when the resource owner is a person. With that token
+the agent authenticates, answers, and bills: three runs through the shipped host, three passes,
+`AI Credits 2.2` per answer.
+
+**A design consequence, not a configuration detail.** A personal-account token bills the model
+requests to that person's Copilot seat, not to the Project — which is exactly what #244 forbids
+and what D4's per-Project SandboxGroup exists to guarantee. The platform offers two typed
+providers: one needs a key the organisation does not hand out, and the other only accepts personal
+tokens. **So the credential model this change designed cannot be satisfied today by either.** That
+is a finding about the substrate, and it belongs in the follow-up rather than in a green tick.
+
+**Two assertions that failed, and why they are recorded rather than worked around.**
+
+1. *Asserting the agent's own sentinel* passed one run in three. The agent reaches for tools the
+   sandbox denies — `find /`, listing parent directories — and reports `Permission denied and
+   could not request permission from user`, because there is no TTY to ask. Sometimes it spends
+   the turn on that and never prints the sentence. **It had changed the file every time.** An
+   assertion on a model's narration is an assertion on its mood.
+2. *Wrapping the agent in `sh -c "… ; cat task.txt"`* to read the file back produced **empty
+   output every time**. The host builds a detached `nohup sh -c '…'` line, and a second nested
+   `sh -c` inside it does not survive the quoting. A real Run never needs one — the executor
+   invokes the agent CLI directly — so this is a limit of the exercise rather than of the
+   product, and it is written down instead of papered over.
+
+The file edit itself was verified by hand, driving a sandbox directly: `task.txt` read `DONE`
+afterwards, while the agent's own log showed the denied tool calls beside it.
+
+### The first token — REFUSED, and the reason was worth having
 
 The `copilot` disk carries `copilot` 1.0.69 and `gh`. With the credential attached and egress
 opened to `github.com`, `api.github.com` and `api.githubcopilot.com`:

@@ -128,9 +128,15 @@
       every Run were dropped by the poll loop's hold-back; and the egress decision log is JSON,
       so the line-based reader reported nothing exactly when it mattered. Verbatim in
       `evidence.md`, with what held and what is still unverified.
-      **Not covered: a real agent Run** — the organisation's Anthropic key is not the developer's
-      to mint, so the `claude` disk is unavailable and a shell command stood in for the agent.
-      That is the right subject for this change's own properties and proves nothing about a model.
+      **A real agent Run is covered too**, on the second attempt at a token: `Copilot Requests`
+      exists only on a personal-account PAT (github/copilot-cli#223), and with one the agent
+      authenticates, answers and bills through the shipped host — three runs, three passes.
+      **Which surfaces a design consequence rather than closing one:** a personal token bills the
+      model to that person's seat, not to the Project, and that is what #244 forbids and what
+      D4's per-Project group exists to guarantee. The platform's two typed providers are an
+      Anthropic key the organisation does not hand out and a Copilot token that must be personal,
+      so **the credential model this change designed cannot be satisfied by either today**. Named
+      in `evidence.md` and belonging to the follow-up.
 - [x] 7.3 Full gates — **587 tests green** across all eight suites, E2E included. Two things the
       run itself surfaced and neither was code: the E2E suite serves the built bundle, so a
       wiped `wwwroot` reds it until `pnpm build`; and Playwright's browsers live in
