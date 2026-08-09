@@ -44,11 +44,6 @@ output "postgres_fqdn" {
 
 
 
-output "dispatch_queue_name" {
-  description = "Queue the worker drains and the scaler watches."
-  value       = azurerm_storage_queue.dispatch.name
-}
-
 output "conversation_session_pool_name" {
   description = "The session pool conversations run in (#166). Its image is rolled by deploy.sh."
   value       = azapi_resource.conversation_sessions.name
