@@ -599,8 +599,11 @@ sealed class AcaAgentProcessHost(
             "create",
             "--group",
             group,
-            "--disk",
-            options.Disk,
+            .. (
+                options.DiskId is { Length: > 0 } diskId
+                    ? new[] { "--disk-id", diskId }
+                    : ["--disk", options.Disk]
+            ),
             .. options.Credentials.SelectMany(id => new[] { "--credential", id }),
             "-o",
             "json",
@@ -969,7 +972,24 @@ sealed class AcaSandboxOptions
     /// <summary>The Project's own group (design D4), so a Run bills as its own Project (#244).</summary>
     public required string SandboxGroup { get; init; }
 
+    /// <summary>
+    /// A **public** prebuilt disk, by name. Mutually exclusive with <see cref="DiskId"/>.
+    /// </summary>
     public required string Disk { get; init; }
+
+    /// <summary>
+    /// A disk this deployment built itself, by id — `aca sandboxgroup disk create --image …`
+    /// turns any container image into one.
+    /// <para>
+    /// **Why this exists (measured 2026-08-09).** The public disks carry `claude` and `copilot`
+    /// and nothing else, so this product's other runtime — opencode, and the free model that
+    /// makes the local loop need no AI credential at all — could not run on this substrate. A
+    /// disk built from `node:22-bookworm` takes `opencode-ai@1.18.6` and runs it, so the gap was
+    /// never the platform: `sandbox create` takes `--disk` for a public name and `--disk-id` for
+    /// a private one, and this host only ever passed the first.
+    /// </para>
+    /// </summary>
+    public string? DiskId { get; init; }
 
     public required IReadOnlyList<string> EgressAllow { get; init; }
 

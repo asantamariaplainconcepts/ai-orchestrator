@@ -293,6 +293,34 @@ public class AcaSandbox_Should_Constraint
         Invocations(calls, "create").Count.ShouldBe(1);
     }
 
+    [Fact]
+    public async Task ADeploymentsOwnDisk_Should_BeNamedByIdRatherThanByName()
+    {
+        // The public disks carry `claude` and `copilot` and nothing else, so this product's other
+        // runtime — opencode, and the free model that makes the local loop need no AI credential
+        // at all — could not run here. Measured 2026-08-09: a disk built from `node:22-bookworm`
+        // takes `opencode-ai@1.18.6` and runs it, so the gap was never the platform. `create`
+        // takes `--disk` for a public name and `--disk-id` for a private one, and this host only
+        // ever passed the first.
+        var (host, calls) = Host(
+            finishAfterPolls: 1,
+            diskId: "0e592508-cfa6-4e86-ad2e-7afb4233f9aa"
+        );
+
+        await host.Run(
+            "opencode",
+            [],
+            Workspace(),
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None
+        );
+
+        var create = Invocations(calls, "create").ShouldHaveSingleItem();
+        create.ShouldContain("--disk-id 0e592508-cfa6-4e86-ad2e-7afb4233f9aa");
+        create.ShouldNotContain("--disk ");
+    }
+
     // ---- Stand-ins ----
 
     /// <summary>
@@ -324,7 +352,8 @@ public class AcaSandbox_Should_Constraint
         string group = "aio-shared",
         int decisionsExitCode = 0,
         int unauthorizedCreates = 0,
-        string? failCreatesWith = null
+        string? failCreatesWith = null,
+        string? diskId = null
     )
     {
         var directory = Directory.CreateTempSubdirectory("aca-stub-").FullName;
@@ -413,7 +442,8 @@ public class AcaSandbox_Should_Constraint
             {
                 CommandPath = script,
                 SandboxGroup = group,
-                Disk = "claude",
+                Disk = diskId is null ? "claude" : string.Empty,
+                DiskId = diskId,
                 EgressAllow = ["github.com"],
                 PollInterval = TimeSpan.FromMilliseconds(20),
                 AuthorizationRetryDelay = TimeSpan.FromMilliseconds(10),

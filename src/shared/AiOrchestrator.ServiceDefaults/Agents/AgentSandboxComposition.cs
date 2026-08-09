@@ -83,6 +83,12 @@ public static class AgentSandboxComposition
     /// </summary>
     public const string CredentialsKey = "Agents:Sandbox:Credentials";
 
+    /// <summary>
+    /// A disk this deployment built itself (`aca sandboxgroup disk create`), by id. Needed for
+    /// any runtime the platform's public disks do not carry — opencode among them.
+    /// </summary>
+    public const string DiskIdKey = "Agents:Sandbox:DiskId";
+
     public const string EgressAllowKey = "Agents:Sandbox:EgressAllow";
 
     internal static void AddAgentProcessHost(IHostApplicationBuilder builder)
@@ -177,6 +183,21 @@ public static class AgentSandboxComposition
             );
         }
 
+        // Naming both is a question, not a configuration: one of them would silently win and the
+        // operator's other choice would be an invisible no-op (ADR-0010).
+        if (
+            !string.IsNullOrWhiteSpace(builder.Configuration.GetValue<string?>(DiskKey))
+            && !string.IsNullOrWhiteSpace(builder.Configuration.GetValue<string?>(DiskIdKey))
+        )
+        {
+            throw new InvalidOperationException(
+                $"This habitat names both a public disk ('{DiskKey}') and a private one "
+                    + $"('{DiskIdKey}'). A sandbox is created from one or the other — "
+                    + "`--disk` for a name the platform publishes, `--disk-id` for an image this "
+                    + "deployment built. Remove whichever is not intended."
+            );
+        }
+
         builder.Services.AddSingleton(
             new AcaSandboxOptions
             {
@@ -187,6 +208,7 @@ public static class AgentSandboxComposition
                 Disk =
                     builder.Configuration.GetValue<string?>(DiskKey)
                     ?? AcaSandboxOptions.DefaultDisk,
+                DiskId = builder.Configuration.GetValue<string?>(DiskIdKey),
                 EgressAllow = allow,
                 Credentials =
                     builder.Configuration.GetSection(CredentialsKey).Get<string[]>() ?? [],

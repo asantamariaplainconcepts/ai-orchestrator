@@ -258,3 +258,17 @@ defect of this substrate, found on a machine rather than by a test.
       throwing — and the comment says so rather than taking credit for the fix that mattered.
 - [x] 11.4 The 25 orphans removed: **8.9 GiB free → 121 GiB**. The five `spike-*` sandboxes and
       `aio-carry-probe` were left alone — they are a human's, not the product's.
+
+## 12. Somewhere for opencode to run (owner's question, 2026-08-09)
+
+- [x] 12.1 **There is no public opencode disk** — the platform publishes `claude`, `copilot` and
+      language runtimes, and both agent disks need a credential this organisation cannot supply
+      on #244's terms. That left this product's other runtime, and the free model that makes the
+      local loop need no AI credential at all, with nowhere to run.
+- [x] 12.2 **A deployment can build its own**: measured, a disk from `node:22-bookworm` was Ready
+      in seconds and took `opencode-ai@1.18.6`, which answered on Node 22.23.2 inside a sandbox.
+      The conversation session's image already installs exactly that.
+- [x] 12.3 **The gap was ours, and it is closed.** `create` takes `--disk` for a public name and
+      `--disk-id` for a private one; this host only ever passed the first, so it could use
+      Microsoft's disks and none of ours. `Agents:Sandbox:DiskId` now names one, naming both is
+      refused, and the shipped host was exercised against a private disk on real Azure.

@@ -180,6 +180,34 @@ substrate is in the way.
 This also settles the question of reusing one token for two jobs: it does not work, which is the
 outcome least-privilege would have wanted anyway.
 
+## A seventh defect, and the runtime it was hiding (2026-08-09)
+
+Asked plainly — *"y no hay algo para opencode?"* — and the answer turned out to be a hole in this
+host rather than a limit of the platform.
+
+**There is no public opencode disk.** The platform publishes `claude`, `copilot`, `dotnet-*`,
+`python-*`, `node-*`, `php-*`, `ubuntu` and `nginx`. Both agent disks need a credential this
+organisation cannot supply on the terms #244 requires — which left this product's *other* runtime,
+and the free model that lets the local loop need no AI credential at all, with nowhere to run.
+
+**But a deployment can build its own disk**, and ours already exists in spirit: the conversation
+session's image installs `opencode-ai@1.18.6`. Measured: `aca sandboxgroup disk create --image
+node:22-bookworm` produced a Ready disk in seconds, and inside a sandbox from it,
+`npm install -g opencode-ai@1.18.6` succeeded and `opencode --version` answered `1.18.6` on Node
+22.23.2.
+
+**The gap was ours.** `sandbox create` takes `--disk` for a **public** name and `--disk-id` for a
+**private** one, and this host only ever passed the first — so it could use Microsoft's disks and
+none of ours. `AcaSandboxOptions.DiskId` now carries the id, the habitat declares it
+(`Agents:Sandbox:DiskId`), and naming both is refused: one would silently win and the operator's
+other choice would be an invisible no-op. Exercised end to end — the shipped host created a
+sandbox from a private disk and the workspace arrived in it.
+
+Two smaller things met on the way: a custom disk's `--name` becomes a **label**, so it is
+addressed by id and `--disk <name>` answers `DiskImageNotFound`; and `sandbox create` prints
+progress lines even under `-o json`, which is why reading the id by regex rather than by parsing
+was the right call.
+
 ## What is still NOT verified, and why
 
 - **A real agent Run** — blocked on a PAT with the `Copilot Requests` permission, above.

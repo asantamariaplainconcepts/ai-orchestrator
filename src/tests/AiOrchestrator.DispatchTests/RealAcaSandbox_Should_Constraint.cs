@@ -43,6 +43,9 @@ public class RealAcaSandbox_Should_Constraint
     /// </summary>
     static string Disk => Environment.GetEnvironmentVariable("AIO_ACA_DISK") ?? "ubuntu";
 
+    /// <summary>A disk this deployment built itself, when the exercise wants one.</summary>
+    static string? DiskId => Environment.GetEnvironmentVariable("AIO_ACA_DISK_ID");
+
     /// <summary>
     /// A workspace of this Run's own. Never a shared directory: `SendWorkspace` packs the whole
     /// tree, and pointing it at `/tmp` on macOS made `tar` try to archive a socket — a test
