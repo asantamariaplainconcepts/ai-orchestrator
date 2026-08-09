@@ -75,6 +75,14 @@ public static class AgentSandboxComposition
     /// reached example.com and pypi.org — so a habitat that says nothing would run its agents
     /// unrestricted while believing otherwise.
     /// </summary>
+    /// <summary>
+    /// The group credential ids to attach to each sandbox — **ids, never values** (BR-010). Not
+    /// refused when absent, unlike the egress list: a habitat whose agent authenticates some other
+    /// way is legitimate, and a Run without a credential fails loudly at the agent rather than
+    /// silently at the boundary.
+    /// </summary>
+    public const string CredentialsKey = "Agents:Sandbox:Credentials";
+
     public const string EgressAllowKey = "Agents:Sandbox:EgressAllow";
 
     internal static void AddAgentProcessHost(IHostApplicationBuilder builder)
@@ -180,6 +188,8 @@ public static class AgentSandboxComposition
                     builder.Configuration.GetValue<string?>(DiskKey)
                     ?? AcaSandboxOptions.DefaultDisk,
                 EgressAllow = allow,
+                Credentials =
+                    builder.Configuration.GetSection(CredentialsKey).Get<string[]>() ?? [],
             }
         );
 

@@ -594,7 +594,17 @@ sealed class AcaAgentProcessHost(
     async Task<string> Create(string group, CancellationToken cancellationToken)
     {
         var created = await Aca(
-            ["sandbox", "create", "--group", group, "--disk", options.Disk, "-o", "json"],
+            [
+                "sandbox",
+                "create",
+                "--group",
+                group,
+                "--disk",
+                options.Disk,
+                .. options.Credentials.SelectMany(id => new[] { "--credential", id }),
+                "-o",
+                "json",
+            ],
             cancellationToken
         );
 
@@ -916,6 +926,25 @@ sealed class AcaSandboxOptions
     public required string Disk { get; init; }
 
     public required IReadOnlyList<string> EgressAllow { get; init; }
+
+    /// <summary>
+    /// The group's typed credential ids this launcher attaches to every sandbox it creates —
+    /// `github-copilot`, `anthropic-claude` — obtained from
+    /// <c>aca sandboxgroup credential create</c>.
+    /// <para>
+    /// **Ids, never values (BR-010).** The platform holds the token and injects it at its own
+    /// egress boundary; nothing enters the sandbox, which is the property that makes this
+    /// substrate worth adopting over passing environment values.
+    /// </para>
+    /// <para>
+    /// Empty is legitimate and means an agent that authenticates some other way — but a sandbox
+    /// created without one has no credential at all, and until 2026-08-09 that was every sandbox
+    /// this host made: `create` never passed `--credential`. Design D4 promised per-Project
+    /// credentials and the code did not ask for them, which no fixture could notice because the
+    /// stand-in was never going to authenticate anything.
+    /// </para>
+    /// </summary>
+    public IReadOnlyList<string> Credentials { get; init; } = [];
 
     /// <summary>
     /// How often the poll loop asks a sandbox what its agent has written. Frequent enough that a

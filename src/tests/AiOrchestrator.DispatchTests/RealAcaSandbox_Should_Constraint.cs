@@ -52,14 +52,29 @@ public class RealAcaSandbox_Should_Constraint
     /// </summary>
     static string Workspace() => Directory.CreateTempSubdirectory("aio-aca-exercise-").FullName;
 
-    static AcaAgentProcessHost Host(RunPreviewHost previews, params string[] egressAllow) =>
+    /// <summary>
+    /// The group's credential ids, from `AIO_ACA_CREDENTIALS` — ids, never values. Empty where
+    /// the exercise does not need one.
+    /// </summary>
+    static string[] Credentials =>
+        (Environment.GetEnvironmentVariable("AIO_ACA_CREDENTIALS") ?? string.Empty).Split(
+            ',',
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+        );
+
+    static AcaAgentProcessHost Host(
+        RunPreviewHost previews,
+        string[]? egressAllow = null,
+        string[]? credentials = null
+    ) =>
         new(
             new AcaSandboxOptions
             {
                 CommandPath = Environment.GetEnvironmentVariable("ACA_PATH") ?? "aca",
                 SandboxGroup = Group,
                 Disk = Disk,
-                EgressAllow = egressAllow.Length > 0 ? egressAllow : ["github.com"],
+                EgressAllow = egressAllow ?? ["github.com"],
+                Credentials = credentials ?? [],
                 PollInterval = TimeSpan.FromSeconds(2),
             },
             previews,
@@ -146,7 +161,7 @@ public class RealAcaSandbox_Should_Constraint
         // example.com and pypi.org with 200s), so the launcher declares the policy — and a policy
         // nobody can audit is half a security story, so what it denied reaches the Run's output.
         var streamed = new List<string>();
-        var host = Host(new RunPreviewHost(), "github.com");
+        var host = Host(new RunPreviewHost(), ["github.com"]);
 
         var outcome = await host.Run(
             "sh",
@@ -203,6 +218,53 @@ public class RealAcaSandbox_Should_Constraint
         previews.PortFor(runId).ShouldBeNull();
 
         (await SandboxCount()).ShouldBe(before);
+    }
+
+    [Fact]
+    public async Task AGroupCredential_Should_ReachTheAgentWithoutItsValueEnteringTheSandbox()
+    {
+        if (!Enabled)
+        {
+            return;
+        }
+
+        // Task 4.2, and the property that makes this substrate worth adopting: the platform holds
+        // the token and injects it at its own egress boundary, so nothing of it is inside. The
+        // pod path could not offer that — it handed the value in as an environment variable.
+        //
+        // **Asserted without the value, on purpose.** This test never learns the token; it looks
+        // for the *shape* every GitHub fine-grained PAT has. That keeps the secret out of the
+        // repository, out of the CI log and out of this process, and it can still fail: were the
+        // platform to inject the credential as an environment variable, `github_pat_` would be
+        // sitting in the output.
+        // Without a credential attached, this would assert that an absent secret is absent —
+        // which is no assertion at all (ADR-0013).
+        Credentials.Length.ShouldBeGreaterThan(0);
+
+        var streamed = new List<string>();
+        var host = Host(new RunPreviewHost(), credentials: Credentials);
+
+        var outcome = await host.Run(
+            "sh",
+            [
+                "-c",
+                "env | sort; echo '--- files ---'; "
+                    + "grep -rl 'github_pat_' $HOME /etc /tmp 2>/dev/null | head -20; echo '--- end ---'",
+            ],
+            Workspace(),
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(3),
+            CancellationToken.None,
+            streamed.Add
+        );
+
+        outcome.TimedOut.ShouldBeFalse();
+
+        var inside = string.Join('\n', streamed);
+        // The probe ran to completion inside the sandbox; without this, an empty output would
+        // read as "no credential found".
+        inside.Contains("--- end ---", StringComparison.Ordinal).ShouldBeTrue();
+        inside.Contains("github_pat_", StringComparison.Ordinal).ShouldBeFalse();
     }
 
     static async Task<int> SandboxCount()

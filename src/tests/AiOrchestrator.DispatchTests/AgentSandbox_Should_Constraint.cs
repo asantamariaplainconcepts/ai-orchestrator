@@ -176,6 +176,36 @@ public class AgentSandbox_Should_Constraint
         sandboxedSource.ShouldContain("no value enters the sandbox");
     }
 
+    [Fact]
+    public void TheAzureHabitat_Should_NameThePlatformsInjectionAsItsSource()
+    {
+        // Task 4.3 — the transcript's third source, and the one a reader is most likely to get
+        // wrong. On sbx the value is absent because the launcher refuses to carry it; here it is
+        // absent because the platform holds it and injects it at its own egress boundary, and
+        // that difference is what an operator needs when asking "where did the token come from".
+        // Exercised end to end against Azure on 2026-08-09: a probe inside the sandbox found no
+        // `github_pat_` in its environment or on disk.
+        //
+        // Asserted on the runtime the selector hands back, not on the host: `RunExecutor` writes
+        // `selection.CredentialSource` verbatim, and #296's own 6.1b finding was a wire nobody
+        // had connected between exactly these two.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[AgentSandboxComposition.SandboxGroupKey] = "aio-{project}";
+        builder.Configuration[$"{AgentSandboxComposition.EgressAllowKey}:0"] = "github.com";
+        builder.AddAgentRuntime();
+
+        var source = builder
+            .Build()
+            .Services.GetRequiredService<IAgentRuntimeSelector>()
+            .For("ClaudeCodeHeadless")!
+            .CredentialSource;
+
+        source.ShouldContain("egress boundary");
+        source.ShouldContain("no value enters the sandbox");
+    }
+
     // ---- Session carriage, and the habitat that declines it (#288) ----
 
     [Fact]

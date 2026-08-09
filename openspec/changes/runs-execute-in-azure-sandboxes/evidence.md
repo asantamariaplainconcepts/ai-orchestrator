@@ -16,8 +16,9 @@ dotnet test src/tests/AiOrchestrator.DispatchTests --filter RealAcaSandbox_Shoul
 ## The point of doing this at all
 
 The stand-in script proves the host **calls** what it should. It cannot prove the platform
-**answers** as the design believed, because the script was written from the same beliefs. Four
-defects below were invisible to a green unit suite and every one of them would have shipped.
+**answers** as the design believed, because the script was written from the same beliefs. **Five
+defects** — four here and a fifth under *The credential* below — were invisible to a green unit
+suite, and every one of them would have shipped.
 
 ## Four defects the exercise found
 
@@ -95,14 +96,64 @@ the stand-in never prompts.
 selected explicitly. This is the third time the programme has paid for *signing in is not
 authority* (ADR-0017).
 
+## The credential, exercised (2026-08-09, later the same day)
+
+A `github-copilot` credential was created on the group — id only, the value entered through the
+CLI's hidden prompt and never through this session.
+
+### A fifth defect: the host never asked for it
+
+`aca sandbox create` was called with `--group` and `--disk` and nothing else. Design D4 promised
+per-Project typed credentials; the code never passed `--credential`, so every sandbox this host
+made had no credential at all and no agent inside could ever have authenticated. No fixture could
+notice — the stand-in was never going to authenticate anything.
+
+`AcaSandboxOptions.Credentials` now carries the ids and the habitat declares them
+(`Agents:Sandbox:Credentials`). Ids, never values (BR-010). Unlike the egress list this is **not**
+refused when absent: a habitat whose agent authenticates some other way is legitimate, and a Run
+without a credential fails loudly at the agent rather than silently at the boundary.
+
+### 4.2 — held, and asserted without ever holding the secret
+
+A sandbox created with the credential attached, then asked from inside: its whole environment,
+and every file under `$HOME`, `/etc` and `/tmp` containing `github_pat_`. **Nothing.** The
+platform holds the token and injects it at its egress boundary, which is the property that makes
+this substrate worth adopting — the pod path handed the value in as an environment variable.
+
+The test never learns the token. It looks for the *shape* every GitHub fine-grained PAT has, which
+keeps the secret out of the repository, out of any CI log and out of this session, and can still
+fail: were the platform to inject the credential as an environment variable, `github_pat_` would
+be sitting in the output.
+
+### 4.3 — held
+
+Composing the `aca` launcher, the runtime the selector hands back names the platform's injection
+as its credential source, distinctly from sbx's refusal-to-carry. Asserted on the runtime rather
+than the host, because #296's own 6.1b finding was a wire nobody had connected between exactly
+those two.
+
+### A real agent Run — REFUSED, and the reason is worth having
+
+The `copilot` disk carries `copilot` 1.0.69 and `gh`. With the credential attached and egress
+opened to `github.com`, `api.github.com` and `api.githubcopilot.com`:
+
+```
+• If using a Fine-Grained PAT, ensure it has the 'Copilot Requests' permission enabled
+```
+
+**A repository-scoped fine-grained PAT is not a Copilot-models PAT.** This was named as unmeasured
+when the token was chosen, and it is now measured: the platform accepts the token, and Copilot
+refuses it. A real agent Run needs a PAT carrying **Copilot Requests**; nothing else about the
+substrate is in the way.
+
+This also settles the question of reusing one token for two jobs: it does not work, which is the
+outcome least-privilege would have wanted anyway.
+
 ## What is still NOT verified, and why
 
-- **4.2 / 4.3 — a credential attached to the group, unreadable inside, named in the transcript.**
-  The organisation's Anthropic key is not the developer's to mint, so the `claude` disk cannot be
-  used here. A `github-copilot` credential can be, and that is the path chosen; until it exists
-  these stay open rather than assumed.
-- **A real agent Run** — same reason. Everything above used a shell command as the agent, which
-  is exactly right for the boundary and proves nothing about a model.
+- **A real agent Run** — blocked on a PAT with the `Copilot Requests` permission, above.
+  Everything measured here used a shell command as the agent, which is exactly right for the
+  boundary and proves nothing about a model.
 - **4.4 — role propagation.** Not observed this time: `aca sandboxgroup create` now grants the
   data role itself and every data-plane call worked immediately. The spike's 403s did not
   reproduce, which is weaker than "tolerated" — it is "did not happen today".

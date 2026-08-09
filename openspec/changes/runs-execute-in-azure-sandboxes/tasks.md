@@ -8,8 +8,12 @@
       **Answered by the spike: `Azure subscription 1` (`422bb77e-…`)** — `*` permissions,
       `Microsoft.App` registered, `sandboxGroups` offered in Spain Central among others, and a
       resource group created and deleted there twice.
-- [ ] 0.2 A fine-grained `github_pat_…` and an `sk-ant-…`, both human-minted — an agent cannot
-      create either. Needed for the typed credential providers in group 4.
+- [x] 0.2 A fine-grained `github_pat_…` and an `sk-ant-…`, both human-minted — an agent cannot
+      create either. **The `sk-ant-` will not exist**: the Anthropic account is the organisation's,
+      not the developer's, so the `claude` disk is unavailable to this deployment. A
+      `github-copilot` credential was created instead, its value entered through the CLI's hidden
+      prompt. It is enough for 4.2 and 4.3; it is **not** enough for a real agent Run, which needs
+      the `Copilot Requests` permission the repository-scoped PAT does not carry.
 - [x] 0.3 Record the preview version and region every later observation is true of (ADR-0018).
       **`aca 1.0.0-preview.1`, spaincentral, subscription `422bb77e-…`, 2026-08-09** — written at
       the head of `evidence.md`.
@@ -57,10 +61,17 @@
       Closed by widening the seam with an optional `projectId` that every other host ignores, and
       templating the group name so `{project}` in one setting describes a deployment whose groups
       are per Project. The id travels on `AgentInstruction`, beside the model #291 put there.
-- [ ] 4.2 No credential value is readable inside the sandbox. Prove the negative the way #288's
-      tests do: run something inside that prints the variable and assert it is empty.
-- [ ] 4.3 The transcript names the injection as the credential source, beside the two sources it
-      already names.
+- [x] 4.2 No credential value is readable inside the sandbox. **Exercised against Azure**: a
+      sandbox created with the credential attached, asked from inside for its whole environment
+      and every file under `$HOME`, `/etc` and `/tmp` containing `github_pat_` — nothing. The
+      test never learns the token; it looks for the shape, so the secret stays out of the
+      repository and the assertion can still fail.
+      **A fifth defect found on the way:** `create` never passed `--credential` at all, so every
+      sandbox this host made had no credential and no agent could have authenticated. Design D4
+      promised it and the code did not ask.
+- [x] 4.3 The transcript names the injection as the credential source, beside the two it already
+      names. Asserted on the runtime the selector hands back rather than on the host — 6.1b was a
+      wire nobody had connected between exactly those two.
 - [ ] 4.4 Provisioning tolerates role propagation — the spike saw 403s for about a minute after
       granting `Container Apps SandboxGroup Data Owner`. **Not reproduced 2026-08-09**:
       `sandboxgroup create` now grants the role itself and every data-plane call worked at once.
