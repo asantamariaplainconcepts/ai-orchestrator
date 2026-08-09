@@ -58,7 +58,7 @@ sealed class RunNow : IUseCase
             .WithTags("Runs");
 
     // Locus is optional (#210): absent means the project's default — Local for a local-folder
-    // code source, Pod otherwise. Only Run now offers the choice; matching never does.
+    // code source, Sandbox otherwise. Only Run now offers the choice; matching never does.
     // Runtime optional (#244): the human's choice for this Run only, pre-selected from the
     // resolution in the dialog; absent records the resolution itself.
     internal sealed record Request(

@@ -28,14 +28,12 @@ public sealed class OutboxRunDispatcher(ICapPublisher cap) : IRunDispatcher
 
 /// <summary>
 /// The consumer half, composed **only** by a host that should be able to execute Runs (design
-/// D2). Registering <see cref="OutboxRunDispatcher"/> deliberately does not register this: the
-/// dispatch worker publishes nothing and must never acquire a consumer, and in a habitat with a
-/// queue the portal must not either — that separation is the credential boundary between the two
-/// processes.
+/// D2). Registering <see cref="OutboxRunDispatcher"/> deliberately does not register this, so a
+/// host that only publishes never acquires the ability to execute.
 /// <para>
-/// Since #246 the consumer claims and hands on: WHERE the Run executes — this process, or a pod
-/// of its own — is an <see cref="IDispatchedRunHandler"/> the composition picked. The outbox
-/// stays the durable half either way; the arrangement changes only the execution locus.
+/// Since #246 the consumer claims and hands on: WHERE the Run executes is an
+/// <see cref="IDispatchedRunHandler"/> the composition picked. The outbox stays the durable half
+/// either way; the arrangement changes only the execution locus.
 /// </para>
 /// </summary>
 public sealed class OutboxRunSubscriber(
@@ -52,8 +50,9 @@ public sealed class OutboxRunSubscriber(
 }
 
 /// <summary>
-/// Today's arrangement, named: the Run executes in this process. Kept as the default and as the
-/// only option where no pod image is configured — nothing about #225's habitat changes.
+/// Today's arrangement, named: the Run executes in this process — which since #296 is the only
+/// arrangement there is. Where the AGENT runs inside it is the launcher seam's question, not
+/// this one.
 /// </summary>
 public sealed class InProcessRunHandler(IServiceProvider services) : IDispatchedRunHandler
 {

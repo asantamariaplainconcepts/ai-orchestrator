@@ -2,7 +2,7 @@ namespace AiOrchestrator.BuildingBlocks.Agents;
 
 /// <summary>
 /// Which executing Runs currently have a preview to look at (run-previews design D2). The seam
-/// exists for the same reason the pods and runtimes monitors do: the Runs module renders and
+/// exists for the same reason the runtimes monitor does: the Runs module renders and
 /// relays, and must never speak to a sandbox — it reads a snapshot, and the process that holds
 /// the sandboxes keeps that snapshot true.
 /// <para>

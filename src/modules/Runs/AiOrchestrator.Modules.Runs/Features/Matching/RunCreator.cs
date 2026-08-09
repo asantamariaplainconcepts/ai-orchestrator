@@ -52,7 +52,7 @@ sealed class RunCreator(
         }
 
         // Where this Run will execute (#210): the project's code source decides the default,
-        // and an explicit choice is honoured only when it is physically possible — a pod
+        // and an explicit choice is honoured only when it is physically possible — a sandbox
         // cannot see the host's disk, and a folder cannot be cloned from a vendor.
         var connector = await connectors.Find(projectId, cancellationToken);
         var sourceIsLocal = string.Equals(
@@ -60,7 +60,7 @@ sealed class RunCreator(
             "LocalFolder",
             StringComparison.Ordinal
         );
-        var locus = requestedLocus ?? (sourceIsLocal ? RunLocus.Local : RunLocus.Pod);
+        var locus = requestedLocus ?? (sourceIsLocal ? RunLocus.Local : RunLocus.Sandbox);
 
         if (locus == RunLocus.Local && !sourceIsLocal)
         {
@@ -69,10 +69,10 @@ sealed class RunCreator(
                     + "this machine, configured on the Connector."
             );
         }
-        if (locus == RunLocus.Pod && sourceIsLocal)
+        if (locus == RunLocus.Sandbox && sourceIsLocal)
         {
             return Refused(
-                "This project's code is a folder on this machine, which an Agent pod cannot "
+                "This project's code is a folder on this machine, which an Agent in a sandbox cannot "
                     + "see — runs of this project execute locally."
             );
         }
@@ -192,7 +192,7 @@ sealed class RunCreator(
     /// <summary>
     /// The change-targeted creation path (run-on-a-pr): shares every shared guard — accepts-work,
     /// the concurrency cap, dispatch, MarkDispatched — with its own BR-001-analogue trio, so a
-    /// change Run obeys every rule a story Run does. Pod lane only: a local Run never pushes, and
+    /// change Run obeys every rule a story Run does. Sandbox lane only: a local Run never pushes, and
     /// a change Run whose work cannot reach the change would break the record's promise.
     /// </summary>
     public async Task<RunCreation> CreateForChange(
@@ -217,7 +217,7 @@ sealed class RunCreator(
         {
             var refusal =
                 "This project's code is a folder on this machine, and a local run never pushes — "
-                + "a change-targeted Run executes on the pod lane.";
+                + "a change-targeted Run executes on the sandbox lane.";
             MatchingLog.PreconditionRefused(logger, projectId, $"change #{changeNumber}", refusal);
             return new RunCreation.PreconditionFailed(refusal);
         }
@@ -252,7 +252,7 @@ sealed class RunCreator(
             changeBranch,
             instruction,
             runtimeName,
-            RunLocus.Pod,
+            RunLocus.Sandbox,
             clock.GetUtcNow(),
             model
         );

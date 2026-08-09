@@ -49,24 +49,12 @@ builder.AddPersistedKeyRing();
 // its outbox live behind it. Composed here because a module structurally cannot (design D1).
 builder.AddIntegrationEvents();
 
-// The producer side of dispatch: matching (Runs module) enqueues through IRunDispatcher. Which
-// substrate that is follows the habitat — a queue where one is configured, the outbox where none
-// is (#225, design D1).
+// Dispatch, both halves (#225, reshaped by #296): matching enqueues through IRunDispatcher into
+// the Postgres outbox, and this process's own subscriber claims and executes. There used to be a
+// queue substrate with a KEDA-scaled worker; its reasons retired with the pod substrate — see
+// DispatchComposition — and a habitat still naming it is refused there by name.
 builder.AddRunDispatch();
-
-// And the consumer, but only where there is no queue: with one, Runs are executed by the worker
-// process, and composing a consumer here would put both sides of that credential boundary in one
-// process. The call refuses if a queue is configured, so this cannot be got wrong quietly.
-if (
-    string.IsNullOrWhiteSpace(
-        builder.Configuration.GetConnectionString(
-            AiOrchestrator.ServiceDefaults.Dispatch.DispatchQueue.ConnectionName
-        )
-    )
-)
-{
-    builder.AddRunDispatchConsumer();
-}
+builder.AddRunDispatchConsumer();
 
 // The runtime seam's implementation. In a habitat with a queue the Server never invokes it — the
 // Runs module's executor depends on the seam and DI validation rightly demands the dependency

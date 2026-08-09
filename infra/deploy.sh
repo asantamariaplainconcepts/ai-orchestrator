@@ -30,13 +30,11 @@ REGISTRY="$(tf registry_login_server)"
 REGISTRY_NAME="$(tf registry_name)"
 PORTAL_APP="$(tf portal_app_name)"
 MIGRATION_JOB="$(tf migration_job_name)"
-DISPATCH_JOB="$(tf dispatch_job_name)"
 SESSION_POOL="$(tf conversation_session_pool_name)"
 PORTAL_URL="$(tf portal_url)"
 
 PORTAL_IMAGE="${REGISTRY}/portal:${TAG}"
 MIGRATION_IMAGE="${REGISTRY}/migrations:${TAG}"
-DISPATCH_IMAGE="${REGISTRY}/dispatch:${TAG}"
 # The conversation session (#166). Built, pushed and rolled like the others (#193). It has no
 # revision, so there is nothing to roll back to and nothing to wait for — but leaving it out was
 # how the pool stayed on the bootstrap placeholder while every other workload moved.
@@ -72,7 +70,6 @@ publish_image() {
 }
 publish_image AiOrchestrator.Server portal
 publish_image AiOrchestrator.MigrationService migrations
-publish_image AiOrchestrator.DispatchWorker dispatch
 
 # The conversation session keeps the one Dockerfile left (#257): it bakes agent CLIs through
 # RUN steps the SDK cannot express.
@@ -128,20 +125,8 @@ if [ "${status:-}" != "Succeeded" ]; then
   exit 1
 fi
 
-# The worker moves before the app that feeds it. Both run the new code against the just-migrated
-# schema, and updating the job first means no window where a new portal enqueues work for a
-# worker built against an older schema. This step is the one #92 was missing entirely: the job
-# ran whatever image the first terraform apply set, for as long as nobody looked.
-echo "→ pointing the dispatch worker at ${TAG}"
-az containerapp job update \
-  --name "${DISPATCH_JOB}" \
-  --resource-group "${RESOURCE_GROUP}" \
-  --image "${DISPATCH_IMAGE}" \
-  --output none
-
-# Before the portal, for the same reason the worker moves first: the portal is what starts sessions,
-# and a new portal talking to a pool still running the previous image is the window this ordering
-# exists to close. A pool has no revision, so this replaces the image for sessions started from now
+# Before the portal: the portal is what starts sessions, and a new portal talking to a pool still
+# running the previous image is the window this ordering exists to close. A pool has no revision, so this replaces the image for sessions started from now
 # on; sessions already running finish on the old one and are reclaimed on cooldown.
 echo "→ pointing the session pool at ${TAG}"
 az containerapp sessionpool update \
@@ -158,13 +143,13 @@ az containerapp update \
   --output none
 
 # Assert what is RUNNING, not what was commanded. #92 shipped for days with a stale worker
-# because every command returned zero and nobody compared the result to the intent.
+# because every command returned zero and nobody compared the result to the intent. That worker
+# retired with the queue (#296); the check it taught outlives it.
 echo "→ confirming the running images carry ${TAG}"
 running_portal="$(az containerapp show --name "${PORTAL_APP}" --resource-group "${RESOURCE_GROUP}" --query "properties.template.containers[0].image" -o tsv)"
-running_dispatch="$(az containerapp job show --name "${DISPATCH_JOB}" --resource-group "${RESOURCE_GROUP}" --query "properties.template.containers[0].image" -o tsv)"
 running_session="$(az containerapp sessionpool show --name "${SESSION_POOL}" --resource-group "${RESOURCE_GROUP}" --query "properties.customContainerTemplate.containers[0].image" -o tsv)"
 
-for pair in "portal:${running_portal}" "dispatch:${running_dispatch}" "session:${running_session}"; do
+for pair in "portal:${running_portal}" "session:${running_session}"; do
   name="${pair%%:*}"
   image="${pair#*:}"
   case "${image}" in

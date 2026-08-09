@@ -184,12 +184,12 @@ export const en = {
   "connector.codeSource.usedBy": "used by",
   // #247 — the habitat withheld the locus; the declared sentence follows this label verbatim.
   "connector.codeSource.unavailable": "Local folders are not available on this deployment:",
-  "connector.codeSource.podConstraint":
-    "A local folder only works with the Local runtime — an Agent in a pod cannot see this machine's disk. Runs of this project default to Local.",
+  "connector.codeSource.sandboxConstraint":
+    "A local folder only works with the Local runtime — an Agent in a sandbox cannot see this machine's disk. Runs of this project default to Local.",
 
   // Where code executes (#211): one vocabulary for the projects list badge and the Run chip.
   "locus.local": "Local",
-  "locus.pod": "Agent pod",
+  "locus.sandbox": "In a sandbox",
 
   // Run now's locus choice (#211, mock 3b) — each card states its consequences, and the primary
   // button repeats the choice so nobody is surprised about where work executed.
@@ -200,11 +200,11 @@ export const en = {
   "runs.locus.local.title": "On this machine",
   "runs.locus.local.description":
     "Runs the Agent as a local process against this folder. Fast, no image pull; uses your local CLI credentials:",
-  "runs.locus.pod.title": "In an Agent pod",
-  "runs.locus.pod.unavailable":
-    "Container job with the repository cloned fresh. Requires a repository code source — unavailable for a local folder.",
+  "runs.locus.sandbox.title": "In a sandbox",
+  "runs.locus.sandbox.unavailable":
+    "An isolated machine of its own, with the repository cloned fresh. Requires a repository code source — unavailable for a local folder.",
   "runs.runNow.confirmLocal": "Run on this machine",
-  "runs.runNow.confirmPod": "Run in a pod",
+  "runs.runNow.confirmSandbox": "Run in a sandbox",
 
   // Run detail's Execution block (#211, mock 3c) — both kinds read the same page.
   "run.section.execution": "Execution",
@@ -212,9 +212,9 @@ export const en = {
   "run.field.workingFolder": "Working folder",
   "run.field.branchCreated": "Branch created",
   "run.execution.localProcess": "Local process on this machine",
-  "run.execution.containerJob": "Container job in an Agent pod",
+  "run.execution.containerJob": "In a sandbox of its own",
   "run.execution.localOutput": "Local branch — no pull request; review it in your editor.",
-  "run.execution.podOutput": "Pull request — see Details.",
+  "run.execution.sandboxOutput": "Pull request — see Details.",
 
   // The self-host posture as an environment chip (design review 5a) — the permanent banner
   // treated the primary mode as an anomaly; the chip states the facts once, in the sidebar's
@@ -225,8 +225,7 @@ export const en = {
   "env.identity": "Identity",
   "env.identityValue": "Local owner — every action is admin",
   "env.listeningOn": "Listening on",
-  "env.agentPods": "Agent pods",
-  "env.viewPods": "View Agent pods",
+  "env.viewRuntimes": "View Agent runtimes",
   "env.networkWarning": "Keep this port off the internet — there is no sign-in to stop anyone.",
   // The banner that remains (5a): the real hazard, not the posture. Shown only when the page
   // was reached from another machine while every caller is the administrator.
@@ -234,43 +233,14 @@ export const en = {
     "Reached from another machine with no sign-in — anyone who can reach this port is the administrator. Keep it on trusted networks, or bind it to localhost.",
   "env.exposedDismiss": "Dismiss for this session",
 
-  // The Agent pods panel (design review 5b/5c): what `docker ps` shows, joined to the Runs it
-  // is actually about. Local pods now, remote declared as coming.
-  "pods.title": "Agent pods",
-  "pods.heading": "Agent pods",
-  "pods.onThisMachine": "on this machine",
-  "pods.loading": "Loading…",
-  "pods.error": "Could not load the Agent pods.",
-  "pods.notHosted":
-    "This deployment does not execute Runs in pods on this machine, so there is nothing to watch here.",
-  "pods.empty": "No pods right now. A dispatched Run appears here while it waits and executes.",
-  "pods.checking": "Checking…",
-  "pods.dockerReady": "Docker ready",
-  "pods.dockerDown": "Docker unreachable",
-  "pods.imageMissing": "Image not built",
-  // Mid-sentence, before the linked Story id: "Phoenix · Run #491".
-  "pods.run": "Run",
-  "pods.waitsForSlot": "waits for a slot",
-  "pods.concurrency": "Concurrency",
-  "pods.concurrency.one": "pod at a time",
-  "pods.concurrency.other": "pods at a time",
-  "pods.concurrencyNote": "this machine's setting — remote pods lift it",
-  "pods.remoteTitle": "Remote pods",
-  "pods.remoteComing": "coming",
-  "pods.remoteNote": "The same Runs, dispatched to cloud infrastructure. Nothing here changes.",
-  // The rule the not-ready card leads with (5c): the Run never fails for absent infrastructure.
-  "pods.unavailableTitle": "Agent pods unavailable — Docker isn't reachable",
-  "pods.unavailableBody":
-    "The Run stays Queued and dispatches on its own once pods are back. Nothing is lost.",
-  "pods.imageMissingTitle": "The pod image isn't pulled yet",
-  "pods.imageMissingBody":
-    "Docker answers, but the Agent image is missing. Runs stay Queued until it exists — pull it once and they dispatch on their own.",
-  "pods.try": "Try",
-  // The commands are copy so the panel and the self-hosting guide cannot drift apart silently.
-  "pods.tryCommand.compose": "docker compose up -d",
-  "pods.tryCommand.pull":
-    "docker pull ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest",
-  // The runtimes' half of the machine question (#279): docker can be ready and an Automation
+  // The Agent runtimes page (#279).
+  "runtimes.title": "Agent runtimes",
+  "runtimes.onThisMachine": "on this machine",
+  "runtimes.loading": "Loading…",
+  "runtimes.error": "Could not load the Agent runtimes.",
+  "runtimes.notHosted":
+    "This deployment does not execute Runs on this machine, so there is nothing to watch here.",
+  // The runtimes' machine question (#279): an Automation can be unable to run because the
   // still unable to run, because the runtime's CLI is absent or its named secret resolves to
   // nothing. The remedy command comes from the API — the same pinned sentence the failure
   // reason carries — so the panel and the failure cannot drift.
@@ -297,13 +267,13 @@ export const en = {
   "runtimes.hostNotReadyBody":
     "Runs can't start until this is fixed — the runtimes below describe that machine, so their state is unknown while it can't answer.",
   // Composed: "Checked 20s · retries every 30s".
-  "pods.checked": "Checked",
-  "pods.retries": "retries every",
+  "runtimes.checked": "Checked",
+  "runtimes.retries": "retries every",
 
   // The queued Run's cross-link (5c): no destructive styling on the Run — the cause lives on
   // the panel, the Run only points at it.
-  "run.queuedPods": "Waiting for Agent pods —",
-  "run.queuedPods.seeWhy": "see why",
+  "run.queuedRuntimes": "Waiting for the Agent runtimes —",
+  "run.queuedRuntimes.seeWhy": "see why",
 
   "ui.copy": "Copy",
   "ui.copied": "Copied",

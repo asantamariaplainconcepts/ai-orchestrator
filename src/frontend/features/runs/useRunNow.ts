@@ -23,7 +23,7 @@ export function useRunNow(projectId: string) {
       vendorStoryId: string;
       automationId: string;
       /** #211: absent means the project's default — Local for a local-folder project. */
-      locus?: "Local" | "Pod";
+      locus?: "Local" | "Sandbox";
       /** #244: the human's choice for this Run only; absent means "as resolved". */
       runtime?: string;
       /** #291: the human's model for this Run only; absent means "as resolved". */

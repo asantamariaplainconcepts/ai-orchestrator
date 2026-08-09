@@ -89,7 +89,10 @@ static class RunsErrors
 
     /// <summary>The Vendor lesson (#210): misspelled must not silently mean the default.</summary>
     public static Error UnknownLocus(string locus) =>
-        Error.Validation("Runs.UnknownLocus", $"Locus must be 'Pod' or 'Local', not '{locus}'.");
+        Error.Validation(
+            "Runs.UnknownLocus",
+            $"Locus must be 'Sandbox' or 'Local', not '{locus}'."
+        );
 
     /// <summary>
     /// #210 — a locus precondition refused the dispatch before any write: BR-016's dirty tree,

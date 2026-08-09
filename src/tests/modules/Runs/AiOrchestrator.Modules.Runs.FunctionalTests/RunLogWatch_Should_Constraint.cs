@@ -40,7 +40,13 @@ public class RunLogWatch_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
 
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
-        var run = Run.Create(_projectId, "1", Guid.NewGuid(), RunLocus.Pod, DateTimeOffset.UtcNow);
+        var run = Run.Create(
+            _projectId,
+            "1",
+            Guid.NewGuid(),
+            RunLocus.Sandbox,
+            DateTimeOffset.UtcNow
+        );
         database.Runs.Add(run);
         await database.SaveChangesAsync();
         _runId = run.Id;

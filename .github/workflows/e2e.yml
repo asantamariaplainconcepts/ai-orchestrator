@@ -5,7 +5,7 @@ on:
 
 jobs:
   e2e:
-    # Boots the real AppHost (Postgres + Azurite + host + Vite) and drives it with Playwright.
+    # Boots the real AppHost (Postgres + host + Vite) and drives it with Playwright.
     # Emulator mode only — the cloud-backed variant arrives with the deploy lane.
     runs-on: ubuntu-latest
     steps:

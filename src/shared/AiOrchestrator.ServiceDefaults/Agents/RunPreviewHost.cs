@@ -8,7 +8,7 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// executing Run whose sandbox published a port, written when the sandbox is created and removed
 /// when it is disposed.
 /// <para>
-/// In memory on purpose, and the reason is the pods ledger's own: a stored row would outlive the
+/// In memory on purpose: a stored row would outlive the
 /// sandbox it describes and lie after a restart. A preview has exactly that property — it exists
 /// while its sandbox does and not one moment longer, so the record must die with the process
 /// that holds them.

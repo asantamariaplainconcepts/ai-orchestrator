@@ -12,8 +12,9 @@ runtime Claude Code headless, `requiresApproval = true`, 30-min timeout (UC-005)
 
 A **Member** opens the backlog (UC-007) and applies `ai-implement` to story #42 from
 the website; the label lands on GitHub (UC-008). Detection picks it up (UC-009/010),
-matching creates a Run (UC-011; BR-001/002 hold), and dispatch enqueues the plan phase.
-KEDA scales an **Agent** job: it reads #42 and writes its Plan onto the Run (UC-015);
+matching creates a Run (UC-011; BR-001/002 hold), and dispatch publishes the plan phase.
+An **Agent** starts in a sandbox of its own: it reads #42 and writes its Plan onto the Run
+(UC-015);
 the Run pauses at `AwaitingApproval` (BR-006).
 
 The Member reviews the Plan on the run detail page — the same shape as a spec review —

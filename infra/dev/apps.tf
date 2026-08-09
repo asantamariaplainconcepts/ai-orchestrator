@@ -80,12 +80,6 @@ resource "azurerm_container_app" "portal" {
         name  = "ConnectionStrings__aiorchestratordbSecretName"
         value = azurerm_key_vault_secret.database_connection_string.name
       }
-      # The portal is the dispatch producer (#17): matching enqueues Run ids. URI form — the
-      # workload identity supplies the credential, so no key exists to leak (BR-010).
-      env {
-        name  = "ConnectionStrings__queues"
-        value = "https://${azurerm_storage_account.dispatch.name}.queue.core.windows.net/"
-      }
       # DefaultAzureCredential must be told which user-assigned identity to use; with more than
       # one available it will not guess, and the app would fail to reach the vault at runtime.
       env {

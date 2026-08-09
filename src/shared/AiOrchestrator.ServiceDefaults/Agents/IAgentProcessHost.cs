@@ -39,7 +39,19 @@ public interface IAgentProcessHost
         /// no sandbox has no port to publish and ignores it; the preview read then answers "not
         /// hosted here" rather than implying the Run failed to make one.
         /// </summary>
-        BuildingBlocks.Agents.RunPreview? preview = null
+        BuildingBlocks.Agents.RunPreview? preview = null,
+        /// <summary>
+        /// The Project this Run belongs to, where the host needs it to scope isolation (#296).
+        /// Null for every host that does not — the local one and sbx both ignore it.
+        /// <para>
+        /// A deliberate widening, and the smallest one that works: the ACA host creates each
+        /// Project's sandboxes in that Project's own group, because that platform scopes
+        /// credentials to the group and #244 promises a Run bills as its own Project. Nothing
+        /// smaller carries that, and passing a substrate's own vocabulary through here would have
+        /// been worse — this says <i>which Project</i>, and lets a host decide what that means.
+        /// </para>
+        /// </summary>
+        Guid? projectId = null
     );
 
     /// <summary>

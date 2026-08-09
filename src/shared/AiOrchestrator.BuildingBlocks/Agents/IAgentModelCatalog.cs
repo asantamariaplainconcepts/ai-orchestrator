@@ -28,7 +28,7 @@ public sealed record AgentModelOptions(IReadOnlyList<string> Models, AgentModelS
 
 /// <summary>
 /// The default every habitat starts from, so the chooser's endpoint always resolves — the same
-/// discipline the pods and runtimes monitors already follow: the ability is absent, never the
+/// discipline the runtimes monitor already follows: the ability is absent, never the
 /// answer. A process that executes no Runs has no machine to ask and no operator list to read,
 /// so it declares nothing rather than reporting a failure to reach something that was never there.
 /// </summary>

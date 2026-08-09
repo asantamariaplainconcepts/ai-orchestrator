@@ -74,16 +74,9 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             new { vendorStoryId, automationId = automationId ?? _automationId }
         );
 
-    async Task<List<Guid>> QueuedRunIds()
-    {
-        var peeked = await fixture.Queue.PeekMessagesAsync(maxMessages: 32);
-        return
-        [
-            .. peeked.Value.Select(message =>
-                DispatchMessage.TryParse(message.MessageText)?.RunId ?? Guid.Empty
-            ),
-        ];
-    }
+    // The outbox's published table is the observable the retired queue's PeekMessages used to
+    // be (#296): what dispatch durably wrote, read from where it wrote it.
+    Task<List<Guid>> QueuedRunIds() => fixture.DispatchedRunIds();
 
     [Fact]
     public async Task RunNow_Should_DispatchWithoutTheTriggerLabel()

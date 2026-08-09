@@ -3779,3 +3779,55 @@ passes all five checks — but **zero sessions map to this change**: the branch 
 and the mapping hook runs at session start. #291's entry recorded the opposite face of the same
 defect, where one session spanning two branches was counted against both. Attribution is
 per-session and the work is per-branch, and those are not the same thing.
+
+---
+
+## 2026-08-09 — `runs-execute-in-azure-sandboxes` (#296)
+
+A deployed Run executes in a hardware-isolated sandbox created over an API. What began as
+"replace the cloud substrate" also retired the pod, the queue and KEDA, the dispatch worker, the
+vocabulary that outlived them and the documentation still promising all of it — 49 tasks, eight
+commits, 593 tests green.
+
+**What worked: the shipped host was driven against real Azure, and it found seven defects a fully
+green suite could not see.** `fs cp` takes no `--id`. **No verb copies a directory tree at all**,
+which invalidated the workspace design and forced tar → copy → untar. The poll loop dropped the
+last lines of every Run. The egress decision log is JSON and the reader filtered lines for a word
+the real output never contains, so a Run that reached a blocked host reported *nothing* — the
+exact failure the feature exists to prevent. `create` was never passed `--credential`, so no agent
+could ever have authenticated. `--disk` names only public disks, leaving this product's other
+runtime with nowhere to run. And `sandbox delete` prompts, which the product had right by luck
+rather than by test. Two of those rewrote a design decision. None was a coding slip; all were
+beliefs. It was the most valuable hour of the change.
+
+**What didn't, structurally: the stand-in invented its subject's answers.** The egress decision
+log was modelled as a table of lines containing "Deny"; the real answer is JSON with a `denied`
+array, and nothing in it says "Deny" at all. The test was green, confirming the invention. That is
+ADR-0016's rule — a fixture derives what its subject derives — arriving at a *process boundary*
+rather than at a server, and it is the second time this programme has paid for it on a launcher:
+`sbx cp`'s uid-and-mode behaviour was the first. Graduated:
+**[ADR-0020](../adr/0020-a-launcher-is-unverified-until-it-meets-its-real-cli.md)** — a launcher
+is unverified until a gated test has driven it against the real CLI, and when the CLI contradicts
+the stand-in, the stand-in is corrected to the real answer, kept verbatim.
+
+**What didn't: a `finally` cannot survive the process that would run it.** The readiness probe
+creates a microVM every thirty-second sweep and disposes it correctly — but stopping the dev loop
+mid-sweep orphans one, and a week of restarts had left **31 sandboxes and 125 GB of disk gone**.
+Found by the owner on his own machine, not by any test. The host now claims its namespace and
+reaps what a previous process abandoned. Worth noting beside it: an early diagnosis blamed
+`CarrySession`, which logs and continues rather than throwing. The fix that mattered was the
+reaper, and the comment says so rather than taking credit.
+
+**One change next time:** write the gated real-substrate test **before** the stand-in, not after.
+Every one of the seven defects would have surfaced on day one instead of on the last.
+
+**Left open deliberately, not silently:** the credential model this change designed cannot be
+satisfied today. The platform's two typed providers are an Anthropic key the organisation does not
+hand out and a Copilot token that must be personal — and a personal token bills the model to that
+person's seat, which is exactly what #244 forbids and what the per-Project SandboxGroup exists to
+guarantee. A deployment's own disk with opencode and its free model sidesteps it entirely, and
+that belongs to a follow-up rather than to a green tick here.
+
+**Time invested:** 13.0 h agent, $782.29, 1.10 B tokens across 1 mapped session (source:
+**telemetry**). Human time reads **0.00 h**, which is the metric not being emitted rather than the
+work being unattended — recorded as measured rather than corrected by guesswork.

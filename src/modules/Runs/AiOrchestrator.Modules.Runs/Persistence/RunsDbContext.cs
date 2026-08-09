@@ -78,11 +78,11 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
             run.Property(entity => entity.OutputLink).HasMaxLength(500);
             run.Property(entity => entity.Plan).HasMaxLength(65536);
 
-            // #210 — names again; the default is what makes every pre-locus row read as Pod.
+            // #210 — names again; the default is what makes every pre-locus row read as Sandbox.
             run.Property(entity => entity.Locus)
                 .HasConversion<string>()
                 .HasMaxLength(20)
-                .HasDefaultValue(RunLocus.Pod);
+                .HasDefaultValue(RunLocus.Sandbox);
             run.Property(entity => entity.WorkingFolder).HasMaxLength(500);
             run.Property(entity => entity.BranchName).HasMaxLength(200);
 

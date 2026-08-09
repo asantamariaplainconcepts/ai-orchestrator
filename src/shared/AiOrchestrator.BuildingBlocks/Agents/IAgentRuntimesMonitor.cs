@@ -2,9 +2,9 @@ namespace AiOrchestrator.BuildingBlocks.Agents;
 
 /// <summary>
 /// What this process can say about the agent runtimes it would execute Runs with (#279). The
-/// seam exists for the same reason <see cref="Dispatch.IAgentPodsMonitor"/> does: the Runs
-/// module renders the panel and must never spawn CLIs — it reads a snapshot in product
-/// vocabulary, and the habitat that actually executes keeps the snapshot true.
+/// seam exists so the Runs module can render the panel without ever spawning a CLI: it reads a
+/// snapshot in product vocabulary, and the habitat that actually executes keeps the snapshot
+/// true.
 /// <para>
 /// A process that does not execute Runs itself answers <i>unhosted</i> rather than empty:
 /// "these runtimes are not ready here" and "Runs execute somewhere this process cannot see"
@@ -17,8 +17,7 @@ public interface IAgentRuntimesMonitor
 }
 
 /// <summary>
-/// One moment of the runtimes host, as the panel needs it (#279, mirroring
-/// <see cref="Dispatch.AgentPodsSnapshot"/>).
+/// One moment of the runtimes host, as the panel needs it (#279).
 /// </summary>
 /// <param name="Hosted">Runs execute in this process; everything else is meaningful only then.</param>
 /// <param name="CheckedAt">When the last probe ran — the panel says "checked 20s ago".</param>
@@ -93,7 +92,7 @@ public sealed record AgentRuntimeState(
 /// <summary>
 /// The default every habitat starts from; the host that executes Runs in-process replaces it.
 /// Registered by the Runs module so the panel's endpoint always resolves, exactly like the
-/// pods monitor: the ability is absent, never the answer.
+/// previews monitor: the ability is absent, never the answer.
 /// </summary>
 public sealed class UnhostedAgentRuntimesMonitor : IAgentRuntimesMonitor
 {

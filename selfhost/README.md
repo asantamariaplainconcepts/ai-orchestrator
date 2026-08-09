@@ -21,39 +21,33 @@ the SPA built into the server's `wwwroot` first (`pnpm build`).
 
 - **Identity**: the operator who ran `docker compose up` is the owner (`LocalOwner`) — every
   action is administrator, no sign-in. Trusted networks only.
-- **Runs execute in pods** (#246): each dispatched Run starts its own container from the
-  DispatchWorker image and exits with it. Two things are yours to provide, deliberately:
+- **Runs execute in a microVM, one per Run** (#296). Each dispatched Run gets its own sandbox
+  with its own kernel, started for that Run and gone with it. This replaced a substrate that ran
+  each Run in a container launched over the **docker socket** — a grant that is root-equivalent on
+  the machine. **Nothing here needs that socket any more.** If you wrote a
+  `docker-compose.override.yaml` to mount it, delete that mount.
 
-  1. **The image**: `docker pull ghcr.io/asantamariaplainconcepts/ai-orchestrator/dispatch-worker:latest`
-     — the compose names that image (`Dispatch__PodImage`); nothing pulls it for you, because a
-     pod host that fetches images unasked is a surprise, not a convenience. Override the name in
-     your own compose to use a different worker image.
-  2. **The docker socket** — your explicit grant, in a `selfhost/docker-compose.override.yaml`
-     you write:
+  One thing is yours to provide:
 
-     ```yaml
-     services:
-       server:
-         # Root inside the container: holding the socket already IS root on this machine,
-         # and the socket's group differs across hosts — this is the honest spelling.
-         user: "0"
-         volumes:
-           - /var/run/docker.sock:/var/run/docker.sock
-         environment:
-           Dispatch__PodSessionsHome: "/home/<you>"
-     ```
+  1. **Docker Sandboxes (`sbx`) on this machine.** Install it and make sure its daemon is running.
+     The compose names the launcher (`Agents__Sandbox__Launcher: sbx`); nothing installs it for
+     you. Until it is there, every Run fails naming exactly that — a named failure, never a
+     silent fallback to running the agent unsandboxed.
 
-     **The socket is root-equivalent on this machine.** Whoever can reach it can do anything
-     your docker daemon can. That is why the generated compose never mounts it: until you do,
-     every Run fails naming exactly this grant — a named failure, never a silent fallback.
+     > **Check your machine first.** On Linux `sbx` requires **x86_64 with KVM** (Ubuntu 22.04 or
+     > newer, per Docker's own requirements). On Apple silicon it uses Hypervisor.framework. A
+     > machine without KVM cannot run this habitat, and there is no fallback that keeps the
+     > isolation — so confirm it before planning a deployment around it.
+     >
+     > **Honestly bounded:** every measurement behind `sbx` in this repository was taken on
+     > macOS. The Linux leg is documented by Docker and has not been exercised here. If you are
+     > the first to run this on Linux and it does not behave as described, that is a finding worth
+     > an issue rather than a workaround.
 
-  - **Your CLI sessions enter the pods by default**: `~/.config/opencode` and `~/.claude` are
-    mounted read-only from `Dispatch__PodSessionsHome`. Pod Runs act and bill as those
-    sessions. Turn it off with `Dispatch__PodSessions: "false"`.
-  - At most **2 pods** run concurrently (`Dispatch__MaxConcurrentPods`); a Run past the cap
-    waits — delayed, never dropped.
+  - **Your CLI sessions do not enter these sandboxes by default.** A sandboxed Run authenticates
+    with the credentials this deployment stores, not with your own logins.
   - Runs against a **repository** code source clone with the Connector's credential inside the
-    pod, exactly as the cloud habitat does.
+    sandbox, exactly as the cloud habitat does.
 - **Local folders are not available here** (#247). The Server runs in a container, and a folder
   on this machine is not visible to it. The compose declares this
   (`Habitat__LocalFolderUnavailableReason` on the `server` service), the portal withholds the

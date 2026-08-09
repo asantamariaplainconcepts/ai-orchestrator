@@ -4,14 +4,13 @@ import { t } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { podsHealth, podsHealthLabel, PodsUnavailableCard } from "./PodsHealth";
 import { RuntimesUnavailableCard } from "./RuntimesReadiness";
-import { podsBlocked, runtimesBlocked, usePods } from "./usePods";
+import { runtimesBlocked, useRuntimes } from "./useRuntimes";
 
 /**
  * The self-host posture as an environment chip (design review 5a). The permanent ⚠ banner
  * treated the product's primary mode as an anomaly and spent a row of every screen saying so;
- * the chip states the same facts — identity, where it listens, whether pods are ready — in the
+ * the chip states the same facts — identity, where it listens, whether the runtimes are ready — in the
  * sidebar's footer, said once and well, with the network warning inside the popover. The banner
  * survives only for the real hazard — reached from another machine with no sign-in — and that
  * one lives in the AppShell.
@@ -29,13 +28,12 @@ export function EnvironmentChip({
 }) {
   const me = useCurrentPrincipal();
   const owner = me.data?.id === "local-owner";
-  // Ambient cadence — the pods panel itself re-polls at run cadence when watched.
-  const pods = usePods({ enabled: owner });
+  // Ambient cadence — the runtimes panel itself re-polls at run cadence when watched.
+  const runtimes = useRuntimes({ enabled: owner });
 
   if (!owner) return null;
 
-  const health = pods.data?.hosted ? podsHealth(pods.data) : null;
-  const blocked = podsBlocked(pods.data) || runtimesBlocked(pods.data);
+  const blocked = runtimesBlocked(runtimes.data);
 
   if (inline) {
     return (
@@ -58,10 +56,10 @@ export function EnvironmentChip({
             "flex items-center rounded-md border border-info/30 bg-card text-left transition-colors hover:bg-accent",
             collapsed ? "justify-center self-center p-2" : "gap-2 px-2.5 py-1.5",
           )}
-          // The accessible name carries the pod status (issue acceptance): a screen reader hears
-          // what the sighted user infers from the chip's neighbourhood.
+          // The accessible name carries the readiness (issue acceptance): a screen reader hears
+          // what the sighted user infers from the warning dot.
           aria-label={`${t("env.thisMachine")} — ${t("env.ownerNoSignIn")}${
-            health ? ` — ${t("env.agentPods")}: ${podsHealthLabel(health)}` : ""
+            blocked ? ` — ${t("runtimes.hostNotReady")}` : ""
           }`}
           title={collapsed ? t("env.thisMachine") : undefined}
         >
@@ -97,8 +95,7 @@ export function EnvironmentChip({
  * not-ready card when it applies (mock 5c§4), the way to the panel, and the warning.
  */
 function EnvironmentFacts() {
-  const pods = usePods();
-  const health = pods.data?.hosted ? podsHealth(pods.data) : null;
+  const runtimes = useRuntimes();
 
   return (
     <>
@@ -113,32 +110,15 @@ function EnvironmentFacts() {
               one, and the browser is standing proof of reachability. */}
           <dd className="font-mono text-[11px]">{window.location.host}</dd>
         </div>
-        {health ? (
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="shrink-0 text-muted-foreground">{t("env.agentPods")}</dt>
-            <dd
-              className={cn(
-                "font-semibold",
-                health === "ready" && "text-success",
-                health === "checking" && "text-muted-foreground",
-                health === "down" && "text-destructive",
-                health === "imageMissing" && "text-warning",
-              )}
-            >
-              {podsHealthLabel(health)}
-            </dd>
-          </div>
-        ) : null}
       </dl>
 
-      {pods.data?.hosted ? <PodsUnavailableCard view={pods.data} compact /> : null}
-      {pods.data ? <RuntimesUnavailableCard view={pods.data.runtimes} /> : null}
-      {pods.data && (pods.data.hosted || pods.data.runtimes.hosted) ? (
+      {runtimes.data ? <RuntimesUnavailableCard view={runtimes.data} /> : null}
+      {runtimes.data?.hosted ? (
         <Link
           className="self-start text-xs text-primary underline-offset-4 hover:underline"
-          to="/pods"
+          to="/runtimes"
         >
-          {t("env.viewPods")}
+          {t("env.viewRuntimes")}
         </Link>
       ) : null}
 

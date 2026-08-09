@@ -3,6 +3,7 @@
     <RootNamespace>AiOrchestrator.Server</RootNamespace>
     <!-- The functional test host drives this assembly through WebApplicationFactory. -->
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <UserSecretsId>8e0a997e-8af7-48d9-9234-bda93f0f0cfe</UserSecretsId>
   </PropertyGroup>
 
   <!-- The image, owned by the SDK (#257): `dotnet publish /t:PublishContainer` replaces the

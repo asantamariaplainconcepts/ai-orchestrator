@@ -1,5 +1,7 @@
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.ServiceDefaults.Agents;
+using AiOrchestrator.ServiceDefaults.Dispatch;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -174,6 +176,36 @@ public class AgentSandbox_Should_Constraint
         sandboxedSource.ShouldContain("no value enters the sandbox");
     }
 
+    [Fact]
+    public void TheAzureHabitat_Should_NameThePlatformsInjectionAsItsSource()
+    {
+        // Task 4.3 — the transcript's third source, and the one a reader is most likely to get
+        // wrong. On sbx the value is absent because the launcher refuses to carry it; here it is
+        // absent because the platform holds it and injects it at its own egress boundary, and
+        // that difference is what an operator needs when asking "where did the token come from".
+        // Exercised end to end against Azure on 2026-08-09: a probe inside the sandbox found no
+        // `github_pat_` in its environment or on disk.
+        //
+        // Asserted on the runtime the selector hands back, not on the host: `RunExecutor` writes
+        // `selection.CredentialSource` verbatim, and #296's own 6.1b finding was a wire nobody
+        // had connected between exactly these two.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[AgentSandboxComposition.SandboxGroupKey] = "aio-{project}";
+        builder.Configuration[$"{AgentSandboxComposition.EgressAllowKey}:0"] = "github.com";
+        builder.AddAgentRuntime();
+
+        var source = builder
+            .Build()
+            .Services.GetRequiredService<IAgentRuntimeSelector>()
+            .For("ClaudeCodeHeadless")!
+            .CredentialSource;
+
+        source.ShouldContain("egress boundary");
+        source.ShouldContain("no value enters the sandbox");
+    }
+
     // ---- Session carriage, and the habitat that declines it (#288) ----
 
     [Fact]
@@ -304,21 +336,167 @@ public class AgentSandbox_Should_Constraint
 
         refusal.Message.ShouldContain("sbxx");
         refusal.Message.ShouldContain(AgentSandboxComposition.SbxLauncher);
+        refusal.Message.ShouldContain(AgentSandboxComposition.AcaLauncher);
+    }
+
+    // ---- The Azure launcher, and what it refuses to guess (#296, design D3) ----
+
+    [Fact]
+    public void TheAzureLauncher_Should_BeSelectedByItsPresenceAlone()
+    {
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[AgentSandboxComposition.SandboxGroupKey] = "aio-project-1";
+        builder.Configuration[$"{AgentSandboxComposition.EgressAllowKey}:0"] = "github.com";
+        builder.AddAgentRuntime();
+
+        var host = builder.Build().Services.GetRequiredService<IAgentProcessHost>();
+
+        host.SuppliesCredentials.ShouldBeTrue();
+        host.CredentialSource.ShouldContain("no value enters the sandbox");
+        // No machine owner exists on a remote host, so #288's question does not arise here.
+        host.SessionUnavailableFor("ClaudeCodeHeadless", "claude", null).ShouldBeNull();
     }
 
     [Fact]
-    public void BothIsolationSubstrates_Should_BeRefusedNamingBoth()
+    public void TheAzureLauncherWithNoGroup_Should_RefuseNamingWhy()
     {
+        // Per Project, because the platform scopes credentials to the group and #244 promises a
+        // Run bills as its own Project. A shared group would break that silently.
         var builder = Host.CreateApplicationBuilder();
-        builder.Configuration["Dispatch:PodImage"] = "ghcr.io/example/worker:latest";
         builder.Configuration[AgentSandboxComposition.LauncherKey] =
-            AgentSandboxComposition.SbxLauncher;
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[$"{AgentSandboxComposition.EgressAllowKey}:0"] = "github.com";
 
         var refusal = Should.Throw<InvalidOperationException>(() => builder.AddAgentRuntime());
 
-        refusal.Message.ShouldContain("Dispatch:PodImage");
-        refusal.Message.ShouldContain(AgentSandboxComposition.LauncherKey);
-        refusal.Message.ShouldContain("Remove whichever is not intended");
+        refusal.Message.ShouldContain(AgentSandboxComposition.SandboxGroupKey);
+        refusal.Message.ShouldContain("own Project's identity");
+    }
+
+    [Fact]
+    public void TheAzureLauncherWithNoEgressList_Should_RefuseRatherThanRunUnrestricted()
+    {
+        // The refusal that matters most. Deny-by-default is OPT-IN on that platform — measured
+        // 2026-08-08, a sandbox with no policy reached example.com and pypi.org with 200s — so a
+        // habitat that says nothing would run its agents unrestricted while believing otherwise.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[AgentSandboxComposition.LauncherKey] =
+            AgentSandboxComposition.AcaLauncher;
+        builder.Configuration[AgentSandboxComposition.SandboxGroupKey] = "aio-project-1";
+
+        var refusal = Should.Throw<InvalidOperationException>(() => builder.AddAgentRuntime());
+
+        refusal.Message.ShouldContain(AgentSandboxComposition.EgressAllowKey);
+        refusal.Message.ShouldContain("unrestricted");
+    }
+
+    [Fact]
+    public void ARetiredPodImage_Should_BeRefusedNamingWhatReplacedIt()
+    {
+        // A key that quietly stopped meaning anything is how a deployment ends up running
+        // something nobody chose — so an operator upgrading meets the sentence, not silence.
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration[DispatchComposition.PodImageKey] = "ghcr.io/example/worker:latest";
+        builder.Configuration.AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:aiorchestratordb"] = "Host=localhost;Database=x",
+            }
+        );
+
+        var refusal = Should.Throw<InvalidOperationException>(() =>
+            builder.AddRunDispatchConsumer()
+        );
+
+        refusal.Message.ShouldContain(DispatchComposition.PodImageKey);
+        refusal.Message.ShouldContain("no longer exists");
+        refusal.Message.ShouldContain(AgentSandboxComposition.SbxLauncher);
+        refusal.Message.ShouldContain(AgentSandboxComposition.AcaLauncher);
+    }
+
+    // ---- The chain, not the component (#296) ----
+
+    [Fact]
+    public async Task ARuntime_Should_ForwardWhatTheExecutorGaveIt()
+    {
+        // The assertion that was missing. run-previews' own test called the host directly, so it
+        // proved the host publishes a port and never that a Run reaches the host with one — and
+        // neither runtime forwarded `instruction.Preview`, so no Run ever did. A component test
+        // cannot see a wire that was never connected.
+        var host = new RecordingProcessHost();
+        var runtime = new OpenCodeRuntime(
+            new OpenCodeOptions { Model = "m" },
+            host,
+            NullLogger<OpenCodeRuntime>.Instance
+        );
+        var runId = Guid.CreateVersion7();
+        var projectId = Guid.CreateVersion7();
+
+        await runtime.Execute(
+            new AgentInstruction(
+                "prompt",
+                "RepositoryPrompt",
+                TimeSpan.FromMinutes(1),
+                Path.GetTempPath(),
+                new AgentCredentials(string.Empty, string.Empty),
+                Preview: new RunPreview(runId, 5173),
+                ProjectId: projectId
+            ),
+            CancellationToken.None
+        );
+
+        host.Preview.ShouldNotBeNull().RunId.ShouldBe(runId);
+        host.Preview.SandboxPort.ShouldBe(5173);
+        host.ProjectId.ShouldBe(projectId);
+    }
+
+    /// <summary>Records what a runtime handed it, so "did not forward" is assertable.</summary>
+    sealed class RecordingProcessHost : IAgentProcessHost
+    {
+        public RunPreview? Preview { get; private set; }
+        public Guid? ProjectId { get; private set; }
+
+        public Task<AgentProcessOutcome> Run(
+            string fileName,
+            IReadOnlyList<string> arguments,
+            string workingDirectory,
+            IReadOnlyDictionary<string, string> environment,
+            TimeSpan timeout,
+            CancellationToken cancellationToken,
+            Action<string>? onOutput = null,
+            RunPreview? preview = null,
+            Guid? projectId = null
+        )
+        {
+            Preview = preview;
+            ProjectId = projectId;
+            return Task.FromResult(
+                new AgentProcessOutcome(TimedOut: false, ExitCode: 0, Stdout: "{}", Stderr: "")
+            );
+        }
+
+        public bool SuppliesCredentials => true;
+        public string CredentialSource => "test";
+
+        public Task<AgentHostReadiness> CheckReadiness(CancellationToken cancellationToken) =>
+            Task.FromResult(AgentHostReadiness.Local);
+
+        public Task<bool> CliAnswers(string command, CancellationToken cancellationToken) =>
+            Task.FromResult(true);
+
+        public SessionCarriageGap? SessionUnavailableFor(
+            string runtimeName,
+            string command,
+            string? credentialSecretName
+        ) => null;
+
+        public Task<IReadOnlyList<string>?> ListModels(
+            string command,
+            IReadOnlyList<string> arguments,
+            CancellationToken cancellationToken
+        ) => Task.FromResult<IReadOnlyList<string>?>(null);
     }
 
     // ---- The preview lives exactly as long as its sandbox (run-previews design D1/D2) ----

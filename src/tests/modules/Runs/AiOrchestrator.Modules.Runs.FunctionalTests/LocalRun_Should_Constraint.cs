@@ -169,12 +169,12 @@ public class LocalRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             {
                 vendorStoryId = "1",
                 automationId = _automationId,
-                locus = "Pod",
+                locus = "Sandbox",
             }
         );
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).ShouldContain("pod cannot");
+        (await response.Content.ReadAsStringAsync()).ShouldContain("sandbox cannot");
     }
 
     [Fact]

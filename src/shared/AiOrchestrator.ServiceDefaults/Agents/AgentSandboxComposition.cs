@@ -53,6 +53,44 @@ public static class AgentSandboxComposition
 
     public const string SbxLauncher = "sbx";
 
+    /// <summary>
+    /// Azure Container Apps Sandboxes (#296): microVMs created over an authenticated API, so this
+    /// habitat's agents run somewhere the executor is not, and no socket exists on either machine.
+    /// </summary>
+    public const string AcaLauncher = "aca";
+
+    /// <summary>
+    /// The Project's own SandboxGroup (#296 design D4). Per project rather than per deployment,
+    /// because the platform scopes credentials to the group and #244 promises a Run bills as its
+    /// own Project — a shared group would break that silently.
+    /// </summary>
+    public const string SandboxGroupKey = "Agents:Sandbox:Group";
+
+    /// <summary>The disk image sandboxes boot from; the platform's prebuilt ones carry the CLIs.</summary>
+    public const string DiskKey = "Agents:Sandbox:Disk";
+
+    /// <summary>
+    /// The hosts a sandbox may reach. Required rather than defaulted for the ACA launcher: deny by
+    /// default is <b>opt-in</b> on that platform — measured 2026-08-08, a sandbox with no policy
+    /// reached example.com and pypi.org — so a habitat that says nothing would run its agents
+    /// unrestricted while believing otherwise.
+    /// </summary>
+    /// <summary>
+    /// The group credential ids to attach to each sandbox — **ids, never values** (BR-010). Not
+    /// refused when absent, unlike the egress list: a habitat whose agent authenticates some other
+    /// way is legitimate, and a Run without a credential fails loudly at the agent rather than
+    /// silently at the boundary.
+    /// </summary>
+    public const string CredentialsKey = "Agents:Sandbox:Credentials";
+
+    /// <summary>
+    /// A disk this deployment built itself (`aca sandboxgroup disk create`), by id. Needed for
+    /// any runtime the platform's public disks do not carry — opencode among them.
+    /// </summary>
+    public const string DiskIdKey = "Agents:Sandbox:DiskId";
+
+    public const string EgressAllowKey = "Agents:Sandbox:EgressAllow";
+
     internal static void AddAgentProcessHost(IHostApplicationBuilder builder)
     {
         var launcher = builder.Configuration.GetValue<string?>(LauncherKey);
@@ -63,28 +101,30 @@ public static class AgentSandboxComposition
             return;
         }
 
-        if (!string.Equals(launcher, SbxLauncher, StringComparison.OrdinalIgnoreCase))
+        var sbx = string.Equals(launcher, SbxLauncher, StringComparison.OrdinalIgnoreCase);
+        var aca = string.Equals(launcher, AcaLauncher, StringComparison.OrdinalIgnoreCase);
+
+        if (!sbx && !aca)
         {
             throw new InvalidOperationException(
                 $"'{LauncherKey}' is set to '{launcher}', which is not a launcher this build "
-                    + $"knows. The supported value is '{SbxLauncher}'. Remove the key to run the "
-                    + "agent as a child of this process."
+                    + $"knows. The supported values are '{SbxLauncher}' and '{AcaLauncher}'. "
+                    + "Remove the key to run the agent as a child of this process."
             );
         }
 
-        // Two isolation substrates at once is a question, not a configuration (design D5):
-        // the pod already isolates the whole worker, and a sandbox inside it would make one of
-        // the operator's two choices an invisible no-op. Refusing names both, exactly as a host
-        // holding both sides of the queue boundary is refused.
-        var podImage = builder.Configuration.GetValue<string?>("Dispatch:PodImage");
-        if (!string.IsNullOrWhiteSpace(podImage))
+        // The preview ledger belongs to the process that holds the sandboxes, and only that
+        // process can honestly answer whether a Run has a window open (run-previews design D2).
+        // Registered before either launcher's options, because both hosts take it.
+        builder.Services.AddSingleton<RunPreviewHost>();
+        builder.Services.AddSingleton<BuildingBlocks.Agents.IRunPreviewMonitor>(provider =>
+            provider.GetRequiredService<RunPreviewHost>()
+        );
+
+        if (aca)
         {
-            throw new InvalidOperationException(
-                $"This habitat names both a pod image (Dispatch:PodImage = {podImage}) and an "
-                    + $"agent sandbox ({LauncherKey} = {launcher}). Each isolates the agent on its "
-                    + "own terms, and running both would nest one inside the other while making "
-                    + "one of the two invisible. Remove whichever is not intended."
-            );
+            AddAca(builder);
+            return;
         }
 
         builder.Services.AddSingleton(
@@ -108,15 +148,73 @@ public static class AgentSandboxComposition
                     : [],
             }
         );
-        // The preview ledger belongs to the process that holds the sandboxes, and only that
-        // process can honestly answer whether a Run has a window open (run-previews design D2).
-        // Registered here rather than beside the module's unhosted default, so a habitat with no
-        // launcher keeps answering "previews are not hosted here".
-        builder.Services.AddSingleton<RunPreviewHost>();
-        builder.Services.AddSingleton<BuildingBlocks.Agents.IRunPreviewMonitor>(provider =>
-            provider.GetRequiredService<RunPreviewHost>()
+        builder.Services.AddSingleton<IAgentProcessHost, SbxAgentProcessHost>();
+    }
+
+    /// <summary>
+    /// The Azure launcher (#296). Two of its settings are <b>required</b> rather than defaulted,
+    /// which is unusual here and deliberate: they correct platform defaults that are actively wrong
+    /// for a Run, and both were found by exercise rather than documentation. A habitat that leaves
+    /// them unsaid would run agents it believes are constrained and are not, so composition refuses
+    /// instead of choosing on its behalf (ADR-0010: asked, never inferred).
+    /// </summary>
+    static void AddAca(IHostApplicationBuilder builder)
+    {
+        var group = builder.Configuration.GetValue<string?>(SandboxGroupKey);
+        if (string.IsNullOrWhiteSpace(group))
+        {
+            throw new InvalidOperationException(
+                $"This habitat runs agents in Azure sandboxes ({LauncherKey} = {AcaLauncher}) but "
+                    + $"names no sandbox group ('{SandboxGroupKey}'). A group is per Project, so a "
+                    + "Run bills and acts as its own Project's identity rather than a shared one."
+            );
+        }
+
+        var allow = builder.Configuration.GetSection(EgressAllowKey).Get<string[]>();
+        if (allow is null || allow.Length == 0)
+        {
+            throw new InvalidOperationException(
+                $"This habitat runs agents in Azure sandboxes but declares no egress allow list "
+                    + $"('{EgressAllowKey}'). Deny-by-default is opt-in on that platform — a "
+                    + "sandbox created without a policy has unrestricted outbound access — so a "
+                    + "habitat that says nothing would run its agents unrestricted while believing "
+                    + $"otherwise. Declare the hosts they may reach, starting with "
+                    + $"[{string.Join(", ", AcaSandboxOptions.DefaultEgressAllow)}]."
+            );
+        }
+
+        // Naming both is a question, not a configuration: one of them would silently win and the
+        // operator's other choice would be an invisible no-op (ADR-0010).
+        if (
+            !string.IsNullOrWhiteSpace(builder.Configuration.GetValue<string?>(DiskKey))
+            && !string.IsNullOrWhiteSpace(builder.Configuration.GetValue<string?>(DiskIdKey))
+        )
+        {
+            throw new InvalidOperationException(
+                $"This habitat names both a public disk ('{DiskKey}') and a private one "
+                    + $"('{DiskIdKey}'). A sandbox is created from one or the other — "
+                    + "`--disk` for a name the platform publishes, `--disk-id` for an image this "
+                    + "deployment built. Remove whichever is not intended."
+            );
+        }
+
+        builder.Services.AddSingleton(
+            new AcaSandboxOptions
+            {
+                CommandPath =
+                    builder.Configuration.GetValue<string?>(CommandPathKey)
+                    ?? AcaSandboxOptions.DefaultCommand,
+                SandboxGroup = group,
+                Disk =
+                    builder.Configuration.GetValue<string?>(DiskKey)
+                    ?? AcaSandboxOptions.DefaultDisk,
+                DiskId = builder.Configuration.GetValue<string?>(DiskIdKey),
+                EgressAllow = allow,
+                Credentials =
+                    builder.Configuration.GetSection(CredentialsKey).Get<string[]>() ?? [],
+            }
         );
 
-        builder.Services.AddSingleton<IAgentProcessHost, SbxAgentProcessHost>();
+        builder.Services.AddSingleton<IAgentProcessHost, AcaAgentProcessHost>();
     }
 }

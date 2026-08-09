@@ -64,7 +64,7 @@ public class AbandonedRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             _projectId,
             "7",
             _automationId,
-            RunLocus.Pod,
+            RunLocus.Sandbox,
             DateTimeOffset.UtcNow - ago
         );
         if (state == RunState.Planning)
@@ -122,7 +122,7 @@ public class AbandonedRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
         database.Runs.Add(
-            Run.Create(_projectId, "7", _automationId, RunLocus.Pod, DateTimeOffset.UtcNow)
+            Run.Create(_projectId, "7", _automationId, RunLocus.Sandbox, DateTimeOffset.UtcNow)
         );
         await Should.NotThrowAsync(() => database.SaveChangesAsync());
     }
@@ -194,7 +194,7 @@ public class AbandonedRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
             _projectId,
             "8",
             _automationId,
-            RunLocus.Pod,
+            RunLocus.Sandbox,
             DateTimeOffset.UtcNow - plannedAgo
         );
         run.MarkPlanning(DateTimeOffset.UtcNow - plannedAgo);

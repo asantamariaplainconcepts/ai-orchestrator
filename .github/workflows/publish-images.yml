@@ -1,7 +1,8 @@
 name: Publish images
 
-# The self-host images (#257): every merge to main publishes server, migrations and
-# dispatch-worker to GHCR, tagged with the commit SHA plus a moving `latest`. The generated
+# The self-host images (#257): every merge to main publishes server and migrations to GHCR,
+# tagged with the commit SHA plus a moving `latest` (the dispatch worker retired with the queue
+# in #296 — dispatch is the Postgres outbox, consumed by the server). The generated
 # compose references these by tag, so the operator's `docker compose up` pulls and builds
 # nothing — DEC-049's published-images lane. No Dockerfile exists: the images are produced by
 # the SDK's container publish, and the SPA rides in because `pnpm build` writes wwwroot before
@@ -55,7 +56,7 @@ jobs:
       - name: Publish the images
         run: |
           set -euo pipefail
-          for project in AiOrchestrator.Server AiOrchestrator.MigrationService AiOrchestrator.DispatchWorker; do
+          for project in AiOrchestrator.Server AiOrchestrator.MigrationService; do
             dotnet publish "src/root/${project}/${project}.csproj" \
               -c Release --no-restore /t:PublishContainer \
               -p:ContainerRegistry=ghcr.io \

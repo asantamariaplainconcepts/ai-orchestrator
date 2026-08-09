@@ -1,8 +1,11 @@
 using System.Net.Http.Json;
 using System.Text.Json;
 using AiOrchestrator.Modules.Backlog.Connectors;
+using AiOrchestrator.ServiceDefaults.Dispatch;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace AiOrchestrator.Modules.Runs.FunctionalTests;
@@ -32,8 +35,11 @@ public class OutboxDispatch_Should_Constraint(RunsApiFixture fixture) : IAsyncLi
         await fixture.ResetDatabase();
         await fixture.ResetQueue();
 
+        // The shared fixture removes the outbox consumer so background execution cannot race
+        // tests that drive the executor by hand — but the consumer is exactly what THIS test
+        // proves, so it alone puts it back.
         _queueless = fixture.WithWebHostBuilder(builder =>
-            builder.UseSetting("ConnectionStrings:queues", string.Empty)
+            builder.ConfigureTestServices(services => services.AddSingleton<OutboxRunSubscriber>())
         );
         _client = _queueless.CreateClient();
 
@@ -82,9 +88,8 @@ public class OutboxDispatch_Should_Constraint(RunsApiFixture fixture) : IAsyncLi
         // did not (the spec's indistinguishable-lifecycle scenario).
         state.ShouldBe("Succeeded");
 
-        // And nothing reached the queue: this habitat has none, which is the container it saves.
-        var queued = await fixture.Queue.PeekMessagesAsync(maxMessages: 1);
-        queued.Value.ShouldBeEmpty();
+        // And the dispatch is durably in the outbox — the one substrate there is since #296.
+        (await fixture.DispatchedRunIds()).ShouldNotBeEmpty();
     }
 
     async Task<string?> Eventually(Func<JsonElement, bool> done)

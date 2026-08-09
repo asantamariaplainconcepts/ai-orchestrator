@@ -7,7 +7,7 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 
 /// <summary>
 /// Asks each registered agent runtime how ready it is, on the cadence the panel promises
-/// (#279, the pods probe's sibling). Before this, a runtime's absence was discovered only by a
+/// (#279). Before this, a runtime's absence was discovered only by a
 /// Run failing — the panel turns that into a state with a copyable remedy beside it.
 /// <para>
 /// Two questions per runtime, because their remedies differ: does the CLI answer

@@ -135,7 +135,7 @@ namespace AiOrchestrator.Modules.Runs.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Pod");
+                        .HasDefaultValue("Sandbox");
 
                     b.Property<string>("Model")
                         .HasColumnType("text");

@@ -22,8 +22,8 @@ subscription_id = "<your subscription id>"
 
 `azurerm_container_app_environment.main` declares a `workload_profile` block because dynamic
 sessions refuse a Consumption-only environment (#200). Azure does not convert the type in place, so
-**changing or removing that block replaces the environment** — and the portal, the dispatch job and
-the migration job go with it, because they take their environment id from it.
+**changing or removing that block replaces the environment** — and the portal and the migration
+job go with it, because they take their environment id from it.
 
 What survives a replacement: PostgreSQL, Key Vault, the registry, the storage account and the Data
 Protection key ring. What does not: the portal is down while it is recreated, and **its hostname
@@ -60,13 +60,13 @@ partway through, which is a bad moment to find out.
 ./infra/deploy.sh          # TAG defaults to the short commit sha
 ```
 
-Pushes all four images, runs the migration job, waits for it to succeed, then moves the dispatch
-worker, the conversation session pool and the portal revision, in that order. **A failed migration
-stops the deploy with the previous revision still serving.** It finishes by reading back the
-*running* image of all three and refusing to report success unless each carries the tag just
-deployed — #92 shipped a worker three days stale precisely because every command returned zero and
-nothing compared the result to the intent, and the session pool was left out of both the roll and
-the check until #193.
+Pushes the images, runs the migration job, waits for it to succeed, then moves the conversation
+session pool and the portal revision, in that order. **A failed migration stops the deploy with
+the previous revision still serving.** It finishes by reading back the *running* image of each and
+refusing to report success unless it carries the tag just deployed — #92 shipped a worker three
+days stale precisely because every command returned zero and nothing compared the result to the
+intent, and the session pool was left out of both the roll and the check until #193. (The dispatch
+worker that lesson was learned on retired with the queue in #296; the check outlives it.)
 
 Nothing here needs a `terraform apply`. Every workload's image is Terraform's only at bootstrap;
 each carries `ignore_changes` on it and this script owns it afterwards, so a release never touches
@@ -95,33 +95,24 @@ az containerapp job logs show -n caj-aio-dev-migrations -g rg-aio-dev \
 
 ## Dispatch
 
-The dispatch queue, its worker job and their identity live in `dispatch.tf`. The job is
-KEDA-scaled on queue length and scales to zero.
+**There is no dispatch infrastructure any more.** The Storage Queue and its KEDA-scaled worker
+job retired with DEC-013's supersession (#296): a Run is published to the Postgres outbox that
+integration events already use, and consumed by the portal's own subscriber. Executing a Run
+became an API call and a poll loop — the heavy half lives in a per-Run **sandbox**, which scales
+itself — so there was nothing left for a scaler to scale.
 
-Enqueue a message by hand to exercise it:
+`dispatch.tf` keeps its name and two residents, each for a reason that has nothing to do with
+dispatch:
 
-```bash
-az storage message put \
-  --queue-name "$(terraform -chdir=infra/dev output -raw dispatch_queue_name)" \
-  --account-name "$(terraform -chdir=infra/dev output -raw dispatch_queue_account)" \
-  --auth-mode login \
-  --content "$(printf '{"v":1,"runId":"%s"}' "$(uuidgen | tr 'A-Z' 'a-z')")"
-```
+- **the storage account**, because it hosts the portal's Data Protection key ring (#180) — the
+  thing that lets an OIDC sign-in survive a scale-to-zero and a revision change;
+- **the user-assigned identity**, because conversation sessions deliberately run as it. A session
+  clones repositories with project PATs, and the portal must not gain the ability to read a
+  project credential just because it can start a conversation.
 
-**Send the JSON as-is — do not base64 it.** The .NET client's message encoding is `None`, so it
-reads the stored text verbatim. A pre-encoded message is claimed, found unparseable, and dropped
-(by design), which looks from the outside like the scaler working and the worker doing nothing.
-Read the message back with `az storage message peek` if in doubt: what you see is what the worker
-sees.
-
-Then read back the execution — a job that ran is the artifact, not the enqueue's exit code:
-
-```bash
-az containerapp job execution list -n "$(terraform -chdir=infra/dev output -raw dispatch_job_name)" -g rg-aio-dev -o table
-```
-
-**KEDA is only verifiable here.** Azurite exercises the queue contract locally, but nothing local
-runs the scaler — a green functional suite says nothing about whether the scale rule fires.
+To exercise dispatch now, create a Run in the portal and watch it move. There is no message to
+put by hand, and the loop it exercises is the same one the functional suite runs — which is the
+point of having one substrate.
 
 ## What CI does and does not do
 

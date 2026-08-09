@@ -106,12 +106,6 @@ public sealed class RunsModule : ModuleBase
             services.AddHostedService<AbandonedRunReaper>();
         }
 
-        // The pods panel's default answer (design review 5b): not hosted here. TryAdd so the
-        // host that actually launches pods overrides it in composition — modules register first,
-        // and the last registration is the one that resolves. The module itself never learns
-        // whether this habitat has docker; it only guarantees the question is answerable.
-        services.TryAddSingleton<IAgentPodsMonitor, UnhostedAgentPodsMonitor>();
-
         // The runtimes' default answer is the same sentence one seam over (#279): a process
         // that does not execute Runs itself says so, rather than rendering runtimes it never
         // spawns as missing.

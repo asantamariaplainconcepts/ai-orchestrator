@@ -41,7 +41,14 @@ public sealed record AgentInstruction(
     /// property of the Run being executed, not of the process executing it.
     /// </para>
     /// </summary>
-    string? Model = null
+    string? Model = null,
+    /// <summary>
+    /// The Project this Run belongs to (#296). Carried because a host may scope isolation by
+    /// Project — the Azure launcher creates each Project's sandboxes in that Project's own group,
+    /// so a Run bills and acts as its own Project (#244). Hosts that do not scope by Project
+    /// ignore it, which is every other one.
+    /// </summary>
+    Guid? ProjectId = null
 );
 
 /// <summary>
