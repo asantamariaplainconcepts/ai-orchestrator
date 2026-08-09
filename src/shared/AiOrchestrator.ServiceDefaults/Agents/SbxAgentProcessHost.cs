@@ -310,6 +310,68 @@ sealed class SbxAgentProcessHost(
     /// that claims injection while holding no credential would start an unauthenticated agent
     /// that fails deep inside the Run for a reason reading like a repository problem.
     /// </summary>
+    /// <summary>Sandboxes this host abandoned in a previous life, swept once per process.</summary>
+    int _reaped;
+
+    /// <summary>
+    /// Removes sandboxes this host's previous process left behind, once, before the first sandbox
+    /// of this one.
+    /// <para>
+    /// <b>Why a `finally` is not enough, measured 2026-08-09.</b> The developer's machine held
+    /// <b>31 running sandboxes and 125 GB of disk</b>, 25 of them <c>aio-probe-*</c> — one per
+    /// readiness sweep, created every 30 seconds. Every creation here is already paired with a
+    /// disposal in a <c>finally</c>, and that pairing is correct: what it cannot survive is the
+    /// process not being there to run it. Stop `aspire run` mid-sweep, or kill the host, and the
+    /// microVM outlives the only reference anyone had to it. Over a week of dev-loop restarts
+    /// that is a full disk, and no amount of in-process discipline prevents it.
+    /// </para>
+    /// <para>
+    /// So the namespace is claimed rather than merely tidied: <c>aio-probe-*</c> and
+    /// <c>aio-run-*</c> belong to this host, and a fresh process starts by removing whatever
+    /// carries those names. <b>The constraint that buys:</b> two orchestrators sharing one machine
+    /// would reap each other's live Runs. That is out of scope by DEC-016 — one owner, one
+    /// machine — and it is written here rather than discovered.
+    /// </para>
+    /// </summary>
+    async Task ReapAbandoned(CancellationToken cancellationToken)
+    {
+        if (Interlocked.Exchange(ref _reaped, 1) == 1)
+        {
+            return;
+        }
+
+        var listed = await Sbx(["ls"], Brief, cancellationToken);
+        if (listed.ExitCode != 0)
+        {
+            return;
+        }
+
+        var abandoned = listed
+            .Stdout.Split(
+                '\n',
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
+            )
+            .Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault())
+            .Where(name =>
+                name is not null
+                && (
+                    name.StartsWith("aio-probe-", StringComparison.Ordinal)
+                    || name.StartsWith("aio-run-", StringComparison.Ordinal)
+                )
+            )
+            .ToArray();
+
+        foreach (var name in abandoned)
+        {
+            await Dispose(name!);
+        }
+
+        if (abandoned.Length > 0)
+        {
+            SandboxLog.Reaped(logger, abandoned.Length);
+        }
+    }
+
     async Task EnsureReady(CancellationToken cancellationToken)
     {
         var daemon = await Sbx(["daemon", "status"], Brief, cancellationToken);
@@ -320,6 +382,8 @@ sealed class SbxAgentProcessHost(
                     + $"`{options.CommandPath} daemon start`. ({Detail(daemon)})"
             );
         }
+
+        await ReapAbandoned(cancellationToken);
 
         if (options.InjectedSecrets.Count == 0)
         {
@@ -392,11 +456,30 @@ sealed class SbxAgentProcessHost(
 
         SandboxLog.Created(logger, sandbox);
 
-        await CarrySession(sandbox, cancellationToken);
-
-        if (preview is not null)
+        // **Everything past this point owns a live microVM.** Creation sits outside every
+        // caller's `finally` — `Run`'s and the probe's alike — so a throw between "the sandbox
+        // exists" and "the caller has its name" would leave one alive with nobody holding a
+        // reference to delete it. `RecordPreview` is the step that can do it; `CarrySession`
+        // logs and continues rather than throwing, so it never has.
+        //
+        // Unwound here rather than at each call site, because the half-built object is this
+        // method's to finish or to undo.
+        //
+        // This is a hole worth closing and it is **not** what filled the developer's disk — see
+        // `ReapAbandoned` for that, which is a process dying, not an exception.
+        try
         {
-            await RecordPreview(sandbox, preview, cancellationToken);
+            await CarrySession(sandbox, cancellationToken);
+
+            if (preview is not null)
+            {
+                await RecordPreview(sandbox, preview, cancellationToken);
+            }
+        }
+        catch
+        {
+            await Dispose(sandbox);
+            throw;
         }
     }
 
@@ -807,6 +890,13 @@ sealed class SbxSandboxOptions
 
 static partial class SandboxLog
 {
+    [LoggerMessage(
+        EventId = 4118,
+        Level = LogLevel.Warning,
+        Message = "Removed {Count} sandbox(es) a previous process abandoned"
+    )]
+    public static partial void Reaped(ILogger logger, int count);
+
     [LoggerMessage(
         EventId = 4110,
         Level = LogLevel.Information,

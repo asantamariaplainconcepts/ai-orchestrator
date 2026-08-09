@@ -120,7 +120,10 @@
       **Not covered: a real agent Run** — the organisation's Anthropic key is not the developer's
       to mint, so the `claude` disk is unavailable and a shell command stood in for the agent.
       That is the right subject for this change's own properties and proves nothing about a model.
-- [ ] 7.3 Full gates, and confirm the dev loop and the local lane behave exactly as before.
+- [x] 7.3 Full gates — **587 tests green** across all eight suites, E2E included. Two things the
+      run itself surfaced and neither was code: the E2E suite serves the built bundle, so a
+      wiped `wwwroot` reds it until `pnpm build`; and Playwright's browsers live in
+      `~/Library/Caches`, so a disk cleanup takes them with it.
 - [x] 7.4 Everything created was deleted — **0 sandboxes** after four Runs, then the group and the
       resource group. The billed surface was five short-lived 1 vCPU / 2 GiB microVMs under ten
       minutes total. **No figure**: Azure's cost data lags by hours, so a number read now would be
@@ -210,3 +213,26 @@ not a stale comment; it is the product describing itself wrongly to the next rea
       outputs that this change deleted, and still rolled and verified a job that no longer exists.
       The deploy would have failed at the first `tf` read. Removed, with the #92 lesson its
       comments carry kept — the worker retired, the check it taught did not.
+
+## 11. A microVM per sweep, and 125 GB (owner's report, 2026-08-09)
+
+Reported directly — *"sandboxes ocupa 125 gb hay que poner limite"* — and it turned out to be a
+defect of this substrate, found on a machine rather than by a test.
+
+- [x] 11.1 **`sbx ls` showed 31 running sandboxes, 25 of them `aio-probe-*`.** The readiness probe
+      creates one every thirty-second sweep and disposes it in a `finally`. The pairing is
+      correct; what a `finally` cannot survive is the process not being there to run it. Stop the
+      dev loop mid-sweep and the microVM outlives the only reference anyone held to it. A week of
+      restarts is a full disk, and no in-process discipline prevents it.
+- [x] 11.2 The host **claims its namespace** instead: a fresh process removes whatever still
+      carries `aio-probe-*` or `aio-run-*` before creating its first sandbox, once per process.
+      Two tests, both verified able to fail: the sweep removes both of its own names and nothing
+      that is not its to remove, and it happens once rather than before every Run — a reap per Run
+      would remove a Run running beside it. **The constraint that buys is written down:** two
+      orchestrators sharing a machine would reap each other, which DEC-016 puts out of scope.
+- [x] 11.3 A second, smaller hole closed on the way: `Create` builds a sandbox and can throw
+      afterwards, outside every caller's `finally`. It now unwinds what it built. **This was not
+      the cause** — an early diagnosis blamed `CarrySession`, which logs and continues rather than
+      throwing — and the comment says so rather than taking credit for the fix that mattered.
+- [x] 11.4 The 25 orphans removed: **8.9 GiB free → 121 GiB**. The five `spike-*` sandboxes and
+      `aio-carry-probe` were left alone — they are a human's, not the product's.
