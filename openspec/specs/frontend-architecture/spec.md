@@ -168,7 +168,8 @@ explanatory stub. The path input SHALL be monospaced, validated live against the
 specific failing check named, and SHALL render loading, empty, error and success states. Recent
 folders SHALL be offered as targets at least 44px tall, each naming the project that used it, and
 selecting one SHALL re-run the same live validation typing does. A warning callout SHALL state the
-pod constraint (a LocalFolder project cannot run in a pod).
+**sandbox** constraint (a LocalFolder project cannot run in a sandbox — the sandbox has its own
+kernel and cannot see this machine's disk).
 
 #### Scenario: a cloud deployment shows nothing
 
@@ -189,10 +190,14 @@ pod constraint (a LocalFolder project cannot run in a pod).
 
 Run now SHALL dispatch exactly as today, with no dialog, on a project with no local folder. On a
 LocalFolder project it SHALL open a dialog of radio cards (targets at least 48px) stating each
-locus's consequences; the pod card SHALL be disabled carrying its reason; the primary button SHALL
-repeat the chosen locus ("Run on this machine" / "Run in a pod"). Refusals — BR-001's conflict,
-BR-013's rules, and the clean-tree refusal recorded by #210 — SHALL render inside the dialog,
-announced aria-live polite, naming the folder where the folder is the reason.
+locus's consequences; the **sandbox** card SHALL be disabled carrying its reason; the primary
+button SHALL repeat the chosen locus ("Run on this machine" / "Run in a sandbox"). Refusals —
+BR-001's conflict, BR-013's rules, and the clean-tree refusal recorded by #210 — SHALL render
+inside the dialog, announced aria-live polite, naming the folder where the folder is the reason.
+
+The copy said "Agent pod" until this change, in direct contradiction of DEC-005's locked
+vocabulary, which has always read *Agent (never "pod")*. Retiring the substrate is what makes the
+word finally removable rather than merely wrong.
 
 #### Scenario: no choice, no dialog
 
@@ -202,7 +207,8 @@ announced aria-live polite, naming the folder where the folder is the reason.
 #### Scenario: the dialog states the constraint
 
 - **WHEN** Run now opens on a LocalFolder project
-- **THEN** the pod card is disabled with its reason and the primary button names the chosen locus
+- **THEN** the sandbox card is disabled with its reason and the primary button names the chosen
+  locus
 
 #### Scenario: a dirty tree refuses inside the dialog
 
@@ -224,10 +230,10 @@ Run locus chip. Locus SHALL never be conveyed by colour alone.
 - **THEN** the locus chip reads Local and the Execution block shows the working folder and the
   created branch
 
-#### Scenario: a pod Run links its output
+#### Scenario: a sandbox Run links its output
 
-- **WHEN** a pod Run's detail renders
-- **THEN** the locus chip reads Pod and the output is the PR link as today
+- **WHEN** a sandbox Run's detail renders
+- **THEN** the locus chip reads "In a sandbox" and the output is the PR link as today
 
 ### Requirement: the local owner is guided from empty to a closed loop
 
