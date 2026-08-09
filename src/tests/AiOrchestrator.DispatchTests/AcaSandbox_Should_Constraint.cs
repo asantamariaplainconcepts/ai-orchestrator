@@ -230,6 +230,69 @@ public class AcaSandbox_Should_Constraint
         streamed.ShouldContain(line => line.Contains("could not be read"));
     }
 
+    [Fact]
+    public async Task AFreshlyGrantedRole_Should_BeWaitedOutRatherThanFailingTheRun()
+    {
+        // Task 4.4. The spike watched a newly granted data role answer 403 for about a minute.
+        // A deployment provisioned minutes ago would fail its first Runs for a condition that
+        // fixes itself, and BR-004 means nothing retries them — so a temporary refusal would
+        // become a permanent failure.
+        var (host, calls) = Host(finishAfterPolls: 1, unauthorizedCreates: 2);
+
+        var outcome = await host.Run(
+            "opencode",
+            [],
+            Workspace(),
+            new Dictionary<string, string>(),
+            TimeSpan.FromMinutes(1),
+            CancellationToken.None
+        );
+
+        outcome.ExitCode.ShouldBe(0);
+        Invocations(calls, "create").Count.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task AGrantThatNeverArrives_Should_FailNamingTheRole()
+    {
+        // The other half: waiting forever would hide a missing grant behind a slow Run, so the
+        // refusal is bounded and the sentence names what to do about it.
+        var (host, _) = Host(finishAfterPolls: 1, unauthorizedCreates: 99);
+
+        var refusal = await Should.ThrowAsync<AgentProcessHostException>(() =>
+            host.Run(
+                "opencode",
+                [],
+                Workspace(),
+                new Dictionary<string, string>(),
+                TimeSpan.FromMinutes(1),
+                CancellationToken.None
+            )
+        );
+
+        refusal.Message.ShouldContain("SandboxGroup Data Owner");
+    }
+
+    [Fact]
+    public async Task AFailureThatIsNotAuthorization_Should_NotBeWaitedOutAtAll()
+    {
+        // Retrying a bad disk name would only delay the sentence an operator needs.
+        var (host, calls) = Host(finishAfterPolls: 1, failCreatesWith: "unknown disk 'nope'");
+
+        await Should.ThrowAsync<AgentProcessHostException>(() =>
+            host.Run(
+                "opencode",
+                [],
+                Workspace(),
+                new Dictionary<string, string>(),
+                TimeSpan.FromMinutes(1),
+                CancellationToken.None
+            )
+        );
+
+        Invocations(calls, "create").Count.ShouldBe(1);
+    }
+
     // ---- Stand-ins ----
 
     /// <summary>
@@ -259,13 +322,16 @@ public class AcaSandbox_Should_Constraint
     static (AcaAgentProcessHost Host, string Ledger) Host(
         int finishAfterPolls,
         string group = "aio-shared",
-        int decisionsExitCode = 0
+        int decisionsExitCode = 0,
+        int unauthorizedCreates = 0,
+        string? failCreatesWith = null
     )
     {
         var directory = Directory.CreateTempSubdirectory("aca-stub-").FullName;
         var ledger = Path.Combine(directory, "calls.log");
         var script = Path.Combine(directory, "aca.sh");
         var polls = Path.Combine(directory, "polls");
+        var creates = Path.Combine(directory, "creates");
         var decisions = Path.Combine(directory, "decisions.json");
 
         // The real CLI's answer, measured against Azure on 2026-08-09 — kept verbatim rather than
@@ -297,7 +363,21 @@ public class AcaSandbox_Should_Constraint
             #!/bin/sh
             echo " $* " >> "{ledger}"
             case "$2" in
-              create) echo '{SandboxId}'; exit 0 ;;
+              create)
+                {(
+                    failCreatesWith is not null
+                        ? $"echo \"error: {failCreatesWith}\" >&2; exit 1"
+                        : $$"""
+                        n=$(cat "{{creates}}" 2>/dev/null || echo 0)
+                        n=$((n+1)); echo "$n" > "{{creates}}"
+                        if [ "$n" -le "{{unauthorizedCreates}}" ]; then
+                          echo 'error: 403 Forbidden (AuthorizationFailed)' >&2
+                          exit 1
+                        fi
+                        echo '{{SandboxId}}'
+                        """
+                )}
+                exit 0 ;;
             esac
             # Any exec whose command reads the log is a poll; count them and answer accordingly.
             case "$*" in
@@ -336,6 +416,7 @@ public class AcaSandbox_Should_Constraint
                 Disk = "claude",
                 EgressAllow = ["github.com"],
                 PollInterval = TimeSpan.FromMilliseconds(20),
+                AuthorizationRetryDelay = TimeSpan.FromMilliseconds(10),
             },
             new RunPreviewHost(),
             NullLogger<AcaAgentProcessHost>.Instance

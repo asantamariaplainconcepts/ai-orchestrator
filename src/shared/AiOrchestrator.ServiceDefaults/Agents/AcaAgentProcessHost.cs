@@ -593,25 +593,53 @@ sealed class AcaAgentProcessHost(
 
     async Task<string> Create(string group, CancellationToken cancellationToken)
     {
-        var created = await Aca(
-            [
-                "sandbox",
-                "create",
-                "--group",
-                group,
-                "--disk",
-                options.Disk,
-                .. options.Credentials.SelectMany(id => new[] { "--credential", id }),
-                "-o",
-                "json",
-            ],
-            cancellationToken
-        );
+        string[] arguments =
+        [
+            "sandbox",
+            "create",
+            "--group",
+            group,
+            "--disk",
+            options.Disk,
+            .. options.Credentials.SelectMany(id => new[] { "--credential", id }),
+            "-o",
+            "json",
+        ];
+
+        var created = await Aca(arguments, cancellationToken);
+
+        // **Role propagation, waited out rather than reported as a fault (task 4.4).** The spike
+        // watched a freshly granted `Container Apps SandboxGroup Data Owner` answer 403 for about
+        // a minute before it began working. A deployment provisioned minutes ago would fail its
+        // first Runs for a reason that fixes itself, and BR-004 means nothing retries them — so
+        // the failure would be permanent for a condition that was temporary.
+        //
+        // Bounded, and only for authorization. A 403 that is really a missing grant still fails,
+        // one minute later, saying so. Everything else fails at once: retrying a bad disk name
+        // would only delay the sentence an operator needs.
+        for (
+            var attempt = 0;
+            attempt < options.AuthorizationAttempts
+                && created.ExitCode != 0
+                && IsAuthorization(created);
+            attempt++
+        )
+        {
+            AcaLog.WaitingForRole(logger, group);
+            await Task.Delay(options.AuthorizationRetryDelay, cancellationToken);
+            created = await Aca(arguments, cancellationToken);
+        }
 
         if (created.ExitCode != 0)
         {
             throw new AgentProcessHostException(
-                $"The sandbox for this Run could not be created. ({Detail(created)})"
+                IsAuthorization(created)
+                    ? "This deployment is not authorised to create sandboxes in its group, and it "
+                        + $"still was not after {options.AuthorizationAttempts} attempts over "
+                        + $"{options.AuthorizationAttempts * options.AuthorizationRetryDelay.TotalSeconds:0}s. "
+                        + "Grant 'Container Apps SandboxGroup Data Owner' on the group to the "
+                        + $"identity this process runs as. ({Detail(created)})"
+                    : $"The sandbox for this Run could not be created. ({Detail(created)})"
             );
         }
 
@@ -859,6 +887,17 @@ sealed class AcaAgentProcessHost(
     static string Quote(string value) =>
         $"'{value.Replace("'", "'\\''", StringComparison.Ordinal)}'";
 
+    /// <summary>
+    /// An authorization refusal, told apart from every other failure by what the CLI prints —
+    /// there is no exit code that distinguishes them, and treating "not authorised yet" the same
+    /// as "that disk does not exist" would make one wait a minute for nothing and the other fail
+    /// instantly for something temporary.
+    /// </summary>
+    static bool IsAuthorization(AgentProcessOutcome outcome) =>
+        outcome.Stderr.Contains("403", StringComparison.Ordinal)
+        || outcome.Stderr.Contains("Forbidden", StringComparison.OrdinalIgnoreCase)
+        || outcome.Stderr.Contains("AuthorizationFailed", StringComparison.OrdinalIgnoreCase);
+
     static string Detail(AgentProcessOutcome outcome) =>
         string.IsNullOrWhiteSpace(outcome.Stderr)
             ? $"exit {outcome.ExitCode}"
@@ -867,6 +906,13 @@ sealed class AcaAgentProcessHost(
 
 static partial class AcaLog
 {
+    [LoggerMessage(
+        EventId = 4130,
+        Level = LogLevel.Information,
+        Message = "Not yet authorised on sandbox group {Group}; waiting for the role to propagate"
+    )]
+    public static partial void WaitingForRole(ILogger logger, string group);
+
     [LoggerMessage(
         EventId = 6260,
         Level = LogLevel.Information,
@@ -958,6 +1004,16 @@ sealed class AcaSandboxOptions
     /// below the ceiling measured at 50–60 s, which this host never approaches because it polls.
     /// </summary>
     public TimeSpan CallTimeout { get; init; } = TimeSpan.FromSeconds(45);
+
+    /// <summary>
+    /// How many times a sandbox creation refused for authorization is tried again before the Run
+    /// fails. Six at ten seconds covers the ~1 minute of propagation the spike measured, with
+    /// room either side; a deployment whose grant is genuinely missing still fails, one minute
+    /// later, naming the role.
+    /// </summary>
+    public int AuthorizationAttempts { get; init; } = 6;
+
+    public TimeSpan AuthorizationRetryDelay { get; init; } = TimeSpan.FromSeconds(10);
 
     /// <summary>
     /// A property of the disk image rather than of the moment, so it is asked rarely — creating a

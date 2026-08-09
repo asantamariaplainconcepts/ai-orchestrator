@@ -72,10 +72,15 @@
 - [x] 4.3 The transcript names the injection as the credential source, beside the two it already
       names. Asserted on the runtime the selector hands back rather than on the host — 6.1b was a
       wire nobody had connected between exactly those two.
-- [ ] 4.4 Provisioning tolerates role propagation — the spike saw 403s for about a minute after
-      granting `Container Apps SandboxGroup Data Owner`. **Not reproduced 2026-08-09**:
-      `sandboxgroup create` now grants the role itself and every data-plane call worked at once.
-      "Did not happen today" is weaker than "tolerated", so this stays open.
+- [x] 4.4 Provisioning tolerates role propagation. **Not reproduced on 2026-08-09** — the CLI now
+      grants the data role itself at `sandboxgroup create` and every data-plane call worked at
+      once — so this is implemented from the spike's measurement rather than from a failure seen
+      today, and that is stated rather than dressed up. A sandbox creation refused for
+      authorization is retried six times at ten seconds, covering the ~1 minute the spike watched;
+      a grant that never arrives still fails, one minute later, **naming the role to add and to
+      which identity**. Anything that is not an authorization refusal fails at once, because
+      retrying a bad disk name only delays the sentence an operator needs. Three tests, verified
+      able to fail by disabling the loop.
 
 ## 5. Previews (design D5)
 
