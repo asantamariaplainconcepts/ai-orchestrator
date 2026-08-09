@@ -32,7 +32,7 @@ public class AcaSandbox_Should_Constraint
         var outcome = await host.Run(
             "opencode",
             ["run", "hello"],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(5),
             CancellationToken.None,
@@ -61,7 +61,7 @@ public class AcaSandbox_Should_Constraint
         await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(1),
             CancellationToken.None
@@ -80,7 +80,7 @@ public class AcaSandbox_Should_Constraint
         await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(1),
             CancellationToken.None
@@ -102,7 +102,7 @@ public class AcaSandbox_Should_Constraint
         await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(1),
             CancellationToken.None,
@@ -127,7 +127,7 @@ public class AcaSandbox_Should_Constraint
             host.Run(
                 "opencode",
                 [],
-                "/workspace",
+                Workspace(),
                 new Dictionary<string, string> { ["ANTHROPIC_API_KEY"] = "secret" },
                 TimeSpan.FromMinutes(1),
                 CancellationToken.None
@@ -146,7 +146,7 @@ public class AcaSandbox_Should_Constraint
         await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(1),
             CancellationToken.None
@@ -165,7 +165,7 @@ public class AcaSandbox_Should_Constraint
         var outcome = await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMilliseconds(200),
             CancellationToken.None
@@ -187,7 +187,7 @@ public class AcaSandbox_Should_Constraint
         await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(1),
             CancellationToken.None,
@@ -219,7 +219,7 @@ public class AcaSandbox_Should_Constraint
         var outcome = await host.Run(
             "opencode",
             [],
-            "/workspace",
+            Workspace(),
             new Dictionary<string, string>(),
             TimeSpan.FromMinutes(1),
             CancellationToken.None,
@@ -231,6 +231,18 @@ public class AcaSandbox_Should_Constraint
     }
 
     // ---- Stand-ins ----
+
+    /// <summary>
+    /// A real directory, because <c>SendWorkspace</c> really packs one: since the exercise
+    /// against Azure found that the platform has no recursive copy, the host tars the workspace
+    /// on this machine before sending it, and a path that does not exist fails honestly.
+    /// </summary>
+    static string Workspace()
+    {
+        var directory = Directory.CreateTempSubdirectory("aca-workspace-").FullName;
+        File.WriteAllText(Path.Combine(directory, "file.txt"), "workspace");
+        return directory;
+    }
 
     static IReadOnlyList<string> Invocations(string ledger, string verb) =>
         [
@@ -254,6 +266,30 @@ public class AcaSandbox_Should_Constraint
         var ledger = Path.Combine(directory, "calls.log");
         var script = Path.Combine(directory, "aca.sh");
         var polls = Path.Combine(directory, "polls");
+        var decisions = Path.Combine(directory, "decisions.json");
+
+        // The real CLI's answer, measured against Azure on 2026-08-09 — kept verbatim rather than
+        // paraphrased, because the first version of this fixture invented a table and the code
+        // that read it therefore reported nothing when it met the real thing (ADR-0016).
+        File.WriteAllText(
+            decisions,
+            """
+            {
+              "networkEgress": {
+                "allowed": [
+                  { "timestamp": "2026-08-09T10:00:04Z", "host": "github.com",
+                    "method": "GET", "path": "/acme/portal.git/info/refs", "scheme": "https" }
+                ],
+                "denied": [
+                  { "timestamp": "2026-08-09T10:00:01Z", "host": "pypi.org",
+                    "method": "GET", "path": "/simple/requests/", "scheme": "https" },
+                  { "timestamp": "2026-08-09T10:00:09Z", "host": "api.openai.com",
+                    "method": "POST", "path": "/v1/chat/completions", "scheme": "https" }
+                ]
+              }
+            }
+            """
+        );
 
         File.WriteAllText(
             script,
@@ -267,9 +303,7 @@ public class AcaSandbox_Should_Constraint
             case "$*" in
               *"egress decisions"*)
                 if [ "{decisionsExitCode}" -ne 0 ]; then exit {decisionsExitCode}; fi
-                echo "2026-08-09T10:00:01Z Deny pypi.org GET /simple/requests/"
-                echo "2026-08-09T10:00:04Z Allow github.com GET /acme/portal.git/info/refs"
-                echo "2026-08-09T10:00:09Z Deny api.openai.com POST /v1/chat/completions"
+                cat "{decisions}"
                 exit 0 ;;
               *".exit"*)
                 n=$(cat "{polls}" 2>/dev/null || echo 0)

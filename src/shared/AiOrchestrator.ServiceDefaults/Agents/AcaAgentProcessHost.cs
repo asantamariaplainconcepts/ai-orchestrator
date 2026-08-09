@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using AiOrchestrator.BuildingBlocks.Agents;
 using Microsoft.Extensions.Logging;
 
@@ -170,7 +171,7 @@ sealed class AcaAgentProcessHost(
             if (DateTimeOffset.UtcNow >= deadline)
             {
                 var tail = await ReadFrom(sandbox, log, forwarded, cancellationToken);
-                Forward(tail, onOutput, ref forwarded);
+                Forward(tail, onOutput, ref forwarded, ended: true);
                 return new AgentProcessOutcome(
                     TimedOut: true,
                     ExitCode: -1,
@@ -188,7 +189,7 @@ sealed class AcaAgentProcessHost(
                 // One last read: work written between the previous poll and the exit file must not
                 // be lost, or a Run's last words would depend on poll timing.
                 var last = await ReadFrom(sandbox, log, forwarded, cancellationToken);
-                Forward(last, onOutput, ref forwarded);
+                Forward(last, onOutput, ref forwarded, ended: true);
 
                 var code = int.TryParse(
                     exit.Trim(),
@@ -231,21 +232,41 @@ sealed class AcaAgentProcessHost(
         return read.ExitCode == 0 ? read.Stdout : string.Empty;
     }
 
-    static void Forward(string chunk, Action<string>? onOutput, ref int forwarded)
+    /// <summary>
+    /// Forwards the lines of a chunk, holding back the last one while the agent is still writing.
+    /// <para>
+    /// <paramref name="ended"/> is what makes the last line arrive at all. The hold-back exists so
+    /// a watcher never sees half a sentence — a chunk not ending in a newline is a line still
+    /// being written — but that reasoning stops the moment the exit code is on disk: nothing is
+    /// partial after the process has gone. Without this flag the final line of every Run was
+    /// dropped, which is invisible against a stand-in that answers instantly and was measured
+    /// against real Azure on 2026-08-09 (task 7.2).
+    /// </para>
+    /// </summary>
+    static void Forward(
+        string chunk,
+        Action<string>? onOutput,
+        ref int forwarded,
+        bool ended = false
+    )
     {
         if (onOutput is null || chunk.Length == 0)
         {
             return;
         }
 
-        // The last element of a split on a trailing newline is empty; a chunk that does not end in
-        // one is a line still being written, and holding it back is what keeps a watcher from
-        // seeing half a sentence.
         var lines = chunk.Split('\n');
-        var complete = lines.Length - 1;
+        var complete = ended ? lines.Length : lines.Length - 1;
 
         for (var index = 0; index < complete; index++)
         {
+            // A trailing newline leaves an empty final element; forwarding it would put a blank
+            // line at the end of every Run's log.
+            if (ended && index == lines.Length - 1 && lines[index].Length == 0)
+            {
+                break;
+            }
+
             onOutput(lines[index]);
             forwarded++;
         }
@@ -332,7 +353,7 @@ sealed class AcaAgentProcessHost(
         try
         {
             decisions = await Aca(
-                ["sandbox", "egress", "decisions", "--id", sandbox],
+                ["sandbox", "egress", "decisions", "--id", sandbox, "-o", "json"],
                 CancellationToken.None
             );
         }
@@ -350,13 +371,22 @@ sealed class AcaAgentProcessHost(
             return;
         }
 
-        var denied = decisions
-            .Stdout.Split(
-                '\n',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-            )
-            .Where(line => line.Contains("Deny", StringComparison.OrdinalIgnoreCase))
-            .ToArray();
+        string[] denied;
+        try
+        {
+            denied = Denials(decisions.Stdout);
+        }
+        catch (JsonException)
+        {
+            // A preview surface whose shape is expected to move. When it does, the honest answer
+            // is the log itself rather than silence — silence would read as "nothing was denied".
+            onOutput(
+                "[egress] the decision log arrived in a shape this build does not recognise; "
+                    + "it is reproduced verbatim rather than dropped:"
+            );
+            onOutput($"[egress] {decisions.Stdout.Trim()}");
+            return;
+        }
 
         if (denied.Length == 0)
         {
@@ -373,6 +403,54 @@ sealed class AcaAgentProcessHost(
         }
     }
 
+    /// <summary>
+    /// The denied half of `aca sandbox egress decisions -o json`, as sentences.
+    /// <para>
+    /// Shaped from the real answer, measured 2026-08-09:
+    /// <c>{"networkEgress":{"allowed":[],"denied":[{"timestamp":…,"host":…,"method":…,"path":…}]}}</c>.
+    /// The first implementation filtered lines containing "Deny" — which the real output never
+    /// contains, so a Run that reached for a blocked host said nothing at all. The stand-in had
+    /// invented a table, and a fixture that invents its subject's answers can only ever confirm
+    /// the invention (ADR-0016).
+    /// </para>
+    /// </summary>
+    internal static string[] Denials(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+
+        if (
+            !document.RootElement.TryGetProperty("networkEgress", out var egress)
+            || !egress.TryGetProperty("denied", out var denied)
+            || denied.ValueKind != JsonValueKind.Array
+        )
+        {
+            return [];
+        }
+
+        return
+        [
+            .. denied
+                .EnumerateArray()
+                .Select(entry =>
+                {
+                    var host = Text(entry, "host");
+                    var method = Text(entry, "method");
+                    var path = Text(entry, "path");
+                    var at = Text(entry, "timestamp");
+
+                    return string.Join(
+                        ' ',
+                        new[] { at, method, host + path }.Where(part => part.Length > 0)
+                    );
+                }),
+        ];
+
+        static string Text(JsonElement entry, string name) =>
+            entry.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString() ?? string.Empty
+                : string.Empty;
+    }
+
     // ---- The workspace, sent rather than mounted ----
 
     async Task SendWorkspace(
@@ -381,26 +459,72 @@ sealed class AcaAgentProcessHost(
         CancellationToken cancellationToken
     )
     {
-        var sent = await Aca(
-            [
-                "sandbox",
-                "fs",
-                "cp",
-                "--id",
-                sandbox,
-                "--source",
-                workingDirectory,
-                "--dest",
-                workingDirectory,
-            ],
-            cancellationToken
-        );
+        // **Sent as one archive, because the platform has no recursive copy.** Measured
+        // 2026-08-09, the first time the shipped host met the real CLI: `fs cp` takes
+        // `<SOURCE> <DESTINATION>` with no `--id` (it answered `unexpected argument '--id'`),
+        // and handed a directory it answers `Is a directory (os error 21)`. No verb under
+        // `sandbox fs` — ls, cat, write, rm, mkdir, stat, cp — copies a tree. A Run's workspace
+        // is a git clone, so "send the workspace" had to become tar → copy → untar. The
+        // stand-in script accepted every shape, which is exactly the class of defect only the
+        // real exercise finds (task 7.2).
+        var archive = Path.Combine(Path.GetTempPath(), $"aio-workspace-{Guid.NewGuid():N}.tar.gz");
 
-        if (sent.ExitCode != 0)
+        try
         {
-            throw new AgentProcessHostException(
-                $"The Run's workspace could not be sent to its sandbox. ({Detail(sent)})"
+            var packed = await HeadlessProcess.Run(
+                "tar",
+                ["-czf", archive, "-C", workingDirectory, "."],
+                Environment.CurrentDirectory,
+                new Dictionary<string, string>(),
+                options.CallTimeout,
+                cancellationToken
             );
+
+            if (packed.ExitCode != 0)
+            {
+                throw new AgentProcessHostException(
+                    $"The Run's workspace could not be packed for its sandbox. ({Detail(packed)})"
+                );
+            }
+
+            var remote = $"/tmp/{Path.GetFileName(archive)}";
+
+            var sent = await Aca(
+                ["sandbox", "fs", "cp", archive, $"{sandbox}:{remote}"],
+                cancellationToken
+            );
+
+            if (sent.ExitCode != 0)
+            {
+                throw new AgentProcessHostException(
+                    $"The Run's workspace could not be sent to its sandbox. ({Detail(sent)})"
+                );
+            }
+
+            var unpacked = await Aca(
+                [
+                    "sandbox",
+                    "exec",
+                    "--id",
+                    sandbox,
+                    "-c",
+                    $"mkdir -p {Quote(workingDirectory)} "
+                        + $"&& tar -xzf {remote} -C {Quote(workingDirectory)} && rm -f {remote}",
+                ],
+                cancellationToken
+            );
+
+            if (unpacked.ExitCode != 0)
+            {
+                throw new AgentProcessHostException(
+                    $"The Run's workspace arrived at its sandbox but could not be unpacked. "
+                        + $"({Detail(unpacked)})"
+                );
+            }
+        }
+        finally
+        {
+            File.Delete(archive);
         }
     }
 

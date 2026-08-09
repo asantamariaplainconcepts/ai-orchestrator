@@ -10,7 +10,9 @@
       resource group created and deleted there twice.
 - [ ] 0.2 A fine-grained `github_pat_…` and an `sk-ant-…`, both human-minted — an agent cannot
       create either. Needed for the typed credential providers in group 4.
-- [ ] 0.3 Record the preview version and region every later observation is true of (ADR-0018).
+- [x] 0.3 Record the preview version and region every later observation is true of (ADR-0018).
+      **`aca 1.0.0-preview.1`, spaincentral, subscription `422bb77e-…`, 2026-08-09** — written at
+      the head of `evidence.md`.
 
 ## 1. The host (design D1, D2)
 
@@ -42,8 +44,10 @@
 ## 3. The workspace (design D2, and the spike's H2)
 
 - [x] 3.1 The Run's workspace reaches the sandbox without the executor sharing its machine.
-- [ ] 3.2 A functional test pins that no host-level grant is required on the executing machine —
-      the property the pod path could not offer and the reason this change exists.
+- [x] 3.2 A functional test pins that no host-level grant is required on the executing machine —
+      the property the pod path could not offer and the reason this change exists. **Exercised
+      against real Azure**: a file written on this Mac was read back inside a remotely created
+      microVM. No mount, no socket, no grant.
 
 ## 4. Credentials (design D4)
 
@@ -58,7 +62,9 @@
 - [ ] 4.3 The transcript names the injection as the credential source, beside the two sources it
       already names.
 - [ ] 4.4 Provisioning tolerates role propagation — the spike saw 403s for about a minute after
-      granting `Container Apps SandboxGroup Data Owner`.
+      granting `Container Apps SandboxGroup Data Owner`. **Not reproduced 2026-08-09**:
+      `sandboxgroup create` now grants the role itself and every data-plane call worked at once.
+      "Did not happen today" is weaker than "tolerated", so this stays open.
 
 ## 5. Previews (design D5)
 
@@ -104,13 +110,21 @@
       lets the agent finish after several polls — an implementation that ran one exec and returned
       would never see it. Each behaviour verified able to fail by removing it: dropping the
       auto-suspend call reddens one test, dropping disposal reddens two.
-- [ ] 7.2 **Exercised against real Azure**, gated like `RealSbxSandbox_Should_Constraint` so CI
-      never runs it: a Run end to end on the substrate, longer than the `exec` ceiling, with its
-      output observed arriving while it worked, its preview relayed and then gone, and no sandbox
-      surviving. Recorded verbatim, including anything that did not work.
+- [x] 7.2 **Exercised against real Azure**, gated like `RealSbxSandbox_Should_Constraint` so CI
+      never runs it. `RealAcaSandbox_Should_Constraint`, four tests, all green — and they found
+      **four defects a green unit suite could not**: `fs cp` takes no `--id`; the platform has no
+      recursive copy at all, so the workspace had to become tar → copy → untar; the last lines of
+      every Run were dropped by the poll loop's hold-back; and the egress decision log is JSON,
+      so the line-based reader reported nothing exactly when it mattered. Verbatim in
+      `evidence.md`, with what held and what is still unverified.
+      **Not covered: a real agent Run** — the organisation's Anthropic key is not the developer's
+      to mint, so the `claude` disk is unavailable and a shell command stood in for the agent.
+      That is the right subject for this change's own properties and proves nothing about a model.
 - [ ] 7.3 Full gates, and confirm the dev loop and the local lane behave exactly as before.
-- [ ] 7.4 Delete everything the proof created and say what it cost — the number the issue accepted
-      without measuring is worth capturing the moment it becomes knowable.
+- [x] 7.4 Everything created was deleted — **0 sandboxes** after four Runs, then the group and the
+      resource group. The billed surface was five short-lived 1 vCPU / 2 GiB microVMs under ten
+      minutes total. **No figure**: Azure's cost data lags by hours, so a number read now would be
+      zero for the wrong reason, and the honest answer is the shape of the usage (ADR-0018).
 
 ## 8. One dispatch substrate (design D7 — scope widened by the owner, 2026-08-09)
 
