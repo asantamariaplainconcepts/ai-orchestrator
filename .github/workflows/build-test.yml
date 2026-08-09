@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-test:
-    # Docker-capable: functional tests run against real PostgreSQL and Azurite containers.
+    # Docker-capable: functional tests run against a real PostgreSQL container.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

@@ -11,7 +11,7 @@ never smuggled into feature items.
 | Repo scaffolding (modular monolith, build props, analyzers, test bases, CI/CD) | everything | Phase 1 of the bootstrap |
 | Auth foundation (Entra ID integration, permission model plumbing) | UC-001, UC-002, BR-009 | Gated by [OPN-002](07-open-decisions.md) |
 | Connector seam (normalized story events, write-back contract) | all of BC-002 | Seam designed once; GitHub implements it first (DEC-011) |
-| Storage Queue + KEDA + ACA Job template + Key Vault wiring | all Runs | Deployed shape. A queueless habitat dispatches through the events' outbox instead (#225), which is what drops the local Azurite container |
+| Postgres outbox dispatch + ACA SandboxGroups + Key Vault wiring | all Runs | One dispatch substrate in every habitat since DEC-013's supersession — the outbox integration events already use. The deployed difference is where the Agent executes, not how a Run is dispatched |
 | Runtime seam (job contract: story prompt in, plan/output/usage out) | UC-015..020 | Claude Code headless implements it first (DEC-012) |
 | Telemetry: OTel ServiceDefaults + Azure Monitor exporters (product), usage-telemetry stack (framework) | UC-020, retros | DEC-022/023 |
 | Design system (Atlas-style tokens, DESIGN.md, drift gate) | all UI | Bootstrap Phase 4 |

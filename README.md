@@ -1,9 +1,9 @@
 # AI Orchestrator
 
 An internal web application that connects project backlogs (GitHub, Azure DevOps) to AI agents:
-configure **Automations** that fire KEDA-scaled **Agent** jobs (Azure Container Apps) to act on
-user stories — implementing them as PRs, refining, transitioning or estimating them — with every
-run visible and governable from the website.
+configure **Automations** that run an **Agent** in a sandbox of its own — a microVM created for
+one Run and gone with it — to act on user stories, implementing them as PRs, refining,
+transitioning or estimating them, with every run visible and governable from the website.
 
 ## Quick start
 
@@ -14,9 +14,8 @@ cd src/frontend && pnpm install && cd ../..
 aspire run --apphost src/root/AiOrchestrator.AppHost
 ```
 
-That is the whole inner loop: PostgreSQL, Azurite, migrations, the API host, the Vite dev
-server **and the dispatch worker**, served same-origin through the host. Git hooks install
-themselves on the first `dotnet build`.
+That is the whole inner loop: PostgreSQL, migrations, the API host and the Vite dev server,
+served same-origin through the host. Git hooks install themselves on the first `dotnet build`.
 
 It seeds a **Demo project** with an Automation on opencode's free model, so the loop is
 clickable immediately and costs nothing to run — no AI credential is needed.
@@ -33,11 +32,13 @@ dotnet user-secrets set "local-github-pat" "<a PAT with repo scope>"
 Then label a Story `ai:implement` in the portal and watch a Run appear, execute, and open a
 pull request.
 
-**What the local loop proves, and what it does not.** It exercises the real queue contract,
-matching, agent execution and pull-request publication — the same code that runs deployed.
-It does **not** exercise KEDA (Aspire restarts the worker on a timer; KEDA scales on queue
-length) or Key Vault (locally, secrets come from user secrets through the same resolver
-interface). Those two have exactly one proof, and it is in Azure.
+**What the local loop proves, and what it does not.** It exercises the real dispatch path,
+matching, agent execution and pull-request publication — the same code that runs deployed,
+because dispatch is the Postgres outbox in every habitat since #296.
+It does **not** exercise the deployed sandbox substrate (locally the Agent runs in `sbx`, or as
+a child of this process; deployed it runs in an Azure Container Apps sandbox) or Key Vault
+(locally, secrets come from user secrets through the same resolver interface). Those two have
+exactly one proof, and it is in Azure.
 
 ### Webhooks (optional)
 

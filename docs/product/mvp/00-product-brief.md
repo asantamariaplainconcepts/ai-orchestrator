@@ -1,8 +1,8 @@
 # Product brief — AI Orchestrator
 
 **One line.** An internal web application that connects project backlogs (GitHub, Azure
-DevOps) to AI agents: users configure *Automations* that fire KEDA-scaled Agent jobs to
-act on user stories — implementing them as PRs, refining them, transitioning or
+DevOps) to AI agents: users configure *Automations* that run an Agent in a sandbox of its own
+to act on user stories — implementing them as PRs, refining them, transitioning or
 estimating them — with every run visible and governable from the website.
 
 ## MVP objective
@@ -10,8 +10,8 @@ estimating them — with every run visible and governable from the website.
 Prove exactly one claim ([DEC-002](10-locked-mvp-decisions.md)):
 
 > From the website, a user connects a project to a real backlog, labels one user story,
-> and an AI job spins up via KEDA and performs the configured action on it — with the
-> result visible back in the website.
+> and an Agent starts in a sandbox of its own and performs the configured action on it — with
+> the result visible back in the website.
 
 ## Business goals
 

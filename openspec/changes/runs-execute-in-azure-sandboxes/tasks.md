@@ -171,3 +171,28 @@ its code — a reader cannot tell which of the two the product still means.
       a launcher, not a pod image; and the compose description drops the worker and the queue
       emulator the queue retirement had already deleted), and `agent-sandboxing` REMOVED for the
       layering refusal.
+
+## 10. The documentation says what the product is (owner's question, 2026-08-09)
+
+Asked as a question — *"docs product, readme etc estan modificados?"* — and the honest answer was
+"four files, and the corpus is broadly stale". A product brief that still promises a KEDA job is
+not a stale comment; it is the product describing itself wrongly to the next reader.
+
+- [x] 10.1 The root `README.md` and `AGENTS.md` no longer open by promising KEDA-scaled ACA Jobs,
+      and the dev loop's inventory drops Azurite and the dispatch worker — both of which the
+      quickstart claimed `aspire run` starts. What the local loop proves is restated: dispatch is
+      now the *same* path everywhere, and what is unexercised locally is the deployed **sandbox**,
+      not the scaler.
+- [x] 10.2 The product corpus: the brief, the user journey, the bounded contexts, the actor table
+      and the glossary's **Dispatch** entry. DEC-002 and DEC-010 are **amended in place with a
+      dated note** rather than rewritten — a locked decision is a record — and DEC-054 is marked
+      absorbed, because "the dispatch substrate follows the habitat" now has exactly one branch.
+- [x] 10.3 `infra/README.md`: the whole Dispatch section is replaced. It documented how to enqueue
+      a message by hand against a queue that no longer exists, and told a reader KEDA is the one
+      thing only verifiable in Azure. It now says what `dispatch.tf` still holds and why neither
+      resident is about dispatch.
+- [x] 10.4 **A live defect the doc sweep surfaced, not a doc fix:** `infra/deploy.sh` still
+      published `AiOrchestrator.DispatchWorker`, still read `dispatch_job_name` from Terraform
+      outputs that this change deleted, and still rolled and verified a job that no longer exists.
+      The deploy would have failed at the first `tf` read. Removed, with the #92 lesson its
+      comments carry kept — the worker retired, the check it taught did not.

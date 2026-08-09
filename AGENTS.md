@@ -9,7 +9,7 @@ restate specs, product facts, or decisions.
 
 An internal web application that connects project backlogs (GitHub, Azure DevOps) to AI agents:
 users configure **Automations** ("story with trigger label X → an **Agent** performs action Y")
-and KEDA-scaled Azure Container Apps Jobs execute them, governed from the website. Backend is a
+and an Agent executes them in a per-Run sandbox, governed from the website. Backend is a
 **.NET modular monolith**; frontend is a **React SPA** served same-origin by the host. Product
 truth lives in `docs/product/mvp/` (stable IDs: ACT/BC/UC/BR/DEC/OPN) — coined vocabulary is
 locked by DEC-005: *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Plan*.

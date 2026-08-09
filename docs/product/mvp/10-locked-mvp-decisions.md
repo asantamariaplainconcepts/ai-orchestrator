@@ -10,8 +10,9 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
 
 - **DEC-001 — Product:** AI Orchestrator, internal web app orchestrating AI agents over
   vendor-abstracted project backlogs.
-- **DEC-002 — MVP claim:** website → real backlog → labeled story → KEDA Agent job →
-  configured action → result visible in website.
+- **DEC-002 — MVP claim:** website → real backlog → labeled story → Agent Run in a sandbox →
+  configured action → result visible in website. *(The middle step read "KEDA Agent job" until
+  DEC-013's supersession retired that substrate; the claim's shape is unchanged.)*
 - **DEC-003 — Authority:** owner, solo; no written prior sources.
 - **DEC-004 — Name:** `ai-orchestrator` / `AiOrchestrator` / "AI Orchestrator".
 - **DEC-005 — Terms:** Agent, Connector, Automation.
@@ -20,7 +21,9 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
 - **DEC-008 — Backend:** .NET modular monolith, PostgreSQL schema-per-module.
 - **DEC-009 — Frontend:** React web-only (Vite), same-origin, VSA slices, token-only
   styling, typed i18n.
-- **DEC-010 — Infra:** Terraform/Azure, ACA + ACA Jobs + KEDA, Aspire dev loop.
+- **DEC-010 — Infra:** Terraform/Azure, ACA + Aspire dev loop. *(Amended 2026-08-09 with
+  DEC-013's supersession: the ACA **Jobs + KEDA** half is gone. Agents run in ACA **Sandboxes**,
+  created per Run over an authenticated API; the portal is still an ACA app.)*
 - **DEC-011 — Connectors:** GitHub + Azure DevOps in MVP, sequenced (GitHub first).
 - **DEC-012 — Runtimes:** pluggable per Automation; Claude Code headless first,
   opencode second.
@@ -377,8 +380,11 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   stated gap.
 
 - **DEC-054 — the dispatch substrate follows the habitat, and the local one gives up the
-  worker/portal separation** *(extends DEC-013)*: DEC-013 chose a Storage Queue with KEDA, which
-  is right where there is something to scale. On a machine one person owns there is no KEDA,
+  worker/portal separation** *(extended DEC-013; **absorbed 2026-08-09** when DEC-013 was
+  superseded — there is no longer a habitat that dispatches any other way, so "follows the
+  habitat" has one branch and the outbox is simply the substrate)*: DEC-013 chose a Storage Queue
+  with KEDA, which is right where there is something to scale. On a machine one person owns there
+  is no KEDA,
   nothing to scale to zero and no second consumer, so the queue costs a container and buys
   nothing. A queueless habitat therefore dispatches through the **same Postgres outbox integration
   events already use** — durability from the outbox, not the transport, so BR-004's crash story
