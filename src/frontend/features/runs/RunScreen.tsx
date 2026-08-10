@@ -488,11 +488,22 @@ export function RunScreen() {
                     </h2>
                   </div>
                   <div className="flex flex-col gap-2.5 px-4 py-3">
-                    <DetailRow label={t("run.field.created")} value={formatWhen(run.createdAt)} />
-                    <DetailRow
-                      label={t("run.field.dispatched")}
-                      value={run.dispatchedAt ? formatWhen(run.dispatchedAt) : null}
-                    />
+                    {/* One row where there were two (turn 10b): when it ended and how long it took,
+                        which is the question those two timestamps were being subtracted to answer.
+                        A Run still going says when it started instead — the honest half. */}
+                    {run.endedAt ? (
+                      <DetailRow
+                        label={t("run.field.finished")}
+                        value={[formatWhen(run.endedAt), took(run.startedAt, run.endedAt)]
+                          .filter((part) => part !== null)
+                          .join(" · ")}
+                      />
+                    ) : (
+                      <DetailRow
+                        label={t("run.field.started")}
+                        value={formatWhen(run.startedAt ?? run.dispatchedAt ?? run.createdAt)}
+                      />
+                    )}
                     <DetailRow
                       label={t("run.field.approved")}
                       value={run.approvedAt ? formatWhen(run.approvedAt) : null}
@@ -517,36 +528,11 @@ export function RunScreen() {
                       }
                       mono
                     />
+                    {/* Execution folded in (turn 10b): it was one row of substance plus three that
+                        usually said "—", in a card of its own with its own heading. "Where" carries
+                        the one fact; the folder and branch appear only for a Run that has them. */}
                     <DetailRow
-                      label={t("run.field.output")}
-                      value={
-                        run.outputLink ? (
-                          <a
-                            className="font-medium text-primary underline-offset-4 hover:underline"
-                            href={run.outputLink}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            {t("runs.table.openOutput")}
-                          </a>
-                        ) : null
-                      }
-                    />
-                  </div>
-                </Card>
-
-                {/* Mock 3c (#211): where it executed, between Details and Changes. Both kinds
-                    read the same page — a local run names its folder and branch where a sandbox run
-                    carries the job's fresh clone and a PR. */}
-                <Card className="gap-0 py-0">
-                  <div className="border-b px-4 py-3">
-                    <h2 className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      {t("run.section.execution")}
-                    </h2>
-                  </div>
-                  <div className="flex flex-col gap-2.5 px-4 py-3">
-                    <DetailRow
-                      label={t("run.field.runtimeKind")}
+                      label={t("run.field.where")}
                       value={
                         run.locus === "Local"
                           ? t("run.execution.localProcess")
@@ -564,11 +550,18 @@ export function RunScreen() {
                     <DetailRow
                       label={t("run.field.output")}
                       value={
-                        run.locus === "Local"
-                          ? t("run.execution.localOutput")
-                          : run.outputLink
-                            ? t("run.execution.sandboxOutput")
-                            : null
+                        run.outputLink ? (
+                          <a
+                            className="font-medium text-primary underline-offset-4 hover:underline"
+                            href={run.outputLink}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            {t("runs.table.openOutput")}
+                          </a>
+                        ) : run.locus === "Local" ? (
+                          t("run.execution.localOutput")
+                        ) : null
                       }
                     />
                   </div>
@@ -633,16 +626,39 @@ function remedyFor(reason: string | null): "settings" | "automations" | null {
   return null;
 }
 
-/** One rail row: muted label left, value right, the design system's em dash for absence. */
+/**
+ * One rail row: muted label left, value right.
+ *
+ * **A row with nothing in it does not render** (turn 10b). The rail was spending four of its rows on
+ * an em dash — Approved, Output, Branch created, and Output again from the Execution card — which is
+ * a reader paying attention four times to learn nothing. Absence is now the row's absence, and the
+ * space goes to the Output, which is what people came to read. A row that must state its emptiness
+ * passes an explicit node for it, as Cost does with "unknown" (BR-011: unknown is a fact).
+ */
 function DetailRow({ label, value, mono }: { label: string; value: ReactNode; mono?: boolean }) {
+  if (value === null || value === undefined || value === "") return null;
+
   return (
     <div className="flex items-baseline justify-between gap-3 text-xs">
       <span className="shrink-0 text-muted-foreground">{label}</span>
       <span className={cn("min-w-0 text-right break-words", mono && "font-mono text-[11px]")}>
-        {value ?? <span className="text-muted-foreground">—</span>}
+        {value}
       </span>
     </div>
   );
+}
+
+/** How long it ran, from the two instants the rail no longer spends a row each on. */
+function took(startedAt: string | null, endedAt: string | null): string | null {
+  if (!startedAt || !endedAt) return null;
+
+  const ms = Date.parse(endedAt) - Date.parse(startedAt);
+  if (!Number.isFinite(ms) || ms < 0) return null;
+
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}m ${seconds - minutes * 60}s`;
 }
 
 /**

@@ -225,9 +225,15 @@ export const en = {
   "runs.runNow.confirmLocal": "Run on this machine",
   "runs.runNow.confirmSandbox": "Run in a sandbox",
 
-  // Run detail's Execution block (#211, mock 3c) — both kinds read the same page.
+  // Run detail's Execution block (#211, mock 3c) — both kinds read the same page. Since turn 10b
+  // these rows live in Details: one card, no heading spent on a single fact.
   "run.section.execution": "Execution",
   "run.field.runtimeKind": "Runtime",
+  // Turn 10b: "Where" carries what the Execution card's heading and Runtime row said between them,
+  // and Finished replaces Created + Dispatched with the answer a reader was subtracting them for.
+  "run.field.where": "Where",
+  "run.field.finished": "Finished",
+  "run.field.started": "Started",
   "run.field.workingFolder": "Working folder",
   "run.field.branchCreated": "Branch created",
   "run.execution.localProcess": "Local process on this machine",
@@ -833,8 +839,6 @@ export const en = {
   "run.decideFailed": "Could not record the decision.",
   "run.field.state": "State",
   "run.field.story": "Story",
-  "run.field.created": "Created",
-  "run.field.dispatched": "Dispatched",
   "run.field.approved": "Approved",
   "run.field.output": "Output",
   "run.field.failure": "Failure",

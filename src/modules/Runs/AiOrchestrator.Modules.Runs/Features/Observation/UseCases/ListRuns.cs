@@ -45,6 +45,13 @@ sealed class ListRuns : IUseCase
         string State,
         DateTimeOffset CreatedAt,
         DateTimeOffset? DispatchedAt,
+        /// <summary>
+        /// When it stopped, null while it has not. With <see cref="StartedAt"/> this is what lets the
+        /// rail say "finished 15 min ago · took 3m 12s" instead of spending two rows on the two
+        /// timestamps a reader would have to subtract themselves (turn 10b).
+        /// </summary>
+        DateTimeOffset? StartedAt,
+        DateTimeOffset? EndedAt,
         string? OutputLink,
         string? Plan,
         DateTimeOffset? ApprovedAt,
@@ -108,6 +115,8 @@ sealed class ListRuns : IUseCase
                     run.State.ToString(),
                     run.CreatedAt,
                     run.DispatchedAt,
+                    run.StartedAt,
+                    run.EndedAt,
                     run.OutputLink,
                     run.Plan,
                     run.ApprovedAt,
