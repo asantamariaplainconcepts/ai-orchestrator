@@ -438,4 +438,4 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   (permit the beside-the-agent shell everywhere, the into-the-agent session nowhere), which is
   preserved in the change's `evidence.md`. BR-005 needs a stated rule before the into-the-agent form is
   implementable: a timeout that bounds unattended work cannot also bound work a human is typing into.
-  Decided 2026-08-11 with #301 ([ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)).
+  Decided 2026-08-10 with #301 ([ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)).

@@ -1,7 +1,7 @@
 # ADR-0021: A developer's own machine may hold an agent session; a deployment may not
 
 - **Status:** Accepted *(supersedes [ADR-0008](0008-a-live-conversation-costs-a-pass-per-message.md) in self-host; ADR-0008's conclusion stands unchanged for a deployment)*
-- **Date:** 2026-08-11
+- **Date:** 2026-08-10
 - **Deciders:** repository owner (DEC-003); analysis by the agent working #301
 - **Tags:** architecture, dispatch, cost, conversation, sandboxing
 
@@ -33,7 +33,7 @@ host-allocated pty. `sbx exec -it` refuses a redirected pipe outright; given a r
 pty inside the sandbox, correct geometry, `^C` delivered as SIGINT, and full-screen programs
 rendering. The spike measured feasibility and nothing else — not authentication, not audit, not what
 a second writer does to the agent's working tree. It is preserved in
-`openspec/changes/close-opn-007-live-agent-session/poc/`.
+`openspec/changes/archive/2026-08-10-close-opn-007-live-agent-session/poc/`.
 
 Judging the alternatives surfaced a distinction ADR-0008 never had to draw, because no sandbox
 existed to attach to. "A human attaches" is **two** capabilities:
@@ -134,6 +134,6 @@ the change's `evidence.md`, so a future reader can weigh the road not taken rath
 - Supersedes in self-host: [ADR-0008](0008-a-live-conversation-costs-a-pass-per-message.md)
 - Closes: OPN-007 ([07-open-decisions.md](../product/mvp/07-open-decisions.md))
 - Issue: [#301](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/301)
-- Change: `openspec/changes/close-opn-007-live-agent-session/` — analysis in `evidence.md`, spike in `poc/`
+- Change: `openspec/changes/archive/2026-08-10-close-opn-007-live-agent-session/` — analysis in `evidence.md`, spike in `poc/`
 - Related decisions: DEC-013 (superseded, #296), DEC-055, DEC-061, DEC-063, DEC-030, DEC-049
 - Related rules: BR-001, BR-005, BR-006
