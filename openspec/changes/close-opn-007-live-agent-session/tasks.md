@@ -16,16 +16,16 @@
 
 ## 2. Evaluate the three candidate shapes
 
-- [ ] 2.1 Judge shape 1 (reaffirm: a pass per message) against every criterion in design D2, and
+- [x] 2.1 Judge shape 1 (reaffirm: a pass per message) against every criterion in design D2, and
       record what it costs the Member in latency and passes for a dozen-round grill
-- [ ] 2.2 Judge shape 2 (an attached session bounded by inactivity) against the same criteria,
+- [x] 2.2 Judge shape 2 (an attached session bounded by inactivity) against the same criteria,
       including what a held sandbox costs in each habitat and what reclaims it
-- [ ] 2.3 Judge shape 3 (split by habitat) against the same criteria, and state whether one product
+- [x] 2.3 Judge shape 3 (split by habitat) against the same criteria, and state whether one product
       behaving differently on two substrates is acceptable for this capability
-- [ ] 2.4 Answer design D3's distinction explicitly for each shape: *attach to the agent's own
+- [x] 2.4 Answer design D3's distinction explicitly for each shape: *attach to the agent's own
       process* versus *attach to the agent's sandbox beside it* — including which one preserves the
       structured transcript
-- [ ] 2.5 Record the rejected shapes with their reasons, so the analysis is inspectable and the next
+- [x] 2.5 Record the rejected shapes with their reasons, so the analysis is inspectable and the next
       person with this idea reads it instead of relitigating it
 
 ## 3. Write the decision
