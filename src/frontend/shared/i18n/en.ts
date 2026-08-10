@@ -107,6 +107,11 @@ export const en = {
   "run.transcript.unknown": "unknown",
   "run.transcript.in": "in",
   "run.transcript.out": "out",
+  // A line the writer cut at its column width (RunLogWriter): the Agent wrote more than this
+  // record can hold, so the fragment is labelled rather than passed off as the whole of it.
+  "run.transcript.truncated": "truncated",
+  "run.transcript.truncatedTitle":
+    "This line was longer than one log entry can hold, so its end was cut.",
   "run.log.live": "live",
   "run.log.error": "The log cannot be followed right now. The run itself is unaffected.",
   "run.log.none": "This run produced no output.",

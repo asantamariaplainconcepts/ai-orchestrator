@@ -140,7 +140,33 @@ sealed partial class RunLogWriter : IAsyncDisposable
         }
     }
 
-    static string Bounded(string line) => line.Length <= 8192 ? line : line[..8192];
+    /// <summary>
+    /// The longest line a chunk can hold — the column's own width, named once so the two cannot
+    /// drift (<see cref="Persistence.RunsDbContext"/> configures the column from this).
+    /// </summary>
+    internal const int MaxLineLength = 8192;
+
+    /// <summary>
+    /// What a cut line ends with, so the loss is a fact the reader can state rather than one it
+    /// has to infer.
+    /// </summary>
+    internal const string TruncationMarker = "…[truncated]";
+
+    /// <summary>
+    /// Lines that outgrow the column are cut — an agent event embedding a whole file routinely
+    /// does, so truncation is inevitable here and not a defect.
+    /// <para>
+    /// Being <b>silent</b> about it was. A cut JSON line can never parse, so the transcript reader
+    /// fell back to its verbatim branch and rendered 8 KB of unparseable JSON on one line — the
+    /// exact opposite of the readable transcript that screen exists to be, and with no hint that
+    /// anything had been removed. The marker says what happened, which is what lets the reader
+    /// recover the event's shape from the surviving prefix instead of dumping it.
+    /// </para>
+    /// </summary>
+    static string Bounded(string line) =>
+        line.Length <= MaxLineLength
+            ? line
+            : line[..(MaxLineLength - TruncationMarker.Length)] + TruncationMarker;
 
     public async ValueTask DisposeAsync()
     {
