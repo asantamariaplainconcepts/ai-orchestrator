@@ -418,3 +418,24 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   the shaping rules it must cite, ships `openspec/config.yaml` with its project-context section an
   explicit TODO because context cannot be inherited, and **never** carries this product's own corpus
   (`ACT-*`, `UC-*`, `BR-*`, `DEC-*`): that is AI Orchestrator's identity, not a template.
+
+- **DEC-065 — a developer's own machine may hold an agent session; a deployment may not**
+  *(supersedes [DEC-055](#) / [ADR-0008](../../adr/0008-a-live-conversation-costs-a-pass-per-message.md)
+  in self-host only, and closes OPN-007)*: in the self-host habitat a human MAY attach to a Run's
+  sandbox beside the headless agent **and** MAY attach to the agent's own process, bounded by the
+  machine's inactivity in the shape DEC-061 established — never by a deadline on the person (BR-006).
+  In a deployment neither is permitted and DEC-055 stands: a conversation costs a pass per message.
+  Rationale: ADR-0008 refused a live session on three premises, and two moved without this change —
+  DEC-013 was superseded with its substrate (#296), and "nothing idles" was already revised by DEC-061
+  and DEC-063, which now pays for one continuously idle session at 1 vCPU and 2 GiB. What is left is
+  BR-006, and BR-006 is satisfied by an inactivity bound. **The habitat is the whole of the
+  difference:** a self-host Run runs on hardware its operator owns, where a held sandbox spends their
+  own 4 GiB; a deployed Run runs on metered infrastructure where the same affordance turns an untimed
+  human wait into unbounded spend someone else pays. **The cost, stated:** the same Automation now
+  produces different records in different habitats — a locally attached agent yields a terminal byte
+  stream where a deployed Run yields the structured transcript of #299/#300, and `transcript.ts`
+  renders the former as `raw` lines. Accepted knowingly, against the analysis's own recommendation
+  (permit the beside-the-agent shell everywhere, the into-the-agent session nowhere), which is
+  preserved in the change's `evidence.md`. BR-005 needs a stated rule before the into-the-agent form is
+  implementable: a timeout that bounds unattended work cannot also bound work a human is typing into.
+  Decided 2026-08-10 with #301 ([ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)).

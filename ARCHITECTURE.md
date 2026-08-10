@@ -189,6 +189,16 @@ holds one warm container continuously. The provider's schema accepted the zero a
 not, which is the general shape of this whole seam: `azapi` is an escape hatch, and its embedded
 schema is not the API.
 
+**A session may be held on your own machine, and nowhere else (DEC-065, ADR-0021).** In self-host a
+human may attach to a Run's sandbox beside the headless agent, or to the agent's own process; both are
+bounded by the machine's inactivity, never by a clock on the person (BR-006). In a deployment neither
+is permitted and DEC-055 stands — a conversation costs a pass per message. ADR-0008's cost argument
+was always a deployment argument: a sandbox held on hardware its operator owns spends their own 4 GiB,
+while the same affordance on metered infrastructure turns an untimed human wait into spend somebody
+else pays. **The asymmetry has a price the seam must carry:** an agent attached to locally emits a
+terminal byte stream, not the structured output `transcript.ts` reads, so the same Automation's Run
+reads as `raw` lines in one habitat and as steps in the other.
+
 **A prompt can be tried before it is committed (#189), and the scratchpad is a conversation.** With
 the catalogue at one action, writing a prompt is the configuration activity — so the portal runs
 supplied text once against the project's repository and shows the reply and the cost. It stores

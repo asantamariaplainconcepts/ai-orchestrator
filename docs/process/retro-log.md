@@ -3831,3 +3831,50 @@ that belongs to a follow-up rather than to a green tick here.
 **Time invested:** 13.0 h agent, $782.29, 1.10 B tokens across 1 mapped session (source:
 **telemetry**). Human time reads **0.00 h**, which is the metric not being emitted rather than the
 work being unattended — recorded as measured rather than corrected by guesswork.
+
+## 2026-08-10 — `close-opn-007-live-agent-session` (#301)
+
+A decision, not a capability: whether a human may take the keyboard in a Run's own agent session.
+The answer is habitat-split — permitted in self-host, refused in a deployment
+([ADR-0021](../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md),
+DEC-065) — and OPN-007 was recorded and closed in the same change, as every OPN before it.
+
+**What worked: the grill read the supersession chain, not just the locked verdict.** The idea
+arrived contradicting ADR-0008, which had already refused a live session. The cheap answer was
+"blocked by a locked decision". Reading *why* it was locked turned that into something else
+entirely: two of its three premises had moved without anyone revisiting the conclusion — DEC-013
+went with its substrate (#296), and "nothing idles" had already been revised twice, by DEC-061 and
+then DEC-063, which now pays for one continuously idle session at 1 vCPU and 2 GiB. What remained
+was BR-006, and BR-006 is satisfiable by an inactivity bound. A gate that only checked whether a
+decision was locked would have stopped the work; one that read the decision's own reasoning found
+it had expired. Worth doing beside it: the spike ran **before** the decision, so the ADR could cite
+feasibility as measured — a pty, signals, full-screen programs — and argue only about cost.
+
+**What didn't: this change's time is unmeasured, for roughly the seventy-first time.**
+`node .config/otel/verify-telemetry.mjs` fails three checks — *exporter enabled AND pointed here*
+(`OTEL_EXPORTER_OTLP_ENDPOINT` unset), *collector accepting connections* (nothing listening), and
+*our collector is the one running* (container not found). `usage.jsonl`'s last write is
+**2026-08-10T20:54:02Z**, while this change's branch was created at **22:12Z**, so the export
+predates nearly all of the work. [ADR-0011](../adr/0011-a-worktree-session-carries-its-own-telemetry.md)
+anticipated exactly this and required the retro to name the failing check instead of shrugging —
+and that fallback has now been exercised in some seventy entries. **The escape hatch has become the
+normal path.** Reporting the gap faithfully has never once repaired capture, and nothing recovers
+telemetry that was never written. Spun into [#307](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/307)
+rather than graduated here: the fix is a collector lifecycle, not another decision. Smaller, in the same family: DEC-060 was cited where
+DEC-063 was meant — a decision id written from memory instead of read from the file — and it
+propagated through the proposal, the design and the tasks before review caught it.
+
+**One change next time:** make a missing collector fail at session start, loudly, instead of
+producing a retro that reports it afterwards. The reporting requirement was the right call in
+ADR-0011 and it has been honoured every time; what it cannot do is make anyone fix the exporter.
+
+**Left open deliberately, not silently:** BR-005 has no rule for an attached agent — a timeout that
+bounds unattended work cannot also bound work a human is typing into — and ADR-0021 names that as
+gating the into-the-agent form it permits. Authorization and audit for a shell inside a Run's
+sandbox are likewise unbuilt, and that sandbox carries the machine owner's own session (#288). Both
+belong to #304, with the blockers written into it rather than discovered by whoever picks it up.
+
+**Time invested:** unmeasured — source **manual, because capture is broken** (three failing checks
+named above). The only figures the export holds for this session are **$0.69 and 380,511 tokens**,
+and they cover the stretch before the collector stopped receiving, which is before this change
+began. They are recorded as partial rather than presented as the change's cost.
