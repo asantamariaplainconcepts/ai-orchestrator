@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.ServiceDefaults.Agents;
+using AiOrchestrator.ServiceDefaults.Agents.Sbx;
 using AiOrchestrator.ServiceDefaults.Dispatch;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

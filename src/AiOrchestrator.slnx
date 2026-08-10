@@ -19,7 +19,7 @@
   <Folder Name="/shared/">
     <Project Path="shared/AiOrchestrator.ArchitectureAnalyzers/AiOrchestrator.ArchitectureAnalyzers.csproj" />
     <Project Path="shared/AiOrchestrator.BuildingBlocks/AiOrchestrator.BuildingBlocks.csproj" />
-    <Project Path="shared/AiOrchestrator.ServiceDefaults/AiOrchestrator.ServiceDefaults.csproj" />
+    <Project Path="shared\AiOrchestrator.Infrastructure\AiOrchestrator.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AiOrchestrator.ArchTests/AiOrchestrator.ArchTests.csproj" />

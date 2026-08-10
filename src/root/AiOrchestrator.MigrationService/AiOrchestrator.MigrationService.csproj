@@ -21,7 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
-    <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\shared\AiOrchestrator.Infrastructure\AiOrchestrator.Infrastructure.csproj" />
     <!-- Modules are referenced so their assemblies land beside the executable, where
          ModuleRegistration.Discover finds them — the same mechanism the Server uses. -->
     <ProjectReference Include="..\..\modules\Projects\AiOrchestrator.Modules.Projects\AiOrchestrator.Modules.Projects.csproj" />

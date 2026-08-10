@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.ServiceDefaults.Agents;
+using AiOrchestrator.ServiceDefaults.Agents.Aca;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 

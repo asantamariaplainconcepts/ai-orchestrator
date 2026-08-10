@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
-    <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\shared\AiOrchestrator.Infrastructure\AiOrchestrator.Infrastructure.csproj" />
     <!-- Every module (impl + .Contracts) auto-attaches here; adding a module needs no edit to this file. -->
     <ProjectReference Include="..\..\modules\**\*.csproj" />
   </ItemGroup>
