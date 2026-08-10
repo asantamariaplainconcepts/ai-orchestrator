@@ -4,7 +4,13 @@ import { Link, useParams } from "react-router";
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { useAutomations } from "@/features/automations/useAutomations";
 import { runtimesBlocked, useRuntimes } from "@/features/runtimes/useRuntimes";
-import { RunTranscript, TranscriptSpend } from "./RunTranscript";
+import {
+  OutputView,
+  RunTranscript,
+  TranscriptShape,
+  TranscriptSpend,
+  type OutputViewMode,
+} from "./RunTranscript";
 import { ApiError } from "@/shared/http/client";
 import { t, tCount, type TranslationKey } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
@@ -78,6 +84,9 @@ export function RunScreen() {
   const runAgain = useRunNow(projectId);
   // The re-run's per-Run runtime choice (#244): "" is "as resolved", the honest default.
   const [runAgainRuntime, setRunAgainRuntime] = useState("");
+  // Readable by default (turn 10 ④): the grouped view is what makes a Run legible, and Raw is the
+  // escape hatch for whoever needs the bytes.
+  const [outputView, setOutputView] = useState<OutputViewMode>("readable");
   const dismiss = useDismissFailure(projectId);
 
   const run = runs.data?.find((candidate) => candidate.id === runId);
@@ -413,6 +422,10 @@ export function RunScreen() {
                     !log.isError ? (
                       <span className="text-sm text-muted-foreground">{t("run.log.none")}</span>
                     ) : null}
+                    {/* The Run's shape before its content: how many steps, how many tool calls. */}
+                    {transcript && log.data && log.data.content.length > 0 ? (
+                      <TranscriptShape transcript={transcript} />
+                    ) : null}
                     {/* Live while it runs (UC-027): the poll stops itself on terminal (D3), and
                         the live region announces the stop. */}
                     <span aria-live="polite">
@@ -427,7 +440,13 @@ export function RunScreen() {
                       ) : null}
                     </span>
                     {transcript && log.data && log.data.content.length > 0 ? (
-                      <span className="ml-auto">
+                      <span className="ml-auto flex items-center gap-3">
+                        {/* Completeness stays available, never imposed (design D5, turn 10 ④):
+                            Raw is the whole dump, byte for byte, one click away. Offered only
+                            where there is a grouped view to differ from. */}
+                        {transcript.steps.length > 0 ? (
+                          <OutputView value={outputView} onChange={setOutputView} />
+                        ) : null}
                         <TranscriptSpend totals={transcript.totals} />
                       </span>
                     ) : null}
@@ -446,7 +465,7 @@ export function RunScreen() {
                       )}
                       {log.data &&
                         (log.data.content.length > 0 && transcript ? (
-                          <RunTranscript entries={transcript.entries} />
+                          <RunTranscript transcript={transcript} verbatim={outputView === "raw"} />
                         ) : (
                           <p className="text-sm text-muted-foreground">
                             {log.data.complete ? t("run.log.none") : t("run.log.waitingForOutput")}

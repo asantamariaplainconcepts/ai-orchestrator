@@ -112,6 +112,20 @@ export const en = {
   "run.transcript.truncated": "truncated",
   "run.transcript.truncatedTitle":
     "This line was longer than one log entry can hold, so its end was cut.",
+  // Steps (turn 10 ②): step_start/step_finish stopped being rows and now delimit a block. A step
+  // that never spoke is named by its position, because inventing a description would be a claim.
+  "run.transcript.step": "Step",
+  "run.transcript.stepCount.one": "step",
+  "run.transcript.stepCount.other": "steps",
+  "run.transcript.toolCount.one": "tool call",
+  "run.transcript.toolCount.other": "tool calls",
+  "run.transcript.toolsInStep.one": "tool",
+  "run.transcript.toolsInStep.other": "tools",
+  "run.transcript.stepFailed": "failed",
+  // The verbatim view (turn 10 ④): completeness is kept available, never imposed (design D5).
+  "run.transcript.viewReadable": "Readable",
+  "run.transcript.viewRaw": "Raw",
+  "run.transcript.viewLabel": "How to show the output",
   "run.log.live": "live",
   "run.log.error": "The log cannot be followed right now. The run itself is unaffected.",
   "run.log.none": "This run produced no output.",
