@@ -1,5 +1,6 @@
 import { renderStoryMarkdown } from "@/features/backlog/markdown";
 import { t } from "@/shared/i18n";
+import { Badge } from "@/shared/ui/badge";
 import type { TranscriptEntry, TranscriptTotals } from "./transcript";
 
 /**
@@ -42,6 +43,33 @@ export function TranscriptSpend({ totals }: { totals: TranscriptTotals }) {
   );
 }
 
+/**
+ * A detail block. Wraps rather than scrolls: these carry whole files and 8 KB fragments, and a
+ * single unwrapped line turns the panel into a horizontal scroll strip showing ~1% of itself.
+ * `break-all` because the long tokens here are paths, JSON and shell commands, which have no
+ * spaces to break at.
+ */
+function Detail({ children }: { children: string }) {
+  return (
+    <pre className="mt-2 max-h-96 overflow-y-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap break-all">
+      {children}
+    </pre>
+  );
+}
+
+/** Says the record is a fragment, wherever one is shown. Same treatment readiness uses to warn. */
+function TruncatedNote() {
+  return (
+    <Badge
+      variant="outline"
+      className="border-warning/40 bg-warning/15 text-warning"
+      title={t("run.transcript.truncatedTitle")}
+    >
+      {t("run.transcript.truncated")}
+    </Badge>
+  );
+}
+
 function Entry({ entry }: { entry: TranscriptEntry }) {
   if (entry.kind === "text") {
     return (
@@ -70,10 +98,9 @@ function Entry({ entry }: { entry: TranscriptEntry }) {
               {entry.subject}
             </span>
           ) : null}
+          {entry.truncated ? <TruncatedNote /> : null}
         </summary>
-        <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
-          {entry.detail}
-        </pre>
+        <Detail>{entry.detail}</Detail>
       </details>
     );
   }
@@ -81,19 +108,24 @@ function Entry({ entry }: { entry: TranscriptEntry }) {
   if (entry.kind === "event") {
     return (
       <details className="text-sm">
-        <summary className="cursor-pointer rounded-sm text-xs text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
+        <summary className="flex cursor-pointer items-center gap-2 rounded-sm text-xs text-muted-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">
           {entry.label}
+          {entry.truncated ? <TruncatedNote /> : null}
         </summary>
-        <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">
-          {entry.detail}
-        </pre>
+        <Detail>{entry.detail}</Detail>
       </details>
     );
   }
 
   // Verbatim, and deliberately not inside a disclosure: an uninterpretable line is often the crash or
-  // the stack trace somebody opened this page to find.
+  // the stack trace somebody opened this page to find. Wrapped and height-capped all the same — a
+  // line nobody can read without dragging a scrollbar sideways is not really visible either.
   return (
-    <pre className="overflow-x-auto rounded-md bg-muted p-2 font-mono text-xs">{entry.body}</pre>
+    <>
+      {entry.truncated ? <TruncatedNote /> : null}
+      <pre className="max-h-96 overflow-y-auto rounded-md bg-muted p-2 font-mono text-xs whitespace-pre-wrap break-all">
+        {entry.body}
+      </pre>
+    </>
   );
 }

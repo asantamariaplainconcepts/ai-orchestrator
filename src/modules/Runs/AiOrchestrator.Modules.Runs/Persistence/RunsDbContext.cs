@@ -111,7 +111,12 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
                 chunk.HasKey(entity => entity.Id);
                 // Reads are always "the whole log for one Run, in order".
                 chunk.HasIndex(entity => new { entity.RunId, entity.Sequence });
-                chunk.Property(entity => entity.Content).HasMaxLength(8192);
+                // The writer bounds each line to exactly this width, so the constant is shared
+                // rather than repeated: a column widened without the writer knowing would start
+                // rejecting the very lines the change meant to allow.
+                chunk
+                    .Property(entity => entity.Content)
+                    .HasMaxLength(Features.Execution.RunLogWriter.MaxLineLength);
             });
         });
     }

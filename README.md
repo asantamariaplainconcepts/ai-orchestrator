@@ -17,6 +17,22 @@ aspire run --apphost src/root/AiOrchestrator.AppHost
 That is the whole inner loop: PostgreSQL, migrations, the API host and the Vite dev server,
 served same-origin through the host. Git hooks install themselves on the first `dotnet build`.
 
+The dev loop runs the Agent in an `sbx` sandbox by default. `sbx` refuses to create its
+**first** sandbox on a machine until its global network policy exists —
+every Run fails with `global network policy has not been initialized` until you run, once per
+machine:
+
+```bash
+sbx policy init balanced
+sbx policy allow network opencode.ai
+```
+
+(`balanced` is `sbx`'s own recommended default: typical dev traffic — AI services, package
+registries — is allowed, and the app's own per-sandbox rules still layer on top. `opencode.ai`
+is not in `balanced`'s default allowlist, but the seeded Demo project's Automation runs on
+opencode's free model through it — without the second line, that Run fails with
+`Blocked by network policy: domain opencode.ai:443`.)
+
 It seeds a **Demo project** with an Automation on opencode's free model, so the loop is
 clickable immediately and costs nothing to run — no AI credential is needed.
 
