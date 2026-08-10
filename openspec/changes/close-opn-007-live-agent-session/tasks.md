@@ -64,11 +64,15 @@
 
 ## 6. Hand off what this change deliberately did not do
 
-- [ ] 6.1 Open the follow-on capability issue citing the ADR, sequenced behind #245 (which also
-      touches the `Automation` aggregate), scoped to whichever shape the decision permitted
-- [ ] 6.2 Open an issue for `ConversationGate.AskAndWait` having no production caller — the grill
-      never actually asks, and that is true whichever way this decision went
-- [ ] 6.3 Open an issue for the portal answer box (ADR-0008's own named follow-up), noting its
-      prerequisite `AddComment` has landed on both connectors
-- [ ] 6.4 Append the retro entry, including the correction made during the grill: an apparent
-      "Enter key does nothing" pty defect that was the test harness, not the product
+- [x] 6.1 Open the follow-on capability issue citing the ADR, sequenced behind #245 (which also
+      touches the `Automation` aggregate), scoped to whichever shape the decision permitted — **#304**,
+      opened at `status:backlog` so it still faces its own grill
+- [x] 6.2 Open an issue for `ConversationGate.AskAndWait` having no production caller — the grill
+      never actually asks, and that is true whichever way this decision went — **#305**
+- [x] 6.3 Open an issue for the portal answer box (ADR-0008's own named follow-up), noting its
+      prerequisite `AddComment` has landed on both connectors — **#306**
+- [x] 6.4 Capture the retro material for `/aio:sync` to append — the `retro-entry` skill owns
+      `docs/process/retro-log.md` and runs *after* sync, so appending here would duplicate it. The
+      material is recorded in `evidence.md` §1.3: an apparent "Enter key does nothing" pty defect
+      that was the test harness, not the product, plus the DEC-060/DEC-063 mis-citation caught in
+      review of this change's own artifacts
