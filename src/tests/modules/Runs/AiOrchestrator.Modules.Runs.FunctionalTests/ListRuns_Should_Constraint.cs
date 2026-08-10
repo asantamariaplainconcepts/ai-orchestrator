@@ -111,9 +111,11 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
 
         // outputLink joined in agent-implements-pr; plan/approvedAt/failureReason in
         // approval-gate; dismissedAt in #145; locus/workingFolder/branchName in #210; the change
-        // target and instruction in run-on-a-pr; resolvedModel in #291 — each a deliberate
-        // widening, which is why this test exists. It failed on each of them in turn, which is
-        // the whole point of asserting a set rather than a subset.
+        // target and instruction in run-on-a-pr; resolvedModel in #291; startedAt/endedAt in
+        // turn 10b, where the rail stopped spending a row each on Created and Dispatched and began
+        // answering the question they were subtracted for — when it finished, and how long it took
+        // — each a deliberate widening, which is why this test exists. It failed on each of them in
+        // turn, which is the whole point of asserting a set rather than a subset.
         fields.ShouldBe([
             "approvedAt",
             "automationId",
@@ -122,6 +124,7 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             "createdAt",
             "dismissedAt",
             "dispatchedAt",
+            "endedAt",
             "failureReason",
             "id",
             "inputTokens",
@@ -131,6 +134,7 @@ public class ListRuns_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             "outputTokens",
             "plan",
             "resolvedModel",
+            "startedAt",
             "state",
             "targetChangeNumber",
             "targetChangeTitle",

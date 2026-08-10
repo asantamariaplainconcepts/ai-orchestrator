@@ -89,6 +89,11 @@ const run = (
   state,
   createdAt: at(minutesAgo),
   dispatchedAt: at(minutesAgo - 1),
+  // Explicit, not absent (turn 10b): the rail shows "Finished · duration" only for a Run that
+  // ended, so a mock that omitted these would render every state as still running. A terminal
+  // state gets both; anything still in flight has begun and not finished, which is the truth.
+  startedAt: at(minutesAgo - 1),
+  endedAt: ["Succeeded", "Failed", "Cancelled"].includes(state) ? at(minutesAgo - 4) : null,
   outputLink: null,
   plan: null,
   approvedAt: null,

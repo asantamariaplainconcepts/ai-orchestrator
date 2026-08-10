@@ -20,11 +20,48 @@ export type TranscriptEntry =
       subject: string | null;
       detail: string;
       usage: LineUsage | null;
+      /** The tool's own verdict where it reported one — `completed`, `error`. */
+      status?: string | null;
       /** The writer cut this line at the column's width, so `detail` is a fragment. */
       truncated?: boolean;
     }
   | { kind: "event"; label: string; detail: string; usage: LineUsage | null; truncated?: boolean }
-  | { kind: "raw"; body: string; usage: null; truncated?: boolean };
+  | { kind: "raw"; body: string; usage: null; truncated?: boolean }
+  /**
+   * A step's opening or closing marker. Kept as an entry rather than consumed at parse time so the
+   * flat verbatim view still shows every line the runtime wrote (design D5); the grouped view reads
+   * these to build its blocks and never renders them as rows.
+   */
+  | {
+      kind: "boundary";
+      edge: "start" | "finish";
+      at: number | null;
+      /** Why the step ended, where the runtime says — `tool-calls`, `stop`, an error. */
+      reason: string | null;
+      detail: string;
+      usage: LineUsage | null;
+    };
+
+/**
+ * One step of the agent's work: what it said, what it called, how long it took (#130 turn 10 ②).
+ * `step_start`/`step_finish` stopped being rows — they delimit this.
+ */
+export interface TranscriptStep {
+  /** The step's own first words, where it spoke; null for a step that only called tools. */
+  readonly title: string | null;
+  readonly entries: readonly TranscriptEntry[];
+  readonly toolCount: number;
+  readonly durationMs: number | null;
+  /** Why it ended, where the runtime said. */
+  readonly reason: string | null;
+  /**
+   * Something went wrong inside: an uninterpretable line, or an end the runtime did not call
+   * ordinary. These open by default — a crash must not sit behind a collapsed summary.
+   */
+  readonly failed: boolean;
+  /** Holds a line the writer cut. Worth badging, but not a failure and not worth forcing open. */
+  readonly truncated: boolean;
+}
 
 export interface LineUsage {
   readonly inputTokens: number;
@@ -40,7 +77,13 @@ export interface TranscriptTotals {
 }
 
 export interface Transcript {
+  /** Every line, in order — what the verbatim view shows (design D5: complete first). */
   readonly entries: readonly TranscriptEntry[];
+  /** What came before the first step opened: the launcher's own header lines. */
+  readonly preamble: readonly TranscriptEntry[];
+  /** The same entries grouped into steps. Empty where the runtime marks no steps. */
+  readonly steps: readonly TranscriptStep[];
+  readonly toolCount: number;
   readonly totals: TranscriptTotals;
 }
 
@@ -85,7 +128,95 @@ export function parseTranscript(log: string): Transcript {
     if (entry !== null) entries.push(entry);
   }
 
-  return { entries, totals: total(entries) };
+  const { preamble, steps } = group(entries);
+
+  return {
+    entries,
+    preamble,
+    steps,
+    toolCount: entries.filter((entry) => entry.kind === "tool").length,
+    totals: total(entries),
+  };
+}
+
+/**
+ * The entries as steps (#130 turn 10 ②). A step runs from a `start` boundary to the matching
+ * `finish`; anything before the first boundary is preamble, and anything after an unclosed `start`
+ * is a step still running — which is exactly what a live Run looks like.
+ *
+ * A log with no boundaries returns no steps, and the screen renders it flat as it always did. That
+ * is what keeps this addition dialect-tolerant: a runtime that marks no steps loses nothing.
+ */
+function group(entries: readonly TranscriptEntry[]): {
+  preamble: TranscriptEntry[];
+  steps: TranscriptStep[];
+} {
+  const preamble: TranscriptEntry[] = [];
+  const steps: TranscriptStep[] = [];
+
+  let open: { at: number | null; entries: TranscriptEntry[] } | null = null;
+
+  for (const entry of entries) {
+    if (entry.kind === "boundary" && entry.edge === "start") {
+      // A second `start` without a `finish`: close what is open rather than nesting, because a step
+      // inside a step is not a thing either runtime emits and guessing would hide lines.
+      if (open) steps.push(assemble(open, null, null));
+      open = { at: entry.at, entries: [] };
+      continue;
+    }
+
+    if (entry.kind === "boundary" && entry.edge === "finish") {
+      if (open) {
+        steps.push(assemble(open, entry.at, entry.reason));
+        open = null;
+      }
+      continue;
+    }
+
+    (open ? open.entries : preamble).push(entry);
+  }
+
+  // Still running, or a runtime that never closed its last step. Either way its lines are shown.
+  if (open) steps.push(assemble(open, null, null));
+
+  return { preamble, steps };
+}
+
+function assemble(
+  open: { at: number | null; entries: TranscriptEntry[] },
+  finishedAt: number | null,
+  reason: string | null,
+): TranscriptStep {
+  const prose = open.entries.find((entry) => entry.kind === "text");
+
+  return {
+    title: prose && prose.kind === "text" ? headline(prose.body) : null,
+    entries: open.entries,
+    toolCount: open.entries.filter((entry) => entry.kind === "tool").length,
+    durationMs: open.at !== null && finishedAt !== null ? finishedAt - open.at : null,
+    reason,
+    // An uninterpretable line is the crash somebody opened this page for. `tool-calls` and `stop`
+    // are how both runtimes say "ordinary"; anything else is the runtime reporting trouble.
+    failed:
+      open.entries.some((entry) => entry.kind === "raw") ||
+      (reason !== null && reason !== "tool-calls" && reason !== "stop"),
+    truncated: open.entries.some((entry) => "truncated" in entry && entry.truncated === true),
+  };
+}
+
+/**
+ * A step's title, taken from its own first words rather than invented. Markdown emphasis is stripped
+ * so a heading does not arrive wearing its asterisks, and the result is one line: this sits on a
+ * summary row beside the tool count.
+ */
+function headline(body: string): string | null {
+  const first = body
+    .split("\n")
+    .map((line) => line.replace(/[*_`#>]/g, "").trim())
+    .find((line) => line.length > 0);
+
+  if (first === undefined) return null;
+  return first.length <= 120 ? first : `${first.slice(0, 119).trimEnd()}…`;
 }
 
 /**
@@ -116,6 +247,11 @@ function interpret(line: string): TranscriptEntry | null {
   }
 
   const usage = liftUsage(parsed);
+
+  // Before the tool lift, because a boundary is not a tool and must not be mistaken for one.
+  const boundary = liftBoundary(parsed, usage);
+  if (boundary) return boundary;
+
   const tool = liftTool(parsed);
   if (tool) {
     return { ...tool, usage };
@@ -217,6 +353,38 @@ function asObject(line: string): Record<string, unknown> | null {
   }
 }
 
+/**
+ * A step marker, where the line is one. Matched on the *shape* of the label rather than on which
+ * runtime wrote it — `step_start`, `step-start`, `stepStart` all mean the same event, and a dialect
+ * that marks no steps simply never matches, leaving the transcript flat.
+ */
+function liftBoundary(
+  object: Record<string, unknown>,
+  usage: LineUsage | null,
+): TranscriptEntry | null {
+  const normalised = label(object)
+    .toLowerCase()
+    .replace(/[-_\s]/g, "");
+  const edge = normalised === "stepstart" ? "start" : normalised === "stepfinish" ? "finish" : null;
+
+  if (edge === null) return null;
+
+  const part = object.part;
+  const nested =
+    part !== null && typeof part === "object" && !Array.isArray(part)
+      ? (part as Record<string, unknown>)
+      : null;
+
+  return {
+    kind: "boundary",
+    edge,
+    at: firstNumber(object, ["timestamp"]) ?? (nested ? firstNumber(nested, ["timestamp"]) : null),
+    reason: nested ? firstString(nested, ["reason"]) : null,
+    detail: prettify(object),
+    usage,
+  };
+}
+
 /** A short name for an object with no readable prose: its `type`, or the shape it turned out to be. */
 function label(object: Record<string, unknown>): string {
   for (const key of ["type", "subtype", "event", "kind"]) {
@@ -282,9 +450,13 @@ function firstString(object: Record<string, unknown>, keys: readonly string[]): 
  * stays in `detail`, one disclosure away — a reader wants the shape of what happened, and the argument
  * object almost never is it.
  */
-function liftTool(
-  object: Record<string, unknown>,
-): { kind: "tool"; tool: string; subject: string | null; detail: string } | null {
+function liftTool(object: Record<string, unknown>): {
+  kind: "tool";
+  tool: string;
+  subject: string | null;
+  detail: string;
+  status: string | null;
+} | null {
   const containers = [object, object.part, object.message].filter(
     (candidate): candidate is Record<string, unknown> =>
       candidate !== null && typeof candidate === "object" && !Array.isArray(candidate),
@@ -320,7 +492,16 @@ function liftTool(
           ? input
           : null;
 
-    return { kind: "tool", tool: name, subject, detail: prettify(object) };
+    return {
+      kind: "tool",
+      tool: name,
+      subject,
+      detail: prettify(object),
+      // What the tool itself reported. Shown beside the row so a failed call is visible without
+      // opening it — the design's "exit 0" slot, filled from what the runtime actually says rather
+      // than from a line count nothing in the payload carries.
+      status: nested ? firstString(nested, ["status"]) : null,
+    };
   }
 
   // Claude nests tool_use blocks inside a content array.
@@ -334,7 +515,7 @@ function liftTool(
         input !== null && typeof input === "object" && !Array.isArray(input)
           ? firstString(input as Record<string, unknown>, SUBJECT_FIELDS)
           : null;
-      return { kind: "tool", tool: name, subject, detail: prettify(object) };
+      return { kind: "tool", tool: name, subject, detail: prettify(object), status: null };
     }
   }
 

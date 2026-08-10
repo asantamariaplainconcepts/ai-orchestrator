@@ -112,6 +112,20 @@ export const en = {
   "run.transcript.truncated": "truncated",
   "run.transcript.truncatedTitle":
     "This line was longer than one log entry can hold, so its end was cut.",
+  // Steps (turn 10 ②): step_start/step_finish stopped being rows and now delimit a block. A step
+  // that never spoke is named by its position, because inventing a description would be a claim.
+  "run.transcript.step": "Step",
+  "run.transcript.stepCount.one": "step",
+  "run.transcript.stepCount.other": "steps",
+  "run.transcript.toolCount.one": "tool call",
+  "run.transcript.toolCount.other": "tool calls",
+  "run.transcript.toolsInStep.one": "tool",
+  "run.transcript.toolsInStep.other": "tools",
+  "run.transcript.stepFailed": "failed",
+  // The verbatim view (turn 10 ④): completeness is kept available, never imposed (design D5).
+  "run.transcript.viewReadable": "Readable",
+  "run.transcript.viewRaw": "Raw",
+  "run.transcript.viewLabel": "How to show the output",
   "run.log.live": "live",
   "run.log.error": "The log cannot be followed right now. The run itself is unaffected.",
   "run.log.none": "This run produced no output.",
@@ -211,9 +225,15 @@ export const en = {
   "runs.runNow.confirmLocal": "Run on this machine",
   "runs.runNow.confirmSandbox": "Run in a sandbox",
 
-  // Run detail's Execution block (#211, mock 3c) — both kinds read the same page.
+  // Run detail's Execution block (#211, mock 3c) — both kinds read the same page. Since turn 10b
+  // these rows live in Details: one card, no heading spent on a single fact.
   "run.section.execution": "Execution",
   "run.field.runtimeKind": "Runtime",
+  // Turn 10b: "Where" carries what the Execution card's heading and Runtime row said between them,
+  // and Finished replaces Created + Dispatched with the answer a reader was subtracting them for.
+  "run.field.where": "Where",
+  "run.field.finished": "Finished",
+  "run.field.started": "Started",
   "run.field.workingFolder": "Working folder",
   "run.field.branchCreated": "Branch created",
   "run.execution.localProcess": "Local process on this machine",
@@ -819,8 +839,6 @@ export const en = {
   "run.decideFailed": "Could not record the decision.",
   "run.field.state": "State",
   "run.field.story": "Story",
-  "run.field.created": "Created",
-  "run.field.dispatched": "Dispatched",
   "run.field.approved": "Approved",
   "run.field.output": "Output",
   "run.field.failure": "Failure",

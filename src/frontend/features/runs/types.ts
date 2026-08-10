@@ -22,6 +22,12 @@ export interface RunView {
     | "Cancelled";
   createdAt: string;
   dispatchedAt: string | null;
+  /**
+   * When it began and when it stopped (turn 10b). Together they are one rail row — "finished 15 min
+   * ago · 3m 12s" — rather than two timestamps a reader has to subtract.
+   */
+  startedAt: string | null;
+  endedAt: string | null;
   outputLink: string | null;
   plan: string | null;
   approvedAt: string | null;
