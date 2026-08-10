@@ -30,28 +30,28 @@
 
 ## 3. Write the decision
 
-- [ ] 3.1 Allocate the ADR number against `docs/adr/` on current `origin/main`
-- [ ] 3.2 Write the ADR following the repository template: context, decision, consequences (positive,
+- [x] 3.1 Allocate the ADR number against `docs/adr/` on current `origin/main`
+- [x] 3.2 Write the ADR following the repository template: context, decision, consequences (positive,
       negative, neutral), alternatives considered, references — citing the specific incidents and
       measurements from group 1 as its evidence
-- [ ] 3.3 Mark ADR-0008 superseded in the new ADR if the conclusion differs, leaving ADR-0008's text
+- [x] 3.3 Mark ADR-0008 superseded in the new ADR if the conclusion differs, leaving ADR-0008's text
       intact; if the conclusion reaffirms it, state that explicitly and say which pillar now carries
       the weight
-- [ ] 3.4 Name the consequences a permissive outcome inherits, whether or not it is chosen: the
+- [x] 3.4 Name the consequences a permissive outcome inherits, whether or not it is chosen: the
       held-sandbox reaper, the second writer in the agent's workspace, and the authorization and audit
       gap for an attached session
-- [ ] 3.5 State the habitat answer — one rule or two — as its own paragraph, so it cannot be read out
+- [x] 3.5 State the habitat answer — one rule or two — as its own paragraph, so it cannot be read out
       of the ADR by inference
 
 ## 4. Record it where the product's decisions live
 
-- [ ] 4.1 Add the OPN-007 entry to `docs/product/mvp/07-open-decisions.md`, naming what it blocked,
+- [x] 4.1 Add the OPN-007 entry to `docs/product/mvp/07-open-decisions.md`, naming what it blocked,
       and close it in the same edit with a pointer to the new ADR
-- [ ] 4.2 Fix the file's stale summary: it asserts "None remain open" while #223 is open as
+- [x] 4.2 Fix the file's stale summary: it asserts "None remain open" while #223 is open as
       *Close OPN-006*
-- [ ] 4.3 Add the `DEC-*` entry to `docs/product/mvp/10-locked-mvp-decisions.md` if the decision
+- [x] 4.3 Add the `DEC-*` entry to `docs/product/mvp/10-locked-mvp-decisions.md` if the decision
       changes or revises a locked one, following the "revises X" convention already in that file
-- [ ] 4.4 Update `ARCHITECTURE.md` only if the runtime seam's stated shape changed
+- [x] 4.4 Update `ARCHITECTURE.md` only if the runtime seam's stated shape changed
 
 ## 5. Write the spec delta the decision produced
 
