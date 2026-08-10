@@ -20,12 +20,10 @@ import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PromptScratchpad } from "./PromptScratchpad";
 import { WorkflowSetupSection } from "./WorkflowSetupSection";
-import {
-  automationDragProps,
-  HumanStepBlock,
-  useChainRemoval,
-  WorkflowCanvas,
-} from "./WorkflowCanvas";
+import { WorkflowCanvas } from "./WorkflowCanvas";
+import { HumanStepBlock } from "./HumanStepBlock";
+import { automationDragProps } from "./automationDrag";
+import { useChainRemoval } from "./useChainRemoval";
 import { ApiError } from "@/shared/http/client";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, Automation, AutomationAction } from "./types";
