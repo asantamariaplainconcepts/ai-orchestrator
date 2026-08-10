@@ -19,6 +19,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
-    <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\shared\AiOrchestrator.Infrastructure\AiOrchestrator.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

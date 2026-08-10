@@ -1,4 +1,5 @@
 using AiOrchestrator.ServiceDefaults.Agents;
+using AiOrchestrator.ServiceDefaults.Agents.Sbx;
 using Microsoft.Extensions.Logging.Abstractions;
 using Shouldly;
 

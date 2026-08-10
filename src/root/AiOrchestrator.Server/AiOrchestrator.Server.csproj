@@ -18,7 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\shared\AiOrchestrator.BuildingBlocks\AiOrchestrator.BuildingBlocks.csproj" />
-    <ProjectReference Include="..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\shared\AiOrchestrator.Infrastructure\AiOrchestrator.Infrastructure.csproj" />
     <!-- Modules are discovered at runtime, but must be built and copied beside the host. -->
     <ProjectReference Include="..\..\modules\Projects\AiOrchestrator.Modules.Projects\AiOrchestrator.Modules.Projects.csproj" />
     <ProjectReference Include="..\..\modules\Backlog\AiOrchestrator.Modules.Backlog\AiOrchestrator.Modules.Backlog.csproj" />

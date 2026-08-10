@@ -19,7 +19,7 @@
     <ProjectReference Include="..\..\..\..\modules\Runs\AiOrchestrator.Modules.Runs\AiOrchestrator.Modules.Runs.csproj" />
     <ProjectReference Include="..\..\..\..\modules\Backlog\AiOrchestrator.Modules.Backlog\AiOrchestrator.Modules.Backlog.csproj" />
     <!-- For the dispatch queue constants only — the assertions read the same queue the product writes. -->
-    <ProjectReference Include="..\..\..\..\shared\AiOrchestrator.ServiceDefaults\AiOrchestrator.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\..\shared\AiOrchestrator.Infrastructure\AiOrchestrator.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
