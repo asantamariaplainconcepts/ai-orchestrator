@@ -1,16 +1,16 @@
 ## 1. Establish the record the decision is made against
 
-- [ ] 1.1 Re-read ADR-0008 and confirm, in notes, exactly which of its three pillars each later
-      decision moved — DEC-013's supersession (#296), DEC-061 and DEC-060 (#198) — quoting the
+- [x] 1.1 Re-read ADR-0008 and confirm, in notes, exactly which of its three pillars each later
+      decision moved — DEC-013's supersession (#296), DEC-061 and DEC-063 (#198) — quoting the
       superseding text rather than paraphrasing it
-- [ ] 1.2 Verify the two facts the decision rests on that ADR-0008 could not weigh: that a self-host
+- [x] 1.2 Verify the two facts the decision rests on that ADR-0008 could not weigh: that a self-host
       sbx sandbox has no per-hour cost, and that a deployed ACA session pool holds a ready instance
-      continuously (DEC-060) — the second is a standing cost and must be stated as a number, not a
+      continuously (DEC-063) — the second is a standing cost and must be stated as a number, not a
       shape
-- [ ] 1.3 Copy the spike's harness and findings into `poc/` and confirm the feasibility claims in the
+- [x] 1.3 Copy the spike's harness and findings into `poc/` and confirm the feasibility claims in the
       proposal are the ones the spike actually measured — pty allocation, signals, geometry,
       full-screen rendering — and nothing beyond them
-- [ ] 1.4 Confirm the transcript premise in design D3 against the code as it stands after #299/#300:
+- [x] 1.4 Confirm the transcript premise in design D3 against the code as it stands after #299/#300:
       that both runtimes are invoked headless with structured output and the Output surface renders
       from that stream
 

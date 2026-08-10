@@ -14,7 +14,7 @@ ADR-0008 rejected **alternative (b), a live session**, on three pillars. Two hav
   scaler the argument rested on are gone; dispatch is a Postgres outbox consumed by the Server's own
   long-lived subscriber, in every habitat.
 - **"Nothing idles" was already revised for conversations** by DEC-061: a portal conversation runs in
-  a warm ACA session, reclaimed after ten minutes of inactivity — and DEC-060 (#198) went further,
+  a warm ACA session, reclaimed after ten minutes of inactivity — and DEC-063 (#198) went further,
   holding `readySessionInstances = 1` continuously because Azure refuses zero. Bounded idling is
   therefore already accepted, already specified, and already paid for.
 - **BR-006 — human waits are untimed — still stands**, and is the pillar the decision now turns on.

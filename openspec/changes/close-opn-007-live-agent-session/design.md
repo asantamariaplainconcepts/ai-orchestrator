@@ -10,7 +10,7 @@ comment typed into GitHub's own UI and every exchange is a full agent pass.
 [ADR-0008](../../../docs/adr/0008-a-live-conversation-costs-a-pass-per-message.md) chose that shape
 deliberately and rejected a live session. Its reasoning is intact as reasoning; two of its three
 premises have since changed (DEC-013 superseded by #296; "nothing idles" revised by DEC-061 and
-DEC-060), and two facts it could not have weighed now exist: a self-host habitat where holding a
+DEC-063), and two facts it could not have weighed now exist: a self-host habitat where holding a
 sandbox costs no money, and a working spike proving the transport.
 
 This change is the decision, not the capability. What it must not do is decide by drift — reaching a
