@@ -55,11 +55,11 @@
 
 ## 5. Write the spec delta the decision produced
 
-- [ ] 5.1 Fill in the chosen shape in `specs/run-orchestration/spec.md` — replacing the
+- [x] 5.1 Fill in the chosen shape in `specs/run-orchestration/spec.md` — replacing the
       outcome-independent "exactly one of two shapes SHALL be named" with the one that was named
-- [ ] 5.2 Fill in `specs/agent-sandboxing/spec.md` the same way: whether a human extends a sandbox's
+- [x] 5.2 Fill in `specs/agent-sandboxing/spec.md` the same way: whether a human extends a sandbox's
       life, and if so what reclaims it
-- [ ] 5.3 Run `openspec validate --change close-opn-007-live-agent-session --strict` and fix what it
+- [x] 5.3 Run `openspec validate --change close-opn-007-live-agent-session --strict` and fix what it
       reports
 
 ## 6. Hand off what this change deliberately did not do
