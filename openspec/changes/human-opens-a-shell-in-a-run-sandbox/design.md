@@ -28,7 +28,7 @@ at connect time only.
 **Goals:**
 
 - A caller holding `run.attach` gets a real shell in an executing self-host Run's sandbox, with
-  signals and live resize.
+  signals, and sized to their window when it opens.
 - The agent's record is untouched: it keeps running headless, and its structured stream stays the
   only thing the transcript renders.
 - Every refusal names its own reason — no permission, no terminal in this habitat, no Run.
@@ -39,8 +39,8 @@ at connect time only.
 - Preventing a human and an agent from writing the same working tree. Named as a consequence, not
   solved here.
 - A recording of everything typed. Criterion 6 records *that* an attach happened.
-- Holding a sandbox open after its Run ends — see D4, which is the design's most consequential
-  finding.
+- Holding a sandbox open after its Run ends — see D4.
+- Reflowing a live terminal when the window changes size — see D3.
 
 ## Decisions
 
@@ -56,9 +56,9 @@ property that it exists while the sandbox does and not one moment longer.
 
 ### D2 — SignalR, not a raw WebSocket
 
-`/hubs/run-terminal`, alongside `/hubs/run-log`. `Open(runId, cols, rows)` starts the pty,
-`Send(runId, data)` carries keystrokes, `Resize(runId, cols, rows)` carries geometry, and the server
-pushes `output` frames back.
+`/hubs/run-terminal`, alongside `/hubs/run-log`. `Open(runId, cols, rows)` starts the pty at the
+viewer's size, `Send(runId, data)` carries keystrokes, and the server pushes `output` frames back.
+There is deliberately no `Resize` — see D3.
 
 *Why:* the authorization pattern this surface needs is already written and tested in `RunLogHub`;
 reconnect, negotiation and the client are already dependencies; and the frontend already
@@ -90,22 +90,22 @@ is an opaque **pointer** on macOS and a struct on Linux, so it must be marshalle
 for both; and `posix_spawn` **returns** its error number rather than setting `errno`, so reading
 `errno` reports 0 on a real failure.
 
-**So the decision changes.** `openpty` + `posix_spawn` is sound and is what allocates the pty; the
-resize is what needs a different instrument. In order of preference, to be settled by task 2.2:
+**Resolved at spec review: the resize requirement is dropped rather than the instrument found.**
+`openpty` + `posix_spawn` is sound and is what allocates the pty. Live resize was the only thing
+needing `ioctl`, and it bought one convenience — a window drag reflowing mid-session — at the price
+of a pinned dependency or a native shim, plus an unmeasured Linux arm. The geometry is instead set
+**once, at connect time**, from the size the browser reports: `openpty`'s own `winsize` argument
+takes it without any variadic call at all.
 
-1. **Pin a pty package** (`Pty.Net` or equivalent) that ships native shims for exactly this. Costs a
-   dependency; buys a maintained answer for both platforms.
-2. **`stty` against the slave device.** The slave has a path (`ptsname`), so a short-lived
-   `stty rows R cols C` spawned with that device as its stdin resizes a live pty without any
-   variadic call. A process per resize, which a debounced window-drag can afford.
-3. A native shim of our own — rejected unless both above fail: it adds a per-platform build step to
-   a solution that has none.
+**What that costs, stated where a user meets it:** resizing the browser window does not reflow a live
+terminal; reopening it does. The surface says so rather than letting a reader discover a redraw that
+never comes.
 
-**Still unmeasured, and named rather than assumed:** all of the above is macOS arm64. The Linux arm
-of `openpty` (which lives in `libutil` there, not `libc`) and whether a plain `ioctl` `DllImport`
-happens to work on Linux x64 are both untested. Task 2.2 covers it.
+The instruments considered and dropped with the requirement — a pinned pty package, a short-lived
+`stty` against the slave device, a native shim of our own — are recorded here so a later slice that
+genuinely needs live resize starts from the analysis rather than repeating it.
 
-### D4 — The terminal borrows the Run's lifetime, so nothing is held — and this contradicts two of #304's criteria
+### D4 — The terminal borrows the Run's lifetime, so nothing is held *(resolved at spec review)*
 
 **The finding.** In this slice the agent stays headless and the sandbox's life is exactly what it is
 today: created for the agent's exec, disposed in the `finally` when that exec returns. A human
@@ -118,9 +118,11 @@ attached beside it extends nothing. Therefore:
   sweep reclaiming a held one — describe machinery this slice does not add. They are satisfied by
   the lifecycle that already exists (`ReapAbandoned` already claims the namespace), not by new code.
 
-This is an artifact mismatch, not a scope cut: the criteria were written when #304 still carried both
-attachment forms and the possibility of holding a sandbox. Resolving it is a spec-review question,
-recorded in Open Questions rather than decided here.
+This was an artifact mismatch, not a scope cut: the criteria were written when #304 still carried
+both attachment forms and the possibility of holding a sandbox. **Resolved at spec review** —
+#304's criteria 4 and 5 are amended to describe the lifetime this slice actually has: the terminal
+lives inside the Run's window, the sandbox's lifetime is untouched, and an open terminal dies with
+the Run *and says so* rather than going quietly dead.
 
 **What replaces the bound:** a human's terminal simply dies with the Run, and the surface says so.
 That is strictly simpler and strictly more honest than a timer.
@@ -171,11 +173,10 @@ UI) with each step harmless on its own. Rollback is removing the surface.
 
 ## Open Questions
 
-- **#304's criteria 4 and 5** (D4) — amend the issue to describe the lifetime this slice actually
-  has, or keep them as statements about the existing lifecycle that this change verifies rather than
-  builds? Needs a decision at spec review, and it is the one thing here that changes what "done"
-  means.
+*Both of the questions this design opened were answered at spec review and are recorded in D3 and D4
+above: live resize is dropped in favour of connect-time geometry, and #304's lifetime criteria are
+amended to describe the Run-scoped terminal this slice builds.*
+
 - **Does the attach record belong on the Run's transcript or beside it?** Criterion 6 says it is
   recorded; where it surfaces (a log line, a detail field, an event) is a smaller call left to
   implementation.
-- **`Pty.Net` or the P/Invoke** — decided by task 2.1's measurement, not by preference.

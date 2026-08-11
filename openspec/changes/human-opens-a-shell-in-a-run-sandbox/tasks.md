@@ -17,9 +17,9 @@
       terminal, but only via `posix_spawn` + `dup2` file actions, because `Process.Start` cannot
       hand over a raw fd. **Live resize does not work this way at all** — `ioctl` is variadic and
       .NET answers `Vararg calling convention not supported`. Design D3 amended accordingly
-- [ ] 2.2 **Settle the resize instrument** left open by 2.1, in D3's stated order: pin a pty package,
-      or spawn `stty` against the slave device (`ptsname`), or a native shim as a last resort. Also
-      measure the Linux arm, still untested — `openpty` lives in `libutil` there, not `libc`
+- [x] 2.2 **Dropped at spec review.** Live resize was the only thing needing a variadic `ioctl`; the
+      requirement is dropped in favour of connect-time geometry via `openpty`'s own `winsize`
+      argument, so no pty package, native shim or Linux-arm measurement is needed
 - [ ] 2.3 Confirm the chosen instrument drives `sbx exec -it` specifically, not just `/bin/sh`:
       the spike proved sbx accepts a pty, `PtyCheck` proved .NET can make one, and nothing has yet
       proved the two together
@@ -46,7 +46,7 @@
 - [ ] 4.3 `Open(runId, cols, rows)`: resolve the sandbox from `IRunSandboxMonitor`, refuse with the
       habitat's own answer when nothing is hosted, refuse when the Run is not executing, and start
       the pty
-- [ ] 4.4 `Send` and `Resize`; push `output` frames back. Refuse a second concurrent attach on the
+- [ ] 4.4 `Send`; push `output` frames back. No `Resize` — geometry is fixed at `Open` (design D3). Refuse a second concurrent attach on the
       same Run, naming the reason (design D7)
 - [ ] 4.5 Kill the pty and its process tree in `OnDisconnectedAsync`, and again when the sandbox
       goes — a dropped browser must not leave a shell running
@@ -59,7 +59,8 @@
 - [ ] 5.2 A read that answers whether this Run has a terminal right now — hosted, permitted,
       executing — modelled on the preview read's three-way shape
 - [ ] 5.3 `RunTerminal.tsx` beside `RunPreviewFrame.tsx`: xterm bound to the hub, binary frames,
-      `FitAddon` driving `Resize`, and the mock-mode guard every live surface needs
+      `FitAddon` measuring the size **once at connect**, and the mock-mode guard every live surface
+      needs
 - [ ] 5.4 i18n keys in `shared/i18n/en.ts` for the heading and each of the three refusals — no
       hardcoded copy, per the design system's gate
 - [ ] 5.5 Render it only while the Run executes, and say plainly when the sandbox has gone rather
@@ -71,7 +72,7 @@
       they are distinguishable
 - [ ] 6.2 Run the built frontend through the E2E tier if the terminal is asserted there; a `.tsx`
       edit is invisible to E2E until `pnpm build` runs
-- [ ] 6.3 Resolve design D4's open question with the outcome of spec review, and amend #304's
-      criteria 4 and 5 to match what this slice actually does
+- [x] 6.3 Design D4 resolved at spec review; #304's criteria 4, 5 and 8 amended to match what this
+      slice actually does
 - [ ] 6.4 Update `ARCHITECTURE.md` if the runtime seam's shape changed, and note in #308 that the
       transport, grant and registry it depends on have landed

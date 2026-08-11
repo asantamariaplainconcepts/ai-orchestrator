@@ -17,10 +17,12 @@ agent's structured output, and therefore the Run's transcript, exactly as it was
 - **THEN** a shell inside that Run's sandbox is reachable, and its workspace is the Run's own
 - **AND** `Ctrl-C` interrupts a running command rather than printing a character
 
-#### Scenario: the viewer resizes the window
+#### Scenario: the viewer's window sets the geometry
 
-- **WHEN** the browser window changes size while a terminal is open
-- **THEN** the sandbox's pty is resized to match, and full-screen programs redraw correctly
+- **WHEN** a terminal is opened
+- **THEN** the sandbox's pty is sized to the viewer's window, so full-screen programs draw correctly
+- **AND** a later change to the window size does not reflow the open terminal, which the surface says
+  rather than leaving a reader waiting for a redraw
 
 #### Scenario: the agent keeps working while a human is attached
 
