@@ -91,32 +91,45 @@
 > - The suite going green again at the end of group 6 is what closes the window; that is the
 >   verification for the whole of 2–6, and it is worth reading as such rather than as group 6's own.
 
-- [ ] 6.1 Write **one hand-written** migration under
+- [x] 6.1 Write **one hand-written** migration under
       `src/modules/Projects/.../Persistence/Migrations/`, shaped add-copy-drop like
       `20260730222648_OutputLabelSet.cs`. **A scaffolded `DropColumn` + `AddColumn` is not acceptable:**
       `20260730222648_OutputLabelSet.cs:9-19` records that the generated form "would have silently
       discarded every hand-off configured in the deployment: every workflow edge, gone, with the schema
       perfectly correct afterwards." Current column: `character varying(200)[]` on `projects.automations`.
-- [ ] 6.2 `Up`, in order: add `LifecycleStages character varying(200)[] NOT NULL DEFAULT '{}'` on
+- [x] 6.2 `Up`, in order: add `LifecycleStages character varying(200)[] NOT NULL DEFAULT '{}'` on
       `projects.projects`; add `ToStage character varying(200) NULL` on `projects.automations`.
-- [ ] 6.3 Derive each claim **case-insensitively**: `ToStage` = the first of the Automation's
+- [x] 6.3 Derive each claim **case-insensitively**: `ToStage` = the first of the Automation's
       `OutputLabels` whose `lower()` matches another **enabled** sibling's `lower("TriggerLabel")` in the
       same project. Remove exactly that label from `OutputLabels`; keep every remaining label as a mark,
       including one that matches no sibling trigger. Fixing case here is not optional — `buildChains`
       compares through a plain `Map` while product identity is case-insensitive
       (`features/automations/planHandoff.ts:16-20` says so), so a case-sensitive read would drop edges
       the canvas draws today.
-- [ ] 6.4 Build each project's `LifecycleStages` with a `WITH RECURSIVE` walk over those derived claims,
+- [x] 6.4 Build each project's `LifecycleStages` with a `WITH RECURSIVE` walk over those derived claims,
       in the order the board draws today (`features/backlog/KanbanBoard.tsx:110-137`): roots first, then
       what each hands to, then the loose ones — so the stored order is the order that was on screen.
-- [ ] 6.5 Assert inside the same transaction that the number of `(automation, matched output label)`
+      **Done as a PL/pgSQL walk rather than `WITH RECURSIVE`, deliberately:** the board's walk keeps a
+      *global* placed set across chains (`KanbanBoard.tsx:110-127`), so where two Automations hand to the
+      same stage the second chain is truncated — and truncation is what decides whether that chain counts
+      as flow or as loose, which changes the column order. A recursive CTE cannot see earlier chains'
+      placements, so it would have ordered exactly those projects differently from the board they came
+      from. The plan named the mechanism; the requirement was the order.
+- [x] 6.5 Assert inside the same transaction that the number of `(automation, matched output label)`
       pairs before equals the number of non-null `ToStage` values after, and raise rather than commit on
-      a mismatch.
-- [ ] 6.6 `Down`: prepend `ToStage` back onto `OutputLabels` where non-null, then drop both columns.
+      a mismatch. **Corrected while implementing, and this is a defect in the plan and in AC 10, not in
+      the code:** an Automation with *two* matching output labels had two pairs and can claim only one
+      transition, because AC 13 makes branching unrepresentable — so the pair count is not preservable by
+      this model and asserting it would raise on the first branching row in the deployment. What the guard
+      asserts instead, per row and naming the row: every Automation that handed on claims a transition,
+      none invented one, and **every label is still there as either the claim or a mark**. The second
+      clause is the stronger one — a migration that dropped a label while keeping the claim count would
+      have satisfied AC 10's sentence and still lost configuration.
+- [x] 6.6 `Down`: prepend `ToStage` back onto `OutputLabels` where non-null, then drop both columns.
       State in the migration's own doc comment that the stage **order** cannot survive the reverse,
       because the old shape has nowhere to put it — written down rather than pretended away, as
       `20260730222648_OutputLabelSet.cs:53-80` does.
-- [ ] 6.7 Verify by exercising it (ADR-0001): a functional test in
+- [x] 6.7 Verify by exercising it (ADR-0001): a functional test in
       `src/tests/modules/Projects/AiOrchestrator.Modules.Projects.FunctionalTests` seeds a project with
       the shape the board draws today — including a differently-cased edge and an output label matching
       no trigger — runs the migration against the Testcontainers Postgres, and asserts the hand-off
