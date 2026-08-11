@@ -7,18 +7,19 @@ restate specs, product facts, or decisions.
 
 ## What AI Orchestrator is
 
-An internal web application that connects project backlogs (GitHub, Azure DevOps) to AI agents:
-users configure **Automations** ("story with trigger label X → an **Agent** performs action Y")
-and an Agent executes them in a per-Run sandbox, governed from the website. Backend is a
-**.NET modular monolith**; frontend is a **React SPA** served same-origin by the host. Product
-truth lives in `docs/product/mvp/` (stable IDs: ACT/BC/UC/BR/DEC/OPN) — coined vocabulary is
-locked by DEC-005: *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Plan*.
+An open-source web application that connects project backlogs (GitHub, Azure DevOps) to AI
+agents: users configure **Automations** ("story with trigger label X → an **Agent** performs
+action Y") and an Agent executes them in a per-Run sandbox, governed from the website — one
+product in two habitats (deployment and self-host, DEC-066). Backend is a **.NET modular
+monolith**; frontend is a **React SPA** served same-origin by the host. Product truth lives in
+`docs/product/v1/` (stable IDs: ACT/BC/UC/BR/DEC/OPN) — coined vocabulary is locked by
+DEC-005: *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Plan*.
 
 ## Where things live
 
 | You need… | Look in |
 | --- | --- |
-| Product truth (what and why, stable IDs) | `docs/product/mvp/` |
+| Product truth (what and why, stable IDs) | `docs/product/v1/` (history: `docs/product/mvp/`) |
 | Technical architecture (how, high level) | `ARCHITECTURE.md` |
 | A module's context | `src/modules/<Module>/context.md` |
 | **Behavioural source of truth** | `openspec/specs/` |
@@ -59,7 +60,7 @@ branch and one PR**, reviewed twice. The lifecycle is nine `status:*` states:
 in-progress → code-review → done` (plus `blocked`, reachable from any state). The `status:*`
 label is the **sole** lifecycle state.
 
-1. **`/aio:grill`** — interrogate an idea (or an existing issue, or a `docs/product/mvp/` item) to
+1. **`/aio:grill`** — interrogate an idea (or an existing issue, or a `docs/product/v1/` item) to
    the Definition of Ready, then create/advance the issue. Items depending on an open `OPN-*`
    decision are blocked, never guessed at.
 2. **`/aio:propose`** — `ready-for-proposal` issue → branch (name ends with the change slug, fresh

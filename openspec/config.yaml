@@ -1,16 +1,22 @@
 schema: spec-driven
 context: |
-  Product: AI Orchestrator — an internal web application (Plain Concepts teams) that
-  connects project backlogs (GitHub, Azure DevOps) to AI agents. Users create Projects,
-  configure a Connector (vendor abstraction) and Automations ("story with trigger label
-  X -> Agent performs action Y"); matched stories dispatch KEDA-scaled Azure Container
-  Apps Jobs (Agents) that plan and execute actions (Implement->PR, Refine/comment,
-  Transition state, Estimate). Product scope is locked by docs/product/mvp/ (actors
-  ACT-001..004, bounded contexts BC-001..005, use cases UC-001..021, business rules
-  BR-001..015, locked decisions DEC-001..041, open decisions OPN-*). Do not invent
+  Product: AI Orchestrator — an open-source web application that connects project
+  backlogs (GitHub, Azure DevOps) to AI agents; one product in two habitats — a governed
+  deployment and self-host on a machine its operator owns (DEC-049, DEC-066). Users
+  create Projects, configure a Connector (vendor abstraction, carrying a code source)
+  and Automations ("story with trigger label X -> Agent performs action Y"); matched
+  stories dispatch through the Postgres outbox (DEC-013 superseded, #296) into a per-Run
+  sandbox — a microVM created for one Run and gone with it (sbx locally, ACA Sandboxes
+  deployed) — where the Agent plans and executes actions (Implement->PR, Refine/comment,
+  Transition state, Estimate, project-written prompts). Product scope is locked by
+  docs/product/v1/ (actors ACT-001..004, bounded contexts BC-001..005, capabilities
+  UC-001..029 + intended UC-030..032, business rules BR-001..016, shaping rules
+  RULE-001..007; the append-only decision log DEC-* and open decisions OPN-* live in
+  docs/product/mvp/10-locked-mvp-decisions.md and 07-open-decisions.md). Do not invent
   functionality beyond those documents; surface gaps instead. All product copy is
   English (DEC-021). Coined vocabulary is locked (DEC-005): Agent (never "pod"),
-  Connector, Automation, Run, Plan. Run states: Queued, Planning, AwaitingApproval,
+  Connector, Automation, Run, Plan — plus Habitat, Sandbox, Conversation, Pass, Inbox
+  (v1 glossary). Run states: Queued, Planning, AwaitingApproval, AwaitingInput,
   Executing, Succeeded, Failed, Cancelled.
 
   Backend (src/modules, src/shared, src/root): .NET modular monolith with Vertical
@@ -26,12 +32,13 @@ context: |
   follow /api/<module>/<resource>. plain-dotnet-guardrails conventions apply as-is
   (DEC-015); PostgreSQL is the sole recorded deviation.
 
-  Dispatch & execution: the orchestrator enqueues Run messages on an Azure Storage
-  Queue (Azurite locally); KEDA scales ACA Jobs on queue length (DEC-013). Agent
-  runtimes are pluggable per Automation (DEC-012): Claude Code headless first,
-  opencode second. Secrets (vendor PATs, AI provider keys) live in Azure Key Vault;
-  Postgres stores only references (BR-010). Approval-gated runs are two-phase:
-  plan -> human review in the website -> execute (DEC-040, BR-007).
+  Dispatch & execution: dispatch is the Postgres outbox in every habitat, consumed by
+  the Server's own subscriber (DEC-013 superseded, #296); the sandbox decides where a
+  Run executes (execution locus, BR-016 for Local runs). Agent runtimes are pluggable
+  per Automation (DEC-012): Claude Code headless first, opencode second. Secrets exist
+  in Postgres, logs and telemetry only as names; the habitat's own store holds the
+  values (Key Vault where provisioned — BR-010, DEC-052). Approval-gated runs are
+  two-phase: plan -> human review in the website -> execute (DEC-040, BR-007).
 
   Frontend (src/frontend): React web-only SPA (Vite + React Router + TypeScript),
   pnpm standalone project, served same-origin by the host (dev: Aspire proxy to the
@@ -60,10 +67,10 @@ context: |
 # Per-artifact rules
 rules:
   proposal:
-    - Ground capabilities in existing specs (openspec/specs/) and product docs — cite ACT/BC/UC/BR/DEC/OPN identifiers from docs/product/mvp/ where applicable
-    - Never propose scope beyond docs/product/mvp/; surface gaps instead of inventing
+    - Ground capabilities in existing specs (openspec/specs/) and product docs — cite ACT/BC/UC/BR/DEC/OPN identifiers from docs/product/v1/ (decision log in docs/product/mvp/10) where applicable
+    - Never propose scope beyond docs/product/v1/; surface gaps instead of inventing
     - Never propose work that depends on an open decision (OPN-*) — a decision-closure task blocks it (RULE-006)
-    - Mark breaking changes with **BREAKING** and state which integration contracts (Aspire, host csproj, queue message schema, CI) are affected or preserved
+    - Mark breaking changes with **BREAKING** and state which integration contracts (Aspire, host csproj, outbox message schema, CI) are affected or preserved
   design:
     - Record decisions with rationale and rejected alternatives
     - Explicitly call out any deviation from backend architectural conventions (vertical slices, CQS, contracts-only surface) and justify it

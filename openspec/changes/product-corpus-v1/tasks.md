@@ -26,17 +26,19 @@
 
 ## 3. Live documents point at v1
 
-- [ ] 3.1 Repoint `README.md` ("Where things live" table), `AGENTS.md`, `ARCHITECTURE.md`,
-      `ONBOARDING.md`, `CONTRIBUTING.md` product-corpus links to `docs/product/v1/`
-- [ ] 3.2 Repoint `docs/process/definition-of-ready.md` rule citations to
+- [x] 3.1 Repoint `README.md` ("Where things live" table), `AGENTS.md` (incl. its opening
+      identity paragraph), `ARCHITECTURE.md`, `ONBOARDING.md`, `CONTRIBUTING.md`
+      product-corpus links to `docs/product/v1/`
+- [x] 3.2 Repoint `docs/process/definition-of-ready.md` rule citations to
       `docs/product/v1/08-backlog-shaping-rules.md` (+ actors/UC/BR links), per the
       definition-of-ready delta
-- [ ] 3.3 Sweep the rest of `docs/process/` for product-corpus links and repoint them
-- [ ] 3.4 Rewrite the project-context and rules text in `openspec/config.yaml` to the truth:
+- [x] 3.3 Sweep the rest of `docs/process/` for product-corpus links and repoint them (only
+      the retro log matched — history, untouched)
+- [x] 3.4 Rewrite the project-context and rules text in `openspec/config.yaml` to the truth:
       open-source dual-habitat identity, per-Run sandboxes with Postgres-outbox dispatch (not
       queue/KEDA), corpus paths at `docs/product/v1/`, UC/BR/DEC ranges current
-- [ ] 3.5 Add the one supersession note atop `docs/product/mvp/00-product-brief.md`; no other
-      `mvp/` file changes
+- [x] 3.5 Add the one supersession note atop `docs/product/mvp/00-product-brief.md`; no other
+      `mvp/` corpus file changes (the decision log append is DEC-066's own, task 2.1)
 
 ## 4. Verification
 
