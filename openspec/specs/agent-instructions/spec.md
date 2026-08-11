@@ -13,8 +13,9 @@ decisions that have a home elsewhere; it links to them instead.
 #### Scenario: a fact has exactly one home
 
 - **WHEN** `AGENTS.md` needs to state a product rule, a spec'd behaviour, or a decision
-- **THEN** it links to `docs/product/mvp/`, `openspec/specs/`, or `docs/adr/` rather than copying
-  the content
+- **THEN** it links to `docs/product/v1/` (product truth), `openspec/specs/` (behaviour),
+  `docs/adr/` (decisions), or the decision log at `docs/product/mvp/10-locked-mvp-decisions.md`,
+  rather than copying the content
 
 ### Requirement: every runtime pointer resolves to AGENTS.md
 

@@ -4021,3 +4021,38 @@ as unmeasured rather than estimated.
 **ADR:** [ADR-0022](../adr/0022-an-order-a-person-can-rearrange-is-stored.md) — an order a person can
 rearrange is stored, never derived. It supersedes DEC-053's "membership is derived from the edges and
 never stored". First occurrence of the ordering lesson above, so it earns no ADR of its own yet.
+
+## 2026-08-11 — product-corpus-v1 (#318)
+
+**Time (telemetry, partial):** ~0.28h `cli` active time, $20.62, ~19.46M tokens (session
+`548dd0c7-366d-4954-b987-b8307de393df`, sliced at the point `sessions.jsonl` marks
+`change=product-corpus-v1` — the session carried prior work on another branch before a `/clear`).
+No `type=user` datapoints on `active_time.total` for this session: human time is not measurable
+from telemetry for this change. Stated as a gap, not folded into "manual" — `verify-telemetry.mjs`
+passed all five checks, so capture itself was working; this particular metric simply carried no
+`user`-typed points for this session.
+
+**What worked:** writing the full v1 corpus — identity, glossary, capabilities, business rules,
+journeys, roadmap — before grilling gave the human a draft to argue with instead of an open
+question; the grill confirmed four decisions (cutover scope, DEC shape, lane, priority) in one
+turn. Publishing the draft PR with the entire corpus visible turned spec review into reading the
+actual text, not a summary of it.
+
+**What didn't:** #316 landed on `main` mid-grill, resolving the UC-024 collision the opposite way
+from the v1 draft (file-changes review → UC-028, not the grill). Caught only because apply task 1.3
+explicitly diffed stable IDs against `origin/main` instead of trusting the draft was still current
+— the same instinct ADR-0009 names for claims about existing behaviour, here applied to a corpus
+draft's freshness. Separately, the cutover sweep (task 4.1) surfaced four live documents outside
+the issue's explicit acceptance criteria — the product manual, the grill command and its skill, and
+the Starter mirror of the grill command — because the AC named five specific files rather than a
+mechanical sweep over the whole tree.
+
+**One change next time:** when a change rewrites identity or process documentation, the acceptance
+criteria should state a cutover grep as the criterion itself, not enumerate the files it expects to
+touch — the same lesson ADR-0009 already named for retired-name sweeps ("enumerated by a command,
+never a remembered list"), recurring here one level up, at the acceptance-criteria stage rather than
+the execution stage.
+
+**ADR:** none new — this is (at least) the third occurrence of ADR-0009's enumeration lesson (after
+`sdk-built-images` #257 and `deploy-sdk-images` #260), one step earlier in the pipeline than before.
+Existing ADR covers it; no new one needed.
