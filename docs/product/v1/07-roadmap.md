@@ -14,7 +14,7 @@ The open issues, each already traced:
 | #308 | A human types into a self-host Run agent | UC-029, DEC-065 — blocked on BR-005's stated rule |
 | #313 | A self-host conversation runs in a sandbox, not in the portal's process | DEC-061/DEC-065 |
 | #314 | A ceiling on how many sandboxes one machine holds | UC-029's surface, BR-002's sibling for machines |
-| #305 | A grill actually asks its questions instead of guessing | UC-028 |
+| #305 | A grill actually asks its questions instead of guessing | UC-024 |
 | #307 | Telemetry capture at session start instead of at report time | UC-020, BR-011 |
 | #223 | Close OPN-006: self-host backlog read with the host's own credentials | [RULE-006](08-backlog-shaping-rules.md) blocker for self-host backlog work |
 | #183 | Data Protection key ring not wrapped with Key Vault | BR-010, deployment habitat |
@@ -52,8 +52,9 @@ The open issues, each already traced:
 
 ## Standing debts this corpus acknowledges
 
-- The **UC-024 collision** the old corpus carried is resolved here (grill → UC-028); issues
-  citing the old number predate v1 and are read accordingly.
+- The **UC-024 collision** the old corpus carried was resolved on main by #316 (file-changes
+  review → UC-028); v1 carries that resolution, and archived records citing UC-024 are read
+  against their day's corpus.
 - **OPN-006** stays open (#223) — the only open product decision.
 - The old corpus (`../mvp/`) is history, not authority; the decision log there remains the
   live, append-only record for DECs.

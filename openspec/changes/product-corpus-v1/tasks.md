@@ -2,20 +2,23 @@
 
 ## 1. The corpus and its study land
 
-- [ ] 1.1 Add `docs/product/v1/` (README, 00-brief, 01-actors, 02-glossary, 03-contexts,
+- [x] 1.1 Add `docs/product/v1/` (README, 00-brief, 01-actors, 02-glossary, 03-contexts,
       04-capabilities, 05-business-rules, 06-journeys, 07-roadmap, 08-shaping-rules) — the
       drafts already in this branch, re-read once against the acceptance criteria of #318
-- [ ] 1.2 Add `docs/product/studies/2026-08-11-orca.md` (sources UC-030..032)
-- [ ] 1.3 Verify stable-ID continuity: every ACT/BC/UC/BR/RULE id in `mvp/` resolves to the
-      same concept in `v1/`, with only UC-028 naming its correction (spec: product-corpus)
+- [x] 1.2 Add `docs/product/studies/2026-08-11-orca.md` (sources UC-030..032)
+- [x] 1.3 Verify stable-ID continuity: every ACT/BC/UC/BR/RULE id in `mvp/` resolves to the
+      same concept in `v1/`, with only UC-028 naming its correction (spec: product-corpus) —
+      done via set-diff; found #316 landed mid-grill resolving the collision the other way
+      (file-changes → UC-028, grill keeps UC-024); v1 and artifacts reconciled to main's
+      resolution
 
 ## 2. The decision is recorded
 
 - [ ] 2.1 Allocate the next DEC number against `origin/main` (expected DEC-066) and append the
       entry to `docs/product/mvp/10-locked-mvp-decisions.md`: revises DEC-001 (open-source,
-      dual-habitat identity), adopts `docs/product/v1/` as living corpus, names the
-      UC-024→UC-028 correction and BR-014's habitat sentence as a DEC-065-sourced wording
-      clarification; DEC-001's own text untouched
+      dual-habitat identity), adopts `docs/product/v1/` as living corpus, names stable-ID
+      continuity (carrying #316's UC-024→UC-028 correction) and BR-014's habitat sentence as a
+      DEC-065-sourced wording clarification; DEC-001's own text untouched
 - [ ] 2.2 Write the ADR in `docs/adr/` (next free number) carrying the rationale and the
       rejected alternatives from `design.md`, naming its evidence (the grill audit: the
       DEC-001/DEC-049 contradiction, the UC-024 collision, the missing glossary terms) and its

@@ -24,10 +24,10 @@ corpus was amended patch by patch until its identity contradicted its decisions
 ## Stable IDs
 
 `ACT / BC / UC / BR / RULE` IDs are carried over unchanged from the old corpus — issues and
-specs cite them, so renumbering is BREAKING. One correction is made here and named where it
-happens: the old corpus assigned **UC-024 twice**; the grill capability becomes **UC-028**
-(which was never used) and the file-changes review keeps UC-024. New intended capabilities
-start at UC-030.
+specs cite them, so renumbering is BREAKING. The one correction is carried, not made, here:
+the old corpus assigned **UC-024 twice** until #316 (2026-08-11) renumbered the file-changes
+review to **UC-028**; the grill keeps UC-024, and archived records citing UC-024 are read
+against their day's corpus. New intended capabilities start at UC-030.
 
 ## What stays in `../mvp/`
 

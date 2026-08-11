@@ -2,10 +2,10 @@
 
 Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 ([RULE-003](08-backlog-shaping-rules.md)). States and constraints referenced from
-[business rules](05-business-rules.md). IDs are carried from the old corpus unchanged, with
-one named correction: **the old corpus assigned UC-024 twice**; the grill capability is
-**UC-028 here** (never previously used), the file-changes review keeps UC-024, and both keep
-their issue trails.
+[business rules](05-business-rules.md). IDs are carried from the old corpus unchanged,
+including #316's resolution of the UC-024 collision: the file-changes review is **UC-028**
+(numbered UC-024 until 2026-08-11), the grill keeps **UC-024**, and both keep their issue
+trails.
 
 The authority on current *behaviour* is `openspec/specs/` — this catalog says what exists and
 for whom, not how it works.
@@ -48,9 +48,10 @@ for whom, not how it works.
 - **UC-023 — Member reads the documents attached to a Story's work.** The markdown its linked
   change adds or modifies, read live at that change's head through the Connector. Distinct from
   UC-013 (an Agent's Plan, which is data on a Run).
-- **UC-024 — Member reviews the file changes a Run produced.** The files its pull request
-  touched, with the vendor's unified patch, shown beside the Plan that was approved. Binary and
-  over-large patches state why rather than truncating.
+- **UC-028 — Member reviews the file changes a Run produced.** *(Numbered UC-024 until
+  2026-08-11, #316.)* The files its pull request touched, with the vendor's unified patch,
+  shown beside the Plan that was approved. Binary and over-large patches state why rather than
+  truncating.
 
 ## Dispatch & approval (BC-003)
 
@@ -79,14 +80,13 @@ for whom, not how it works.
 - **UC-019 — Agent estimates a Story.** Sets the estimate field with reasoning comment.
 - **UC-020 — Agent reports usage at run end.** Tokens + cost persisted on the Run
   ([DEC-038](../mvp/10-locked-mvp-decisions.md), [BR-011](05-business-rules.md)).
-- **UC-028 — Member grills a Story to ready.** *(was UC-024 in the old corpus — collision
-  resolved in v1, issue trail #79 unchanged.)* A `GrillToReady` Automation interrogates a Story
+- **UC-024 — Member grills a Story to ready.** A `GrillToReady` Automation interrogates a Story
   against the project's own readiness document ([DEC-048](../mvp/10-locked-mvp-decisions.md),
   seedable per [DEC-064](../mvp/10-locked-mvp-decisions.md)): unmet criteria become questions
   on the Story, answers resume the Run, a met bar becomes a ready label plus a verdict comment.
 - **UC-025 — Member triggers a proposal for a ready Story.** A `ProposeSpec` Automation turns a
   ready Story into a documentation pull request through the same publishing pipeline as
-  implementation. Chains from UC-028's ready label (#80).
+  implementation. Chains from UC-024's ready label (#80).
 
 ## Observation (BC-003/BC-004)
 

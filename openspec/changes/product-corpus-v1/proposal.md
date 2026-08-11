@@ -8,8 +8,9 @@ The product corpus's identity contradicts its own decisions: DEC-001 still says 
 app" while DEC-049 made self-hostability a product goal ("anyone can run this"), and everything
 built since — habitats (DEC-052, DEC-065), the self-host persona (BR-016, UC-029), conversations
 (DEC-055, DEC-061) — exists in decisions the identity documents never absorbed. The old corpus
-also assigns UC-024 twice, omits load-bearing terms (Habitat, Sandbox, Conversation, Inbox), and
-frames shipped capabilities as "post-MVP". Every grill traces against this corpus (RULE-003), so
+also assigned UC-024 twice until #316's point fix (2026-08-11, mid-grill of this change), omits
+load-bearing terms (Habitat, Sandbox, Conversation, Inbox), and frames shipped capabilities as
+"post-MVP". Every grill traces against this corpus (RULE-003), so
 shaping new work on it propagates the incoherence into every future issue — including the three
 intended capabilities (UC-030..032) waiting behind this change.
 
@@ -24,8 +25,9 @@ intended capabilities (UC-030..032) waiting behind this change.
   habitat sentence from DEC-065, named as wording clarification), journeys (+ J5 self-host),
   roadmap, shaping rules.
 - **BREAKING (product identity): a new DEC (next free number against origin/main) revises
-  DEC-001** — open-source, dual-habitat identity; v1 adopted as living corpus; the
-  UC-024→UC-028 correction — backed by an ADR per the decision-records spec. DEC-001's own
+  DEC-001** — open-source, dual-habitat identity; v1 adopted as living corpus; stable-ID
+  continuity carrying #316's UC-024→UC-028 correction (file-changes review renumbered, grill
+  keeps UC-024) — backed by an ADR per the decision-records spec. DEC-001's own
   text is not edited in place. No integration contract (Aspire, host csproj, outbox message
   schema, CI) is affected — this change touches documentation and two doc-facing specs only.
 - **Repoint live docs to v1**: `README.md`, `AGENTS.md`, `ARCHITECTURE.md`, `ONBOARDING.md`,

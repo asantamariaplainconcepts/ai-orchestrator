@@ -29,8 +29,9 @@ The identity change (open-source, dual-habitat, superseding DEC-001's "internal 
 be recorded as a new `DEC-*` entry appended to `docs/product/mvp/10-locked-mvp-decisions.md`,
 numbered against `origin/main` at implementation time, backed by an ADR in `docs/adr/`. The DEC
 SHALL record, in one entry: the identity revision, the adoption of `docs/product/v1/` as living
-corpus, the UC-024→UC-028 correction, and BR-014's habitat sentence as a wording clarification
-sourced from DEC-065. DEC-001's own text SHALL NOT be edited.
+corpus, stable-ID continuity (carrying #316's UC-024→UC-028 correction), and BR-014's habitat
+sentence as a wording clarification sourced from DEC-065. DEC-001's own text SHALL NOT be
+edited.
 
 #### Scenario: the decision is discoverable from either corpus
 
@@ -41,15 +42,17 @@ sourced from DEC-065. DEC-001's own text SHALL NOT be edited.
 ### Requirement: stable IDs survive the corpus version
 
 Every `ACT-*`, `BC-*`, `UC-*`, `BR-*` and `RULE-*` id present in `docs/product/mvp/` SHALL
-resolve to the same concept in `docs/product/v1/`, with exactly one named correction: the grill
-capability, assigned UC-024 in the old corpus in collision with the file-changes review, SHALL
-be UC-028 in v1, and v1 SHALL name the correction where UC-028 is defined.
+resolve to the same concept in `docs/product/v1/`, with exactly one named correction, carried
+from #316: the file-changes review (numbered UC-024 until 2026-08-11) SHALL be UC-028 in both
+corpora, the grill SHALL remain UC-024, and v1 SHALL name the correction where UC-028 is
+defined.
 
 #### Scenario: an old issue's trace still resolves
 
 - **WHEN** an issue filed before v1 cites a UC/BR id
 - **THEN** the id resolves to the same concept in `docs/product/v1/04-capabilities.md` /
-  `05-business-rules.md`, except UC-024-as-grill, whose v1 home (UC-028) names the correction
+  `05-business-rules.md`, and a pre-#316 citation of UC-024 is read against its day's corpus,
+  as the note on UC-028 states
 
 ### Requirement: the superseded corpus is legible history
 

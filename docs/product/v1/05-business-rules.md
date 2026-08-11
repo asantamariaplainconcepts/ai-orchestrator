@@ -61,7 +61,7 @@ corpus unchanged in force; only citations moved.
 
 - **BR-008 — Vendor is the source of truth for Stories.** The Mirror is a read model. The
   orchestrator writes to the vendor only through the Connector and only: trigger labels
-  (UC-008), comments (UC-017/UC-019/UC-028), state transitions (UC-018), estimates (UC-019),
+  (UC-008), comments (UC-017/UC-019/UC-024), state transitions (UC-018), estimates (UC-019),
   PRs (UC-016/UC-025).
 
 ## Security & access

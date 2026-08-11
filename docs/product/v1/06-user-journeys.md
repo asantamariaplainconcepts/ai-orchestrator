@@ -19,7 +19,7 @@ Run pauses at `AwaitingApproval` (BR-006).
 The Member reviews the Plan (UC-013) and approves. Execution dispatches; a second Agent phase
 clones the repo, implements the story, opens a PR, and links it on the Run and the Story
 (UC-016). The Run ends `Succeeded` with logs and cost attached (UC-020, UC-021). The Member
-reviews the file changes beside the approved Plan (UC-024) and clicks through to the PR.
+reviews the file changes beside the approved Plan (UC-028) and clicks through to the PR.
 
 ## J2 — Frictionless refinement (no approval)
 

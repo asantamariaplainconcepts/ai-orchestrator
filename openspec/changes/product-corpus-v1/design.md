@@ -41,11 +41,13 @@ alongside the Orca study that sources its intended capabilities. 58 files in the
    docs/adr/*, BOOTSTRAP*, docs/process/retro-log.md, openspec/changes/archive/* — byte-identical.
    The `run-orchestration` spec's reference to `mvp/05-business-rules.md` (line ~921) records
    what a past change did and stays.
-4. **UC-028 resolves the UC-024 collision.** The grill capability takes UC-028 (never used;
-   the old corpus skips from UC-027 to UC-029). Verified at grill time: no spec cites UC-024
-   in the grill sense, and closed issues (#79) are read against the corpus of their day.
-   Rejected: renumbering the backlog-section UC-024 instead — it is cited by the run-preview
-   surface's history and is the older assignment in spirit (BC-002's read family).
+4. **v1 carries #316's resolution of the UC-024 collision.** This design originally assigned
+   UC-028 to the grill; mid-grill, #316 landed on main resolving it the other way — the
+   file-changes review became UC-028 (with an in-place note) and the grill kept UC-024. Main's
+   resolution is canonical and v1 follows it verbatim; reconciled during apply, recorded here
+   so the artifact trail stays honest. Rejected: re-renumbering to match this design's first
+   draft — a second renumber of the same id pair within a day maximises confusion for zero
+   value.
 5. **`mvp/` gets exactly one edit**: a supersession note atop `00-product-brief.md` pointing at
    v1 — a reader landing there must learn where the living corpus went without following a
    broken trail. Rejected: zero edits (no signpost) and per-file banners (noise across a
