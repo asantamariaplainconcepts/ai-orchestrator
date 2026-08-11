@@ -138,6 +138,13 @@ public static class AgentSandboxComposition
             provider.GetRequiredService<RunSandboxHost>()
         );
 
+        // And the thing that enters one. Registered here for the same reason and with the same
+        // limit: only this habitat has it, so only this habitat registers it.
+        builder.Services.AddSingleton<
+            BuildingBlocks.Agents.IRunTerminalHost,
+            Sbx.SbxRunTerminalHost
+        >();
+
         builder.Services.AddSingleton(
             new SbxSandboxOptions
             {

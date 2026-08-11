@@ -128,6 +128,14 @@ public sealed class RunsModule : ModuleBase
         // habitat that launches none — a deployment, by ADR-0021 — answers "not hosted here"
         // rather than looking like a Run with no sandbox.
         services.TryAddSingleton<IRunSandboxMonitor, UnhostedRunSandboxMonitor>();
+        services.TryAddSingleton<IRunTerminalHost, UnhostedRunTerminalHost>();
+
+        // Who attached, and when, against the Run itself (#304 criterion 6) — the trace that makes
+        // granting the capability to Members reasonable at all (#288).
+        services.AddScoped<
+            Features.Observation.IRunAttachRecorder,
+            Features.Observation.RunAttachRecorder
+        >();
 
         // The relay's own client, bounded: a preview that hangs must not hold a portal request
         // open, and the timeout is short because the target is loopback on this machine.

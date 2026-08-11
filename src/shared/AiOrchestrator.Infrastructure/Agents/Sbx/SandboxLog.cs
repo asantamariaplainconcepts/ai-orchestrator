@@ -5,6 +5,13 @@ namespace AiOrchestrator.ServiceDefaults.Agents.Sbx;
 static partial class SandboxLog
 {
     [LoggerMessage(
+        EventId = 4119,
+        Level = LogLevel.Information,
+        Message = "Opened a terminal in sandbox {Sandbox} for a human"
+    )]
+    public static partial void TerminalOpened(ILogger logger, string sandbox);
+
+    [LoggerMessage(
         EventId = 4118,
         Level = LogLevel.Warning,
         Message = "Removed {Count} sandbox(es) a previous process abandoned"

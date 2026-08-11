@@ -38,19 +38,19 @@
 
 ## 4. The terminal surface
 
-- [ ] 4.1 `RunTerminalHub` at `/hubs/run-terminal`, mapped by a `MapRunTerminalHub` use case beside
+- [x] 4.1 `RunTerminalHub` at `/hubs/run-terminal`, mapped by a `MapRunTerminalHub` use case beside
       `MapRunLogHub`
-- [ ] 4.2 Authorize in the hub — the same two questions `RunLogHub.Watch` asks, in the same order,
+- [x] 4.2 Authorize in the hub — the same two questions `RunLogHub.Watch` asks, in the same order,
       against the same table, plus `run.attach`. A hub dispatches nothing, so the decorator never
       sees it
-- [ ] 4.3 `Open(runId, cols, rows)`: resolve the sandbox from `IRunSandboxMonitor`, refuse with the
+- [x] 4.3 `Open(runId, cols, rows)`: resolve the sandbox from `IRunSandboxMonitor`, refuse with the
       habitat's own answer when nothing is hosted, refuse when the Run is not executing, and start
       the pty
-- [ ] 4.4 `Send`; push `output` frames back. No `Resize` — geometry is fixed at `Open` (design D3). Refuse a second concurrent attach on the
+- [x] 4.4 `Send`; push `output` frames back. No `Resize` — geometry is fixed at `Open` (design D3). Refuse a second concurrent attach on the
       same Run, naming the reason (design D7)
-- [ ] 4.5 Kill the pty and its process tree in `OnDisconnectedAsync`, and again when the sandbox
+- [x] 4.5 Kill the pty and its process tree in `OnDisconnectedAsync`, and again when the sandbox
       goes — a dropped browser must not leave a shell running
-- [ ] 4.6 Record the attach against the Run (who, when). The terminal's bytes must NOT reach the Run
+- [x] 4.6 Record the attach against the Run (who, when). The terminal's bytes must NOT reach the Run
       log (design D6)
 
 ## 5. The terminal in the Run screen
