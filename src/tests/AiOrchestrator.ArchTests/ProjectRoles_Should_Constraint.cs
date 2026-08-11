@@ -120,47 +120,12 @@ public class ProjectRoles_Should_Constraint
         var undeclared = Requests()
             .Where(request => request.GetCustomAttribute<RequiresAttribute>() is null)
             .Select(request => request.FullName!)
-            .Where(name => !AuthorizedByTheirHandler.Contains(name))
             .ToList();
 
         // The pipeline would refuse these at runtime, which is the safe failure — but "every button
         // in this feature is broken" is a worse way to find out than a red test.
         undeclared.ShouldBeEmpty();
     }
-
-    [Fact]
-    public void EveryHandlerAuthorizedRequest_Should_StillExist()
-    {
-        // The exception list's own rot: a named request that has been renamed or deleted leaves a
-        // waiver behind that silently exempts nothing, and the next request to need one would be
-        // written expecting this list to be load-bearing.
-        var actual = Requests()
-            .Select(request => request.FullName!)
-            .ToHashSet(StringComparer.Ordinal);
-
-        AuthorizedByTheirHandler.Where(named => !actual.Contains(named)).ShouldBeEmpty();
-    }
-
-    /// <summary>
-    /// Requests whose permission is <b>not</b> held on a project, and which therefore cannot pair
-    /// <c>[Requires]</c> with <see cref="IScopedToProject"/> the way every other request does — the
-    /// decorator has no project to ask a role on, so their handler asks instead.
-    /// <para>
-    /// This list is deliberately as short and as awkward as <see cref="EnforcedOutsideThePipeline"/>: a
-    /// request that lands here without a resource that genuinely belongs to the machine rather than to a
-    /// project is the rot this constraint exists to catch.
-    /// </para>
-    /// <list type="bullet">
-    /// <item><c>ListMachineSandboxes.Query</c> (#311) — this machine's sandboxes. One of them is the
-    /// sandbox an earlier process abandoned, which resolves to no Run and so to no project; the handler
-    /// asks <c>MachineSandboxAccess.MayAttachSomewhere</c> for <c>run.attach</c> at the habitat's scope,
-    /// after answering the habitat question first so a deployment never reaches it.</item>
-    /// </list>
-    /// </summary>
-    static readonly HashSet<string> AuthorizedByTheirHandler = new(StringComparer.Ordinal)
-    {
-        "AiOrchestrator.Modules.Runs.Features.Observation.UseCases.ListMachineSandboxes+Query",
-    };
 
     [Fact]
     public void EveryRequestNamingAPermission_Should_NameItsProjectToo()

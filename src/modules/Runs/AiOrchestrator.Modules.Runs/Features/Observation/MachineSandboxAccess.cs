@@ -32,11 +32,17 @@ static class MachineSandboxAccess
 
         if (visible is null)
         {
-            // Null means every project: the machine's owner, or a bootstrap administrator. In the
-            // habitat this surface is confined to, that is the ordinary answer.
+            // <b>Seeing every project is this codebase's whole-machine trust signal, not a shortcut.</b>
+            // Only two implementations answer null: `SoleOccupantPermissions`, the habitat with one
+            // caller who owns the machine, and `StoredProjectRoles` for a configured bootstrap
+            // administrator. Both pair it with Admin on every project, so there is no caller for whom
+            // null visibility and an absent `run.attach` can coexist — and a machine with no projects
+            // yet still has sandboxes, so a check that demanded a project would lock its own owner out.
             return true;
         }
 
+        // A bounded set means roles as rows. Then the question is the ordinary one, asked per project:
+        // holding `run.attach` anywhere on this machine is what the habitat's scope means.
         foreach (var project in visible)
         {
             var role = await permissions.RoleOn(project, cancellationToken);

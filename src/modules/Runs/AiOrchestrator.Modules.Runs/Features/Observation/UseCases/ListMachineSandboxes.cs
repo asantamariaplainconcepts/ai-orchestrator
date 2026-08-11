@@ -37,11 +37,18 @@ sealed class ListMachineSandboxes : IUseCase
             .WithTags("Runs");
 
     /// <summary>
-    /// No <c>[Requires]</c> and no <c>IScopedToProject</c>: the permission this needs is not held on a
-    /// project, so the decorator has nothing to check it against. The handler asks instead, which is the
-    /// same exception <c>RunTerminalHub</c> already is — and it is recorded in
-    /// <c>ProjectRoles_Should_Constraint</c> rather than left for a reader to notice.
+    /// <c>FiltersToCaller</c> rather than a permission, and it is the honest declaration rather than a way
+    /// around one: this read reaches across projects — the machine is not inside any of them — and narrows
+    /// its own answer, returning nothing to a caller who may not attach. The same shape
+    /// <c>ListProjects</c> and <c>GetInbox</c> use, for the same reason.
+    /// <para>
+    /// Pairing <c>[Requires(RunPermissions.Attach)]</c> with <see cref="IScopedToProject"/> is what every
+    /// other guarded read does and is impossible here: there is no project to name. Omitting the attribute
+    /// entirely is not the alternative — the decorator default-denies an undeclared request, which is the
+    /// design's whole point.
+    /// </para>
     /// </summary>
+    [Requires(Access.FiltersToCaller)]
     internal sealed record Query : IQuery<Response>;
 
     /// <summary>

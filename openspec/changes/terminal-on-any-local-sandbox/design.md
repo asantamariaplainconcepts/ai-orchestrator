@@ -160,12 +160,21 @@ to reach the case that motivated it, and the start is a legitimate act as long a
 ### D6 — Vertical slice placement, and one deviation stated
 
 The listing is an ordinary query in `Modules/Runs/Features/Observation/UseCases`, dispatched through the
-CQS pipeline with `[Requires]` so the authorization decorator handles it. The terminal is a second method
-on `RunTerminalHub`, which is **the deviation**: a hub dispatches nothing, so it authorizes inline. That
-is not new — it is #304's accepted exception, and `ProjectRoles_Should_Constraint` records `run.attach` in
-`EnforcedOutsideThePipeline` with its enforcer named. This change adds a second enforcer, so that doc
-comment is updated; a permission landing in that set without a named enforcer is the rot the constraint
-exists to catch.
+CQS pipeline. The terminal is a second method on `RunTerminalHub`, which is **the deviation**: a hub
+dispatches nothing, so it authorizes inline. That is not new — it is #304's accepted exception, and
+`ProjectRoles_Should_Constraint` records `run.attach` in `EnforcedOutsideThePipeline` with its enforcer
+named. This change adds a second enforcer, so that doc comment is updated; a permission landing in that
+set without a named enforcer is the rot the constraint exists to catch.
+
+**Corrected during implementation.** This section first said the query would carry `[Requires]` and, when
+that proved impossible to pair with `IScopedToProject`, that it would carry no attribute at all. Both were
+wrong. The decorator **default-denies an undeclared request** — that is design D1 of the authorization
+work, and it turned the read into a 403 the moment it was exercised. The codebase already has the right
+declaration: `[Requires(Access.FiltersToCaller)]`, whose own definition is "reaches across projects, and
+narrows its own answer to the ones the caller may see". That is exactly this read — the machine is inside
+no project, and the handler returns nothing to a caller who may not attach — and it is what `ListProjects`
+and `GetInbox` already use. It also removes the need for the ArchTest waiver an earlier draft of this
+change added, because `FiltersToCaller` *is* a declaration a reviewer can check.
 
 The seam stays habitat-shaped: `IRunTerminalHost` grows enumeration and a name-keyed `Open`, and
 `UnhostedRunTerminalHost` answers both with "nothing", so the Runs module still never learns what a

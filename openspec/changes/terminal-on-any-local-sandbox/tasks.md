@@ -34,7 +34,7 @@
   its EF Core configuration and migration.
 - [x] 3.2 Extend `IRunAttachRecorder` with a sandbox-keyed `Attached`, writing the durable row always and
   the existing `RunLogChunk` line only when a Run id is known, so #304's criterion 6 does not regress.
-- [ ] 3.3 Unit-test both paths: an attach with a Run writes the row and the Run log line; an attach with no
+- [x] 3.3 Unit-test both paths: an attach with a Run writes the row and the Run log line; an attach with no
   Run writes the row and no log line, and does not throw looking for one.
 
 ## 4. The read and the hub
@@ -73,10 +73,10 @@
 
 ## 6. Tests that exercise the claims
 
-- [ ] 6.1 Extend `RunTerminalRefusal_Should_Constraint` (Runs functional tests) with the sandboxes surface:
+- [x] 6.1 Extend `RunTerminalRefusal_Should_Constraint` (Runs functional tests) with the sandboxes surface:
   refused without `run.attach`, permitted for a Member holding it, out-of-namespace and unknown names
   refused identically, and a deployed habitat answering "none hosted" without evaluating permissions.
-- [ ] 6.2 Add a functional test that the listing excludes a sandbox outside the claimed namespace.
+- [x] 6.2 Add a functional test that the listing excludes a sandbox outside the claimed namespace.
 - [ ] 6.3 Extend `RealSbxTerminal_Should_Constraint` (DispatchTests, real `sbx`) to open a shell on a
   listed sandbox by name and prove `Ctrl-C` arrives as a signal — the claim in criterion 3 gets exercised
   rather than asserted.
