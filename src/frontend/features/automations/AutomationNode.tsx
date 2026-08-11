@@ -11,24 +11,25 @@ import type { Carry } from "./automationDrag";
 
 export function AutomationNode({
   automation,
-  connected,
   onEdit,
   onToggleApproval,
   onCarry,
 }: {
   automation: Automation;
-  /** Whether an edge leaves this step. Only the graph knows; the node cannot infer it. */
-  connected: boolean;
   onEdit: () => void;
   onToggleApproval: () => void;
   /** Picked up by its handle, to reorder it or take it out of the chain (8c). */
   onCarry: Carry;
 }) {
-  // An output label pointing at no Automation, announced on the step that owns it (#232). It used
-  // to be said at the connector below, which is where the reader is looking at a *gap* — the label
-  // belongs to this node, and naming it here is what makes it fixable. Same condition as before,
-  // moved: not connected, yet carrying labels the vendor will apply and nobody will answer.
-  const dangling = !connected && automation.outputLabels.length > 0;
+  // The dangling badge is gone (#310, design D6). It warned that an output label pointed at no
+  // Automation, which was a real fault while one field carried both the flow and the marks: a label
+  // meant to hand work on and matching nothing was a broken chain. After the transition/mark split
+  // that condition describes the **normal** case — the flow travels `toStage`, and `outputLabels`
+  // holds marks, which are labels for people and tools to read and are supposed to match no trigger.
+  // Keeping the warning would have taught every reader to ignore it, which is worse than not warning.
+  //
+  // Nothing is lost by removing it: a claimed to-stage that nobody claims a transition out of is
+  // BR-006's person's turn, which the board states at that boundary in words rather than as a fault.
 
   return (
     // One line per step (design review 6a). The node used to be a two-zone card — a header row plus
@@ -36,13 +37,7 @@ export function AutomationNode({
     // screen and buried the shape the canvas exists to show. What a step needs at a glance is what
     // fires it, whether a person gates it, and which prompt it runs; the rest is one click away in
     // the edit panel, where it can be changed rather than only read.
-    <Card
-      className={cn(
-        "w-full gap-0 py-0",
-        !automation.enabled && "opacity-60",
-        dangling && "border-destructive/50",
-      )}
-    >
+    <Card className={cn("w-full gap-0 py-0", !automation.enabled && "opacity-60")}>
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-2 gap-y-1 px-3 py-2">
         <span className="flex min-w-0 items-center gap-2">
           {/* The handle, not the whole card: a card that is entirely draggable cannot be
@@ -110,14 +105,6 @@ export function AutomationNode({
             {t("automations.edit")}
           </Button>
         </span>
-        {/* An output label pointing at nothing is a defect in the configuration, so it stays on the
-            node rather than moving into the panel: it has to be visible without opening anything. */}
-        {dangling ? (
-          <span className="w-full text-xs text-destructive">
-            {t("canvas.dangling")}{" "}
-            <span className="font-mono">{automation.outputLabels.join(", ")}</span>
-          </span>
-        ) : null}
       </div>
     </Card>
   );

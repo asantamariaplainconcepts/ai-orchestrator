@@ -195,7 +195,6 @@ export function WorkflowCanvas({
               <div key={node.automation.id} className="flex min-w-0 flex-col items-stretch">
                 <AutomationNode
                   automation={node.automation}
-                  connected={node.next !== null}
                   onCarry={onCarry}
                   onEdit={() => onEdit(node.automation)}
                   onToggleApproval={() =>
