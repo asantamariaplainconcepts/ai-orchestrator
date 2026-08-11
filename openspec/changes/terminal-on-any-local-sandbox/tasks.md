@@ -14,17 +14,17 @@
 
 ## 2. The seam: enumeration and name-keyed entry
 
-- [ ] 2.1 Add enumeration and a name-keyed `Open(string sandbox, int columns, int rows)` to
+- [x] 2.1 Add enumeration and a name-keyed `Open(string sandbox, int columns, int rows)` to
   `IRunTerminalHost` in `src/shared/AiOrchestrator.BuildingBlocks/Agents/IRunTerminalHost.cs`, leaving
   `Open(Guid, int, int)` untouched. Model an entry as name, status and optional Run id.
-- [ ] 2.2 Answer both new members with "nothing" in `UnhostedRunTerminalHost`, so the deployed habitat
+- [x] 2.2 Answer both new members with "nothing" in `UnhostedRunTerminalHost`, so the deployed habitat
   resolves without hosting anything.
-- [ ] 2.3 Add enumeration to `RunSandboxHost` so a sandbox name can be attributed back to the Run holding
+- [x] 2.3 Add enumeration to `RunSandboxHost` so a sandbox name can be attributed back to the Run holding
   it; keep it in memory and unpersisted.
-- [ ] 2.4 Implement both members in `SbxRunTerminalHost`: list via `sbx ls --json` filtered by the shared
+- [x] 2.4 Implement both members in `SbxRunTerminalHost`: list via `sbx ls --json` filtered by the shared
   predicate and annotated from `RunSandboxHost`; on entry, re-resolve the caller's name against a fresh
   listing and refuse when absent, so no caller-supplied string reaches `sbx exec`.
-- [ ] 2.5 Rewrite `SbxRunTerminalHost`'s class doc comment: the old invariant ("no path by which a
+- [x] 2.5 Rewrite `SbxRunTerminalHost`'s class doc comment: the old invariant ("no path by which a
   caller-supplied name reaches `sbx exec`") no longer holds, and the namespace predicate is what replaces
   it. A comment asserting a dead invariant is worse than none.
 
