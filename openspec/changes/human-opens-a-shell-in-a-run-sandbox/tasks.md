@@ -1,13 +1,13 @@
 ## 1. Make the sandbox addressable
 
-- [ ] 1.1 Add `IRunSandboxMonitor` to `BuildingBlocks/Agents`, mirroring `IRunPreviewMonitor` —
+- [x] 1.1 Add `IRunSandboxMonitor` to `BuildingBlocks/Agents`, mirroring `IRunPreviewMonitor` —
       `NameFor(runId)` and a `Hosted` answer so a habitat with no local sandbox says so rather than
       returning null for two different reasons
-- [ ] 1.2 Add `RunSandboxHost` beside `RunPreviewHost`, copying its structure and its reasoning
+- [x] 1.2 Add `RunSandboxHost` beside `RunPreviewHost`, copying its structure and its reasoning
       comment about why nothing is persisted
-- [ ] 1.3 Record the name in `SbxAgentProcessHost.Run` beside `_lifecycle.Create`, and remove it in
+- [x] 1.3 Record the name in `SbxAgentProcessHost.Run` beside `_lifecycle.Create`, and remove it in
       the same `finally` that calls `_previews.Gone` — no other write path may exist
-- [ ] 1.4 Compose it: registered for the sbx launcher, and answering *not hosted* for the local and
+- [x] 1.4 Compose it: registered for the sbx launcher, and answering *not hosted* for the local and
       ACA hosts
 
 ## 2. Prove the pty before building on it

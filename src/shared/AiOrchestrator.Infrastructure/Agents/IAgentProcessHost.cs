@@ -51,7 +51,13 @@ public interface IAgentProcessHost
         /// been worse — this says <i>which Project</i>, and lets a host decide what that means.
         /// </para>
         /// </summary>
-        Guid? projectId = null
+        Guid? projectId = null,
+        /// <summary>
+        /// Which Run this is (#304), so a host that creates a sandbox can publish the pairing a
+        /// terminal needs. Null where the caller did not say; a host that launches no sandbox
+        /// ignores it, as both non-sandbox hosts do.
+        /// </summary>
+        Guid? runId = null
     );
 
     /// <summary>

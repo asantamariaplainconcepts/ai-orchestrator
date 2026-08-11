@@ -148,6 +148,7 @@ public class ModelListCache_Should_Constraint
                 SessionFiles = [relative],
             },
             new RunPreviewHost(),
+            new RunSandboxHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 

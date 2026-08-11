@@ -84,7 +84,8 @@ public sealed class ClaudeCodeHeadlessRuntime(
                 // The gated sbx test missed it by calling the host directly — it exercised the
                 // component and not the chain, which is exactly how a missing wire stays invisible.
                 instruction.Preview,
-                instruction.ProjectId
+                instruction.ProjectId,
+                instruction.RunId
             );
         }
         catch (System.ComponentModel.Win32Exception)

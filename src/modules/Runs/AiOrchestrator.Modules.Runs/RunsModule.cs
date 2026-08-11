@@ -121,6 +121,11 @@ public sealed class RunsModule : ModuleBase
         // of failing — the ability is absent, never the answer.
         services.TryAddSingleton<IRunPreviewMonitor, UnhostedRunPreviewMonitor>();
 
+        // And sandboxes, once more (#304): the terminal's surface must always resolve, and a
+        // habitat that launches none — a deployment, by ADR-0021 — answers "not hosted here"
+        // rather than looking like a Run with no sandbox.
+        services.TryAddSingleton<IRunSandboxMonitor, UnhostedRunSandboxMonitor>();
+
         // The relay's own client, bounded: a preview that hangs must not hold a portal request
         // open, and the timeout is short because the target is loopback on this machine.
         services

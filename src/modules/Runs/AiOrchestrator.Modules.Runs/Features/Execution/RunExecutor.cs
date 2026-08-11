@@ -482,7 +482,10 @@ sealed class RunExecutor(
                     // No Preview: the local lane runs the agent against the owner's own folder,
                     // where there is no sandbox and therefore no port to publish (run-previews).
                     Preview: null,
-                    Model: model
+                    Model: model,
+                    // Carried truthfully even though nothing here can use it: this lane creates no
+                    // sandbox, so the local host ignores it and the terminal answers "not hosted".
+                    RunId: run.Id
                 ),
                 cancellationToken
             );
@@ -537,7 +540,12 @@ sealed class RunExecutor(
                     is { } previewPort
                     ? new RunPreview(run.Id, previewPort)
                     : null,
-                model
+                model,
+                // Which Run this sandbox belongs to (#304), so a human can open a terminal in it.
+                // Named rather than positional because ProjectId sits between the two, and passing
+                // this by position would silently fill that instead — a mistake this file has
+                // already paid for once with the preview wire.
+                RunId: run.Id
             ),
             cancellationToken
         );

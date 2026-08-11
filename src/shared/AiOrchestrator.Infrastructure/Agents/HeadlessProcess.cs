@@ -30,7 +30,10 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
         // preview read reports previews unhosted here, which is a different sentence from a Run
         // having none (run-previews design D2).
         BuildingBlocks.Agents.RunPreview? preview = null,
-        Guid? projectId = null
+        Guid? projectId = null,
+        // Ignored: a child of this process has no sandbox to open a shell in, and the monitor
+        // answers "not hosted here" rather than pretending otherwise (ADR-0021).
+        Guid? runId = null
     ) =>
         HeadlessProcess.Run(
             fileName,

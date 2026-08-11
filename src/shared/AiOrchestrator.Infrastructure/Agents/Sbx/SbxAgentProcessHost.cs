@@ -30,6 +30,7 @@ namespace AiOrchestrator.ServiceDefaults.Agents.Sbx;
 sealed class SbxAgentProcessHost : IAgentProcessHost
 {
     readonly RunPreviewHost _previews;
+    readonly RunSandboxHost _sandboxes;
     readonly SbxSessionCarriage _sessionCarriage;
     readonly SbxSandboxLifecycle _lifecycle;
     readonly SbxCliProbe _probe;
@@ -37,10 +38,12 @@ sealed class SbxAgentProcessHost : IAgentProcessHost
     public SbxAgentProcessHost(
         SbxSandboxOptions options,
         RunPreviewHost previews,
+        RunSandboxHost sandboxes,
         ILogger<SbxAgentProcessHost> logger
     )
     {
         _previews = previews;
+        _sandboxes = sandboxes;
 
         var cli = new SbxCli(options);
         var previewPublisher = new SbxPreviewPublisher(cli, previews, logger);
@@ -84,7 +87,11 @@ sealed class SbxAgentProcessHost : IAgentProcessHost
         Action<string>? onOutput = null,
         RunPreview? preview = null,
         // Ignored: sbx's sandboxes are local and its isolation is not scoped by Project.
-        Guid? projectId = null
+        Guid? projectId = null,
+        // Published, so a human can open a terminal in this Run's sandbox (#304). Null means the
+        // caller did not name the Run, and nothing is published — the terminal then answers "this
+        // Run has no sandbox" rather than addressing the wrong one.
+        Guid? runId = null
     )
     {
         // The contract, asserted rather than trusted: a caller that still passes values would be
@@ -104,6 +111,15 @@ sealed class SbxAgentProcessHost : IAgentProcessHost
         var sandbox = $"aio-run-{Guid.NewGuid():N}"[..24];
 
         await _lifecycle.Create(sandbox, workingDirectory, fileName, preview, cancellationToken);
+
+        // Beside creation, never anywhere else (#304). The pairing is true from the moment the
+        // sandbox exists until the `finally` below removes it, which is exactly as long as a
+        // terminal could be open in it.
+        if (runId is { } run)
+        {
+            _sandboxes.Created(run, sandbox);
+        }
+
         try
         {
             // The workspace must be visible at the path the command will use before the agent
@@ -130,6 +146,13 @@ sealed class SbxAgentProcessHost : IAgentProcessHost
             if (preview is not null)
             {
                 _previews.Gone(preview.RunId);
+            }
+
+            // The same reasoning, one line later: a name that outlived its sandbox would point a
+            // terminal at a microVM that is gone, which is worse than having no name at all.
+            if (runId is { } finished)
+            {
+                _sandboxes.Gone(finished);
             }
 
             // An abandoned sandbox is the leak; the Run's truth is in the database. Disposal

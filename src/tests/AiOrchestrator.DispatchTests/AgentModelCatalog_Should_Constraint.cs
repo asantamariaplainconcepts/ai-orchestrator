@@ -137,7 +137,8 @@ public class AgentModelCatalog_Should_Constraint
             CancellationToken cancellationToken,
             Action<string>? onOutput = null,
             RunPreview? preview = null,
-            Guid? projectId = null
+            Guid? projectId = null,
+            Guid? runId = null
         ) => throw new NotSupportedException("This test never runs an agent.");
 
         public Task<AgentHostReadiness> CheckReadiness(CancellationToken cancellationToken) =>
