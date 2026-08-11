@@ -65,6 +65,43 @@ function auto(
   };
 }
 
+/**
+ * The stored stage order, derived the way the aggregate that owns it derives it (#310, ADR-0016).
+ *
+ * The server stores this list; a fixture has nowhere to store it, so it recomputes it from the claims
+ * using the same insertion rules `Project.ClaimTransition` applies. Case is folded throughout, exactly
+ * as the domain folds it (DEC-056): a claim naming a stage that differs only in spelling uses the stage
+ * that exists rather than creating a second spelling of it.
+ */
+function lifecycleStages(): string[] {
+  const stages: string[] = [];
+  const at = (name: string) =>
+    stages.findIndex((stage) => stage.toLowerCase() === name.toLowerCase());
+
+  for (const automation of automations) {
+    if (!automation.enabled || !automation.toStage) continue;
+    const from = automation.triggerLabel;
+    const to = automation.toStage;
+    const fromAt = at(from);
+    const toAt = at(to);
+
+    // Both already stages: the claim is stored and the list is untouched. The server refuses a
+    // non-adjacent pair, so there is nothing here to reorder either.
+    if (fromAt >= 0 && toAt >= 0) continue;
+    if (toAt >= 0) {
+      stages.splice(toAt, 0, from);
+      continue;
+    }
+    if (fromAt >= 0) {
+      stages.splice(fromAt + 1, 0, to);
+      continue;
+    }
+    stages.push(from, to);
+  }
+
+  return stages;
+}
+
 const stories = [
   story("11", "Close OPN-002: verify Entra ID works", ["status:backlog"], "Verify both paths."),
   story("12", "Sign in via Entra ID", ["ai:grill"], "As a member I want to sign in."),
@@ -662,6 +699,36 @@ const routes: [string, RegExp, Handler][] = [
     }),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
+  // The lifecycle the server serves (#310). ADR-0016: the fixture *derives what the server derives*,
+  // so this applies each claim exactly as `Project.ClaimTransition` does — a claim whose to-stage is
+  // already a stage inserts its from-stage immediately before it, a claim out of an existing stage
+  // inserts its to-stage immediately after, and a claim naming neither appends both in order. A
+  // hand-written list here would have been a second description of the same fact, free to drift.
+  ["GET", /^\/api\/projects\/[^/]+\/lifecycle$/, () => ({ stages: lifecycleStages() })],
+  [
+    "POST",
+    /^\/api\/projects\/[^/]+\/automations$/,
+    (_match: RegExpMatchArray, body: unknown) => {
+      const request = body as {
+        triggerLabel: string;
+        action: string;
+        requiresApproval: boolean;
+        toStage?: string | null;
+        outputLabels?: string[];
+      };
+      const created = auto(
+        request.triggerLabel,
+        request.action,
+        request.requiresApproval,
+        request.toStage ?? null,
+        request.outputLabels ?? [],
+      );
+      // A new array, for the same reason the update below builds one: React Query keeps previous data
+      // when a refetch returns the same reference.
+      automations = [...automations, created];
+      return created;
+    },
+  ],
   // The update the canvas actually performs (ADR-0016: a fixture derives what the server
   // derives). Without it every canvas gesture — the human block since #137, drag-to-chain since
   // turn 8 — was undemonstrable here: the request 404'd and the picture never moved, so the mock
@@ -897,26 +964,10 @@ const routes: [string, RegExp, Handler][] = [
       labelNote: null,
     }),
   ],
-  [
-    "PUT",
-    /^\/api\/projects\/[^/]+\/automations\/([^/]+)$/,
-    (match, body) => {
-      const found = automations.find((candidate) => candidate.id === match[1]);
-      if (!found) throw new Error("No such Automation.");
-      Object.assign(found, body as Record<string, unknown>);
-      return found;
-    },
-  ],
-  [
-    "POST",
-    /^\/api\/projects\/[^/]+\/automations$/,
-    (_m, body) => {
-      const request = body as { triggerLabel: string; action: string; requiresApproval: boolean };
-      const created = auto(request.triggerLabel, request.action, request.requiresApproval);
-      automations.push(created);
-      return created;
-    },
-  ],
+  // A second PUT and a second POST for these same two routes used to sit here, shadowed by the ones
+  // above because the first match wins — and the shadowed PUT did `Object.assign` on the held object,
+  // which is exactly the in-place mutation ADR-0016 forbids in this file. Dead and dangerous is worse
+  // than dead: whichever of the two a later edit happened to reorder would silently change behaviour.
   [
     "POST",
     /^\/api\/projects\/[^/]+\/changes\/(\d+)\/runs$/,

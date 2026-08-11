@@ -1,131 +1,104 @@
 import type { Automation } from "./types";
+import { fold } from "./workflowGraph";
 
 /**
- * What a drag carries when an Automation is being chained (design review turn 8). Distinct from
- * the human block's type so a gap can tell the two gestures apart before either lands — the block
- * removes an edge, this one rewires two.
+ * What a drag carries when an Automation is being moved to a boundary of the lifecycle (#310).
+ *
+ * A custom type rather than `text/plain` so a boundary can tell this gesture from any other drag
+ * crossing it — the board also drags Story cards, and a column must not confuse the two.
  */
 export const AUTOMATION_BLOCK = "application/x-aio-automation";
 
 /**
- * Why a drop cannot happen, or null when it can (8c). Computed at the slot the pointer is over
- * and rendered there, because a refusal that arrives as a toast after the drop teaches the rule
- * one gesture too late.
+ * Why a drop cannot happen, or null when it can. Computed at the boundary the pointer is over and
+ * rendered there, because a refusal that arrives as a toast after the drop teaches the rule one
+ * gesture too late.
+ *
  * <p>
- * <b>The loop refusal is gone (#310, design D6).</b> It was not simplified — there is nothing left
- * for it to compute. A cycle is a property of a graph, and a project's lifecycle is a linear ordered
- * list of stages: an Automation claims the transition out of one stage into the next, so no
- * arrangement a person can express can lead back to where it started. Removing a warning is a
- * judgement, so it is this commit's whole subject rather than a line inside a larger one.
+ * Two of the four this used to compute are gone. The loop refusal went to nothing — a lifecycle is a
+ * linear ordered list, so no arrangement leads back to where it started — and `already` became "this
+ * boundary is where it already is", which is what it says below.
+ * </p>
+ * <p>
+ * <b>Where this differs from design D6, deliberately.</b> D6 expected `self` to become impossible by
+ * construction too. It does not: the board can express it. Dropping an Automation onto the boundary
+ * <i>into its own trigger label</i> asks for a to-stage equal to the from-stage, which is the
+ * self-trigger loop #115 refuses — a Run that succeeds, writes its own trigger, and is then declined
+ * by BR-003 because a Run is already active, leaving a labelled Story and no work. So the explanation
+ * stays, and the server's refusal stays the enforcement.
  * </p>
  */
 export type DropRefusal = "self" | "already" | "shared";
 
 /**
- * The wiring a drop would perform, in the two labels it rewrites — or the reason it will not.
+ * The one boundary of a lifecycle: the transition into <c>To</c>.
  *
- * Kept apart from the canvas on purpose. The rules are the interesting part and they are pure
- * functions of the automations, so they can be exercised without rendering anything and without
- * an HTML5 drag, which Playwright cannot perform (#110 recorded that, and the human block's
- * gesture is untested for exactly this reason).
+ * <c>From</c> is null for the boundary before the <b>first</b> stage — there is nothing before it, so a
+ * claim there does not name an existing from-stage; the Automation's own trigger label becomes one, and
+ * that is how a step gets placed first (AC 4).
  */
-export interface ChainDrop {
-  /** The step the dropped Automation lands after. */
-  preceding: Automation;
-  /** The step it lands before, or null when it is being chained onto the end. */
-  following: Automation | null;
-  dragged: Automation;
+export interface Boundary {
+  from: string | null;
+  to: string;
 }
 
 /**
- * The rule that stops this drop, or null when nothing does.
+ * What assigning any Automation to <c>boundary</c> would store.
  *
- * Deliberately narrow: these are the ones a drop can create by itself. Everything else a drop
- * might violate is caught where it already is — the update endpoint applies BR-003's overlap check
- * and #115's self-trigger refusal to whatever this produces (design D4), so this function is the
- * explanation, never the enforcement.
+ * The interesting part, and the reason this is a function rather than a line at each call site. A
+ * claim's from-stage <b>is</b> the Automation's trigger label (design D2), so moving a step to a
+ * different boundary is not only a change of to-stage: the step now fires at the stage it was moved to.
+ * Both fields travel, which is what makes AC 5's reorder expressible at all — and what makes AC 6's
+ * refusal fire from BR-003 rather than from a rule invented for this screen, since two enabled
+ * Automations cannot share the from-stage they would both now trigger on.
+ *
+ * At the leading boundary the trigger is left alone: there is no from-stage to adopt, and the
+ * Automation's own trigger is what becomes the new first stage.
  */
-export function refusalFor(drop: ChainDrop, automations: Automation[]): DropRefusal | null {
-  const { preceding, following, dragged } = drop;
+export function claimPatch(boundary: Boundary): { triggerLabel?: string; toStage: string } {
+  return boundary.from === null
+    ? { toStage: boundary.to }
+    : { triggerLabel: boundary.from, toStage: boundary.to };
+}
 
-  // A step cannot hand work to itself, and dropping a step into its own slot is that.
-  if (dragged.id === preceding.id || dragged.id === following?.id) {
+/**
+ * The rule that stops assigning <c>dragged</c> to <c>boundary</c>, or null when nothing does.
+ *
+ * This is the explanation, never the enforcement (design D5). Every one of these is also refused by
+ * the update endpoint — the self-trigger validator, BR-003's overlap check in memory, and the
+ * expression index underneath both — and that is where the guarantee lives. Saying it here is so the
+ * refusal arrives before the gesture rather than after it.
+ */
+export function refusalFor(
+  dragged: Automation,
+  boundary: Boundary,
+  automations: Automation[],
+): DropRefusal | null {
+  const patch = claimPatch(boundary);
+  const from = patch.triggerLabel ?? dragged.triggerLabel;
+
+  // A step cannot hand work to itself: its from-stage *is* its trigger label, so a to-stage equal to
+  // it is a loop of one. Reachable at the leading boundary, where the trigger is not rewritten.
+  if (fold(from) === fold(patch.toStage)) {
     return "self";
   }
 
-  // The edge is already there. Not harmful, but the slot would claim to do something and do
+  // The claim is already here. Not harmful, but the boundary would claim to do something and do
   // nothing, which is worse than saying so.
-  if (preceding.outputLabels.includes(dragged.triggerLabel)) {
+  if (fold(dragged.triggerLabel) === fold(from) && fold(dragged.toStage) === fold(patch.toStage)) {
     return "already";
   }
 
-  // Two enabled Automations sharing a trigger is BR-003's refusal, and an edge into an ambiguous
-  // label is worse than the refusal: the picture would show one destination while the executor
-  // picks another.
+  // BR-003: at most one enabled Automation per from-stage. After this assignment `dragged` would fire
+  // on `from`, so anybody else already firing there is the refusal — and it is the same refusal the
+  // endpoint gives, which is what names the Automation already claiming the transition (AC 6).
   const sharesTrigger = automations.some(
     (candidate) =>
       candidate.id !== dragged.id &&
       candidate.enabled &&
       dragged.enabled &&
-      candidate.triggerLabel === dragged.triggerLabel,
+      fold(candidate.triggerLabel) === fold(from),
   );
-  if (sharesTrigger) {
-    return "shared";
-  }
 
-  return null;
-}
-
-/** One Automation's new output labels, as a drop would leave them. */
-export interface LabelRewrite {
-  automation: Automation;
-  outputLabels: string[];
-}
-
-/**
- * What a drop rewrites (design D1: the graph stays derived, so a gesture can only ever change
- * labels). Between two steps that is two rewrites; onto the end it is one.
- *
- * Returns the rewrites rather than performing them, so the caller owns the update — which is what
- * keeps every canvas gesture an ordinary Automation update (design D4).
- */
-export function rewritesFor(drop: ChainDrop): LabelRewrite[] {
-  const { preceding, following, dragged } = drop;
-
-  const rewrites: LabelRewrite[] = [
-    {
-      automation: preceding,
-      outputLabels: [
-        // The edge this slot replaces goes; every other hand-off this step has is left alone,
-        // because a step handing to three places must not lose two of them to a drop (#165).
-        ...preceding.outputLabels.filter((label) => label !== following?.triggerLabel),
-        dragged.triggerLabel,
-      ],
-    },
-  ];
-
-  if (following) {
-    rewrites.push({
-      automation: dragged,
-      outputLabels: dragged.outputLabels.includes(following.triggerLabel)
-        ? dragged.outputLabels
-        : [...dragged.outputLabels, following.triggerLabel],
-    });
-  }
-
-  return rewrites;
-}
-
-/**
- * Taking a step out of the chain (8a): whoever hands to it stops doing so. Nothing is invented in
- * its place — an absence has no two ends (design D2), so the gap is left open with its existing
- * control as the way to close it, exactly as the human block already behaves.
- */
-export function removalRewrites(dragged: Automation, automations: Automation[]): LabelRewrite[] {
-  return automations
-    .filter((candidate) => candidate.outputLabels.includes(dragged.triggerLabel))
-    .map((candidate) => ({
-      automation: candidate,
-      outputLabels: candidate.outputLabels.filter((label) => label !== dragged.triggerLabel),
-    }));
+  return sharesTrigger ? "shared" : null;
 }

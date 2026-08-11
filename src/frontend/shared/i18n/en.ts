@@ -447,47 +447,31 @@ export const en = {
   // an inline form was identified by where it sat on the page, and a dialog has no "where".
   "automations.editTitle": "Edit",
   // What a catalogue row says about the flow (design review 6a). The relation, not a repeat of the
-  // fields the row already shows — "is this wired into anything?" is the question the rail answers.
+  // fields the row already shows — "is this on the flow?" is the question the catalogue answers, and
+  // since #310 the answer is read from the stored lifecycle rather than derived from labels.
   "automations.inWorkflow": "in workflow",
   "automations.standalone": "standalone",
-  // Below xl the rail cannot sit beside the flow, so the un-chained ones become their own group
-  // under it — the chained ones are already on screen as the chain (design review 6c).
-  "automations.standaloneGroup": "Standalone",
   // Occasional tools, not permanent content: first-run setup and a scratchpad are things you reach
   // for, so they live in the toolbar and open over the tab rather than pushing the flow down.
   "automations.tools.tryPrompt": "Try a prompt",
   "automations.tools.setup": "Set up from repo…",
   "automations.tools.more": "More tools",
-  // The canvas (#116): the pipeline as a shape, where an edge is one Automation's output label
-  // agreeing with another's trigger label.
-  "canvas.hint":
-    "Each Automation hands work to the next by writing its label. Where nobody does, a person must.",
-  "canvas.block": "Human review",
-  "canvas.block.hint": "Drag it into the flow to have a person review what a step produced.",
-  "canvas.human": "A person continues",
-  "canvas.handsTo": "Hands work to\u2026",
-  "canvas.disconnect": "Require a person here",
-  "canvas.approval.on": "A person approves the plan",
-  "canvas.approval.off": "Runs without approval",
-  // Branches (#165): two edges are not two Runs, and the picture cannot say that by itself.
-  "canvas.branchesSerialize":
-    "A step can hand on to several places, but they do not run at once \u2014 one run per story at a time, so a second match while one is running is skipped, not queued.",
-  "canvas.branchFrom": "from",
-  // "canvas.dangling" is retired (#310): a label nothing listens for is a mark, which is the normal
-  // case after the transition/mark split rather than a defect worth a badge.
+  // The canvas is gone (#310, AC 11), and most of its copy with it: the block a person was dragged
+  // into a gap, the branch chip, the serialisation warning, the dangling badge and the loop refusal
+  // all described a drawing that no longer exists or a capability that is no longer representable.
+  // What survives is what the read-only preview and the board's boundary still say.
   // Two named things, not two views of one list (#136, DEC-053).
   "automations.catalogue": "Catalogue",
   "automations.catalogue.hint":
-    "Every Automation this project has. One that hands work to another, or receives it, also appears in the workflow.",
+    "Every Automation this project has. One that claims a transition of the flow also appears on the board, on the boundary it claims.",
   "automations.workflow": "Workflow",
   "automations.workflow.empty":
-    "No Automation hands work to another yet. Give one an output label matching another's trigger and the flow appears here.",
-  "automations.workflow.steps.one": "step",
-  "automations.workflow.steps.other": "steps",
+    "No Automation claims a transition yet, so this project has no flow. Give one a next stage and it appears here \u2014 and as a column on the board.",
+  "automations.workflow.stages.one": "stage",
+  "automations.workflow.stages.other": "stages",
   "automations.workflow.stops.one": "human review",
   "automations.workflow.stops.other": "human reviews",
 
-  "canvas.changeRefused": "That change was refused. Nothing was saved.",
   "automations.adding": "Saving\u2026",
   "automations.saveFailed": "Could not save the Automation.",
   "automations.trigger": "Trigger label",
@@ -499,36 +483,30 @@ export const en = {
   // The model an Automation's Runs think with (#291). Three states, because they are three
   // different things to learn: the runtime listed them, an operator declared them, or the machine
   // could not be asked — and only the last one is not an answer about the runtime.
-  // Drag-to-chain (design review turn 8). Every sentence here is said BEFORE the drop, at the
-  // slot the pointer is over, because a rule learned from a toast afterwards is a rule learned
-  // too late — and the wiring a drop performs has to be readable before it happens.
-  "canvas.dropHere": "Drop to chain here",
-  "canvas.willHandTo": "will hand to",
-  "canvas.dropAtEnd": "or drop at the end —",
-  "canvas.willHandToIt": "will hand to it",
-  "canvas.dragOut": "Drag a step here to take it out of the chain",
-  "canvas.cantDrop": "Can't drop here",
-  // Each refusal names the rule rather than the symptom. The loop refusal that used to sit here is
-  // gone (#310): a lifecycle is a linear ordered list of stages, so there is no arrangement a person
-  // can express that leads back to where it started, and the sentence had nothing left to describe.
-  "canvas.refuseShared":
+  // Drag-to-chain (design review turn 8) moved to the board's boundary with the arrangement itself
+  // (#310), and the sentences that described the canvas's own slots went with it. The one discipline
+  // survives: every refusal is said BEFORE the drop, at the boundary the pointer is over, because a
+  // rule learned from a toast afterwards is a rule learned too late.
+  // Each refusal names the rule rather than the symptom, and each is said at the boundary before the
+  // gesture rather than in a toast after it. The loop refusal that used to sit here is gone (#310): a
+  // lifecycle is a linear ordered list of stages, so there is no arrangement a person can express
+  // that leads back to where it started, and the sentence had nothing left to describe.
+  "board.boundary.refuseShared":
     "already fires on another row — two enabled Automations cannot share a trigger (BR-003). Disable the other one or change its label.",
-  "canvas.refuseSelf": "cannot hand work to itself.",
-  "canvas.refuseAlready": "already hands to it — this edge exists.",
-  "canvas.chainAfter": "Chain after…",
-  "canvas.reorder": "Reorder this step",
-  // The board preview (8b): the same chains painted as the columns they become.
-  "canvas.preview.title": "Board preview",
-  "canvas.preview.hint": "what this workflow makes of the Backlog tab",
-  "canvas.preview.live": "updates live as you wire",
-  "canvas.preview.untouched": "Untouched",
-  "canvas.preview.untouchedHint": "where Stories start",
-  "canvas.preview.noApproval": "runs without approval",
-  "canvas.preview.gate": "plan approved by a person",
-  "canvas.preview.person": "A person",
-  "canvas.preview.personHint": "carries the work onward",
-  "canvas.preview.show": "Show board preview",
-  "canvas.preview.hide": "Hide board preview",
+  "board.boundary.refuseSelf": "cannot hand work to itself.",
+  // The read-only preview, now on the Automations tab (#310, design D7): the stored stage list
+  // painted as the columns it becomes on the board.
+  "preview.title": "Board preview",
+  "preview.hint": "what this workflow makes of the Backlog tab",
+  "preview.live": "updates live as you wire",
+  "preview.untouched": "Untouched",
+  "preview.untouchedHint": "where Stories start",
+  "preview.noApproval": "runs without approval",
+  "preview.gate": "plan approved by a person",
+  "preview.person": "A person",
+  "preview.personHint": "carries the work onward",
+  "preview.show": "Show board preview",
+  "preview.hide": "Hide board preview",
   "automations.model": "Model",
   "automations.modelDeploymentDefault": "Deployment default",
   "automations.modelPlaceholder": "Leave blank to inherit",
@@ -747,22 +725,31 @@ export const en = {
   // The board (#110): dropping a card into a column IS applying its trigger label (UC-008).
   "board.showBoard": "Board view",
   "board.showList": "List view",
-  // The wait given a place (#128): a step finished and nobody has carried the work on.
-  "board.human": "Waiting for a person",
-  "board.requirePerson": "Require a person after this step",
-  "board.human.empty": "Nothing waiting here.",
-  "board.human.hint":
-    "This step hands work to nobody, so a person decides whether it continues. Give it an output label on the Automations tab to close the chain.",
-  "board.waitedFor": "waiting",
+  // The boundary between two columns (#310): the transition into the right-hand stage, which at most
+  // one Automation claims. The human wait used to be a column of its own; it is a boundary now,
+  // because the Story does not move until somebody moves it \u2014 it stays in the stage it is in.
+  //
+  // BR-006 governs every word here: an unclaimed boundary states who acts, never that something is
+  // wrong and never how long it has been waiting.
+  "board.boundary.person": "A person",
+  "board.boundary.personHint":
+    "carries the work across here. Nothing moves a story on until somebody does.",
+  "board.boundary.firstHint":
+    "starts the flow by labelling a story. Put an Automation here to have one move stories in.",
+  "board.boundary.claimed": "moves stories into this stage when it succeeds.",
+  "board.boundary.assign": "Move an Automation here\u2026",
+  "board.boundary.clear": "Require a person here",
+  "board.boundary.move": "Drag to another boundary, or use the control below",
+  "board.boundary.wouldMoveTo": "would move stories on to",
+  "board.boundary.refuseAlready": "already claims this transition \u2014 it is where it is.",
+  "board.flowEnds": "The flow ends here.",
+  "board.arrangeFailed": "That change was refused. Nothing was saved.",
   "board.untouched": "Untouched",
   "board.columnEmpty": "Nothing here.",
   "board.moveTo": "Move to\u2026",
   "board.cardActions": "Card actions",
   "board.gated": "Approval",
   "board.gated.hint": "Dropping here starts a plan for a human to approve.",
-  // Composed after the step's own mono label, which is vendor data and cannot live here.
-  "board.human.explainer":
-    "finished \u2014 a person carries these on. Cards cannot be dropped here.",
   "board.dropToApply": "Drop to apply",
   "board.viewActiveRun": "View the active Run",
   "board.moveFailed": "The vendor refused the move. Nothing changed.",

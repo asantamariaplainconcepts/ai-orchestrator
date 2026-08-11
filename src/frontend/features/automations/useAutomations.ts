@@ -1,8 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/shared/http/client";
+import { lifecycleKey } from "./useLifecycle";
 import type { Automation, CreateAutomationRequest } from "./types";
 
 const automationsKey = (projectId: string) => ["automations", projectId] as const;
+
+/**
+ * Both reads, always together (#310). Claiming a transition can create the stages it names, so a
+ * write that refreshed only the Automations would leave the board's columns behind its boundaries —
+ * two surfaces of one write disagreeing, which is the failure this change exists to remove.
+ */
+function invalidate(queryClient: ReturnType<typeof useQueryClient>, projectId: string) {
+  void queryClient.invalidateQueries({ queryKey: automationsKey(projectId) });
+  void queryClient.invalidateQueries({ queryKey: lifecycleKey(projectId) });
+}
 
 export interface ProjectPrompts {
   directory: string;
@@ -61,7 +72,7 @@ export function useCreateAutomation(projectId: string) {
   return useMutation({
     mutationFn: (request: CreateAutomationRequest) =>
       api.post<Automation>(`/api/projects/${projectId}/automations`, request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+    onSuccess: () => invalidate(queryClient, projectId),
   });
 }
 
@@ -73,7 +84,7 @@ export function useDeleteAutomation(projectId: string) {
 
   return useMutation({
     mutationFn: (id: string) => api.delete<void>(`/api/projects/${projectId}/automations/${id}`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+    onSuccess: () => invalidate(queryClient, projectId),
   });
 }
 
@@ -83,7 +94,7 @@ export function useUpdateAutomation(projectId: string) {
   return useMutation({
     mutationFn: ({ id, request }: { id: string; request: CreateAutomationRequest }) =>
       api.put<Automation>(`/api/projects/${projectId}/automations/${id}`, request),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+    onSuccess: () => invalidate(queryClient, projectId),
   });
 }
 
@@ -97,6 +108,6 @@ export function useSetAutomationEnabled(projectId: string) {
         `/api/projects/${projectId}/automations/${id}/${enabled ? "enable" : "disable"}`,
         {},
       ),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: automationsKey(projectId) }),
+    onSettled: () => void invalidate(queryClient, projectId),
   });
 }

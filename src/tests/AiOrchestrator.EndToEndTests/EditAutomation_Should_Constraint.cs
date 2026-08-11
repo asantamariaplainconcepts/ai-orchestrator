@@ -89,6 +89,74 @@ public class EditAutomation_Should_Constraint(AppHostFixture fixture)
     }
 
     [Fact]
+    public async Task TheCatalogue_Should_StillOfferEveryCapabilityAfterTheCanvasWentAway()
+    {
+        // #310 AC 11 / task 9.3, and ADR-0006's discipline: 522 lines of canvas were deleted, and
+        // deleting a surface must not quietly take a capability with it. So each of UC-005's and
+        // UC-006's five acts is driven here, on the tab that is left, in one pass — create, edit,
+        // disable, re-enable, delete — and the canvas's absence is asserted rather than assumed.
+        var page = await fixture.Browser.NewPageAsync();
+        var projectId = await CreateProject(page, $"Catalogue — {Guid.NewGuid():N}");
+
+        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}?tab=automations");
+
+        // Create.
+        await page.GetByRole(AriaRole.Button, new() { Name = "New Automation" })
+            .ClickAsync(new() { Timeout = 30_000 });
+        await page.Locator("#trigger-label").FillAsync("cat:one");
+        await page.Locator("#prompt-path").FillAsync("one.md");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Add Automation" }).ClickAsync();
+
+        var created = await Eventually(
+            () => Automations(page, projectId),
+            automations => automations.Count == 1
+        );
+        created.Single().TriggerLabel.ShouldBe("cat:one");
+
+        // Edit.
+        await Edit(page, "cat:one");
+        await page.GetByLabel("Trigger label").FillAsync("cat:renamed");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Save changes" }).ClickAsync();
+        await Eventually(
+            () => Automations(page, projectId),
+            automations => automations.Single().TriggerLabel == "cat:renamed"
+        );
+
+        // Disable, then re-enable — both from the panel's footer, where they live since the design
+        // review moved them off the row. The panel deliberately stays open after either press, so it
+        // is closed between them: the footer names the *other* action, and it learns which that is
+        // when the panel reopens on freshly read data.
+        await Edit(page, "cat:renamed");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Disable" }).ClickAsync();
+        await Eventually(
+            () => Automations(page, projectId),
+            automations => !automations.Single().Enabled
+        );
+        await Close(page);
+
+        await Edit(page, "cat:renamed");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Enable" }).ClickAsync();
+        await Eventually(
+            () => Automations(page, projectId),
+            automations => automations.Single().Enabled
+        );
+        await Close(page);
+
+        // Delete, which asks twice.
+        await Edit(page, "cat:renamed");
+        await page.GetByRole(AriaRole.Button, new() { Name = "Delete…" }).ClickAsync();
+        await page.GetByRole(AriaRole.Button, new() { Name = "Delete it permanently" })
+            .ClickAsync();
+        await Eventually(() => Automations(page, projectId), automations => automations.Count == 0);
+
+        (await Automations(page, projectId)).ShouldBeEmpty();
+
+        // And no canvas: the drag-to-chain payload's drop targets are gone with the surface, so
+        // nothing on this tab is draggable any more.
+        (await page.Locator("[draggable=true]").CountAsync()).ShouldBe(0);
+    }
+
+    [Fact]
     public async Task AnEditThatCollides_Should_ShowTheApisOwnReason()
     {
         var page = await fixture.Browser.NewPageAsync();
@@ -121,6 +189,10 @@ public class EditAutomation_Should_Constraint(AppHostFixture fixture)
         await page.GetByRole(AriaRole.Button, new() { Name = "Edit" })
             .First.WaitForAsync(new() { Timeout = 30_000 });
     }
+
+    /// <summary>Closes the edit panel, which enable and disable deliberately leave open.</summary>
+    static Task Close(IPage page) =>
+        page.GetByRole(AriaRole.Button, new() { Name = "Cancel", Exact = true }).ClickAsync();
 
     /// <summary>Scoped to the row, because every row carries an Edit of its own.</summary>
     static Task Edit(IPage page, string triggerLabel) =>
