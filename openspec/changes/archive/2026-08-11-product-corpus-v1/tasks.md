@@ -1,0 +1,55 @@
+# Tasks: product-corpus-v1
+
+## 1. The corpus and its study land
+
+- [x] 1.1 Add `docs/product/v1/` (README, 00-brief, 01-actors, 02-glossary, 03-contexts,
+      04-capabilities, 05-business-rules, 06-journeys, 07-roadmap, 08-shaping-rules) — the
+      drafts already in this branch, re-read once against the acceptance criteria of #318
+- [x] 1.2 Add `docs/product/studies/2026-08-11-orca.md` (sources UC-030..032)
+- [x] 1.3 Verify stable-ID continuity: every ACT/BC/UC/BR/RULE id in `mvp/` resolves to the
+      same concept in `v1/`, with only UC-028 naming its correction (spec: product-corpus) —
+      done via set-diff; found #316 landed mid-grill resolving the collision the other way
+      (file-changes → UC-028, grill keeps UC-024); v1 and artifacts reconciled to main's
+      resolution
+
+## 2. The decision is recorded
+
+- [x] 2.1 Allocate the next DEC number against `origin/main` (expected DEC-066) and append the
+      entry to `docs/product/mvp/10-locked-mvp-decisions.md`: revises DEC-001 (open-source,
+      dual-habitat identity), adopts `docs/product/v1/` as living corpus, names stable-ID
+      continuity (carrying #316's UC-024→UC-028 correction) and BR-014's habitat sentence as a
+      DEC-065-sourced wording clarification; DEC-001's own text untouched
+- [x] 2.2 Write the ADR in `docs/adr/` (next free number) carrying the rationale and the
+      rejected alternatives from `design.md`, naming its evidence (the grill audit: the
+      DEC-001/DEC-049 contradiction, the UC-024 collision, the missing glossary terms) and its
+      check (task 4.1's sweep)
+
+## 3. Live documents point at v1
+
+- [x] 3.1 Repoint `README.md` ("Where things live" table), `AGENTS.md` (incl. its opening
+      identity paragraph), `ARCHITECTURE.md`, `ONBOARDING.md`, `CONTRIBUTING.md`
+      product-corpus links to `docs/product/v1/`
+- [x] 3.2 Repoint `docs/process/definition-of-ready.md` rule citations to
+      `docs/product/v1/08-backlog-shaping-rules.md` (+ actors/UC/BR links), per the
+      definition-of-ready delta
+- [x] 3.3 Sweep the rest of `docs/process/` for product-corpus links and repoint them (only
+      the retro log matched — history, untouched)
+- [x] 3.4 Rewrite the project-context and rules text in `openspec/config.yaml` to the truth:
+      open-source dual-habitat identity, per-Run sandboxes with Postgres-outbox dispatch (not
+      queue/KEDA), corpus paths at `docs/product/v1/`, UC/BR/DEC ranges current
+- [x] 3.5 Add the one supersession note atop `docs/product/mvp/00-product-brief.md`; no other
+      `mvp/` corpus file changes (the decision log append is DEC-066's own, task 2.1)
+
+## 4. Verification
+
+- [x] 4.1 Run the cutover sweep: `grep -rn "product/mvp"` excluding `docs/product/mvp/`,
+      `docs/adr/`, `BOOTSTRAP*`, `docs/process/retro-log.md`, `openspec/changes/archive/` —
+      every remaining match is one the design names (decision-log links from v1, the
+      run-orchestration historical note); fix or justify each survivor — done; the sweep also
+      surfaced four live docs beyond the AC's named set (manual README, grill command + skill,
+      Starter mirror kept byte-identical) — repointed and recorded in design decision 3
+- [x] 4.2 Confirm history is untouched: `git diff --stat origin/main` shows no `docs/adr/`
+      edits (one new ADR added), no `BOOTSTRAP*`, retro-log or archive files
+- [x] 4.3 `openspec validate product-corpus-v1` passes; Prettier runs on every commit via
+      lint-staged (all commits hook-clean); no code gates apply — the diff is markdown/yaml
+      only (the sole `src/` file is the Starter's prompt markdown, mirror of the command)

@@ -4,13 +4,13 @@ Zero to your first contribution. Setup commands live in [`README.md`](README.md)
 
 ## 1. Get oriented (~30 min)
 
-- **What we're building** — [product brief](docs/product/mvp/00-product-brief.md), then the
-  [glossary](docs/product/mvp/02-domain-glossary.md). The coined words are load-bearing:
+- **What we're building** — [product brief](docs/product/v1/00-product-brief.md), then the
+  [glossary](docs/product/v1/02-domain-glossary.md). The coined words are load-bearing:
   *Agent* (never "pod"), *Connector*, *Automation*, *Run*, *Plan*.
 - **How it's built** — [`ARCHITECTURE.md`](ARCHITECTURE.md): the modular monolith, its enforced
   seams, and the two distinct error channels.
 - **How work is shaped** — the [Definition of Ready](docs/process/definition-of-ready.md), built
-  on the [backlog rules](docs/product/mvp/08-backlog-shaping-rules.md).
+  on the [backlog rules](docs/product/v1/08-backlog-shaping-rules.md).
 
 ## 2. Get it running
 

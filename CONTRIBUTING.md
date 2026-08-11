@@ -57,7 +57,7 @@ If a repo ever needs re-provisioning, that is a deliberate manual operation.
 If you use a GitHub Project, it is a **label-filtered saved view**. Nothing reconciles it: editing
 a card's status field changes no lifecycle state. Change the label.
 
-Bulk-seeding issues from [`docs/product/mvp/`](docs/product/mvp/) is fine — each seeded issue
+Bulk-seeding issues from [`docs/product/v1/`](docs/product/v1/) is fine — each seeded issue
 still passes the grill individually to reach ready.
 
 ## Solo review path (DEC-016)

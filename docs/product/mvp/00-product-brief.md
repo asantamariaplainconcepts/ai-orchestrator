@@ -1,5 +1,11 @@
 # Product brief — AI Orchestrator
 
+> **Superseded.** The living corpus is [docs/product/v1/](../v1/README.md) (DEC-066,
+> [ADR-0024](../../adr/0024-the-product-says-what-it-is-an-open-source-dual-habitat-orchestrator.md),
+> 2026-08-11). This folder is the historical record; only the decision log
+> ([10-locked-mvp-decisions.md](10-locked-mvp-decisions.md)) and open decisions
+> ([07-open-decisions.md](07-open-decisions.md)) remain live here, append-only.
+
 **One line.** An internal web application that connects project backlogs (GitHub, Azure
 DevOps) to AI agents: users configure *Automations* that run an Agent in a sandbox of its own
 to act on user stories — implementing them as PRs, refining them, transitioning or

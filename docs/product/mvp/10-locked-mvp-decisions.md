@@ -450,3 +450,25 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   preserved in the change's `evidence.md`. BR-005 needs a stated rule before the into-the-agent form is
   implementable: a timeout that bounds unattended work cannot also bound work a human is typing into.
   Decided 2026-08-10 with #301 ([ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)).
+
+- **DEC-066 — the product says what it is: open-source, dual-habitat — and the living corpus is
+  `docs/product/v1/`** *(revises [DEC-001](#))*: DEC-001's "internal web app" stopped being true
+  the day DEC-049 made "anyone can run this" a product goal, and everything built since —
+  habitats (DEC-052, DEC-065), the self-host persona (BR-016, UC-029), conversations (DEC-055,
+  DEC-061) — lived in decisions the identity documents never absorbed. The identity is now: an
+  **open-source web application** connecting project backlogs to AI agents in per-Run microVM
+  sandboxes, **one product in two habitats** — a governed deployment on metered infrastructure,
+  and self-host on a machine its operator owns — with Plain Concepts delivery teams the first
+  governed team, not the definition. The corpus carrying that identity is rewritten from zero at
+  `docs/product/v1/` (this folder becomes legible history: byte-identical except the supersession
+  note atop `00-product-brief.md`; this decision log stays here, append-only — one log, one
+  numbering). Stable IDs resolve to the same concepts in both corpora; the one correction
+  (UC-024 → UC-028, the file-changes review) is #316's, carried and named, not remade. BR-014
+  gains one DEC-065-sourced sentence — affordances may differ per habitat, what a Run records may
+  not — a wording clarification, not a new rule. The authority split is stated in the v1 README:
+  `openspec/specs/` owns current behaviour, the corpus owns what the product is and must become;
+  where they disagree, the spec wins and the corpus has a bug. **The cost, stated:** two corpora
+  coexist, and a reader can land in the old one — accepted, mitigated by the note and the
+  live-doc cutover; UC-030..032 enter the corpus as intended and still owe their own grills.
+  Decided 2026-08-11 with #318
+  ([ADR-0024](../../adr/0024-the-product-says-what-it-is-an-open-source-dual-habitat-orchestrator.md)).

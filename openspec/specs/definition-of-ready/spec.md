@@ -7,7 +7,7 @@ TBD - created by archiving change ceremonies. Update Purpose after archive.
 
 `docs/process/definition-of-ready.md` SHALL define the bar an issue must meet to reach
 `status:ready-for-proposal`, expressed as bindings to `RULE-001..007` in
-`docs/product/mvp/08-backlog-shaping-rules.md`. It SHALL NOT duplicate the rules' content.
+`docs/product/v1/08-backlog-shaping-rules.md`. It SHALL NOT duplicate the rules' content.
 
 #### Scenario: a rubric change touches one file
 

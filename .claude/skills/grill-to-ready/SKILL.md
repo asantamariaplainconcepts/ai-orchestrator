@@ -1,13 +1,13 @@
 ---
 name: grill-to-ready
-description: Interrogate a raw idea or a markdown source (e.g. a use case in docs/product/mvp/) into a Definition-of-Ready issue draft. Use when a work item needs clarifying before it becomes a GitHub issue.
+description: Interrogate a raw idea or a markdown source (e.g. a use case in docs/product/v1/) into a Definition-of-Ready issue draft. Use when a work item needs clarifying before it becomes a GitHub issue.
 ---
 
 Turn a fuzzy input, or an existing issue's current state, into a Definition-of-Ready evaluation by grilling the human — one responsibility. Do not create the issue, post comments, or set labels (that is `create-github-issue` / `set-issue-status` / the orchestrating command).
 
 ## Mode: raw input (new issue)
 
-1. **Read the source.** If given a path/section (e.g. `docs/product/mvp/04-mvp-use-cases.md#UC-xxx`), read it. If given an inline idea, use that. Read the grounding docs: `docs/product/mvp/02-domain-glossary.md`, `05-business-rules.md`, `10-locked-mvp-decisions.md`, `03-bounded-contexts.md`.
+1. **Read the source.** If given a path/section (e.g. `docs/product/v1/04-capabilities.md#UC-xxx`), read it. If given an inline idea, use that. Read the grounding docs: `docs/product/v1/02-domain-glossary.md`, `05-business-rules.md`, `03-bounded-contexts.md`, and the decision log at `docs/product/mvp/10-locked-mvp-decisions.md`.
    - Done when: the source and the relevant glossary/rules/decisions are in hand.
 2. **Grill.** Ask the human focused questions ("grill me about this topic") to fill every gap the Definition of Ready requires — see `docs/process/definition-of-ready.md` (built on `08-backlog-shaping-rules.md`: RULE-001 fields, RULE-002 slicing, RULE-003 traceability, RULE-006 open decisions). Ask one cluster at a time; stop asking once a field is satisfied.
    - Done when: every DoR field has an answer, or an open decision is identified as blocking.

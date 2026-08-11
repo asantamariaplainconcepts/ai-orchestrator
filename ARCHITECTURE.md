@@ -1,7 +1,7 @@
 # Architecture
 
 Bird's-eye map. Behaviour lives in `openspec/specs/`; product truth in
-[docs/product/mvp/](docs/product/mvp/00-product-brief.md); decisions in `docs/adr/` and the
+[docs/product/v1/](docs/product/v1/00-product-brief.md); decisions in `docs/adr/` and the
 [locked-decision log](docs/product/mvp/10-locked-mvp-decisions.md). This file links, it does not
 restate.
 
@@ -250,7 +250,7 @@ execution.
 
 **A claimed message is deleted before any work happens, and that is load-bearing.** Storage
 Queues are at-least-once: a consumer that dies leaves its message to reappear, and KEDA starts
-another job — an automatic retry, which [BR-004](docs/product/mvp/05-business-rules.md) forbids.
+another job — an automatic retry, which [BR-004](docs/product/v1/05-business-rules.md) forbids.
 The rule wins. The cost is stated rather than hidden: a job killed by infrastructure is
 indistinguishable from an Agent that failed, and both need a human to re-trigger via *Run now*
 (BR-013). **Do not "fix" this back to at-least-once** — the deletion is the rule.
