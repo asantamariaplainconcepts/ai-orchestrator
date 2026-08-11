@@ -26,11 +26,9 @@ export function DropSlot({
           <span className="font-mono">{dragged.triggerLabel}</span>{" "}
           {refusal === "shared"
             ? t("canvas.refuseShared")
-            : refusal === "cycle"
-              ? t("canvas.refuseCycle")
-              : refusal === "self"
-                ? t("canvas.refuseSelf")
-                : t("canvas.refuseAlready")}
+            : refusal === "self"
+              ? t("canvas.refuseSelf")
+              : t("canvas.refuseAlready")}
         </span>
       </span>
     );

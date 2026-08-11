@@ -11,8 +11,15 @@ export const AUTOMATION_BLOCK = "application/x-aio-automation";
  * Why a drop cannot happen, or null when it can (8c). Computed at the slot the pointer is over
  * and rendered there, because a refusal that arrives as a toast after the drop teaches the rule
  * one gesture too late.
+ * <p>
+ * <b>The loop refusal is gone (#310, design D6).</b> It was not simplified — there is nothing left
+ * for it to compute. A cycle is a property of a graph, and a project's lifecycle is a linear ordered
+ * list of stages: an Automation claims the transition out of one stage into the next, so no
+ * arrangement a person can express can lead back to where it started. Removing a warning is a
+ * judgement, so it is this commit's whole subject rather than a line inside a larger one.
+ * </p>
  */
-export type DropRefusal = "self" | "already" | "cycle" | "shared";
+export type DropRefusal = "self" | "already" | "shared";
 
 /**
  * The wiring a drop would perform, in the two labels it rewrites — or the reason it will not.
@@ -33,7 +40,7 @@ export interface ChainDrop {
 /**
  * The rule that stops this drop, or null when nothing does.
  *
- * Deliberately narrow: these are the four a drop can create by itself. Everything else a drop
+ * Deliberately narrow: these are the ones a drop can create by itself. Everything else a drop
  * might violate is caught where it already is — the update endpoint applies BR-003's overlap check
  * and #115's self-trigger refusal to whatever this produces (design D4), so this function is the
  * explanation, never the enforcement.
@@ -66,41 +73,7 @@ export function refusalFor(drop: ChainDrop, automations: Automation[]): DropRefu
     return "shared";
   }
 
-  // A loop would run forever rather than finish. Reachability is computed on the labels, which is
-  // the same thing the graph is derived from — a cycle check on anything else could disagree with
-  // the picture.
-  if (reaches(dragged, preceding, automations)) {
-    return "cycle";
-  }
-
   return null;
-}
-
-/** Whether work starting at `from` can arrive at `to` by following output labels. */
-function reaches(from: Automation, to: Automation, automations: Automation[]): boolean {
-  const byTrigger = new Map<string, Automation>();
-  for (const automation of automations) {
-    const held = byTrigger.get(automation.triggerLabel);
-    if (!held || (!held.enabled && automation.enabled)) {
-      byTrigger.set(automation.triggerLabel, automation);
-    }
-  }
-
-  const seen = new Set<string>([from.id]);
-  const frontier = [from];
-
-  while (frontier.length > 0) {
-    const step = frontier.pop()!;
-    for (const label of step.outputLabels) {
-      const target = byTrigger.get(label);
-      if (!target || seen.has(target.id)) continue;
-      if (target.id === to.id) return true;
-      seen.add(target.id);
-      frontier.push(target);
-    }
-  }
-
-  return false;
 }
 
 /** One Automation's new output labels, as a drop would leave them. */

@@ -473,7 +473,8 @@ export const en = {
   "canvas.branchesSerialize":
     "A step can hand on to several places, but they do not run at once \u2014 one run per story at a time, so a second match while one is running is skipped, not queued.",
   "canvas.branchFrom": "from",
-  "canvas.dangling": "Writes a label nothing listens for:",
+  // "canvas.dangling" is retired (#310): a label nothing listens for is a mark, which is the normal
+  // case after the transition/mark split rather than a defect worth a badge.
   // Two named things, not two views of one list (#136, DEC-053).
   "automations.catalogue": "Catalogue",
   "automations.catalogue.hint":
@@ -507,11 +508,11 @@ export const en = {
   "canvas.willHandToIt": "will hand to it",
   "canvas.dragOut": "Drag a step here to take it out of the chain",
   "canvas.cantDrop": "Can't drop here",
-  // The three refusals, each naming the rule rather than the symptom.
+  // Each refusal names the rule rather than the symptom. The loop refusal that used to sit here is
+  // gone (#310): a lifecycle is a linear ordered list of stages, so there is no arrangement a person
+  // can express that leads back to where it started, and the sentence had nothing left to describe.
   "canvas.refuseShared":
     "already fires on another row — two enabled Automations cannot share a trigger (BR-003). Disable the other one or change its label.",
-  "canvas.refuseCycle":
-    "already hands work back to this step, and a loop would run forever rather than finish.",
   "canvas.refuseSelf": "cannot hand work to itself.",
   "canvas.refuseAlready": "already hands to it — this edge exists.",
   "canvas.chainAfter": "Chain after…",
