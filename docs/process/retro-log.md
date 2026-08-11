@@ -3878,3 +3878,47 @@ belong to #304, with the blockers written into it rather than discovered by whoe
 named above). The only figures the export holds for this session are **$0.69 and 380,511 tokens**,
 and they cover the stretch before the collector stopped receiving, which is before this change
 began. They are recorded as partial rather than presented as the change's cost.
+
+## 2026-08-11 — `human-opens-a-shell-in-a-run-sandbox` (#304)
+
+A human opens a real terminal in an executing self-host Run's sandbox, beside the headless agent —
+the capability [ADR-0021](../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)
+licensed a day earlier. Nine commits, and almost no new machinery: `RunPreviewHost` already had the
+registry shape, `RunLogHub` already had the self-authorizing surface, and the archived spike already
+had the transport.
+
+**What worked: the gated test met the real CLI, and the real CLI refused what a stand-in would have
+accepted.** The first pseudo-terminal passed only the caller's environment to `posix_spawn`, which
+*replaces* an environment where `Process.Start` inherits one — so the sbx CLI died with
+`panic: $HOME is not defined` before any sandbox was touched. No mock would have objected;
+`Process.Start`'s own semantics hide the difference. That is [ADR-0020](../adr/0020-a-launcher-is-unverified-until-it-meets-its-real-cli.md)
+arriving on schedule, and it is the second time on this launcher that the stand-in was the thing that
+was wrong. Worth recording beside it: an **architecture rule** caught `run.attach` being declared by
+nothing, because it reads `[Requires]` off dispatched requests and a hub dispatches nothing — the same
+blind spot `RunLogHub` documented. The rule now carries a short list of permissions enforced outside
+the pipeline, each with its named enforcer, because const strings are inlined and no reflection could
+have found the usage.
+
+**What didn't: `git add src` swept two unrelated files into six commits.** An Aspire bump to 13.4.6
+and the removal of `Aspire.Hosting.AppHost` were sitting uncommitted in the working tree when this
+change started, and a wildcard stage carried them along. **CI found it, and found it by accident:**
+the sweep included a reformatted `PackageVersion` line, `backend-format` went red, and the reason
+turned up the rest. Nothing was checking whether a change contains only its own work — the formatter
+noticed a side effect of the mistake rather than the mistake. The files were reverted on the branch
+before the merge and the changes handed back to the working tree they came from, but the version that
+merges is only clean because a formatting rule happened to trip.
+
+**One change next time:** stage by path, never by directory. `git add src` has the blast radius of the
+whole tree, and the cost is not the noise in the diff — it is that somebody else's unfinished work
+lands in your merge under your name.
+
+**Left open deliberately, not silently:** nobody has driven the terminal from a browser. The E2E tier
+cannot stand up a Run in `Executing` with a live sandbox, so the pty is proven against real sbx
+(a real tty, correct geometry, `^C` as SIGINT), the three refusals are proven at the hub, and the path
+from xterm through the hub to the pty is proven nowhere. Merged knowingly on that basis.
+
+**Time invested:** unmeasured — source **manual, because capture is still broken**. The same three
+checks fail (`OTEL_EXPORTER_OTLP_ENDPOINT` unset, nothing listening, container not found) and
+`usage.jsonl` has not been written to since **2026-08-10T20:54Z**, which is before this change began.
+Tracked as [#307](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/307); this is the
+second consecutive entry to report it.
