@@ -65,7 +65,7 @@
 
 ## 5. Execution: the lifecycle move and the marks travel one write (design D9)
 
-- [ ] 5.1 In `src/modules/Runs/.../Features/Execution/RunExecutor.cs:196-231`, apply the claimed
+- [x] 5.1 In `src/modules/Runs/.../Features/Execution/RunExecutor.cs:196-231`, apply the claimed
       to-stage together with every mark through UC-008's licensed write, keeping #165's guarantees: each
       label attempted, and the Run failing while naming every label that did not land.
 - [ ] 5.2 Leave `Features/Matching/StoryChangedHandler.cs` untouched, and assert in a functional test
