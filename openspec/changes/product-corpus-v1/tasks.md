@@ -14,12 +14,12 @@
 
 ## 2. The decision is recorded
 
-- [ ] 2.1 Allocate the next DEC number against `origin/main` (expected DEC-066) and append the
+- [x] 2.1 Allocate the next DEC number against `origin/main` (expected DEC-066) and append the
       entry to `docs/product/mvp/10-locked-mvp-decisions.md`: revises DEC-001 (open-source,
       dual-habitat identity), adopts `docs/product/v1/` as living corpus, names stable-ID
       continuity (carrying #316's UC-024→UC-028 correction) and BR-014's habitat sentence as a
       DEC-065-sourced wording clarification; DEC-001's own text untouched
-- [ ] 2.2 Write the ADR in `docs/adr/` (next free number) carrying the rationale and the
+- [x] 2.2 Write the ADR in `docs/adr/` (next free number) carrying the rationale and the
       rejected alternatives from `design.md`, naming its evidence (the grill audit: the
       DEC-001/DEC-049 contradiction, the UC-024 collision, the missing glossary terms) and its
       check (task 4.1's sweep)

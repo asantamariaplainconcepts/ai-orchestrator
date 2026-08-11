@@ -56,9 +56,11 @@ defined.
 
 ### Requirement: the superseded corpus is legible history
 
-`docs/product/mvp/` SHALL remain in place, byte-identical except for one supersession note at
-the top of `00-product-brief.md` pointing at `docs/product/v1/`. ADRs, `BOOTSTRAP*`,
-`docs/process/retro-log.md` and `openspec/changes/archive/` SHALL NOT be edited by the cutover.
+`docs/product/mvp/` SHALL remain in place, byte-identical except for two named writes: one
+supersession note at the top of `00-product-brief.md` pointing at `docs/product/v1/`, and
+appends to `10-locked-mvp-decisions.md` — the decision log remains the live, append-only DEC
+record there. ADRs (existing entries), `BOOTSTRAP*`, `docs/process/retro-log.md` and
+`openspec/changes/archive/` SHALL NOT be edited by the cutover.
 
 #### Scenario: a reader lands in the old corpus
 
@@ -69,8 +71,10 @@ the top of `00-product-brief.md` pointing at `docs/product/v1/`. ADRs, `BOOTSTRA
 #### Scenario: history is untouched
 
 - **WHEN** the cutover change is diffed
-- **THEN** no file under `docs/adr/`, `openspec/changes/archive/`, no `BOOTSTRAP*` file and not
-  `docs/process/retro-log.md` appears in the diff
+- **THEN** no existing file under `docs/adr/` is modified (a new ADR may be added), nothing
+  under `openspec/changes/archive/` appears, and no `BOOTSTRAP*` file and not
+  `docs/process/retro-log.md` appears in the diff; under `docs/product/mvp/` only
+  `00-product-brief.md` (the note) and `10-locked-mvp-decisions.md` (the append) appear
 
 ### Requirement: live documents point at the living corpus
 
