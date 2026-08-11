@@ -83,7 +83,10 @@ sealed class AcaAgentProcessHost : IAgentProcessHost
         CancellationToken cancellationToken,
         Action<string>? onOutput = null,
         RunPreview? preview = null,
-        Guid? projectId = null
+        Guid? projectId = null,
+        // Ignored: ADR-0021 permits a terminal in self-host only, so a deployed sandbox is never
+        // published for one — the monitor answers "not hosted here".
+        Guid? runId = null
     )
     {
         // The same assertion the sbx host makes, for the same reason: a caller that still passes

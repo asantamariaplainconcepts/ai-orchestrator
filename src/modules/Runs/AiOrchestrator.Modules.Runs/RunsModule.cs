@@ -60,7 +60,10 @@ public sealed class RunsModule : ModuleBase
             RunPermissions.Approve,
             RunPermissions.Cancel,
             RunPermissions.DismissFailure,
-            RunPermissions.HoldConversation
+            RunPermissions.HoldConversation,
+            // The second addition to ACT-002's list, and the only one that executes anything: see
+            // RunPermissions.Attach for the cost accepted in granting it to Members (#288, #304).
+            RunPermissions.Attach
         );
         services.AddDbContext<RunsDbContext>(options =>
             options.UseNpgsql(
@@ -120,6 +123,19 @@ public sealed class RunsModule : ModuleBase
         // always resolve, so a habitat that holds no sandboxes answers "not hosted here" instead
         // of failing — the ability is absent, never the answer.
         services.TryAddSingleton<IRunPreviewMonitor, UnhostedRunPreviewMonitor>();
+
+        // And sandboxes, once more (#304): the terminal's surface must always resolve, and a
+        // habitat that launches none — a deployment, by ADR-0021 — answers "not hosted here"
+        // rather than looking like a Run with no sandbox.
+        services.TryAddSingleton<IRunSandboxMonitor, UnhostedRunSandboxMonitor>();
+        services.TryAddSingleton<IRunTerminalHost, UnhostedRunTerminalHost>();
+
+        // Who attached, and when, against the Run itself (#304 criterion 6) — the trace that makes
+        // granting the capability to Members reasonable at all (#288).
+        services.AddScoped<
+            Features.Observation.IRunAttachRecorder,
+            Features.Observation.RunAttachRecorder
+        >();
 
         // The relay's own client, bounded: a preview that hangs must not hold a portal request
         // open, and the timeout is short because the target is loopback on this machine.

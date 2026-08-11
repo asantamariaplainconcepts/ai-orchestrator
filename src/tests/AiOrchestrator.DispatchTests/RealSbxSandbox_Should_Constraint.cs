@@ -40,6 +40,7 @@ public class RealSbxSandbox_Should_Constraint
                 SessionFiles = sessionFiles ?? [],
             },
             new RunPreviewHost(),
+            new RunSandboxHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 
@@ -156,6 +157,7 @@ public class RealSbxSandbox_Should_Constraint
                 InjectedSecrets = ["github"],
             },
             previews,
+            new RunSandboxHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 

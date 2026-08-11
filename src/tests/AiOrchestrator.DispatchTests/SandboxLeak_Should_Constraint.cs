@@ -99,6 +99,7 @@ public class SandboxLeak_Should_Constraint
                     SessionFiles = [],
                 },
                 new RunPreviewHost(),
+                new RunSandboxHost(),
                 NullLogger<SbxAgentProcessHost>.Instance
             ),
             ledger

@@ -22,6 +22,7 @@ import { NativeSelect } from "@/shared/ui/native-select";
 import { Card } from "@/shared/ui/card";
 import { RunChanges } from "./RunChanges";
 import { RunPreviewFrame } from "./RunPreviewFrame";
+import { RunTerminal } from "./RunTerminal";
 import { useRunChanges } from "./useRuns";
 import { parseTranscript } from "./transcript";
 import type { RunView } from "./types";
@@ -32,6 +33,7 @@ import {
   useDismissFailure,
   useRunLog,
   useRunPreview,
+  useRunTerminal,
   useRuns,
 } from "./useRuns";
 import { useRunNow } from "./useRunNow";
@@ -100,6 +102,7 @@ export function RunScreen() {
   // which is exactly how the previous three drifted.
   const runFinished = log.data?.complete ?? false;
   const preview = useRunPreview(projectId, runId, runFinished);
+  const terminal = useRunTerminal(projectId, runId, runFinished);
   const awaiting = run?.state === "AwaitingApproval";
   const triggerLabel =
     automations.data?.find((automation) => automation.id === run?.automationId)?.triggerLabel ??
@@ -400,6 +403,16 @@ export function RunScreen() {
                   // log has not arrived on the first render, so the preview query fires and its
                   // answer would otherwise stick — a frame on a Run that ended.
                   available={!runFinished && (preview.data?.available ?? false)}
+                  runFinished={runFinished}
+                />
+
+                {/* Beside the preview, and for the same reason it is here: both are live while the
+                    Run is. The preview shows what the agent built; this opens a shell next to it
+                    (#304), and like the preview it renders nothing once the Run is over. */}
+                <RunTerminal
+                  projectId={projectId}
+                  runId={runId}
+                  terminal={runFinished ? undefined : terminal.data}
                   runFinished={runFinished}
                 />
 

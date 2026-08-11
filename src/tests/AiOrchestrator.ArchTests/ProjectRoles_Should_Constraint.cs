@@ -166,13 +166,33 @@ public class ProjectRoles_Should_Constraint
             .Where(permission => permission is not null)
             .ToHashSet();
 
-        var unused = KnownPermissions().Where(known => !declared.Contains(known)).ToList();
+        var unused = KnownPermissions()
+            .Where(known =>
+                !declared.Contains(known) && !EnforcedOutsideThePipeline.Contains(known)
+            )
+            .ToList();
 
         // The other direction, and the one that rots quietly: a permission no operation requires
         // still looks like a rule somebody must honour, and a grant table listing it reads as a
         // decision that was made. Neither is true.
         unused.ShouldBeEmpty();
     }
+
+    /// <summary>
+    /// Permissions enforced by a surface the pipeline cannot see, and therefore invisible to the rule
+    /// above — which reads `[Requires]` off dispatched requests, and a hub dispatches nothing.
+    /// <para>
+    /// Every entry is a deliberate exception with a named enforcer, and the list is short on purpose:
+    /// a permission that lands here without one is exactly the rot this constraint exists to catch.
+    /// Const strings are inlined by the compiler, so no amount of reflection can find the usage — the
+    /// alternative to naming them here is not a cleverer test, it is no test at all.
+    /// </para>
+    /// <list type="bullet">
+    /// <item><c>run.attach</c> — <c>RunTerminalHub.Open</c> (#304), which asks the same questions the
+    /// decorator would and then asks for this one.</item>
+    /// </list>
+    /// </summary>
+    static readonly HashSet<string> EnforcedOutsideThePipeline = ["run.attach"];
 
     /// <summary>Every command and query the product actually dispatches.</summary>
     static IEnumerable<Type> Requests() =>

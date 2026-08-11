@@ -189,6 +189,14 @@ holds one warm container continuously. The provider's schema accepted the zero a
 not, which is the general shape of this whole seam: `azapi` is an escape hatch, and its embedded
 schema is not the API.
 
+**A human can open a shell beside a running agent, in self-host (#304).** `RunSandboxHost` publishes
+which sandbox a Run is executing in, for exactly as long as it exists; `RunTerminalHub` authorizes
+against `run.attach` in the hub itself — a hub dispatches nothing, so the CQS decorator never sees it,
+which is the lesson `RunLogHub` already paid for — and `InteractivePty` gives `sbx exec -it` the
+terminal it refuses a pipe for. The agent stays headless throughout, so the Run's structured
+transcript is untouched and only the attach itself is recorded. The terminal's size is fixed when it
+opens: resizing a live pty needs a variadic `ioctl`, and .NET cannot make variadic calls at all.
+
 **A session may be held on your own machine, and nowhere else (DEC-065, ADR-0021).** In self-host a
 human may attach to a Run's sandbox beside the headless agent, or to the agent's own process; both are
 bounded by the machine's inactivity, never by a clock on the person (BR-006). In a deployment neither

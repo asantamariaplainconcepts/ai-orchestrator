@@ -453,11 +453,82 @@ public class AgentSandbox_Should_Constraint
         host.ProjectId.ShouldBe(projectId);
     }
 
+    [Fact]
+    public async Task ARuntime_Should_ForwardTheRunIdATerminalNeeds()
+    {
+        // Same lesson, applied before it could bite again (#304). The sandbox ledger is keyed by Run,
+        // so a runtime that drops the id publishes nothing and every terminal answers "this Run has
+        // no sandbox" — a wire whose absence looks exactly like a habitat that hosts none.
+        //
+        // Asserted through the runtime rather than against the host, because the host cannot tell
+        // the difference between an id it was never given and a Run that has none.
+        var host = new RecordingProcessHost();
+        var runtime = new OpenCodeRuntime(
+            new OpenCodeOptions { Model = "m" },
+            host,
+            NullLogger<OpenCodeRuntime>.Instance
+        );
+        var runId = Guid.CreateVersion7();
+
+        await runtime.Execute(
+            new AgentInstruction(
+                "prompt",
+                "RepositoryPrompt",
+                TimeSpan.FromMinutes(1),
+                Path.GetTempPath(),
+                new AgentCredentials(string.Empty, string.Empty),
+                // Deliberately no Preview: the id must travel on its own, because a terminal is
+                // offered for every sandboxed Run and a preview only for one whose Automation named
+                // a port. Reading the id off the preview would tie the two together.
+                RunId: runId
+            ),
+            CancellationToken.None
+        );
+
+        host.RunId.ShouldBe(runId);
+        host.Preview.ShouldBeNull();
+    }
+
+    [Fact]
+    public void TheSandboxLedger_Should_ForgetAName_WhenItsSandboxIsGone()
+    {
+        // The property the terminal's "a finished Run offers nothing" rests on, asserted directly:
+        // there is no way to hold a name past disposal, so no surface can address a dead microVM.
+        var ledger = new RunSandboxHost();
+        var runId = Guid.CreateVersion7();
+
+        ledger.Hosted.ShouldBeTrue();
+        ledger.NameFor(runId).ShouldBeNull();
+
+        ledger.Created(runId, "aio-run-abc");
+        ledger.NameFor(runId).ShouldBe("aio-run-abc");
+
+        ledger.Gone(runId);
+        ledger.NameFor(runId).ShouldBeNull();
+
+        // Idempotent, because disposal can race a crash.
+        Should.NotThrow(() => ledger.Gone(runId));
+    }
+
+    [Fact]
+    public void AnUnhostedHabitat_Should_SayItHostsNoSandbox_RatherThanNone()
+    {
+        // The distinction ADR-0021 turns on: a deployment refuses terminals, and that must not read
+        // as a Run whose sandbox is missing. Both answer null; only one says it never hosts any.
+        IRunSandboxMonitor unhosted = new UnhostedRunSandboxMonitor();
+
+        unhosted.Hosted.ShouldBeFalse();
+        unhosted.NameFor(Guid.CreateVersion7()).ShouldBeNull();
+
+        new RunSandboxHost().Hosted.ShouldBeTrue();
+    }
+
     /// <summary>Records what a runtime handed it, so "did not forward" is assertable.</summary>
     sealed class RecordingProcessHost : IAgentProcessHost
     {
         public RunPreview? Preview { get; private set; }
         public Guid? ProjectId { get; private set; }
+        public Guid? RunId { get; private set; }
 
         public Task<AgentProcessOutcome> Run(
             string fileName,
@@ -468,11 +539,13 @@ public class AgentSandbox_Should_Constraint
             CancellationToken cancellationToken,
             Action<string>? onOutput = null,
             RunPreview? preview = null,
-            Guid? projectId = null
+            Guid? projectId = null,
+            Guid? runId = null
         )
         {
             Preview = preview;
             ProjectId = projectId;
+            RunId = runId;
             return Task.FromResult(
                 new AgentProcessOutcome(TimedOut: false, ExitCode: 0, Stdout: "{}", Stderr: "")
             );
@@ -619,6 +692,7 @@ public class AgentSandbox_Should_Constraint
                 KeychainRuntimes = keychainRuntimes ?? [],
             },
             previews ?? new RunPreviewHost(),
+            new RunSandboxHost(),
             NullLogger<SbxAgentProcessHost>.Instance
         );
 

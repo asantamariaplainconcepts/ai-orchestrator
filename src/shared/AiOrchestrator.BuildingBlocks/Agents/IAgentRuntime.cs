@@ -48,7 +48,18 @@ public sealed record AgentInstruction(
     /// so a Run bills and acts as its own Project (#244). Hosts that do not scope by Project
     /// ignore it, which is every other one.
     /// </summary>
-    Guid? ProjectId = null
+    Guid? ProjectId = null,
+    /// <summary>
+    /// Which Run this is (#304). Carried so a host that creates a sandbox can publish which sandbox
+    /// belongs to which Run, which is what lets a human open a terminal in it.
+    /// <para>
+    /// <see cref="Preview"/> already carries a Run id, and deliberately is not used for this: a
+    /// preview exists only when an Automation named a port, so reading the id from it would make the
+    /// terminal available exactly when a preview happened to be too. Null means the caller did not
+    /// say, and a host that cannot name the Run simply publishes nothing.
+    /// </para>
+    /// </summary>
+    Guid? RunId = null
 );
 
 /// <summary>

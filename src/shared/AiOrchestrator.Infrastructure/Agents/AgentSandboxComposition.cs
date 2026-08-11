@@ -129,6 +129,22 @@ public static class AgentSandboxComposition
             return;
         }
 
+        // The sandbox ledger a terminal addresses, registered for sbx and NOT for ACA (#304).
+        // ADR-0021 permits attaching in self-host and refuses it in a deployment, so the deployed
+        // habitat keeps the unhosted monitor the Runs module registers — the ability is absent
+        // there, which is a different answer from a Run having no sandbox.
+        builder.Services.AddSingleton<RunSandboxHost>();
+        builder.Services.AddSingleton<BuildingBlocks.Agents.IRunSandboxMonitor>(provider =>
+            provider.GetRequiredService<RunSandboxHost>()
+        );
+
+        // And the thing that enters one. Registered here for the same reason and with the same
+        // limit: only this habitat has it, so only this habitat registers it.
+        builder.Services.AddSingleton<
+            BuildingBlocks.Agents.IRunTerminalHost,
+            Sbx.SbxRunTerminalHost
+        >();
+
         builder.Services.AddSingleton(
             new SbxSandboxOptions
             {
