@@ -118,6 +118,19 @@ export interface RunPreview {
   available: boolean;
 }
 
+/**
+ * Whether this Run can be opened in a terminal right now (#304), and if not, which of the three
+ * reasons applies. Kept apart for the reason the preview's two are: a habitat that hosts none, a
+ * Run that has none, and a caller who may not are different sentences with different remedies.
+ */
+export interface RunTerminal {
+  /** False means terminals are not hosted here (ADR-0021) — not that this Run failed to offer one. */
+  hosted: boolean;
+  available: boolean;
+  /** Reported, not enforced: the hub asks for the permission itself and is the only thing that may. */
+  permitted: boolean;
+}
+
 /** A pushed frame, carrying where it starts so an overlap can be dropped rather than appended. */
 interface LogFrame {
   from: number;
@@ -239,6 +252,16 @@ export function useRunLog(projectId: string, runId: string) {
  * are not hosted here" and "this Run has no preview" are different sentences — reading the first
  * as the second would make a habitat's limitation look like a Run that failed.
  */
+export function useRunTerminal(projectId: string, runId: string, runIsTerminal: boolean) {
+  return useQuery({
+    queryKey: ["run-terminal", projectId, runId],
+    queryFn: () => api.get<RunTerminal>(`/api/projects/${projectId}/runs/${runId}/terminal`),
+    // Never asked for a Run that is already done: a sandbox that has gone cannot come back.
+    enabled: !runIsTerminal,
+    refetchInterval: (q) => (q.state.data?.available ? 15_000 : 5_000),
+  });
+}
+
 export function useRunPreview(projectId: string, runId: string, runIsTerminal: boolean) {
   return useQuery({
     queryKey: ["run-preview", projectId, runId],

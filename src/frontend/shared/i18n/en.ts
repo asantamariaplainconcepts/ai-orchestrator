@@ -138,6 +138,23 @@ export const en = {
   // and the Run's own record is what remains.
   "run.preview.ended":
     "This Run finished, so its preview closed with the sandbox it ran in. Its output and file changes are below.",
+  // The terminal (#304): a shell beside the agent, in the Run's own sandbox. Each refusal has its
+  // own sentence because each has its own remedy — asking for access does not help a habitat that
+  // hosts no terminal, and no habitat helps a Run that has already finished.
+  "run.terminal.heading": "Terminal",
+  "run.terminal.whose": "a shell in this run's sandbox, beside the agent",
+  "run.terminal.open": "Open a terminal",
+  "run.terminal.connecting": "Opening a shell\u2026",
+  "run.terminal.unhosted":
+    "Terminals are not hosted here. A run's sandbox can be opened when the agent runs on this machine, not when it runs in the cloud.",
+  "run.terminal.forbidden":
+    "You do not have permission to open a terminal on this run. Its output and file changes are still yours to read.",
+  // Said once, when it ends under somebody's eyes — the same moment the preview has, for the same
+  // reason: the shell is gone because its sandbox is.
+  "run.terminal.ended":
+    "This run finished, so its sandbox and your shell went with it. Its output and file changes are below.",
+  "run.terminal.fixedSize":
+    "Sized to this window when it opened \u2014 resizing the window will not reflow it, but reopening will.",
   "run.log.waitingForOutput": "No output yet \u2014 following\u2026",
   "connector.heading": "Connector",
   "connector.none": "No backlog connected. Configure a Connector to read Stories.",

@@ -55,15 +55,15 @@
 
 ## 5. The terminal in the Run screen
 
-- [ ] 5.1 Pin `@xterm/xterm` and `@xterm/addon-fit` in `src/frontend/package.json`
-- [ ] 5.2 A read that answers whether this Run has a terminal right now — hosted, permitted,
+- [x] 5.1 Pin `@xterm/xterm` and `@xterm/addon-fit` in `src/frontend/package.json`
+- [x] 5.2 A read that answers whether this Run has a terminal right now — hosted, permitted,
       executing — modelled on the preview read's three-way shape
-- [ ] 5.3 `RunTerminal.tsx` beside `RunPreviewFrame.tsx`: xterm bound to the hub, binary frames,
+- [x] 5.3 `RunTerminal.tsx` beside `RunPreviewFrame.tsx`: xterm bound to the hub, binary frames,
       `FitAddon` measuring the size **once at connect**, and the mock-mode guard every live surface
       needs
-- [ ] 5.4 i18n keys in `shared/i18n/en.ts` for the heading and each of the three refusals — no
+- [x] 5.4 i18n keys in `shared/i18n/en.ts` for the heading and each of the three refusals — no
       hardcoded copy, per the design system's gate
-- [ ] 5.5 Render it only while the Run executes, and say plainly when the sandbox has gone rather
+- [x] 5.5 Render it only while the Run executes, and say plainly when the sandbox has gone rather
       than leaving a dead terminal (agent-sandboxing scenario)
 
 ## 6. Close the loop
