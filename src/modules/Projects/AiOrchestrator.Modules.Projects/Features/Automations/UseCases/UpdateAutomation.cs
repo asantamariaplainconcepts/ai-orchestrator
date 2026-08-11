@@ -249,6 +249,18 @@ sealed class UpdateAutomation : IUseCase
                 return ProjectErrors.AutomationNotFound(command.AutomationId);
             }
 
+            // The Project is part of this write since #310: assigning, moving or clearing a claim is
+            // an ordinary Automation update, and the stages a claim needs are created by it.
+            var project = await database.Projects.FirstOrDefaultAsync(
+                entity => entity.Id == command.ProjectId,
+                cancellationToken
+            );
+
+            if (project is null)
+            {
+                return ProjectErrors.NotFound(command.ProjectId);
+            }
+
             automation.UpdateTo(
                 command.TriggerLabel,
                 string.IsNullOrWhiteSpace(command.TriggerState) ? null : command.TriggerState,
@@ -278,6 +290,15 @@ sealed class UpdateAutomation : IUseCase
                 // Nothing is saved, and the tracked entity is discarded with the scope — the
                 // stored Automation is exactly as it was.
                 return overlap.Errors;
+            }
+
+            // AC 5's guarantee comes from here: moving a claim to a boundary that already exists
+            // changes this Automation's ToStage and touches the stage list not at all, so no other
+            // Automation's claimed transition can change as a consequence.
+            var claim = project.ClaimTransition(automation.TriggerLabel, automation.ToStage);
+            if (claim.IsError)
+            {
+                return claim.Errors;
             }
 
             try

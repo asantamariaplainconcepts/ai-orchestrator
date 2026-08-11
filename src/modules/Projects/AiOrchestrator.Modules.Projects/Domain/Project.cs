@@ -164,8 +164,10 @@ sealed class Project : Aggregate
     /// claims a transition out of any one from-stage.
     /// </para>
     /// </summary>
-    public ErrorOr<Success> ClaimTransition(string fromStage, string toStage)
+    public ErrorOr<Success> ClaimTransition(string? fromStage, string? toStage)
     {
+        // Null or blank is "claims no transition" (design D3) — a no-op rather than a refusal, so
+        // DEC-053's standalone Automation and the last stage of a lifecycle both stay expressible.
         if (string.IsNullOrWhiteSpace(fromStage) || string.IsNullOrWhiteSpace(toStage))
         {
             return Result.Success;

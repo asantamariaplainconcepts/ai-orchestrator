@@ -50,17 +50,17 @@
 
 ## 4. The API and the contract
 
-- [ ] 4.1 Carry the claimed transition through `Features/Automations/UseCases/CreateAutomation.cs`
+- [x] 4.1 Carry the claimed transition through `Features/Automations/UseCases/CreateAutomation.cs`
       (request, validator, command, handler, response) and `UpdateAutomation.cs` — including the
       wholesale `PUT` at `UpdateAutomation.cs:26-55`, which replaces every field. Keep
       `[Requires(ProjectPermissions.ManageAutomations)]` on every command that changes a claim, so
       BR-009's refusal comes from the pipeline and not from the UI (AC 9).
-- [ ] 4.2 Serve the project's ordered lifecycle over the API so no client re-derives it, and add the
+- [x] 4.2 Serve the project's ordered lifecycle over the API so no client re-derives it, and add the
       stages a claim creates as part of the claim's own write.
-- [ ] 4.3 Add the to-stage to the Projects → Runs contract `AutomationDetail`
+- [x] 4.3 Add the to-stage to the Projects → Runs contract `AutomationDetail`
       (`AiOrchestrator.Modules.Projects.Contracts/IAutomationCatalog.cs:31-56`) and to
       `Features/Automations/AutomationCatalog.cs:55`. Keep the contract the only public surface.
-- [ ] 4.4 Do **not** turn `UpdateAutomation` into `PATCH` (out of scope, ADR-0019's own Alternatives).
+- [x] 4.4 Do **not** turn `UpdateAutomation` into `PATCH` (out of scope, ADR-0019's own Alternatives).
       If the wholesale replace is kept, every client must carry the new field — see 7.1.
 
 ## 5. Execution: the lifecycle move and the marks travel one write (design D9)

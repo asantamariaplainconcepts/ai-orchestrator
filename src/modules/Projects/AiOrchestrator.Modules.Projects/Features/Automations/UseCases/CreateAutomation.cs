@@ -253,12 +253,14 @@ sealed class CreateAutomation : IUseCase
             CancellationToken cancellationToken
         )
         {
-            var projectExists = await database.Projects.AnyAsync(
-                project => project.Id == command.ProjectId,
+            // Loaded rather than merely counted since #310: a claim creates the stages it names, so
+            // the Project is part of this write and not only a precondition for it.
+            var project = await database.Projects.FirstOrDefaultAsync(
+                entity => entity.Id == command.ProjectId,
                 cancellationToken
             );
 
-            if (!projectExists)
+            if (project is null)
             {
                 return ProjectErrors.NotFound(command.ProjectId);
             }
@@ -289,6 +291,15 @@ sealed class CreateAutomation : IUseCase
             if (overlap.IsError)
             {
                 return overlap.Errors;
+            }
+
+            // The claim and the stages it creates are one write (#310, design D4/D9). BR-003 is
+            // asked first, so a refused Automation leaves the lifecycle untouched even in memory —
+            // and the adjacency guard refuses before mutating, so the same holds for it.
+            var claim = project.ClaimTransition(candidate.TriggerLabel, candidate.ToStage);
+            if (claim.IsError)
+            {
+                return claim.Errors;
             }
 
             database.Automations.Add(candidate);

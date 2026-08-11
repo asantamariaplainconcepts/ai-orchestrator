@@ -215,7 +215,7 @@ public class Project_Should_Constraint
         // an answer here, so a claim of nothing is a no-op rather than a refusal.
         var project = Lifecycle("s1", "s2");
 
-        project.ClaimTransition("s1", null!).IsError.ShouldBeFalse();
+        project.ClaimTransition("s1", null).IsError.ShouldBeFalse();
         project.ClaimTransition("ai:estimate", "").IsError.ShouldBeFalse();
 
         project.LifecycleStages.ShouldBe(["s1", "s2"]);

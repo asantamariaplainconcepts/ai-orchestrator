@@ -39,8 +39,10 @@ public sealed record AutomationDetail(
     /// <summary>Grill only; null means the framework's convention (grill design D5).</summary>
     string? PromptPath = null,
     /// <summary>
-    /// Applied to the Story when a Run succeeds (#165). Empty means the Automation ends silently —
-    /// except for a grill, whose documented default lives in the executor (grill design D5).
+    /// The <b>marks</b> applied to the Story when a Run succeeds (#165). Empty means it marks
+    /// nothing. Since #310 these carry no meaning about the flow: the lifecycle move is
+    /// <see cref="ToStage"/>, and a mark matching no stage is an ordinary mark rather than a
+    /// dangling edge.
     /// </summary>
     IReadOnlyList<string>? OutputLabels = null,
     /// <summary>
@@ -53,7 +55,18 @@ public sealed record AutomationDetail(
     /// at execution time — every Automation that existed before this, and every one whose Admin
     /// has not chosen.
     /// </summary>
-    string? Model = null
+    string? Model = null,
+    /// <summary>
+    /// The to-stage of the one transition this Automation claims (#310, design D9): the lifecycle
+    /// move its Run applies on success, alongside every mark, through the same licensed write. Null
+    /// means it claims no transition — it acts, it may mark the Story, and the flow ends there.
+    /// <para>
+    /// This is the only thing the Runs module learns about the lifecycle, and deliberately so: the
+    /// hand-off still travels through the vendor label and comes back as an ordinary StoryChanged,
+    /// so nothing here knows what happens next and no dispatch machinery is added.
+    /// </para>
+    /// </summary>
+    string? ToStage = null
 );
 
 /// <summary>
