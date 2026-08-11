@@ -19,6 +19,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useUpdateAutomation } from "@/features/automations/useAutomations";
+import { requestFor } from "@/features/automations/automationRequest";
 import { UNTOUCHED, useMoveStory } from "./useMoveStory";
 import type { Automation } from "@/features/automations/types";
 import type { StoryView } from "./types";
@@ -345,18 +346,14 @@ export function KanbanBoard({
                       aria-label={t("board.requirePerson")}
                       disabled={updateAutomation.isPending}
                       onClick={() =>
+                        // Through ADR-0019's one builder, never inline (#310). This call site used
+                        // to restate eight fields and omit `model`, so pressing it reverted a
+                        // chosen model to the deployment's — #291's failure, recurring on the
+                        // surface that writes least often and is therefore noticed last. The
+                        // claimed transition would have been the second field lost the same way.
                         updateAutomation.mutate({
                           id: step.id,
-                          request: {
-                            triggerLabel: step.triggerLabel,
-                            triggerState: step.triggerState,
-                            action: step.action,
-                            runtime: step.runtime,
-                            requiresApproval: step.requiresApproval,
-                            timeoutMinutes: step.timeoutMinutes,
-                            promptPath: step.promptPath ?? null,
-                            outputLabels: [],
-                          },
+                          request: requestFor(step, { outputLabels: [] }),
                         })
                       }
                     >

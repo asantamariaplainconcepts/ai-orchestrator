@@ -29,8 +29,18 @@ export interface Automation {
   requiresApproval: boolean;
   timeoutMinutes: number;
   enabled: boolean;
-  /** What this Automation hands on when it succeeds (#115/#165); empty ends the chain here. */
+  /**
+   * The **marks** this Automation applies when it succeeds (#310). Not the flow: since the
+   * transition/mark split, a member of this set names no stage and draws no boundary — it is a
+   * label the vendor carries for somebody else to read.
+   */
   outputLabels: string[];
+  /**
+   * The to-stage of the one transition this Automation claims (#310); null claims none — it acts, it
+   * may mark the Story, and the flow ends there. The from-stage is {@link Automation.triggerLabel},
+   * so there is no second field for it, and there is no second transition either (AC 13).
+   */
+  toStage: string | null;
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
   promptPath: string | null;
   /**
@@ -49,10 +59,13 @@ export interface CreateAutomationRequest {
   timeoutMinutes: number | null;
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
   promptPath?: string | null;
-  /** Applied to the Story when a Run of this Automation succeeds; empty ends the chain here.
-   *  Was one label until #165 made it a set, so one Automation can hand on to more than one place. */
+  /** The marks applied to the Story when a Run of this Automation succeeds (#310). Marks only: the
+   *  lifecycle move is {@link CreateAutomationRequest.toStage} and never a member of this set. */
   outputLabels?: string[];
   /** The chosen model; null inherits. Always sent, because an update replaces the whole
    *  Automation and a field the client cannot carry is a field every edit silently clears. */
   model?: string | null;
+  /** The claimed transition's to-stage; null claims none (#310). Always sent, for exactly the
+   *  reason `model` is — the PUT is wholesale, so a client that omits this clears the claim. */
+  toStage?: string | null;
 }

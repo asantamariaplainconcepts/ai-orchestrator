@@ -412,12 +412,19 @@ export const en = {
     "A file name inside this project's prompts directory, which is set on the Settings tab.",
   "automations.promptSuggestionsUnavailable": "Suggestions unavailable",
   "automations.promptSuggestionsEmpty": "No prompt files yet in",
-  "automations.outputLabel": "Output labels",
-  "automations.outputLabelPlaceholder": "the next step\u2019s trigger",
+  // The claimed transition and the marks, named as the two things they became (#310). One
+  // single-valued field for the transition, because a second one is unrepresentable; a set beside it
+  // for labels that move nothing.
+  "automations.toStage": "Next stage",
+  "automations.toStagePlaceholder": "ai:propose",
+  "automations.toStageHint":
+    "The stage a Story reaches when this succeeds. Naming one that is not a stage yet adds it to the flow, right after this step.",
+  "automations.marks": "Also label the Story",
+  "automations.marksHint":
+    "Labels applied alongside the move, for people and tools to read. They are not stages, so the board draws no column for them.",
+  "automations.outputLabelPlaceholder": "needs-design",
   "automations.outputLabelAdd": "Add",
   "automations.outputLabelRemove": "Remove",
-  "automations.outputLabelHint":
-    "Applied to the Story when a Run of this Automation succeeds \u2014 add as many as you need, or leave empty to end here.",
   "automations.delete": "Delete",
   // Two presses, not one (design review 6b). The first opens the question, the second answers it —
   // and the second says what it does, because "Confirm" beside "Delete" leaves the reader deducing
@@ -555,20 +562,24 @@ export const en = {
   "automations.sentence.runs": "an agent runs",
   "automations.sentence.on": "on",
   "automations.sentence.gated": "waits for a human to approve the plan, then",
-  "automations.sentence.handsOn": "and hands on to",
-  "automations.sentence.stops": "and the chain stops there",
+  "automations.sentence.handsOn": "and moves the story on to",
+  "automations.sentence.stops": "and the flow stops there",
+  // The marks as their own clause (#310): the move is one fact, a label the vendor carries is
+  // another, and one sentence saying both is how the two stopped being told apart.
+  "automations.sentence.marks": "also labelling it",
   "automations.sentence.missingTrigger": "\u2026 (name a trigger label)",
-  "automations.sentence.missingLabel": "\u2026 (name a label to hand on to)",
+  "automations.sentence.missingStage": "\u2026 (name the stage it moves on to)",
   "automations.sentence.missingPrompt": "\u2026 (name a prompt file)",
   // Approval states its consequence beside the execution it gates, not beside Save.
   "automations.approvalExplainer":
     "The agent plans, stops, and waits in the Inbox. Nothing executes until someone approves.",
-  // An absence made into an answer (design D4): the stored value is the same empty set as before.
-  "automations.after.handOn": "Hand to the next step",
+  // An absence made into an answer (design D4): the stored value is a claim on no transition, which
+  // is what "stop" has always meant.
+  "automations.after.handOn": "Move the story to the next stage",
   "automations.after.handOnHint":
-    "Apply labels when this succeeds, so the next Automation picks it up.",
+    "It claims the transition out of its own trigger, so the next Automation picks the story up there.",
   "automations.after.stop": "Stop \u2014 a person takes over",
-  "automations.after.stopHint": "Nothing is applied; the chain ends here.",
+  "automations.after.stopHint": "The story stays where it is until somebody moves it on.",
   "automations.catalogueHint":
     "All four actions execute: Implement \u2192 PR opens a pull request; Refine comments on the Story; Transition changes its state; Estimate labels it and explains itself.",
   "automations.table.trigger": "Trigger",

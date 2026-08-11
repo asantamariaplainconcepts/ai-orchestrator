@@ -338,7 +338,13 @@ function BacklogPanel({
         <p className="text-sm text-muted-foreground">{t("backlog.empty")}</p>
       )}
 
-      {stories.length > 0 && view === "board" && (
+      {/* No longer gated on there being a Story (#310). The board's columns are the project's
+          lifecycle — a fact about its configuration, not about the vendor's contents — and since the
+          board became the surface an Admin arranges that flow on, hiding it until a Story arrives
+          would hide the arrangement behind a backlog. An empty board says "Nothing here." per column,
+          which is a truer answer than a sentence about the backlog standing in for the whole view.
+          It is also what makes the board's write path reachable without a Connector at all. */}
+      {view === "board" && (
         <KanbanBoard projectId={projectId} stories={stories} automations={automations} />
       )}
 

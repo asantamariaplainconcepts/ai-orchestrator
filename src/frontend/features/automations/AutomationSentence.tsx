@@ -19,7 +19,8 @@ export function AutomationSentence({
   runtime,
   requiresApproval,
   handsOn,
-  outputLabels,
+  toStage,
+  marks,
 }: {
   triggerLabel: string;
   triggerState: string;
@@ -27,9 +28,12 @@ export function AutomationSentence({
   /** "" means the Project default (#244) — named as such in the sentence. */
   runtime: AgentRuntime | "";
   requiresApproval: boolean;
-  /** The answer to question three, which is not the same as having named a label yet. */
+  /** The answer to question three, which is not the same as having named a stage yet. */
   handsOn: boolean;
-  outputLabels: string[];
+  /** The claimed transition's to-stage (#310); "" while nobody has named one. */
+  toStage: string;
+  /** The marks — their own clause, because since #310 they are their own thing. */
+  marks: string[];
 }) {
   const trigger = triggerLabel.trim();
   const state = triggerState.trim();
@@ -62,19 +66,29 @@ export function AutomationSentence({
       {handsOn ? (
         <>
           {t("automations.sentence.handsOn")}{" "}
-          {outputLabels.length === 0 ? (
-            <Missing>{t("automations.sentence.missingLabel")}</Missing>
-          ) : null}
-          {outputLabels.map((label, index) => (
+          {toStage.trim() ? (
+            <Token>{toStage.trim()}</Token>
+          ) : (
+            <Missing>{t("automations.sentence.missingStage")}</Missing>
+          )}
+        </>
+      ) : (
+        t("automations.sentence.stops")
+      )}
+      {/* The marks, said as the separate thing they became (#310): the flow moves by the stage
+          above, and these are labels the vendor carries for somebody else to read. */}
+      {marks.length > 0 ? (
+        <>
+          {" "}
+          {t("automations.sentence.marks")}{" "}
+          {marks.map((label, index) => (
             <span key={label}>
               {index > 0 ? ", " : ""}
               <Token>{label}</Token>
             </span>
           ))}
         </>
-      ) : (
-        t("automations.sentence.stops")
-      )}
+      ) : null}
       .
     </p>
   );

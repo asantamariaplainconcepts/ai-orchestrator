@@ -26,10 +26,12 @@ const projects: { id: string; name: string; archivedAt: string | null }[] = [
 ];
 
 let automations = [
-  // The shipped pipeline: grill hands to propose, and propose deliberately hands to nobody —
-  // which is the gap the canvas draws as "a person continues" (#116).
+  // The shipped pipeline (#310): grill claims the transition into `ready-for-proposal`, which claims
+  // no transition of its own — so the board draws the boundary after it as a person's turn. The last
+  // one also carries a mark, which is what makes the transition/mark split demonstrable here: the
+  // board must draw a column for the stage and none for the mark (AC 7).
   auto("ai:grill", "RepositoryPrompt", false, "ready-for-proposal"),
-  auto("ready-for-proposal", "RepositoryPrompt", false, null),
+  auto("ready-for-proposal", "RepositoryPrompt", false, null, ["needs-design"]),
   auto("ai:implement", "RepositoryPrompt", true, null),
   auto("ai:refine", "RepositoryPrompt", false, null),
   auto("ai:estimate", "RepositoryPrompt", false, null),
@@ -40,7 +42,8 @@ function auto(
   triggerLabel: string,
   action: string,
   requiresApproval: boolean,
-  outputLabel: string | null = null,
+  toStage: string | null = null,
+  marks: string[] = [],
 ) {
   return {
     id: crypto.randomUUID(),
@@ -51,9 +54,10 @@ function auto(
     requiresApproval,
     timeoutMinutes: 30,
     enabled: true,
-    // A set since #165. The factory still takes one, because every mock scenario here describes a
-    // single hand-off and inventing branches nobody asked for would be fixture noise.
-    outputLabels: outputLabel === null ? [] : [outputLabel],
+    // Marks only since #310 — the hand-off left this set and became the claim below.
+    outputLabels: marks,
+    // The one transition this Automation claims; its from-stage is the trigger label above.
+    toStage,
     promptPath: null,
     // Null is the shipped state: an Automation thinks with the deployment's model until an Admin
     // chooses otherwise (#291).

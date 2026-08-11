@@ -87,9 +87,13 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
   // because they are two things: what is chosen, and what is half-written.
   const [outputLabels, setOutputLabels] = useState<string[]>([]);
-  // An answer, not an absence (#231, design D4). Stored as the same empty array "stop" has
+  // An answer, not an absence (#231, design D4). Stored as a null claim, which is what "stop" has
   // always meant — what changes is that the Admin said which they meant.
   const [handsOn, setHandsOn] = useState(false);
+  // The to-stage of the one transition this Automation claims (#310). Single-valued, so no form on
+  // this surface can express a second one (AC 13) — and carried on every save, because the endpoint
+  // replaces the whole Automation and a field this form omitted would be a claim every edit cleared.
+  const [toStage, setToStage] = useState("");
   const [outputDraft, setOutputDraft] = useState("");
   // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
@@ -142,6 +146,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setPromptPath("");
     setOutputLabels([]);
     setHandsOn(false);
+    setToStage("");
     setOutputDraft("");
     setTimeoutMinutes("");
   }
@@ -171,7 +176,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setRequiresApproval(automation.requiresApproval);
     setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
-    setHandsOn(automation.outputLabels.length > 0);
+    // The claim, not the marks: since #310 an Automation that only marks the Story claims no
+    // transition, so "hands on" is the presence of a to-stage and nothing else.
+    setHandsOn(automation.toStage !== null);
+    setToStage(automation.toStage ?? "");
     setOutputDraft("");
     setTimeoutMinutes(String(automation.timeoutMinutes));
   }
@@ -201,13 +209,15 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       // and the server refuses it at save. Trimmed only — the empty case is the server's refusal to
       // give, not this form's to silently swallow.
       promptPath: promptPath.trim() ? promptPath.trim() : null,
-      // The half-typed value counts: an Admin who typed a label and pressed Save meant it, and
-      // silently dropping it is the kind of loss a form should never inflict.
-      // "Stop" is stored as the empty set it has always been (#231, design D4) — nothing
-      // downstream learns a new concept. Typed-then-stopped resolves to stopped: the radio is the
-      // later and more explicit answer, and honouring a label the Admin then said not to use would
-      // be obeying the field over the person.
-      outputLabels: handsOn ? withDraft() : [],
+      // Marks only since #310, and therefore independent of the radio: an Automation that hands
+      // work on may also mark the Story, and one that stops may mark it too. The half-typed value
+      // counts — an Admin who typed a label and pressed Save meant it, and silently dropping it is
+      // the kind of loss a form should never inflict.
+      outputLabels: withDraft(),
+      // The one transition this Automation claims (#310). Typed-then-stopped resolves to stopped:
+      // the radio is the later and more explicit answer, and honouring a stage the Admin then said
+      // not to hand to would be obeying the field over the person.
+      toStage: handsOn && toStage.trim() ? toStage.trim() : null,
       // Always sent, never omitted: the endpoint is a full replace, so a field this form did not
       // carry would be cleared on every edit. Blank means inherit, which is what the server
       // normalises whitespace to anyway.
@@ -254,7 +264,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           runtime={runtime}
           requiresApproval={requiresApproval}
           handsOn={handsOn}
-          outputLabels={handsOn ? withDraft() : []}
+          toStage={toStage}
+          marks={withDraft()}
         />
       </div>
 
@@ -433,65 +444,87 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               </label>
             ))}
           </RadioGroup>
+          {/* The claim, single-valued (#310, AC 13). One input rather than a set, so no form on this
+              surface can express a second transition — and the board is where an arrangement is
+              normally authored, so this field exists for the create that names one from the start. */}
           {handsOn ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
-              {/* Chosen first, each removable: the set is the answer, and the input below is how
-                  it grows. Chips rather than a comma-separated string, because a string makes
-                  the reader parse what the product already knows. */}
-              {outputLabels.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {outputLabels.map((label) => (
-                    <Badge key={label} variant="secondary" className="gap-1 font-mono">
-                      {label}
-                      <button
-                        type="button"
-                        aria-label={`${t("automations.outputLabelRemove")} ${label}`}
-                        onClick={() =>
-                          setOutputLabels(outputLabels.filter((kept) => kept !== label))
-                        }
-                      >
-                        <X className="size-3" aria-hidden="true" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
-              <div className="flex gap-2">
-                {/* A datalist, so one control both suggests and accepts anything — a select
-                    would refuse the label that does not exist yet, which is a legitimate way
-                    to build a workflow forwards. */}
-                <Input
-                  id="output-label"
-                  list="output-label-suggestions"
-                  value={outputDraft}
-                  onChange={(event) => setOutputDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      // Enter adds a label; without this it would submit the whole form, which
-                      // is the wrong thing to do while somebody is still listing destinations.
-                      event.preventDefault();
-                      addOutputLabel();
-                    }
-                  }}
-                  placeholder={t("automations.outputLabelPlaceholder")}
-                />
-                <datalist id="output-label-suggestions">
-                  {outputSuggestions.map((suggestion) => (
-                    <option key={suggestion} value={suggestion} />
-                  ))}
-                </datalist>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={addOutputLabel}
-                  disabled={!outputDraft.trim()}
-                >
-                  {t("automations.outputLabelAdd")}
-                </Button>
-              </div>
+              <Label htmlFor="to-stage">{t("automations.toStage")}</Label>
+              <Input
+                id="to-stage"
+                list="to-stage-suggestions"
+                value={toStage}
+                onChange={(event) => setToStage(event.target.value)}
+                placeholder={t("automations.toStagePlaceholder")}
+              />
+              <datalist id="to-stage-suggestions">
+                {outputSuggestions.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">{t("automations.toStageHint")}</p>
             </div>
           ) : null}
+
+          {/* Marks, beside the claim and never inside it (#310). A mark that names no stage is the
+              normal case now, not a dangling edge, so this field is offered whichever answer the
+              radio holds. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="output-label">{t("automations.marks")}</Label>
+            <p className="text-xs text-muted-foreground">{t("automations.marksHint")}</p>
+            {/* Chosen first, each removable: the set is the answer, and the input below is how
+                  it grows. Chips rather than a comma-separated string, because a string makes
+                  the reader parse what the product already knows. */}
+            {outputLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {outputLabels.map((label) => (
+                  <Badge key={label} variant="secondary" className="gap-1 font-mono">
+                    {label}
+                    <button
+                      type="button"
+                      aria-label={`${t("automations.outputLabelRemove")} ${label}`}
+                      onClick={() => setOutputLabels(outputLabels.filter((kept) => kept !== label))}
+                    >
+                      <X className="size-3" aria-hidden="true" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex gap-2">
+              {/* A datalist, so one control both suggests and accepts anything — a select
+                    would refuse the label that does not exist yet, which is a legitimate way
+                    to build a workflow forwards. */}
+              <Input
+                id="output-label"
+                list="output-label-suggestions"
+                value={outputDraft}
+                onChange={(event) => setOutputDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    // Enter adds a label; without this it would submit the whole form, which
+                    // is the wrong thing to do while somebody is still listing destinations.
+                    event.preventDefault();
+                    addOutputLabel();
+                  }
+                }}
+                placeholder={t("automations.outputLabelPlaceholder")}
+              />
+              <datalist id="output-label-suggestions">
+                {outputSuggestions.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={addOutputLabel}
+                disabled={!outputDraft.trim()}
+              >
+                {t("automations.outputLabelAdd")}
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
