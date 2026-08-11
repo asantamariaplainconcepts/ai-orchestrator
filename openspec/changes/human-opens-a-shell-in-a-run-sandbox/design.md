@@ -70,17 +70,40 @@ the MessagePack protocol, which is a registration change rather than a redesign 
 deliberately **not** taken now, because a raw WebSocket would mean hand-rolling the authorization
 that `RunLogHub` already proved.
 
-### D3 — A pty from a P/Invoke, not a package
+### D3 — A pty from a P/Invoke — **amended: it gets us most of the way and then stops**
 
-No pty package is pinned in `Directory.Packages.props` today. `Pty.Net` exists but its purpose is
-cross-platform terminal hosting, and this code runs **only** in the self-host habitat — a
-developer's own macOS or Linux machine, because sbx is Docker Sandboxes. A Unix-only
-`openpty(3)` + `ioctl(TIOCSWINSZ)` P/Invoke is a few dozen lines against libc, satisfies criterion
-8, and adds no dependency to a solution whose package list is centrally governed.
+*Originally:* a Unix-only `openpty(3)` + `ioctl(TIOCSWINSZ)` P/Invoke, on the grounds that this code
+runs only in self-host — a developer's own macOS or Linux machine — so no cross-platform package is
+warranted and nothing new needs pinning.
 
-*Verify before committing to it* (task 2.1): that `openpty` resolves on both macOS and Linux from
-.NET 10, and that the child's controlling terminal is set correctly — otherwise fall back to
-`Pty.Net` and pin it. The spike proved the shape with `script`; it did not prove this.
+**Measured on 2026-08-11 before implementation** (`poc/PtyCheck.cs`, macOS 26.6.1 arm64, .NET 10),
+because ADR-0018 says a measurement licenses only what it measured:
+
+| Step | Result |
+|---|---|
+| `openpty(3)` via P/Invoke | **works** — returns a master/slave pair |
+| Giving a *child* the slave as its stdio | **works, but not with `Process.Start`** — it offers no way to hand over a raw fd, so the child must be launched with `posix_spawn` + `posix_spawn_file_actions_adddup2`. The child then reports a real controlling terminal (`/dev/ttys009`) |
+| `ioctl(TIOCSWINSZ)` — **live resize, criterion 8** | **cannot be done this way.** `ioctl` is variadic; on arm64 macOS variadic arguments pass on the stack, so a plain `DllImport` silently succeeds while setting garbage (measured: `6608x27390` instead of `44x137`). The documented fix, `__arglist`, does not run: `System.InvalidProgramException: Vararg calling convention not supported` |
+
+Two lesser findings the harness paid for, kept because each cost a run: `posix_spawn_file_actions_t`
+is an opaque **pointer** on macOS and a struct on Linux, so it must be marshalled as a heap address
+for both; and `posix_spawn` **returns** its error number rather than setting `errno`, so reading
+`errno` reports 0 on a real failure.
+
+**So the decision changes.** `openpty` + `posix_spawn` is sound and is what allocates the pty; the
+resize is what needs a different instrument. In order of preference, to be settled by task 2.2:
+
+1. **Pin a pty package** (`Pty.Net` or equivalent) that ships native shims for exactly this. Costs a
+   dependency; buys a maintained answer for both platforms.
+2. **`stty` against the slave device.** The slave has a path (`ptsname`), so a short-lived
+   `stty rows R cols C` spawned with that device as its stdin resizes a live pty without any
+   variadic call. A process per resize, which a debounced window-drag can afford.
+3. A native shim of our own — rejected unless both above fail: it adds a per-platform build step to
+   a solution that has none.
+
+**Still unmeasured, and named rather than assumed:** all of the above is macOS arm64. The Linux arm
+of `openpty` (which lives in `libutil` there, not `libc`) and whether a plain `ioctl` `DllImport`
+happens to work on Linux x64 are both untested. Task 2.2 covers it.
 
 ### D4 — The terminal borrows the Run's lifetime, so nothing is held — and this contradicts two of #304's criteria
 

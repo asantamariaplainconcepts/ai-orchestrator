@@ -12,14 +12,21 @@
 
 ## 2. Prove the pty before building on it
 
-- [ ] 2.1 **Gate for the whole change.** Verify an `openpty(3)` P/Invoke works from .NET 10 on both
-      macOS and Linux: the child gets a controlling terminal, `sbx exec -it` accepts it, and
-      `ioctl(TIOCSWINSZ)` on the master resizes the sandbox pty live. If any part fails, pin
-      `Pty.Net` in `Directory.Packages.props` instead and record why in design D3
-- [ ] 2.2 Add an interactive-process seam beside `HeadlessProcess` — a long-lived child with
+- [x] 2.1 **Gate for the whole change.** Verify an `openpty(3)` P/Invoke works from .NET 10:
+      **done 2026-08-11, `poc/PtyCheck.cs`.** `openpty` works; the child gets a real controlling
+      terminal, but only via `posix_spawn` + `dup2` file actions, because `Process.Start` cannot
+      hand over a raw fd. **Live resize does not work this way at all** — `ioctl` is variadic and
+      .NET answers `Vararg calling convention not supported`. Design D3 amended accordingly
+- [ ] 2.2 **Settle the resize instrument** left open by 2.1, in D3's stated order: pin a pty package,
+      or spawn `stty` against the slave device (`ptsname`), or a native shim as a last resort. Also
+      measure the Linux arm, still untested — `openpty` lives in `libutil` there, not `libc`
+- [ ] 2.3 Confirm the chosen instrument drives `sbx exec -it` specifically, not just `/bin/sh`:
+      the spike proved sbx accepts a pty, `PtyCheck` proved .NET can make one, and nothing has yet
+      proved the two together
+- [ ] 2.4 Add an interactive-process seam beside `HeadlessProcess` — a long-lived child with
       writable stdin, no timeout kill, and `Kill(entireProcessTree: true)` on disposal, because
       killing the wrapper alone orphans the sbx CLI (measured by the spike)
-- [ ] 2.3 A gated test that drives the seam against the real sbx CLI, per ADR-0020: a launcher is
+- [ ] 2.5 A gated test that drives the seam against the real sbx CLI, per ADR-0020: a launcher is
       unverified until it has met its real CLI. Assert the pty facts, not a stand-in's idea of them
 
 ## 3. Permission
