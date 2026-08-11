@@ -74,6 +74,23 @@
 
 ## 6. The migration — hand-written, and the riskiest thing here (design Migration Plan)
 
+> **Groups 2–6 are one unavoidably-red window, and the order cannot be fixed by reordering.**
+> Proved by exercise, not reasoned: the moment group 2 adds `LifecycleStages` to the model, EF's
+> `PendingModelChangesWarning` — configured as an **error** in this repository — makes
+> `ApiServiceFixtureBase.InitializeAsync` → `MigrateModules` throw, so **all three functional
+> projects fail at fixture initialisation** (346 failures from one cause) until this migration
+> exists. Group 6 cannot precede 2–5 either, because the migration is written against the model
+> those groups create. The dependency is genuinely circular, so the groups stay in this order and
+> the constraint is written down instead:
+>
+> - **No task in 2–5 may be gated on a green functional suite.** Between 2.1 and 6.1 a functional
+>   run reports one fixture failure per test and says nothing about the code under it. Unit tests
+>   and `dotnet build` are the only meaningful backend gates inside the window.
+> - **Tasks whose evidence is a functional test are deferred to the end of the window, not
+>   dropped** — 3.5 and 5.2 are exactly that, and they are completed once 6.1–6.7 land.
+> - The suite going green again at the end of group 6 is what closes the window; that is the
+>   verification for the whole of 2–6, and it is worth reading as such rather than as group 6's own.
+
 - [ ] 6.1 Write **one hand-written** migration under
       `src/modules/Projects/.../Persistence/Migrations/`, shaped add-copy-drop like
       `20260730222648_OutputLabelSet.cs`. **A scaffolded `DropColumn` + `AddColumn` is not acceptable:**
