@@ -340,6 +340,247 @@ It SHALL be read-only. Arranging happens on the board; this reacts to it.
 - **WHEN** an Admin looks at this view
 - **THEN** it offers no control that assigns, moves or clears a claimed transition
 
+
+### Requirement: an Admin configures what a trigger label makes an Agent do
+
+An Admin SHALL configure, per Project, which trigger label starts a Run, on which runtime, with which
+timeout and whether the plan requires approval. Every field SHALL be bounded, and the refusal for an
+unbounded or unparseable value SHALL name the field.
+
+**The action is one and only one: run the repository's prompt (#162).** Any other action SHALL be
+refused with the ordinary unknown-action refusal. What an Automation *does* is decided by the prompt
+file in the project's repository, read live at Run time, and not by anything chosen here.
+
+**Naming that prompt SHALL be required.** With one action, an Automation that names no prompt can
+never run, and a configurable thing that silently never executes is the trap this spec already
+forbids. The refusal SHALL land where the Admin is looking — at save — rather than at the first Run,
+in front of somebody who did not configure it.
+
+**The prompt-name input SHALL be a picker that also accepts a freely typed value (#215).** It SHALL
+offer the `.md` files currently in the project's prompts directory, read live from the repository's
+default branch through the Connector at the moment the field is used — never cached and never
+mirrored. Names SHALL be offered relative to the prompts directory, one directory level deep,
+because that is what the Automation stores. Free text SHALL remain accepted, because a prompt may
+be arriving in a pending pull request. When the directory does not exist, the listing fails, or the
+project has no Connector, the field SHALL degrade to the plain text input with the reason readable —
+configuration SHALL never be blocked by discovery.
+
+The form SHALL ask for the claimed transition and for the marks as **two separate fields**, because
+they are two separate things (see *a transition and a mark are different things*). The transition's
+field SHALL be **single-valued**, so no form on this surface can express a second one, and the marks'
+field SHALL be a set offered whichever answer the hand-on question holds — an Automation that claims no
+transition may still mark the Story.
+
+Both SHALL be pickers that also accept a freely typed value. They SHALL suggest the trigger labels of
+the project's **other enabled** Automations, because naming the next stage of a sequential workflow is
+what the transition's field is most often for, and SHALL NOT suggest the Automation's own trigger.
+Accepting free text SHALL remain possible: a stage may not exist yet, and a mark may name nothing that
+triggers.
+
+A suggestion SHALL be a convenience only: every refusal SHALL also be enforced where the Automation
+is saved, so a caller that does not use the portal is refused identically — and the prompt picker
+SHALL follow the same rule: a name not among the suggestions saves exactly as a typed one, and the
+missing-prompt refusal stays where it always was, at Run time (#150).
+
+**The form SHALL be organised as three questions, in the Automation's own execution order:** when it
+fires, what it does, and what happens after. The grouping SHALL be visible, so that a reader who has
+not been told the model can acquire it from the form rather than needing it beforehand.
+
+**The form SHALL restate its own configuration in prose as it is filled**, in the vocabulary the
+workflow surface uses. That restatement SHALL NOT be a second validation channel: an incomplete
+configuration SHALL yield an incomplete sentence naming what is missing, and the field-level
+refusals SHALL remain the only place a value is rejected.
+
+**The approval control SHALL state its consequence** — that the Agent plans, stops, and waits for a
+human, and that nothing executes until someone approves — and SHALL sit with the execution it gates
+rather than with the form's submission.
+
+**Ending the chain SHALL be an answer, not an absence.** The Admin SHALL choose between handing on
+and stopping; choosing to stop SHALL store what an empty label set stores today, so nothing
+downstream learns a new concept. A label named and then abandoned by choosing to stop SHALL NOT be
+sent: the later, explicit answer wins over the field.
+
+Regrouping SHALL NOT change what is sent: for every configuration the form can express, the request
+SHALL be identical to the one the ungrouped form produced.
+
+#### Scenario: creating an Automation
+
+- **WHEN** an Admin submits a valid trigger label, action, runtime and approval flag
+- **THEN** the Automation is stored against the Project and appears in its list
+
+#### Scenario: an action with no implementation yet
+
+- **WHEN** an action is offered that no Agent can execute
+- **THEN** it is not offered at all — the catalogue is one action, and a selectable action that
+  cannot run has no way to exist
+
+#### Scenario: the form offers what is wirable
+
+- **WHEN** an Admin opens the next-stage input on a project with other enabled Automations
+- **THEN** their trigger labels are offered, and this Automation's own trigger is not
+
+#### Scenario: the claim is one field and the marks are another
+
+- **WHEN** an Admin opens the form
+- **THEN** the claimed transition has one single-valued field, the marks have a field of their own, and
+  there is no way to name a second transition
+
+#### Scenario: a disabled Automation is not offered
+
+- **WHEN** another Automation in the project is disabled
+- **THEN** its trigger is not among the suggestions
+
+#### Scenario: a label nobody listens to is still allowed
+
+- **WHEN** an Admin types a label that matches no trigger
+- **THEN** it is accepted and applied on success like any other
+
+#### Scenario: an Automation must name its prompt
+
+- **WHEN** an Automation is saved naming no prompt
+- **THEN** it is refused, because with one action it could never run
+
+#### Scenario: the vocabulary is one word
+
+- **WHEN** an Automation is saved naming any of the retired actions
+- **THEN** it is refused, because they are not actions any more
+
+#### Scenario: the prompt field offers what the repository holds
+
+- **WHEN** an Admin opens the prompt-name input on a project whose prompts directory holds markdown
+  files on the default branch
+- **THEN** those file names are offered, relative to the prompts directory
+
+#### Scenario: a prompt not yet merged can still be named
+
+- **WHEN** an Admin types a prompt name that the listing did not offer
+- **THEN** it saves exactly as a listed one would, and a Run finding no such file fails with the
+  resolved path, as #150 specified
+
+#### Scenario: discovery failure does not block configuration
+
+- **WHEN** the prompts directory does not exist, the listing fails, or the project has no Connector
+- **THEN** the field renders as the plain text input with the reason readable, and the Automation
+  can still be saved
+
+#### Scenario: the form teaches its own model
+
+- **WHEN** an Admin opens the New Automation form
+- **THEN** its fields are grouped as when-it-fires, what-it-does and what-happens-after, and the
+  grouping is visible without opening documentation
+
+#### Scenario: a mistake is visible before saving
+
+- **WHEN** an Admin fills the form
+- **THEN** a sentence restates the configuration as prose and updates as the fields change
+
+#### Scenario: an incomplete form is not an error
+
+- **WHEN** required fields are still empty
+- **THEN** the sentence names what is missing, and no rejection is raised outside the field-level
+  refusals that already exist
+
+#### Scenario: approval says what it does
+
+- **WHEN** an Admin reads the approval control
+- **THEN** it states that the Agent plans, stops and waits, and that nothing executes until someone
+  approves
+
+#### Scenario: stopping the chain is chosen, not left blank
+
+- **WHEN** an Admin names a label and then chooses to stop rather than hand on
+- **THEN** the label control is not offered, and the Automation is stored with the empty label set
+  that has always meant this
+
+### Requirement: the Automations tab orders its content by how often it is read
+
+The Automations tab SHALL present the **catalogue** as its content, followed by a read-only picture of
+the flow that catalogue produces. It SHALL NOT present a second surface on which the flow can be
+arranged: the flow is arranged on the board, where an Admin already reads it, and two places to change
+one arrangement is the duplicate description ADR-0022 records.
+
+Setting up a workflow from the repository, and trying a prompt, SHALL be reachable from the tab's
+own toolbar and SHALL open over the tab. They SHALL NOT occupy the tab's vertical space as permanent
+content: they are reached on a first day or an occasional afternoon, and a tab that opens on them
+answers a question its reader did not ask.
+
+**A project with no Automations configured is the exception.** While none exists, the workflow setup
+surface SHALL render inline as the content of the tab, because there is nothing to read and setting one
+up is the only thing to do there. In that state the toolbar SHALL NOT offer a second route to the same
+surface.
+
+Every control this ordering moves SHALL remain reachable at every viewport width — a capability
+offered only at one width is a capability withdrawn at the other.
+
+#### Scenario: the catalogue is the tab's content
+
+- **WHEN** an Admin opens the Automations tab of a project whose Automations claim transitions
+- **THEN** the catalogue is shown, followed by the read-only picture of the flow, and each Automation
+  appears exactly once
+
+#### Scenario: the tab arranges nothing
+
+- **WHEN** an Admin opens the Automations tab
+- **THEN** it offers no control that assigns, moves or clears a claimed transition
+
+#### Scenario: a first run offers setup as the tab's content
+
+- **WHEN** an Admin opens the Automations tab of a project with no Automations
+- **THEN** the workflow setup surface is rendered inline on the tab, and the toolbar offers no second
+  way to reach it
+
+#### Scenario: the tools open over the tab
+
+- **WHEN** an Admin chooses to try a prompt, or to set up a workflow from the repository, on a
+  project that already has Automations
+- **THEN** the surface opens over the tab and the tab's own content keeps its position
+
+#### Scenario: no capability is width-dependent
+
+- **WHEN** the tab renders at a narrow viewport
+- **THEN** creating an Automation, trying a prompt, and setting up from the repository are all
+  reachable
+
+### Requirement: a hand-off broken by exclusion is shown, and never blocks
+
+Where an excluded step was handing work to a step that is still selected, the plan SHALL mark that
+the hand-off no longer happens — a person hands on at that point instead. The mark SHALL appear as
+the selection changes, without a further read of the repository.
+
+The confirm SHALL NOT be blocked, disabled, or gated behind an extra confirmation by such a break. A
+workflow with a human hand-off is a workflow this product already supports; the break is
+information, not an error.
+
+A step SHALL be understood to move work into another exactly when its **claimed transition's to-stage**
+is the other's trigger, compared case-insensitively — the same identity BR-003 compares triggers with
+(DEC-056). A to-stage naming no step in the plan SHALL NOT be treated as a hand-off, so excluding a
+step that claims no transition, or one whose transition this installation does not fill, SHALL mark
+nothing.
+
+For the plan to answer this without a further read, each row SHALL carry the transition its step claims,
+from the discovery the card has already performed. That transition is single-valued, so a step SHALL
+have at most one provider and "losing one of two providers" SHALL NOT arise.
+
+#### Scenario: excluding a step that feeds another marks the gap
+
+- **WHEN** a step whose claimed to-stage is another selected step's trigger is excluded
+- **THEN** the plan marks that the receiving step is no longer handed work
+
+#### Scenario: the mark never blocks the press
+
+- **WHEN** a hand-off gap is marked
+- **THEN** the confirm remains available and needs no additional confirmation
+
+#### Scenario: excluding a step that hands work to nobody marks nothing
+
+- **WHEN** a step claiming no transition into another step in the plan is excluded
+- **THEN** no hand-off gap is marked
+
+#### Scenario: the gap is computed from what discovery already returned
+
+- **WHEN** the selection changes
+- **THEN** the mark updates without an additional read of the repository
+
 ## REMOVED Requirements
 
 ### Requirement: an Admin shapes the pipeline on a canvas

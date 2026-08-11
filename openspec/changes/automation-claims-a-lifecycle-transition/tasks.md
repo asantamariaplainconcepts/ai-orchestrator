@@ -140,112 +140,129 @@
 
 ## 7. The six label walks become one read (design D6)
 
-- [ ] 7.1 Move `features/backlog/KanbanBoard.tsx:348-360` onto `requestFor`
+- [x] 7.1 Move `features/backlog/KanbanBoard.tsx:348-360` onto `requestFor`
       (`features/automations/automationRequest.ts`), ADR-0019's one builder. Read from the code and
       **not yet exercised**: that call site restates eight fields inline and omits `model`, so pressing
       "require a person" on a column header reverts a chosen model to the deployment's. Reproduce it
       first, then fix it, then assert it — otherwise the claim is unverified (ADR-0005). The new
       transition field would be the second field lost the same way.
-- [ ] 7.2 `features/automations/workflowGraph.ts:41` — stop deriving a graph. What remains is the stage
+- [x] 7.2 `features/automations/workflowGraph.ts:41` — stop deriving a graph. What remains is the stage
       list read from the API plus a lookup from stage to the Automation claiming the transition out of
       it. **Delete `hasBranches` and `chain.branchedFrom`**, and with them `WorkflowChain.branches` and
       the branch-row walk (`:76-122`) — branching is unrepresentable (AC 13).
-- [ ] 7.3 `features/automations/chainDrag.ts:80` — delete `reaches` entirely. A cycle cannot exist in a
+- [x] 7.3 `features/automations/chainDrag.ts:80` — delete `reaches` entirely. A cycle cannot exist in a
       linear ordered lifecycle, so the loop refusal has nothing to compute; of the four refusals only
       `shared` (BR-003) survives, and it stays an explanation at the boundary, never a second
       enforcement (`chainDrag.ts:36-40`).
-- [ ] 7.4 `features/automations/planHandoff.ts:35` — restate its question over the plan's own claimed
+- [x] 7.4 `features/automations/planHandoff.ts:35` — restate its question over the plan's own claimed
       transitions. It must keep operating on **uncreated** plan rows that have no ids
       (`planHandoff.ts:6-13`); any design that needs an id here is wrong. Its deliberate case folding
       becomes the norm rather than the exception.
-- [ ] 7.5 `features/backlog/KanbanBoard.tsx:98-137` — replace the walk with the stored stage list, and
+- [x] 7.5 `features/backlog/KanbanBoard.tsx:98-137` — replace the walk with the stored stage list, and
       delete the invented ordering rule at `:131-136` (unchained Automations after the flow). It existed
       only because the derivation could not supply an order.
-- [ ] 7.6 `features/automations/BoardPreview.tsx:33-35` — drop the dedupe (it existed because branch
+- [x] 7.6 `features/automations/BoardPreview.tsx:33-35` — drop the dedupe (it existed because branch
       rows re-entered at an existing column) and derive from the stored stage list. Re-parent it into
       `AutomationsSection.tsx`, since `WorkflowCanvas.tsx:264` is its only caller today and that file is
       being deleted (design D7).
-- [ ] 7.7 `features/automations/AutomationNode.tsx:31` — remove the dangling badge. It warned that an
+- [x] 7.7 `features/automations/AutomationNode.tsx:31` — remove the dangling badge. It warned that an
       output label points at no Automation; after the separation that is the normal case for a mark, not
       a fault. **Removing a warning is a judgement** — it is listed as its own task so a reviewer sees
       it rather than finds it.
 
 ## 8. The board becomes the authoring surface (design D7)
 
-- [ ] 8.1 Render one column per lifecycle stage in the stored order, claimed or not, in
+- [x] 8.1 Render one column per lifecycle stage in the stored order, claimed or not, in
       `features/backlog/KanbanBoard.tsx` (AC 1) — and draw the Automation claiming a transition on the
       boundary between its two columns, and on no other (AC 2).
-- [ ] 8.2 Label an unclaimed boundary as waiting for a person, with **no** validation error, no
+- [x] 8.2 Label an unclaimed boundary as waiting for a person, with **no** validation error, no
       "incomplete configuration" marker and no elapsed-time or overdue indication (BR-006, AC 3). Keep it
       visually distinct from the on-card approval gate, which stays where it is (BR-007, UC-013, AC 8).
-- [ ] 8.3 Add the boundary's explicit controls: assign an Automation to this transition, move one here,
+- [x] 8.3 Add the boundary's explicit controls: assign an Automation to this transition, move one here,
       clear one. Every one of them is an ordinary Automation update through `requestFor`, and the drag
       path calls the **same function** — Playwright cannot perform an HTML5 drag
       (`WorkflowCanvas.tsx:248-252`, citing #110), so the shared function is what puts this under test at
       all (AC 12).
-- [ ] 8.4 Make placing a step first work through the same control (AC 4), and reordering through it
+- [x] 8.4 Make placing a step first work through the same control (AC 4), and reordering through it
       (AC 5), asserting that no other Automation's claimed transition changes.
-- [ ] 8.5 State the end of the flow at the last stage without asserting who acts next (AC 8).
-- [ ] 8.6 Offer no arrangement control to an ACT-002 Member, and assert the API refusal separately so the
+- [x] 8.5 State the end of the flow at the last stage without asserting who acts next (AC 8).
+- [x] 8.6 Offer no arrangement control to an ACT-002 Member, and assert the API refusal separately so the
       guarantee does not rest on the UI (AC 9, BR-009).
-- [ ] 8.7 Decide and implement where the boundary control lives on the phone pager
+- [x] 8.7 Decide and implement where the boundary control lives on the phone pager
       (`KanbanBoard.tsx:252-273`), where two columns never share a screen — design.md's last Open
       Question. AC 12 requires an explicit control at every width the board supports.
 
 ## 9. Delete the second drawing (AC 11)
 
-- [ ] 9.1 Delete `features/automations/WorkflowCanvas.tsx` (267), `features/automations/Connector.tsx`
+- [x] 9.1 Delete `features/automations/WorkflowCanvas.tsx` (267), `features/automations/Connector.tsx`
       (191) and `features/automations/DropSlot.tsx` (64) — 522 lines.
-- [ ] 9.2 Remove the canvas from `features/automations/AutomationsSection.tsx` (`:23-30`, `:593`,
+- [x] 9.2 Remove the canvas from `features/automations/AutomationsSection.tsx` (`:23-30`, `:593`,
       `:633`, `:666`, `:767`) and retire whatever is left with no caller — `HumanStepBlock.tsx`,
       `automationDrag.ts`, `useChainRemoval.ts` — rather than leaving dead files behind.
-- [ ] 9.3 Assert that the catalogue still offers create, edit, disable, re-enable and delete (UC-005,
+- [x] 9.3 Assert that the catalogue still offers create, edit, disable, re-enable and delete (UC-005,
       UC-006, AC 11), so deleting a surface cannot quietly take a capability with it (ADR-0006).
-- [ ] 9.4 Remove the retired copy from `src/frontend/shared/i18n/en.ts` and add the new strings there —
+- [x] 9.4 Remove the retired copy from `src/frontend/shared/i18n/en.ts` and add the new strings there —
       hardcoded JSX copy fails CI (DEC-009, DEC-021).
-- [ ] 9.5 Update `src/frontend/shared/http/mock.ts` so the lifecycle and the claims are demonstrable
+- [x] 9.5 Update `src/frontend/shared/http/mock.ts` so the lifecycle and the claims are demonstrable
       against the mock. ADR-0016: the fixture derives what the server derives, and it must **replace**
       rather than mutate — a fixture that mutated in place once made the canvas and the catalogue
       disagree.
 
 ## 10. The starter tiers claim transitions (design D10)
 
-- [ ] 10.1 Translate the wired hand-offs in `Features/Automations/StarterCatalogue.cs`,
+- [x] 10.1 Translate the wired hand-offs in `Features/Automations/StarterCatalogue.cs`,
       `UseCases/DiscoverPipeline.cs` and `UseCases/SetUpDefaultAutomations.cs` into claimed transitions,
       so installing a tier creates stages as a consequence of claiming. This is how a new project gets a
       lifecycle without "seed a default lifecycle" coming into scope.
-- [ ] 10.2 Update `features/automations/useWorkflowSetup.ts` and the setup card's account of what it will
+- [x] 10.2 Update `features/automations/useWorkflowSetup.ts` and the setup card's account of what it will
       create, so the plan says transitions rather than output labels.
 
 ## 11. Amend the normative spec text
 
-- [ ] 11.1 Apply the change's delta specs to `openspec/specs/automation-configuration/spec.md`:
+- [x] 11.1 Apply the change's delta specs to `openspec/specs/automation-configuration/spec.md`:
       `:437-459` ("Membership SHALL be derived from the edges and SHALL NOT be stored", and the
       one-edge-per-matching-output-label graph), `:536-546` (the two-edges-leave-one-node and
       disconnect-one-branch scenarios, both retired with branching) and `:559-560` (the human-review
       block's "SHALL NOT be a persisted entity" carve-out, which the lifecycle retires).
-- [ ] 11.2 Apply the `backlog-mirror` delta: the board's columns become lifecycle stages rather than
+- [x] 11.2 Apply the `backlog-mirror` delta: the board's columns become lifecycle stages rather than
       enabled Automation trigger labels (`openspec/specs/backlog-mirror/spec.md:220-308`).
 - [ ] 11.3 Re-verify the ADR number against current `origin/main` at sync (`docs/adr/README.md:9`) and
-      renumber if another change in flight has claimed 0022.
+      renumber if another change in flight has claimed 0022. **Checked during implementation and left
+      open deliberately, because its trigger is sync and not now:** `origin/main` at `917b411` holds
+      ADRs through `0021`, so 0022 is free and the number stands. Re-run the check at sync — that is
+      the moment another branch could have taken it.
 
 ## 12. Gates and proof
 
-- [ ] 12.1 Backend gates: `dotnet build`, `dotnet test` (unit + functional, Testcontainers Postgres and
+- [x] 12.1 Backend gates: `dotnet build`, `dotnet test` (unit + functional, Testcontainers Postgres and
       Azurite), CSharpier, and the NetArchTest/analyzer boundaries (MOD001-005, CQS001).
-- [ ] 12.2 Frontend gates: `tsc --noEmit`, ESLint `--max-warnings=0`, Prettier, the **production build**,
+- [x] 12.2 Frontend gates: `tsc --noEmit`, ESLint `--max-warnings=0`, Prettier, the **production build**,
       and the design-system validator — AC 14 requires no colour, spacing or size literal outside the
       theme tokens (DEC-051).
-- [ ] 12.3 `openspec validate --strict` on this change.
-- [ ] 12.4 End-to-end suite against the **rebuilt** bundle: a `.tsx` edit is invisible to the E2E tier
+- [x] 12.3 `openspec validate --strict` on this change.
+- [x] 12.4 End-to-end suite against the **rebuilt** bundle: a `.tsx` edit is invisible to the E2E tier
       until the production build runs. Assert AC 1, 2, 3, 5, 8, 9 and 12 through the explicit controls.
-- [ ] 12.5 Exercise the board in the browser in both themes, and write down what was observed rather
-      than what was expected (ADR-0001).
-- [ ] 12.6 **State the gap rather than closing it:** the drag gesture itself remains without automated
+- [x] 12.5 Exercise the board in the browser in both themes, and write down what was observed rather
+      than what was expected (ADR-0001). **Done against `pnpm dev:mock` at 1440px and 375px, light and
+      dark, and it found two defects rather than confirming an expectation:**
+      - the boundary lane stretched to the column's height and centred its content, so an unclaimed
+        boundary was a tall block with one sentence floating in the middle of it. Content is now
+        top-aligned, level with the column headers either side, and the lane still spans the height so
+        it reads as a wall between two columns rather than a card beside them;
+      - the assign control's own placeholder was clipped to "Move an Automation he" at every width.
+        The visible placeholder is now short enough to fit and the control's accessible name keeps the
+        whole sentence — which is what a screen reader reads and what the end-to-end suite locates it by.
+
+      What was confirmed by looking: the claimed boundary draws its Automation between exactly the two
+      columns it joins; the boundary before the first column reads as a person starting the flow and
+      offers the same control, which is AC 4's affordance; "Require a person here" appears only where
+      there is a claim to clear; the end of the flow states that it ends; and no boundary carries an
+      error or a clock in either theme (BR-006).
+- [x] 12.6 **State the gap rather than closing it:** the drag gesture itself remains without automated
       coverage. Playwright cannot perform an HTML5 drag (#110, recorded at `WorkflowCanvas.tsx:248-252`)
       and this repository still has no frontend unit runner, so the shared functions behind every
       boundary control are testable only through the end-to-end tier. A suite claiming to cover the
       gesture would be lying; one covering the shared function is honest.
-- [ ] 12.7 Add the row for ADR-0022 to `docs/adr/README.md` — done in this proposal — and note that the
+- [x] 12.7 Add the row for ADR-0022 to `docs/adr/README.md` — done in this proposal — and note that the
       index stops at 0013 while the directory holds ADRs through 0021. Backfilling those eight rows is a
       separate docs fix; it is reported here, not absorbed.

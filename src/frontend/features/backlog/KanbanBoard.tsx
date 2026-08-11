@@ -532,7 +532,10 @@ function Boundary({
     <div
       data-boundary={toStage}
       className={cn(
-        "w-44 shrink-0 flex-col items-center justify-center gap-1.5 self-stretch rounded-lg border border-dashed px-2 py-2",
+        // Full height so it reads as a wall between two columns, but content at the top so the
+        // boundary's own sentence sits level with the column headers either side of it — observed in
+        // the browser: centred, it floated in the middle of a tall empty block (ADR-0001).
+        "w-44 shrink-0 flex-col items-center gap-1.5 self-stretch rounded-lg border border-dashed px-2 py-2",
         visible ? "flex" : "hidden md:flex",
         // A place, not a marker: an unclaimed boundary is its own kind — warm fill, dashed edge,
         // person icon and a one-line explainer, so colour is never the only signal.
@@ -637,7 +640,9 @@ function Boundary({
               if (chosen) onAssign(chosen, boundary);
             }}
           >
-            <option value="">{t("board.boundary.assign")}</option>
+            {/* Short enough to fit the lane; the control's accessible name above carries the whole
+                sentence, which is what a screen reader reads and what the suite locates it by. */}
+            <option value="">{t("board.boundary.assignShort")}</option>
             {candidates.map((candidate) => (
               <option key={candidate.id} value={candidate.id}>
                 {candidate.triggerLabel}

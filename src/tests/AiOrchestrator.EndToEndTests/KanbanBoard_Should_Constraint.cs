@@ -24,8 +24,12 @@ public class KanbanBoard_Should_Constraint(AppHostFixture fixture)
         var page = await fixture.Browser.NewPageAsync();
         var projectId = await CreateProject(page, "Board — move starts a Run");
 
-        // An Automation, so the board has a column to move into and matching has something to
-        // match. RefineOrComment executes without touching a workspace.
+        // An Automation, so the board has a column to move into and matching has something to match.
+        // It *claims a transition* since #310, and that is not incidental to the seeding: the board's
+        // columns are the project's stored lifecycle stages now, and a stage exists only as a
+        // consequence of a claim. An Automation claiming nothing contributes no column, so this Story
+        // would have had nowhere to be moved to — the seeding has to give the project a flow, which is
+        // exactly what a real project's starter tier does.
         var automation = await page.APIRequest.PostAsync(
             $"{fixture.ServerBaseUrl}api/projects/{projectId}/automations",
             new APIRequestContextOptions
@@ -38,6 +42,7 @@ public class KanbanBoard_Should_Constraint(AppHostFixture fixture)
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
                     requiresApproval = false,
+                    toStage = "ai:refined",
                 },
             }
         );
@@ -75,7 +80,10 @@ public class KanbanBoard_Should_Constraint(AppHostFixture fixture)
         var cardActions = page.GetByLabel("Card actions").First;
         await cardActions.WaitForAsync(new() { Timeout = 15_000 });
         await cardActions.ClickAsync();
-        await page.GetByRole(AriaRole.Menuitem, new() { Name = "ai:refine" }).ClickAsync();
+        // Exact, because the board now has a second column named after this Automation's to-stage and
+        // `ai:refine` is a prefix of `ai:refined` — a substring match resolves to both.
+        await page.GetByRole(AriaRole.Menuitem, new() { Name = "ai:refine", Exact = true })
+            .ClickAsync();
 
         // Criterion 2, at the vendor: the label really landed on the far end.
         await Expect(

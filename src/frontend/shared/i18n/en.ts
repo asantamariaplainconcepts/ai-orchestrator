@@ -742,6 +742,9 @@ export const en = {
     "starts the flow by labelling a story. Put an Automation here to have one move stories in.",
   "board.boundary.claimed": "moves stories into this stage when it succeeds.",
   "board.boundary.assign": "Move an Automation here\u2026",
+  // The same control, said short enough to fit the boundary's lane. Observed clipped to "Move an
+  // Automation he" in the browser at every width (ADR-0001); the accessible name keeps the sentence.
+  "board.boundary.assignShort": "Move one here\u2026",
   "board.boundary.clear": "Require a person here",
   "board.boundary.move": "Drag to another boundary, or use the control below",
   "board.boundary.wouldMoveTo": "would move stories on to",
