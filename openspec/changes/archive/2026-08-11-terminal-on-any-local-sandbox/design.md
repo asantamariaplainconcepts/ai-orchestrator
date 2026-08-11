@@ -17,7 +17,7 @@ until the next startup sweep. This change reaches those.
 
 ### What was verified against the real `sbx`, not assumed
 
-Run on this machine on 2026-08-11 (ADR-0006 discipline — the CLI's behaviour is the design's
+Run on this machine on 2026-08-11 (ADR-0001 discipline — the CLI's behaviour is the design's
 foundation, so it was exercised rather than inferred):
 
 - **`sbx ls --json` exists** and returns
