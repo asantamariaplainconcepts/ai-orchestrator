@@ -1,15 +1,15 @@
 ## 1. The namespace predicate, shared before it is relied on
 
-- [ ] 1.1 Extract the claimed-prefix predicate (`aio-probe-`, `aio-run-`) out of
+- [x] 1.1 Extract the claimed-prefix predicate (`aio-probe-`, `aio-run-`) out of
   `SbxSandboxLifecycle.ReapAbandoned` into one internal definition in
   `src/shared/AiOrchestrator.Infrastructure/Agents/Sbx`, and have the reaper call it — behaviour
   unchanged, one caller.
-- [ ] 1.2 Replace the reaper's whitespace-column parse with a typed read of `sbx ls --json`
+- [x] 1.2 Replace the reaper's whitespace-column parse with a typed read of `sbx ls --json`
   (`{sandboxes:[{name,id,agent,status,workspaces}]}`, verified against the real CLI 2026-08-11),
   returning name and status; keep the non-zero-exit early return.
-- [ ] 1.3 Unit-test the predicate against the real names it must judge: `aio-run-*` and `aio-probe-*` in,
+- [x] 1.3 Unit-test the predicate against the real names it must judge: `aio-run-*` and `aio-probe-*` in,
   `opencode-ds-connect` and `aio-carry-*` out.
-- [ ] 1.4 Confirm `ReapAbandoned` still reaps as before after the parse swap — cover it with the existing
+- [x] 1.4 Confirm `ReapAbandoned` still reaps as before after the parse swap — cover it with the existing
   sandbox tests rather than a new path.
 
 ## 2. The seam: enumeration and name-keyed entry
