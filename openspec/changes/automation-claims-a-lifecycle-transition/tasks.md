@@ -42,7 +42,7 @@
       reason `Features/Automations/OverlapGuard.cs:9-13` records for BR-003.
 - [x] 3.4 Refuse a claim whose to-stage equals the Automation's own trigger label, and a mark that
       repeats the to-stage, extending the existing self-trigger refusal rather than adding a second one.
-- [ ] 3.5 Confirm by test — not by reading — that BR-003 needs no fourth enforcement home (design D5):
+- [x] 3.5 Confirm by test — not by reading — that BR-003 needs no fourth enforcement home (design D5):
       the expression index `IX_automations_trigger_identity`
       (`Persistence/Migrations/20260729150023_UniqueAutomationTrigger.cs:25-30`) and
       `Features/Automations/OverlapGuard.cs:35-53` already refuse a second enabled claimant of a
@@ -68,9 +68,12 @@
 - [x] 5.1 In `src/modules/Runs/.../Features/Execution/RunExecutor.cs:196-231`, apply the claimed
       to-stage together with every mark through UC-008's licensed write, keeping #165's guarantees: each
       label attempted, and the Run failing while naming every label that did not land.
-- [ ] 5.2 Leave `Features/Matching/StoryChangedHandler.cs` untouched, and assert in a functional test
+- [x] 5.2 Leave `Features/Matching/StoryChangedHandler.cs` untouched, and assert in a functional test
       that a person applying an unclaimed transition's label produces the same Run an Automation's label
       would. That the handler needs no change is the evidence this model adds no dispatch machinery.
+      `UnclaimedTransition_Should_Constraint` runs one transition into one downstream Automation twice —
+      the label applied by a person at the vendor, then by a Run claiming that transition — and the two
+      Runs agree on Automation, state and dispatch. The handler is untouched.
 
 ## 6. The migration — hand-written, and the riskiest thing here (design Migration Plan)
 
