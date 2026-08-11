@@ -37,10 +37,20 @@ alongside the Orca study that sources its intended capabilities. 58 files in the
 3. **Live docs repoint; history does not.** "Live" = README.md, AGENTS.md, ARCHITECTURE.md,
    ONBOARDING.md, CONTRIBUTING.md, docs/process/*, openspec/config.yaml (its project-context
    still says "internal web application… KEDA-scaled ACA Jobs", which DEC-013's supersession
-   retired — this change makes the context tell the truth the specs already tell). "History" =
-   docs/adr/*, BOOTSTRAP*, docs/process/retro-log.md, openspec/changes/archive/* — byte-identical.
-   The `run-orchestration` spec's reference to `mvp/05-business-rules.md` (line ~921) records
-   what a past change did and stays.
+   retired — this change makes the context tell the truth the specs already tell) — plus, found
+   by the sweep during apply: `docs/product/manual/README.md`, the grill ceremony's own texts
+   (`.claude/commands/aio/grill.md`, `.claude/skills/grill-to-ready/SKILL.md`) and the Starter
+   mirror of the grill command (`src/modules/Projects/.../Starter/workflow/grill.md`, kept
+   byte-identical to the command; Starter tests pin structure, not content). "History" =
+   docs/adr/*, BOOTSTRAP*, docs/process/retro-log.md, openspec/changes/archive/* —
+   byte-identical. Deliberate `mvp/` references that stay: the decision log and
+   `07-open-decisions.md` / `09-foundation-vs-product-split.md` links (those documents live in
+   `mvp/` per decision 1 and the v1 README), infra/README.md's OPN-002 record, AGENTS.md's
+   explicit history pointer, and the `run-orchestration` spec's reference to
+   `mvp/05-business-rules.md` (line ~921), which records what a past change did. The current
+   `agent-instructions` and `definition-of-ready` specs keep their `mvp/` wording in
+   `openspec/specs/` until this change's deltas are applied at archive time — that is how
+   OpenSpec works, not a stray pointer.
 4. **v1 carries #316's resolution of the UC-024 collision.** This design originally assigned
    UC-028 to the grill; mid-grill, #316 landed on main resolving it the other way — the
    file-changes review became UC-028 (with an in-place note) and the grill kept UC-024. Main's

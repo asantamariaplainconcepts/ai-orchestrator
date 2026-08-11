@@ -42,12 +42,14 @@
 
 ## 4. Verification
 
-- [ ] 4.1 Run the cutover sweep: `grep -rn "product/mvp"` excluding `docs/product/mvp/`,
+- [x] 4.1 Run the cutover sweep: `grep -rn "product/mvp"` excluding `docs/product/mvp/`,
       `docs/adr/`, `BOOTSTRAP*`, `docs/process/retro-log.md`, `openspec/changes/archive/` —
       every remaining match is one the design names (decision-log links from v1, the
-      run-orchestration historical note); fix or justify each survivor
-- [ ] 4.2 Confirm history is untouched: `git diff --stat origin/main` shows no `docs/adr/`,
-      `BOOTSTRAP*`, retro-log or archive files
-- [ ] 4.3 `openspec validate --change product-corpus-v1` passes; Prettier over the touched
-      markdown/yaml (`pnpm` lint-staged equivalent) is clean; no code gates apply (docs-only
-      diff — assert it stays that way)
+      run-orchestration historical note); fix or justify each survivor — done; the sweep also
+      surfaced four live docs beyond the AC's named set (manual README, grill command + skill,
+      Starter mirror kept byte-identical) — repointed and recorded in design decision 3
+- [x] 4.2 Confirm history is untouched: `git diff --stat origin/main` shows no `docs/adr/`
+      edits (one new ADR added), no `BOOTSTRAP*`, retro-log or archive files
+- [x] 4.3 `openspec validate product-corpus-v1` passes; Prettier runs on every commit via
+      lint-staged (all commits hook-clean); no code gates apply — the diff is markdown/yaml
+      only (the sole `src/` file is the Starter's prompt markdown, mirror of the command)

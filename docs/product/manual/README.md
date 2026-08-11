@@ -3,7 +3,7 @@
 The screens, in the order a project meets them. Each section says what the surface is _for_ —
 what it shows is visible in the picture.
 
-This complements [`docs/product/mvp/`](../mvp/00-product-brief.md), which defines what the product
+This complements [`docs/product/v1/`](../v1/00-product-brief.md), which defines what the product
 must do in stable IDs. This one is the tour.
 
 > Screenshots come from the mock preview, not a real tenant, so no project, repository or credential
@@ -191,7 +191,7 @@ See [SELF-HOSTING.md](../../../SELF-HOSTING.md) for getting it running.
 
 | You want                                | Go to                                                                                            |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| What the product must do, in stable IDs | [docs/product/mvp/](../mvp/00-product-brief.md)                                                  |
+| What the product must do, in stable IDs | [docs/product/v1/](../v1/00-product-brief.md)                                                    |
 | How the code is arranged and why        | [ARCHITECTURE.md](../../../ARCHITECTURE.md)                                                      |
 | To run the whole thing yourself         | [SELF-HOSTING.md](../../../SELF-HOSTING.md)                                                      |
 | What the local habitat trades away      | [ADR-0010](../../adr/0010-a-habitat-contract-is-asked-never-inferred.md) — asked, never inferred |

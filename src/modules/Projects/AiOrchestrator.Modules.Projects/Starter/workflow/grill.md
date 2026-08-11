@@ -8,7 +8,7 @@ tags: [workflow, aio, issue, grill]
 Take a raw input, or an existing issue, to `status:ready-for-proposal`. This is the public entry
 point; it orchestrates skills and does not itself talk to OpenSpec.
 
-**Input**: an inline idea, a path/section (e.g. `docs/product/mvp/04-mvp-use-cases.md#UC-012`),
+**Input**: an inline idea, a path/section (e.g. `docs/product/v1/04-capabilities.md#UC-012`),
 or an existing GitHub issue number. If omitted, ask what to grill.
 
 **Steps — raw input (new issue)**
@@ -44,7 +44,7 @@ or an existing GitHub issue number. If omitted, ask what to grill.
 - An item depending on an open `OPN-*` decision is blocked behind a decision-closure task —
   refuse to mark it ready and name the blocking decision.
 - Every state-changing skill confirms before mutating GitHub.
-- Issues seeded in bulk from `docs/product/mvp/` still pass through this grill individually.
+- Issues seeded in bulk from `docs/product/v1/` still pass through this grill individually.
 - A DoR-gap comment names the specific missing fields — never a bare rejection.
 - A hotfix or pure infra/tooling item may take the spec-less lane instead (DEC-025): label it
   `lane:spec-less` here, and it skips `/aio:propose` — but it still needs an issue, a branch, a
