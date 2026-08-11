@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Domain;
+using ErrorOr;
 
 namespace AiOrchestrator.Modules.Projects.Domain;
 
@@ -126,6 +127,89 @@ sealed class Project : Aggregate
 
         _lifecycleStages.Add(stage.Trim());
         return true;
+    }
+
+    /// <summary>
+    /// The one place the adjacency invariant lives (#310, design D4): <b>a claim names two adjacent
+    /// stages of this project's lifecycle</b>, and the operation that claims is what keeps that
+    /// true — not a nightly repair, and not a second copy of the rule in whichever slice writes
+    /// next. A rule implemented twice eventually disagrees with itself, which is the lesson
+    /// <c>OverlapGuard</c> records for BR-003.
+    /// <para>
+    /// Storing both the order and each claim is what makes disagreement possible at all: an
+    /// Automation could otherwise claim <c>s1 → s3</c> while the list says <c>s1, s2, s3</c>. So a
+    /// claim either finds its boundary already there, or creates exactly the stage it needs:
+    /// </para>
+    /// <list type="bullet">
+    /// <item>the boundary already exists — the claim is stored and the list is untouched (AC 5);</item>
+    /// <item>the from-stage is not yet a stage — it is inserted <i>immediately before</i> the
+    /// to-stage, and the order of every existing stage is unchanged (AC 4, which is how a step gets
+    /// placed first);</item>
+    /// <item>the to-stage is not yet a stage — it is inserted immediately after the from-stage,
+    /// which is how a flow is extended at its end (design D10's starter tiers);</item>
+    /// <item>neither is a stage — both are appended, in order, which is how a stageless project
+    /// acquires a lifecycle without "seed a default lifecycle" coming into scope;</item>
+    /// <item>both are stages but not adjacent — refused, and the lifecycle is unchanged.</item>
+    /// </list>
+    /// <para>
+    /// Case is folded throughout, so a claim naming a stage that differs only in spelling uses the
+    /// stage that exists rather than creating a second one (DEC-056).
+    /// </para>
+    /// <para>
+    /// <b>Known gap, stated rather than guessed at.</b> Inserting a stage between two existing ones
+    /// can leave a <i>third</i> Automation's already-stored claim non-adjacent. #310's plan asks
+    /// this operation for the three cases above and no more, and enforcing sibling adjacency here
+    /// would need the siblings' claims — so the hole is recorded for the reviewer instead of being
+    /// closed by invention. BR-003 keeps it narrow in practice: at most one enabled Automation
+    /// claims a transition out of any one from-stage.
+    /// </para>
+    /// </summary>
+    public ErrorOr<Success> ClaimTransition(string fromStage, string toStage)
+    {
+        if (string.IsNullOrWhiteSpace(fromStage) || string.IsNullOrWhiteSpace(toStage))
+        {
+            return Result.Success;
+        }
+
+        var from = IndexOfStage(fromStage);
+        var to = IndexOfStage(toStage);
+
+        if (from >= 0 && to >= 0)
+        {
+            return to == from + 1
+                ? Result.Success
+                : ProjectErrors.StagesNotAdjacent(
+                    _lifecycleStages[from],
+                    _lifecycleStages[to],
+                    _lifecycleStages
+                );
+        }
+
+        if (to >= 0)
+        {
+            InsertStageBefore(fromStage, _lifecycleStages[to]);
+            return Result.Success;
+        }
+
+        if (from >= 0)
+        {
+            // Immediately after the from-stage, which is "before whatever followed it" — or the end,
+            // when the from-stage was the last one.
+            if (from + 1 < _lifecycleStages.Count)
+            {
+                InsertStageBefore(toStage, _lifecycleStages[from + 1]);
+            }
+            else
+            {
+                AppendStage(toStage);
+            }
+
+            return Result.Success;
+        }
+
+        AppendStage(fromStage);
+        AppendStage(toStage);
+        return Result.Success;
     }
 
     int IndexOfStage(string? name) =>

@@ -28,19 +28,19 @@
 
 ## 3. The transition and the mark, separated on `Automation` (design D2, D3, D4)
 
-- [ ] 3.1 Add the claimed transition to `src/modules/Projects/.../Domain/Automation.cs`: the from-stage
+- [x] 3.1 Add the claimed transition to `src/modules/Projects/.../Domain/Automation.cs`: the from-stage
       **is** the existing `TriggerLabel`, and a new single-valued `ToStage` is the label the Run applies
       as the lifecycle move. Nullable per 1.2's answer — null means "claims no transition; it may mark
       the Story and the flow ends there".
-- [ ] 3.2 Rewrite `OutputLabels`' meaning to **marks only**, and rewrite the doc comment at
+- [x] 3.2 Rewrite `OutputLabels`' meaning to **marks only**, and rewrite the doc comment at
       `Automation.cs:54-56` that currently says the field is "the workflow's outgoing edges, **and**
       any mark that goes with them". That double duty is the substance of this change; leaving the
       comment would leave the ambiguity documented as intended.
-- [ ] 3.3 Enforce the adjacency invariant in exactly one place (design D4): a claim names two adjacent
+- [x] 3.3 Enforce the adjacency invariant in exactly one place (design D4): a claim names two adjacent
       stages of the project's lifecycle, and claiming a from-stage that is not yet a stage inserts it
       immediately before the to-stage without disturbing the existing order. One implementation, for the
       reason `Features/Automations/OverlapGuard.cs:9-13` records for BR-003.
-- [ ] 3.4 Refuse a claim whose to-stage equals the Automation's own trigger label, and a mark that
+- [x] 3.4 Refuse a claim whose to-stage equals the Automation's own trigger label, and a mark that
       repeats the to-stage, extending the existing self-trigger refusal rather than adding a second one.
 - [ ] 3.5 Confirm by test — not by reading — that BR-003 needs no fourth enforcement home (design D5):
       the expression index `IX_automations_trigger_identity`

@@ -46,7 +46,8 @@ sealed class UpdateAutomation : IUseCase
                             request.PromptPath,
                             request.OutputLabels,
                             request.PreviewPort,
-                            request.Model
+                            request.Model,
+                            request.ToStage
                         ),
                         cancellationToken
                     );
@@ -111,7 +112,13 @@ sealed class UpdateAutomation : IUseCase
         IReadOnlyList<string>? OutputLabels = null,
         int? PreviewPort = null,
         /// <summary>The model this Automation's Runs think with; null inherits the deployment's (#291).</summary>
-        string? Model = null
+        string? Model = null,
+        /// <summary>
+        /// The to-stage of the transition this Automation claims; null claims none (#310). Carried by
+        /// the wholesale PUT like every other field, which is why every client must send it — a client
+        /// that omits it clears the claim (ADR-0019).
+        /// </summary>
+        string? ToStage = null
     ) : ICommand<ErrorOr<CreateAutomation.Response>>, IScopedToProject;
 
     [Requires(ProjectPermissions.ManageAutomations)]
@@ -153,32 +160,49 @@ sealed class UpdateAutomation : IUseCase
                 .When(command => command.OutputLabels is not null)
                 .WithMessage("An Automation can hand on at most 10 labels.");
 
-            // An Automation whose output label is its own trigger re-fires itself: the first Run
+            // The same bounds as a create, for the same reason the length bounds above are here.
+            RuleFor(command => command.ToStage).MaximumLength(200);
+
+            // An Automation whose applied label is its own trigger re-fires itself: the first Run
             // succeeds, writes the label, and matching declines the second because BR-001 sees an
             // active Run — leaving a labelled Story, no work, and nothing saying why. Refused
             // here because it is a relation between two fields of this request, not a conflict
             // with stored state (#115 design D3).
-            // Every member, not one (#165): the rule is about the relation between the set and the
-            // trigger, so a set of three with the trigger third is the same defect as a set of one.
+            // Every member, not one (#165): the rule is about the relation between what is applied
+            // and the trigger, so a set of three with the trigger third is the same defect as a set
+            // of one.
+            //
+            // #310 extends this one refusal rather than adding a second beside it: after the
+            // transition/mark split there are two fields a Run applies from, and a to-stage equal to
+            // the trigger is the same loop spelled in the new field.
             //
             // Case-insensitive, unlike the version this replaces. The vendor treats AI:Implement and
             // ai:implement as one label (DEC-056) and BR-003's identity already does, so an ordinal
             // comparison let a differently-cased self-trigger through — the exact loop the rule
             // exists to prevent, spelled differently.
+            RuleFor(command => command.TriggerLabel)
+                .Must(
+                    (command, _) =>
+                        !CreateAutomation
+                            .Applied(command.ToStage, command.OutputLabels)
+                            .Any(label => Automation.SameLabel(label, command.TriggerLabel))
+                )
+                .WithMessage(
+                    "An Automation cannot hand work to itself: one of the labels it applies — its "
+                        + "to-stage or one of its marks — is its own trigger label."
+                );
+
+            // A mark repeating the to-stage would apply the same label twice through the same write.
             RuleFor(command => command.OutputLabels!)
                 .Must(
                     (command, labels) =>
-                        !labels.Any(label =>
-                            string.Equals(
-                                label,
-                                command.TriggerLabel,
-                                StringComparison.OrdinalIgnoreCase
-                            )
-                        )
+                        !labels.Any(label => Automation.SameLabel(label, command.ToStage))
                 )
-                .When(command => command.OutputLabels is not null)
+                .When(command =>
+                    command.OutputLabels is not null && !string.IsNullOrWhiteSpace(command.ToStage)
+                )
                 .WithMessage(
-                    "An Automation cannot hand work to itself: one of its output labels is its own trigger label."
+                    "A mark cannot repeat the to-stage: the claimed transition already applies it."
                 );
 
             RuleFor(command => command.Action)
@@ -237,7 +261,8 @@ sealed class UpdateAutomation : IUseCase
                 string.IsNullOrWhiteSpace(command.PromptPath) ? null : command.PromptPath,
                 command.OutputLabels is null ? [] : CreateAutomation.Clean(command.OutputLabels),
                 command.PreviewPort,
-                command.Model
+                command.Model,
+                command.ToStage
             );
 
             // Excluding itself: an Automation must not be refused for colliding with the

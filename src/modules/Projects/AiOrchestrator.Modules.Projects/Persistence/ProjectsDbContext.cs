@@ -63,6 +63,11 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             automation.Property(entity => entity.TriggerLabel).HasMaxLength(200).IsRequired();
             automation.Property(entity => entity.TriggerState).HasMaxLength(100);
             automation.Property(entity => entity.PromptPath).HasMaxLength(300);
+            // The to-stage of the one transition this Automation claims (#310, design D2). A single
+            // nullable column, bounded exactly as the trigger label it is compared against: null is
+            // "claims no transition", and there is no column a second transition could go in — which
+            // is what makes branching unrepresentable rather than merely refused (AC 13).
+            automation.Property(entity => entity.ToStage).HasMaxLength(200);
             // A Postgres text[] (#165, design D1): the set belongs to one Automation, is loaded and
             // saved with it, and is never queried on its own. Npgsql maps a List<string> natively, so
             // there is no delimiter to parse and no value a label could contain that would break it.

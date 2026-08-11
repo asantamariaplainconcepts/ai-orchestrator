@@ -111,6 +111,116 @@ public class Project_Should_Constraint
         project.LifecycleStages.ShouldBe(["ai:propose"]);
     }
 
+    [Fact]
+    public void AClaim_Should_LeaveAnExistingBoundaryAlone()
+    {
+        // AC 5's second half: moving a claim to a boundary that is already there changes the claim
+        // and not the list, so no other Automation's transition can be disturbed by it.
+        var project = Lifecycle("s1", "s2", "s3");
+
+        project.ClaimTransition("s2", "s3").IsError.ShouldBeFalse();
+
+        project.LifecycleStages.ShouldBe(["s1", "s2", "s3"]);
+    }
+
+    [Fact]
+    public void AClaim_Should_CreateItsFromStageImmediatelyBeforeTheToStage()
+    {
+        // AC 4. This is the question the derived graph could not answer at all: in it, the first
+        // step's trigger *was* the entry point, so there was no "before" to place anything into.
+        var project = Lifecycle("s1", "s2");
+
+        project.ClaimTransition("s0", "s1").IsError.ShouldBeFalse();
+
+        project.LifecycleStages.ShouldBe(["s0", "s1", "s2"]);
+    }
+
+    [Fact]
+    public void AClaim_Should_ExtendTheFlowPastItsLastStage()
+    {
+        var project = Lifecycle("s1", "s2");
+
+        project.ClaimTransition("s2", "s3").IsError.ShouldBeFalse();
+
+        project.LifecycleStages.ShouldBe(["s1", "s2", "s3"]);
+    }
+
+    [Fact]
+    public void AClaim_Should_GiveAStagelessProjectItsFirstTwoStages()
+    {
+        // How a new project acquires a lifecycle without "seed a default lifecycle" coming into
+        // scope (design D10): installing a starter tier is a sequence of claims, and the first one
+        // has nothing to attach to.
+        var project = Project.Create("Phoenix");
+
+        project.ClaimTransition("ai:grill", "ai:propose").IsError.ShouldBeFalse();
+
+        project.LifecycleStages.ShouldBe(["ai:grill", "ai:propose"]);
+    }
+
+    [Fact]
+    public void SuccessiveClaims_Should_BuildTheOrderTheyWereClaimedIn()
+    {
+        var project = Project.Create("Phoenix");
+
+        project.ClaimTransition("ai:grill", "ai:propose");
+        project.ClaimTransition("ai:propose", "ai:implement");
+        project.ClaimTransition("ai:implement", "ai:sync");
+
+        project.LifecycleStages.ShouldBe(["ai:grill", "ai:propose", "ai:implement", "ai:sync"]);
+    }
+
+    [Fact]
+    public void AClaim_Should_BeRefusedWhenItsStagesAreNotAdjacent()
+    {
+        // The disagreement storing both an order and each claim makes possible: s1 → s3 while the
+        // list says s1, s2, s3. Refused at the write, and the lifecycle is left exactly as it was.
+        var project = Lifecycle("s1", "s2", "s3");
+
+        var refusal = project.ClaimTransition("s1", "s3");
+
+        refusal.IsError.ShouldBeTrue();
+        refusal.FirstError.Code.ShouldBe("Automation.StagesNotAdjacent");
+        // The refusal names the flow it is refusing against, so the fix is visible without a second
+        // request — the reason BR-003's refusal names the conflicting Automation.
+        refusal.FirstError.Description.ShouldContain("s1 → s2 → s3");
+        project.LifecycleStages.ShouldBe(["s1", "s2", "s3"]);
+    }
+
+    [Fact]
+    public void AClaim_Should_BeRefusedBackwardsAlongTheFlow()
+    {
+        var project = Lifecycle("s1", "s2", "s3");
+
+        project.ClaimTransition("s3", "s2").IsError.ShouldBeTrue();
+        project.LifecycleStages.ShouldBe(["s1", "s2", "s3"]);
+    }
+
+    [Fact]
+    public void AClaim_Should_UseTheStageThatExistsWhateverTheCase()
+    {
+        // DEC-056 carried into the claim itself. A case-sensitive read here would create a second
+        // spelling of one stage, which is exactly the edge the canvas silently drops today.
+        var project = Lifecycle("ai:grill", "ai:propose");
+
+        project.ClaimTransition("AI:Grill", "AI:PROPOSE").IsError.ShouldBeFalse();
+
+        project.LifecycleStages.ShouldBe(["ai:grill", "ai:propose"]);
+    }
+
+    [Fact]
+    public void AnAutomationClaimingNothing_Should_ContributeNoStage()
+    {
+        // DEC-053's standalone Automation, and the last stage of any lifecycle (design D3). Null is
+        // an answer here, so a claim of nothing is a no-op rather than a refusal.
+        var project = Lifecycle("s1", "s2");
+
+        project.ClaimTransition("s1", null!).IsError.ShouldBeFalse();
+        project.ClaimTransition("ai:estimate", "").IsError.ShouldBeFalse();
+
+        project.LifecycleStages.ShouldBe(["s1", "s2"]);
+    }
+
     /// <summary>A project whose lifecycle holds these stages, in this order.</summary>
     static Project Lifecycle(params string[] stages)
     {

@@ -52,17 +52,45 @@ sealed class Automation : Aggregate
     public string? PromptPath { get; private set; }
 
     /// <summary>
-    /// What this Automation applies to the Story when a Run of it succeeds (#165): the workflow's
-    /// outgoing edges, and any mark that goes with them. Empty means it ends silently.
+    /// The <b>to-stage</b> of the one transition this Automation claims of its project's lifecycle:
+    /// the label its Run applies as the lifecycle move when it succeeds (#310, design D2). The
+    /// transition's <b>from</b>-stage is <see cref="TriggerLabel"/> — that is already what makes
+    /// this Automation fire, and naming it twice would be a second description of one fact.
     /// <para>
-    /// A set rather than one label, because one hand-off was one edge and nothing else — no way to
-    /// also mark the Story, and no way to wire a second listener. Held in declaration order for
-    /// display; order is not a priority, because the labels come back as vendor deliveries and are
-    /// matched then (design D3).
+    /// <b>Nullable, and null is an answer</b> (design D3): "claims no transition — it acts, it may
+    /// mark the Story, and the flow ends there." AC 13's "exactly one" was read at spec review as
+    /// <i>at most one, never two</i>, because two cases have to stay expressible: DEC-053's
+    /// standalone Automation, which acts on its own when somebody applies its label, and the last
+    /// stage of a lifecycle, which has no outgoing boundary at all.
     /// </para>
     /// <para>
-    /// For a grill, an empty set still means the documented default rather than silence — that
-    /// default lives in the executor, not here (grill design D5).
+    /// Single-valued rather than a set, which is what makes branching <i>unrepresentable</i> rather
+    /// than merely discouraged: there is no field in which a second transition could be written.
+    /// </para>
+    /// <para>
+    /// Not derived from adjacency in the stored stage list, though that would store strictly less:
+    /// reordering the list would then silently rewrite what every neighbouring Automation hands on,
+    /// which is ADR-0019's invisible-at-the-call-site failure in a new field. AC 5 requires that
+    /// moving one Automation change no other's claimed transition.
+    /// </para>
+    /// </summary>
+    public string? ToStage { get; private set; }
+
+    /// <summary>
+    /// The <b>marks</b> this Automation applies to the Story when a Run of it succeeds (#165, split
+    /// out of the edge by #310): labels carrying no meaning about the flow. Empty means it marks
+    /// nothing.
+    /// <para>
+    /// This field used to do double duty — "the workflow's outgoing edges, <i>and</i> any mark that
+    /// goes with them" — and separating those two is the substance of #310. The edge is now
+    /// <see cref="ToStage"/>. A mark that matches no stage and no other Automation's trigger is an
+    /// ordinary mark, not a dangling edge and not an incomplete configuration; after the separation
+    /// there is nothing for such a warning to be about.
+    /// </para>
+    /// <para>
+    /// A set rather than one label, because one hand-off was one edge and nothing else — no way to
+    /// also mark the Story. Held in declaration order for display; order is not a priority, because
+    /// the labels come back as vendor deliveries and are matched then (design D3).
     /// </para>
     /// </summary>
     public IReadOnlyList<string> OutputLabels
@@ -143,7 +171,8 @@ sealed class Automation : Aggregate
         string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null,
         int? previewPort = null,
-        string? model = null
+        string? model = null,
+        string? toStage = null
     ) =>
         new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
         {
@@ -151,6 +180,7 @@ sealed class Automation : Aggregate
             OutputLabels = outputLabels ?? [],
             PreviewPort = previewPort,
             Model = Normalised(model),
+            ToStage = Normalised(toStage),
         };
 
     /// <summary>Applies an edit. The overlap gate runs after this, against the new shape.</summary>
@@ -164,7 +194,8 @@ sealed class Automation : Aggregate
         string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null,
         int? previewPort = null,
-        string? model = null
+        string? model = null,
+        string? toStage = null
     )
     {
         TriggerLabel = triggerLabel;
@@ -177,14 +208,17 @@ sealed class Automation : Aggregate
         OutputLabels = outputLabels ?? [];
         PreviewPort = previewPort;
         Model = Normalised(model);
+        ToStage = Normalised(toStage);
     }
 
     /// <summary>
     /// Whitespace is absence. A form that sends an empty field means "inherit", and storing "" as
-    /// though it were a model would resolve to a model named nothing at execution time.
+    /// though it were a model would resolve to a model named nothing at execution time. The same
+    /// reading applies to the claimed to-stage: a blank field is "claims no transition", never a
+    /// stage whose name is nothing.
     /// </summary>
-    static string? Normalised(string? model) =>
-        string.IsNullOrWhiteSpace(model) ? null : model.Trim();
+    static string? Normalised(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     /// <summary>
     /// One label twice is one label. The vendor compares case-insensitively (DEC-056), so a set that
