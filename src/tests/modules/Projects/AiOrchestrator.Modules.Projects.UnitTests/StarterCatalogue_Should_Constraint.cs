@@ -182,24 +182,33 @@ public class StarterCatalogue_Should_Constraint
 
         foreach (var prompt in wired)
         {
-            prompt.Automation!.OutputLabels.ShouldAllBe(label =>
-                !string.Equals(
-                    label,
+            // No step claims a transition into its own from-stage: that is #115's self-trigger loop,
+            // and the endpoint refuses it — so a catalogue that shipped one would have a tier that
+            // cannot be installed.
+            string.Equals(
+                    prompt.Automation!.ToStage,
                     prompt.Automation!.Trigger,
                     StringComparison.OrdinalIgnoreCase
                 )
+                .ShouldBeFalse();
+
+            // And no mark repeats the claim, which the endpoint also refuses (#310).
+            prompt.Automation!.Marks.ShouldAllBe(mark =>
+                !string.Equals(mark, prompt.Automation!.ToStage, StringComparison.OrdinalIgnoreCase)
             );
         }
 
-        // The pipeline is wired via output labels: every label handed on that is meant to chain
-        // must name another wired trigger, so the board draws the flow the catalogue promised.
+        // The pipeline is wired via claimed transitions since #310: every to-stage names another
+        // wired trigger, so installing the tier builds a lifecycle whose stages all have a step —
+        // and the board draws the flow the catalogue promised.
         var triggers = new HashSet<string>(
             wired.Select(prompt => prompt.Automation!.Trigger),
             StringComparer.OrdinalIgnoreCase
         );
         wired
-            .SelectMany(prompt => prompt.Automation!.OutputLabels)
-            .ShouldAllBe(label => triggers.Contains(label));
+            .Select(prompt => prompt.Automation!.ToStage)
+            .Where(toStage => toStage is not null)
+            .ShouldAllBe(toStage => triggers.Contains(toStage!));
     }
 
     [Fact]
@@ -213,12 +222,21 @@ public class StarterCatalogue_Should_Constraint
         var workflow = StarterCatalogue.Tiers.Single(tier => tier.Id == "workflow");
         var byFile = workflow.Prompts.ToDictionary(prompt => prompt.File);
 
-        byFile["grill.md"].Automation!.OutputLabels.ShouldBe(["ai:propose"]);
-        byFile["propose.md"].Automation!.OutputLabels.ShouldBe(["ai:implement"]);
-        byFile["implement.md"].Automation!.OutputLabels.ShouldBe(["ai:sync"]);
-        byFile["sync.md"].Automation!.OutputLabels.ShouldBeEmpty();
-        byFile["refine.md"].Automation!.OutputLabels.ShouldBeEmpty();
-        byFile["status.md"].Automation!.OutputLabels.ShouldBeEmpty();
+        // Claimed transitions since #310, not output labels — so installing this tier is what gives
+        // a new project the lifecycle `ai:grill → ai:propose → ai:implement → ai:sync`, as a
+        // consequence of each step claiming rather than of anything seeding a default (design D10).
+        byFile["grill.md"].Automation!.ToStage.ShouldBe("ai:propose");
+        byFile["propose.md"].Automation!.ToStage.ShouldBe("ai:implement");
+        byFile["implement.md"].Automation!.ToStage.ShouldBe("ai:sync");
+        byFile["sync.md"].Automation!.ToStage.ShouldBeNull();
+        byFile["refine.md"].Automation!.ToStage.ShouldBeNull();
+        byFile["status.md"].Automation!.ToStage.ShouldBeNull();
+
+        // And no step marks the Story on the way: a mark is a separate thing now, and the catalogue
+        // invents none.
+        workflow
+            .Prompts.Where(prompt => prompt.Automation is not null)
+            .ShouldAllBe(prompt => prompt.Automation!.Marks.Count == 0);
 
         // The gates the chain's hand-offs stop at. Losing one silently would turn an automatic
         // hand-off into an unattended execution, which is the opposite of what was decided.

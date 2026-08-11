@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -99,6 +100,30 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
             await client.SendAsync(As(identityId, HttpMethod.Get, "/api/me"))
         ).EnsureSuccessStatusCode();
 
+    /// <summary>An Automation for a Member to be refused a change to (#310, AC 9).</summary>
+    static async Task<Guid> CreateAutomation(HttpClient client, string admin, Guid projectId)
+    {
+        var response = await client.SendAsync(
+            As(
+                admin,
+                HttpMethod.Post,
+                $"/api/projects/{projectId}/automations",
+                new
+                {
+                    triggerLabel = "ai:arrange",
+                    action = "RepositoryPrompt",
+                    runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
+                    requiresApproval = false,
+                }
+            )
+        );
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return document.RootElement.GetProperty("id").GetGuid();
+    }
+
     static Task<HttpResponseMessage> Grant(
         HttpClient client,
         string admin,
@@ -162,6 +187,38 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
             )
         );
         configuring.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        // The lifecycle (#310, AC 9): a Member may READ it, because UC-007 has them reading the board
+        // and the board's columns ARE this list — it carries stage names an Admin chose and no
+        // credential, so there is nothing here a reader of the backlog does not already see on the
+        // Stories themselves.
+        var readingLifecycle = await client.SendAsync(
+            As(Member, HttpMethod.Get, $"/api/projects/{projectId}/lifecycle")
+        );
+        readingLifecycle.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        // …and may not rearrange it. The board offers a Member no control that assigns, moves or clears
+        // a claim, but that is what is worth showing and never what is allowed: the refusal comes from
+        // the pipeline's [Requires(ManageAutomations)], before the handler, so it holds for a request
+        // made with no UI at all. AC 9's second clause is exactly this line.
+        var owned = await CreateAutomation(client, Owner, projectId);
+        var rearranging = await client.SendAsync(
+            As(
+                Member,
+                HttpMethod.Put,
+                $"/api/projects/{projectId}/automations/{owned}",
+                new
+                {
+                    triggerLabel = "ai:arrange",
+                    action = "RepositoryPrompt",
+                    runtime = "ClaudeCodeHeadless",
+                    promptPath = "story.md",
+                    requiresApproval = false,
+                    toStage = "ai:next",
+                }
+            )
+        );
+        rearranging.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         // Runtime settings (#244, BR-009): gated both ways — the READ carries credential names,
         // the project's billing identity, so it is refused exactly like the write.

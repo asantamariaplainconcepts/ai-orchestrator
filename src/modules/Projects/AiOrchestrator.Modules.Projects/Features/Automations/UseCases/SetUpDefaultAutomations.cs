@@ -181,11 +181,15 @@ sealed class SetUpDefaultAutomations : IUseCase
             CancellationToken cancellationToken
         )
         {
-            var projectExists = await database.Projects.AnyAsync(
-                project => project.Id == command.ProjectId,
+            // Loaded rather than merely counted since #310: each wired step claims a transition, and a
+            // claim creates the stages it names — so the Project is part of this write and not only a
+            // precondition for it. This is how installing a tier gives a new project a lifecycle
+            // (design D10), which is why "seed a default lifecycle" stays out of scope.
+            var project = await database.Projects.FirstOrDefaultAsync(
+                entity => entity.Id == command.ProjectId,
                 cancellationToken
             );
-            if (!projectExists)
+            if (project is null)
             {
                 return ProjectErrors.NotFound(command.ProjectId);
             }
@@ -266,7 +270,10 @@ sealed class SetUpDefaultAutomations : IUseCase
                     step.Wiring.RequiresApproval,
                     CreateAutomation.DefaultTimeout,
                     promptName,
-                    step.Wiring.OutputLabels
+                    step.Wiring.Marks,
+                    previewPort: null,
+                    model: null,
+                    toStage: step.Wiring.ToStage
                 );
 
                 // Subsumption against what the project already has (a state-scoped trigger the
@@ -281,6 +288,17 @@ sealed class SetUpDefaultAutomations : IUseCase
                 if (overlap.IsError)
                 {
                     skipped.Add(new SkippedStep(step.Trigger, overlap.FirstError.Description));
+                    continue;
+                }
+
+                // The claim and the stages it creates are one write, exactly as the create endpoint does
+                // it — and BR-003 was asked above, so a refused step leaves the lifecycle untouched
+                // even in memory. A claim the adjacency guard refuses is a skip with its own reason
+                // rather than a half-installed tier.
+                var claim = project.ClaimTransition(candidate.TriggerLabel, candidate.ToStage);
+                if (claim.IsError)
+                {
+                    skipped.Add(new SkippedStep(step.Trigger, claim.FirstError.Description));
                     continue;
                 }
 

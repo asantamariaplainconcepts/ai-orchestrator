@@ -690,7 +690,11 @@ export const en = {
   // Selecting what actually gets built (#262). Every row starts selected: the plan is a checklist
   // of what will happen, and a preview you cannot change is a notice rather than a decision.
   "workflowSetup.includeStep": "Include",
-  "workflowSetup.handoffBroken": "nobody hands on to this \u2014 a person will",
+  // The plan speaks in transitions since #310: a wired step claims one, and the stages a project's
+  // lifecycle is made of come into existence as a consequence of claiming.
+  "workflowSetup.movesTo": "moves stories on to",
+  "workflowSetup.flowEnds": "the flow ends here",
+  "workflowSetup.handoffBroken": "nobody moves stories into this \u2014 a person will",
   "workflowSetup.nothingSelected": "Select at least one step to build.",
   "workflowSetup.build": "Build the workflow",
   "workflowSetup.building": "Building\u2026",

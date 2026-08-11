@@ -278,7 +278,7 @@ const mockPlans: Record<
     exists: boolean;
     gated: boolean;
     installable: boolean;
-    outputLabels: string[];
+    toStage: string | null;
     tierId: string;
   }[]
 > = {
@@ -291,7 +291,7 @@ const mockPlans: Record<
       exists: true,
       gated: false,
       installable: false,
-      outputLabels: ["ai:propose"],
+      toStage: "ai:propose",
       tierId: "workflow",
     },
     {
@@ -300,7 +300,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: ["ai:implement"],
+      toStage: "ai:implement",
       tierId: "workflow",
     },
     {
@@ -309,7 +309,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: ["ai:sync"],
+      toStage: "ai:sync",
       tierId: "workflow",
     },
     {
@@ -318,7 +318,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
     {
@@ -327,7 +327,7 @@ const mockPlans: Record<
       exists: false,
       gated: false,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
     {
@@ -336,7 +336,7 @@ const mockPlans: Record<
       exists: false,
       gated: false,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
   ],
@@ -349,7 +349,7 @@ const mockPlans: Record<
       exists: true,
       gated: false,
       installable: false,
-      outputLabels: ["ai:propose"],
+      toStage: "ai:propose",
       tierId: "workflow",
     },
     {
@@ -358,7 +358,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: ["ai:implement"],
+      toStage: "ai:implement",
       tierId: "workflow",
     },
     {
@@ -367,7 +367,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: ["ai:sync"],
+      toStage: "ai:sync",
       tierId: "workflow",
     },
     {
@@ -376,7 +376,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
   ],

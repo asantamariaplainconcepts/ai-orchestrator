@@ -58,7 +58,8 @@ static class StarterCatalogue
                             ? new StarterAutomation(
                                 wiring.Trigger,
                                 wiring.RequiresApproval,
-                                wiring.OutputLabels
+                                wiring.ToStage,
+                                wiring.Marks
                             )
                             : null
                     )),
@@ -116,11 +117,21 @@ static class StarterCatalogue
         ManifestAutomation? Automation = null
     );
 
+    /// <summary>
+    /// A wired starter, as the manifest spells it (#310). <paramref name="ToStage"/> is the transition
+    /// the step claims — absent for one that hands on to nobody, which is how the tier's last step and
+    /// its standalone steps stay expressible. <paramref name="Marks"/> is absent for the ordinary case:
+    /// a mark names no stage and moves nothing, and no catalogue step needs one today.
+    /// </summary>
     sealed record ManifestAutomation(
         string Trigger,
         bool RequiresApproval,
-        IReadOnlyList<string> OutputLabels
-    );
+        string? ToStage = null,
+        IReadOnlyList<string>? Marks = null
+    )
+    {
+        public IReadOnlyList<string> Marks { get; } = Marks ?? [];
+    }
 }
 
 /// <summary>
@@ -182,11 +193,21 @@ sealed record StarterPrompt(
     StarterAutomation? Automation = null
 );
 
-/// <summary>One wired starter: what the created Automation triggers on, gates, and hands on.</summary>
+/// <summary>
+/// One wired starter: what the created Automation triggers on, gates, and hands on.
+/// <para>
+/// Since #310 handing on is a <b>claimed transition</b> rather than an output label (design D10).
+/// <paramref name="ToStage"/> null means the step claims none — it acts, it may mark the Story, and the
+/// flow ends there. Installing a tier therefore creates the project's lifecycle stages as a consequence
+/// of claiming, which is how a new project gets a lifecycle without "seed a default lifecycle" coming
+/// into scope.
+/// </para>
+/// </summary>
 sealed record StarterAutomation(
     string Trigger,
     bool RequiresApproval,
-    IReadOnlyList<string> OutputLabels
+    string? ToStage,
+    IReadOnlyList<string> Marks
 );
 
 /// <summary>
