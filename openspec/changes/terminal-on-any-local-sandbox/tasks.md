@@ -98,7 +98,7 @@
 - [x] 8.4 `pnpm build` — run it before any E2E, because the E2E suite serves the built bundle and a `.tsx`
   edit is invisible to it until the build runs. Verify the exit code directly rather than through a wrapper
   that can mask a failure.
-- [ ] 8.5 Run the app and open the surface for real: list this machine's sandboxes, open a terminal on one,
+- [x] 8.5 Run the app and open the surface for real: list this machine's sandboxes, open a terminal on one,
   send `Ctrl-C`, and confirm the deployed-habitat and no-permission refusals read as their own sentences.
   A config existing is not evidence it works.
-- [ ] 8.6 `openspec validate terminal-on-any-local-sandbox --strict`.
+- [x] 8.6 `openspec validate terminal-on-any-local-sandbox --strict`.

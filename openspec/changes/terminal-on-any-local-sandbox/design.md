@@ -187,6 +187,27 @@ sandbox is.
 no hardcoded colour; all copy through the typed i18n catalogue — hardcoded JSX copy fails CI
 (DEC-009, DEC-021).
 
+### Two #304 bugs this change had to fix to work at all
+
+Neither was in scope and neither was optional: acceptance criterion 3 cannot pass while either stands.
+Both were latent in the Run-keyed terminal too, and both were found by running the app rather than by
+reading it — which is the whole argument for criterion 3 being "a shell is reachable" and not "a shell is
+requested".
+
+- **`InteractivePty` used `posix_spawn`, which does not search `PATH`.** The default `CommandPath` is the
+  bare name `sbx`, and on this machine `sbx` lives in `~/.local/bin`. The listing worked and the terminal
+  failed with `rc 2` (ENOENT), because `HeadlessProcess` starts its child through `ProcessStartInfo`,
+  which resolves `PATH`, while the pty called the one spawn variant that does not. Two ways of starting
+  the same binary that disagreed about how to find it. Fixed to `posix_spawnp`.
+- **The byte pump ran its first blocking read on the hub's own thread.** `_ = Pump(...)` looks like
+  fire-and-forget but an async method runs synchronously until its first *suspending* await, and this
+  one's first act is a blocking `Read`. When the WebSocket send completes synchronously — as it usually
+  does — the loop goes straight back into a read that blocks until the shell speaks again, and the hub
+  method never returns. The symptom is precise and misleading: a working prompt on screen above a
+  surface still saying "Opening a shell…", because output streams from the pump while the client waits
+  forever for `Open` to resolve. Fixed with `Task.Run` at both call sites — a blocking syscall belongs on
+  a thread-pool thread, which is what #304's own comment already said it was doing.
+
 ## Risks / Trade-offs
 
 - **A machine-wide shell is a bigger blast radius than a Run-scoped one (#288).** → Bounded to self-host

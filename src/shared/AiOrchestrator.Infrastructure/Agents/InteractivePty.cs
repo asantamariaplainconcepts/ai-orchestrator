@@ -126,16 +126,16 @@ sealed class InteractivePty : IDisposable
 
             var envp = Terminated(pointers, [.. merged.Select(pair => $"{pair.Key}={pair.Value}")]);
 
-            // posix_spawn RETURNS its error number and does not set errno — reading errno here
+            // posix_spawnp RETURNS its error number and does not set errno — reading errno here
             // reports 0 on a real failure, which is how a marshalling bug hid for a whole run.
-            var spawned = posix_spawn(out var pid, fileName, actions, IntPtr.Zero, argv, envp);
+            var spawned = posix_spawnp(out var pid, fileName, actions, IntPtr.Zero, argv, envp);
             if (spawned != 0)
             {
                 close(master);
                 close(slave);
                 throw new AgentProcessHostException(
-                    $"The shell could not be started in the Run's sandbox. (posix_spawn: rc "
-                        + $"{spawned} for '{fileName}')"
+                    $"The shell could not be started in the sandbox. (posix_spawnp: rc "
+                        + $"{spawned} for '{fileName}' — 2 means the command was not found on PATH)"
                 );
             }
 
@@ -269,10 +269,21 @@ sealed class InteractivePty : IDisposable
     [DllImport("libc", SetLastError = true)]
     static extern int waitpid(int pid, out int status, int options);
 
+    /// <summary>
+    /// <c>posix_spawn<b>p</b></c>, with the <c>p</c>: it searches <c>PATH</c> for a bare command name,
+    /// where plain <c>posix_spawn</c> requires an absolute path and answers ENOENT for anything else.
+    /// <para>
+    /// The <c>p</c> was missing until #311 exercised the terminal on a machine where <c>sbx</c> is on
+    /// <c>PATH</c> but not at a configured absolute path — the default <c>CommandPath</c> is the bare
+    /// name <c>"sbx"</c>. The listing worked and the terminal did not, because
+    /// <see cref="HeadlessProcess"/> starts its child through <c>ProcessStartInfo</c>, which resolves
+    /// <c>PATH</c> for you. Two ways of starting the same binary that disagreed about how to find it.
+    /// </para>
+    /// </summary>
     [DllImport("libc", SetLastError = true)]
-    static extern int posix_spawn(
+    static extern int posix_spawnp(
         out int pid,
-        string path,
+        string file,
         IntPtr fileActions,
         IntPtr attr,
         IntPtr[] argv,

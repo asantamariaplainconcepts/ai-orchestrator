@@ -133,7 +133,15 @@ sealed class RunTerminalHub(
 
         // Pumped on a background task rather than awaited: this call must return so the client can
         // start typing, and the read blocks until the shell says something.
-        _ = Pump(Clients.Caller, terminal, Context.ConnectionId, runId);
+        //
+        // `Task.Run`, and not a bare `_ = Pump(...)`. An async method runs synchronously until its
+        // first *suspending* await, and this one's first act is a blocking `Read` — so calling it
+        // directly executes the read on the hub's own invocation thread. Once a send completes
+        // synchronously, as a WebSocket send usually does, the loop returns to a read that blocks
+        // until the shell speaks again and this method never returns: the terminal streams perfectly
+        // while the client still waits for `Open` to resolve. Found by opening a real shell in #311
+        // and watching the surface sit on "Opening a shell…" with a working prompt above it.
+        _ = Task.Run(() => Pump(Clients.Caller, terminal, Context.ConnectionId, runId));
     }
 
     /// <summary>
@@ -203,7 +211,9 @@ sealed class RunTerminalHub(
             Context.ConnectionAborted
         );
 
-        _ = PumpSandbox(Clients.Caller, terminal, Context.ConnectionId, sandbox);
+        // `Task.Run` for the reason the Run-keyed path above spells out: the first act of the pump is
+        // a blocking read, and running it on the hub's thread means `OpenSandbox` never returns.
+        _ = Task.Run(() => PumpSandbox(Clients.Caller, terminal, Context.ConnectionId, sandbox));
     }
 
     /// <summary>Keystrokes. Unchecked deliberately — see below.</summary>
