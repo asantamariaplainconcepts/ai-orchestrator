@@ -34,7 +34,7 @@
 - [x] 3.1 Add `RunPermissions.Attach = "run.attach"` with a summary saying why it is not `Read`
 - [x] 3.2 Grant it to the Admin and Member bundles, and record in the grant's comment that a
       Member's shell spends the machine owner's session (#288) — accepted on #304
-- [ ] 3.3 A test that a caller holding only `run.read` is refused
+- [x] 3.3 A test that a caller holding only `run.read` is refused
 
 ## 4. The terminal surface
 
@@ -68,11 +68,11 @@
 
 ## 6. Close the loop
 
-- [ ] 6.1 Functional tests for the three refusals — permission, habitat, not-executing — asserting
+- [x] 6.1 Functional tests for the three refusals — permission, habitat, not-executing — asserting
       they are distinguishable
-- [ ] 6.2 Run the built frontend through the E2E tier if the terminal is asserted there; a `.tsx`
-      edit is invisible to E2E until `pnpm build` runs
+- [x] 6.2 Not asserted in the E2E tier: the terminal needs a Run in `Executing` with a live sandbox,
+      which that tier does not stand up. `pnpm build` was run so the built bundle carries the slice
 - [x] 6.3 Design D4 resolved at spec review; #304's criteria 4, 5 and 8 amended to match what this
       slice actually does
-- [ ] 6.4 Update `ARCHITECTURE.md` if the runtime seam's shape changed, and note in #308 that the
+- [x] 6.4 Update `ARCHITECTURE.md` if the runtime seam's shape changed, and note in #308 that the
       transport, grant and registry it depends on have landed
