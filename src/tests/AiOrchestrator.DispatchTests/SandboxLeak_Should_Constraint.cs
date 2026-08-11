@@ -60,9 +60,10 @@ public class SandboxLeak_Should_Constraint
 
         File.WriteAllText(
             script,
-            $"""
+            // `$$` so the fake listing's JSON braces are literal rather than interpolation holes.
+            $$"""
             #!/bin/sh
-            echo " $* " >> "{ledger}"
+            echo " $* " >> "{{ledger}}"
             case "$1 $2" in
               "daemon status") echo 'Status: running'; exit 0 ;;
               "secret ls") echo 'github'; exit 0 ;;
@@ -70,10 +71,13 @@ public class SandboxLeak_Should_Constraint
             esac
             case "$1" in
               ls)
-                echo 'SANDBOX                 AGENT      STATUS'
-                echo 'aio-probe-abandoned     claude     running'
-                echo 'aio-run-abandoned       opencode   running'
-                echo 'someone-elses-work      claude     running'
+                cat <<'JSON'
+            {"sandboxes":[
+              {"name":"aio-probe-abandoned","id":"1","agent":"claude","status":"running","workspaces":["/tmp/a"]},
+              {"name":"aio-run-abandoned","id":"2","agent":"opencode","status":"running","workspaces":["/tmp/b"]},
+              {"name":"someone-elses-work","id":"3","agent":"claude","status":"running","workspaces":["/tmp/c"]}
+            ]}
+            JSON
                 exit 0 ;;
             esac
             exit 0

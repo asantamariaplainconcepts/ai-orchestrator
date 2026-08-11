@@ -3922,3 +3922,58 @@ checks fail (`OTEL_EXPORTER_OTLP_ENDPOINT` unset, nothing listening, container n
 `usage.jsonl` has not been written to since **2026-08-10T20:54Z**, which is before this change began.
 Tracked as [#307](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/307); this is the
 second consecutive entry to report it.
+
+## 2026-08-11 — `terminal-on-any-local-sandbox` (#311)
+
+The Run-keyed terminal generalised to any sandbox this product has on this machine, bounded to the
+namespace the startup sweep already claims. Eight commits. The mechanism was all #304's; what this
+added was a second way in, a listing, an attach record that survives having no Run, and a machine-scoped
+screen.
+
+**What worked: the browser gap #304 left open was closed, and closing it was the only thing that could
+have found either bug.** That entry merged knowingly with the path from xterm through the hub to the pty
+"proven nowhere". Driving it found two faults, both latent in #304, neither reachable by reading.
+`InteractivePty` called `posix_spawn`, which does not search `PATH`, so with the default bare `sbx` the
+sandbox *listing* worked — it goes through `HeadlessProcess`, which resolves `PATH` — while opening a
+terminal answered ENOENT. And the byte pump ran its first **blocking** read on the hub's own invocation
+thread: `_ = Pump(...)` reads as fire-and-forget, but an async method runs synchronously until its first
+*suspending* await, so once a WebSocket send completed synchronously the loop blocked there and the hub
+method never returned. The symptom was precise and misleading — a working shell prompt on screen above a
+surface still saying "Opening a shell…". This is [ADR-0001](../adr/0001-verify-claims-by-exercising-them.md)
+and [ADR-0006](../adr/0006-a-capability-is-not-added-until-a-user-can-reach-it.md) collecting at once:
+626 tests were green, including five against real microVMs, while the thing a Member actually touches
+was broken in two places.
+
+**Graduated to an ADR:** `posix_spawn` diverging from `Process.Start` has now cost one bug per change on
+this same seam — the environment in #304, `PATH` here — so it is written down as
+[ADR-0023](../adr/0023-a-hand-rolled-spawn-inherits-nothing-unless-it-says-so.md) rather than noted a
+second time. The first occurrence was a retro note and the second happened anyway, which is what the
+graduation rule exists to stop.
+
+**What didn't: the design decided authorization twice and was wrong twice, because it reasoned about the
+decorator instead of reading it.** First `[Requires]` paired with `IScopedToProject` — impossible, since
+a sandbox no Run owns belongs to no project. Then no attribute at all, which the authorization decorator
+**default-denies** by design, turning the read into a 403 the moment it was exercised. The vocabulary
+already existed: `Access.FiltersToCaller`, defined in the codebase as "reaches across projects, and
+narrows its own answer to the ones the caller may see", already used by `ListProjects` and `GetInbox`.
+Two wrong answers and an ArchTest waiver written and then deleted, for a decision one file would have
+settled. Same shape as #304's `run.attach` blind spot: the pipeline's conventions were reasoned about
+from the outside rather than read.
+
+**One change next time:** when a change adds a dispatched request whose permission is not held on a
+project, read `Access` and the authorization decorator **before** writing the design's authorization
+decision. A design that guesses at a seam it could have opened is a design that will be corrected in
+review or in production, and this one was corrected twice.
+
+**Noticed, not fixed:** the gated tests in `RealSbxTerminal_Should_Constraint` name their sandboxes
+`aio-term-*`, outside the namespace the sweep claims — so a crashed gated test leaks a microVM nothing
+will ever reclaim, which is the exact failure the sweep was written for. Also, `docs/adr/README.md`'s
+index stops at 0013 while the files run to 0021, so ADR-0023's row was appended out of order rather than
+conflicting with #312's own README edit. Both spun out rather than widened into this change.
+
+**Time invested:** agent **1.65 h**, human keyboard time below the metric's resolution, **$55.65**,
+86.7M cache-read and 185k output tokens — source **telemetry**. [#307](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/307)
+appears fixed: all five `verify-telemetry.mjs` checks pass and `usage.jsonl` is current, making this the
+first entry in three to report measured rather than manual time. Worth noting for what the numbers do
+*not* say: the human time reads as ~0 because the metric counts keyboard and reading time in the CLI,
+and this change was steered through a handful of decisions rather than typed.

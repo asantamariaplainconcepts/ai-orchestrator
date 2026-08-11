@@ -13,6 +13,8 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
 
     public DbSet<Conversation> Conversations => Set<Conversation>();
 
+    public DbSet<SandboxAttach> SandboxAttaches => Set<SandboxAttach>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -118,6 +120,24 @@ sealed class RunsDbContext(DbContextOptions<RunsDbContext> options) : DbContext(
                     .Property(entity => entity.Content)
                     .HasMaxLength(Features.Execution.RunLogWriter.MaxLineLength);
             });
+        });
+
+        // Deliberately NOT nested inside the Run entity above, and with no foreign key to runs: an
+        // attach on a sandbox an earlier process abandoned has no Run to point at, and a constraint
+        // would refuse exactly the record this table exists to keep (#311).
+        modelBuilder.Entity<SandboxAttach>(attach =>
+        {
+            attach.ToTable("sandbox_attaches");
+            attach.HasKey(entity => entity.Id);
+
+            // sbx names are short and generated; 200 is the same bound the vendor-id columns use.
+            attach.Property(entity => entity.Sandbox).HasMaxLength(200).IsRequired();
+            attach.Property(entity => entity.Who).HasMaxLength(200).IsRequired();
+
+            // The two questions this table is ever asked: what happened to this sandbox, and what
+            // happened on this machine lately.
+            attach.HasIndex(entity => new { entity.Sandbox, entity.At });
+            attach.HasIndex(entity => entity.At);
         });
     }
 }

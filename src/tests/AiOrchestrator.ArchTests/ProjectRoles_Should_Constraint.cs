@@ -189,7 +189,9 @@ public class ProjectRoles_Should_Constraint
     /// </para>
     /// <list type="bullet">
     /// <item><c>run.attach</c> — <c>RunTerminalHub.Open</c> (#304), which asks the same questions the
-    /// decorator would and then asks for this one.</item>
+    /// decorator would and then asks for this one; <c>RunTerminalHub.OpenSandbox</c> (#311), which asks
+    /// the habitat first and then <c>run.attach</c> at the habitat's scope, because a sandbox no Run owns
+    /// belongs to no project; and <c>ListMachineSandboxes.Handler</c>, the read behind that surface.</item>
     /// </list>
     /// </summary>
     static readonly HashSet<string> EnforcedOutsideThePipeline = ["run.attach"];

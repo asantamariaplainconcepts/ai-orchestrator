@@ -28,6 +28,29 @@ public sealed class RunSandboxHost : IRunSandboxMonitor
     public string? NameFor(Guid runId) =>
         _sandboxes.TryGetValue(runId, out var sandbox) ? sandbox : null;
 
+    /// <summary>
+    /// The Run using this sandbox, or null when none of this process's Runs is (#311) — the reverse of
+    /// <see cref="NameFor"/>, and the only way a machine-wide listing can attribute a sandbox to a Run.
+    /// <para>
+    /// Absence here is not a failure to look something up. This ledger holds only what this process
+    /// created, so a sandbox abandoned by a previous process is really unattributed rather than
+    /// unattributed-because-we-forgot. Persisting the mapping to close that gap would reintroduce the
+    /// lie this type exists to avoid.
+    /// </para>
+    /// </summary>
+    public Guid? RunUsing(string sandbox)
+    {
+        foreach (var pair in _sandboxes)
+        {
+            if (string.Equals(pair.Value, sandbox, StringComparison.Ordinal))
+            {
+                return pair.Key;
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>This Run's sandbox exists and is addressable until it is disposed.</summary>
     public void Created(Guid runId, string sandbox) => _sandboxes[runId] = sandbox;
 

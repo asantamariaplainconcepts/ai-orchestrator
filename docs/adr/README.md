@@ -37,6 +37,7 @@ A decision that names no check stays advice; the loop exists to turn advice into
 | [0012](0012-a-seeded-document-is-the-projects-own.md) | A seeded document is the project's own | Accepted |
 | [0013](0013-an-assertion-must-be-able-to-fail.md) | An assertion must be able to fail | Accepted |
 | [0022](0022-an-order-a-person-can-rearrange-is-stored.md) | An order a person can rearrange is stored, never derived | Accepted |
+| [0023](0023-a-hand-rolled-spawn-inherits-nothing-unless-it-says-so.md) | A hand-rolled spawn inherits nothing unless it says so | Accepted |
 
 <!-- The table stops at 0013 and resumes at 0022: rows for 0014-0021 were never added, although those
      files exist in this directory. #310 added its own row rather than silently backfilling eight

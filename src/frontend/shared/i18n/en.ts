@@ -268,6 +268,7 @@ export const en = {
   "env.identityValue": "Local owner — every action is admin",
   "env.listeningOn": "Listening on",
   "env.viewRuntimes": "View Agent runtimes",
+  "env.viewSandboxes": "View this machine’s sandboxes",
   "env.networkWarning": "Keep this port off the internet — there is no sign-in to stop anyone.",
   // The banner that remains (5a): the real hazard, not the posture. Shown only when the page
   // was reached from another machine while every caller is the administrator.
@@ -311,6 +312,29 @@ export const en = {
   // Composed: "Checked 20s · retries every 30s".
   "runtimes.checked": "Checked",
   "runtimes.retries": "retries every",
+
+  // This machine's own sandboxes (#311) — the generalisation of the Run's terminal. Machine-scoped
+  // like the runtimes panel beside it, because the sandbox most worth entering is the one a killed
+  // process left behind, and that one belongs to no project.
+  "sandboxes.title": "Sandboxes",
+  "sandboxes.whose": "the sandboxes this product has created on this machine",
+  "sandboxes.loading": "Loading…",
+  "sandboxes.error": "Could not load this machine's sandboxes.",
+  // The habitat's answer, not a permission: asking for access would not help (ADR-0021).
+  "sandboxes.notHosted":
+    "This deployment does not execute Runs on this machine, so it hosts no terminal. A sandbox can be opened where the Agent runs on this machine, and not where it runs in the cloud.",
+  "sandboxes.forbidden":
+    "You do not have permission to open a terminal on this machine's sandboxes.",
+  "sandboxes.none": "No sandboxes are running on this machine.",
+  "sandboxes.open": "Open a terminal",
+  // Composed with the sandbox's name for the accessible name — a page of identical button labels
+  // is a page a screen reader cannot tell apart.
+  "sandboxes.openOn": "Open a terminal on sandbox",
+  "sandboxes.itsRun": "used by a Run",
+  "sandboxes.noRun": "no Run is using it",
+  // Said before the click, never after: `sbx exec` on a stopped sandbox starts it, so an unwarned
+  // reader would boot a virtual machine while looking for one.
+  "sandboxes.startsIt": "This sandbox is stopped. Opening a terminal starts it.",
 
   // The queued Run's cross-link (5c): no destructive styling on the Run — the cause lives on
   // the panel, the Run only points at it.
