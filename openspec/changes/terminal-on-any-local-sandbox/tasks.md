@@ -30,30 +30,30 @@
 
 ## 3. The attach record, which must survive having no Run
 
-- [ ] 3.1 Add a durable attach record to the Runs schema — who, when, sandbox name, nullable Run id — with
+- [x] 3.1 Add a durable attach record to the Runs schema — who, when, sandbox name, nullable Run id — with
   its EF Core configuration and migration.
-- [ ] 3.2 Extend `IRunAttachRecorder` with a sandbox-keyed `Attached`, writing the durable row always and
+- [x] 3.2 Extend `IRunAttachRecorder` with a sandbox-keyed `Attached`, writing the durable row always and
   the existing `RunLogChunk` line only when a Run id is known, so #304's criterion 6 does not regress.
 - [ ] 3.3 Unit-test both paths: an attach with a Run writes the row and the Run log line; an attach with no
   Run writes the row and no log line, and does not throw looking for one.
 
 ## 4. The read and the hub
 
-- [ ] 4.1 Add a `ListMachineSandboxes` query under
+- [x] 4.1 Add a `ListMachineSandboxes` query under
   `src/modules/Runs/AiOrchestrator.Modules.Runs/Features/Observation/UseCases`, dispatched through the CQS
   pipeline with `[Requires]` on `run.attach`, returning the annotated listing; answer the habitat's "none
   hosted" before any permission question.
-- [ ] 4.2 Add the habitat-scoped permission read — `run.attach` on at least one project — for sandboxes
+- [x] 4.2 Add the habitat-scoped permission read — `run.attach` on at least one project — for sandboxes
   that resolve to no Run, and keep the Run's project role check where one does resolve.
-- [ ] 4.3 Expose it at `GET /api/runs/sandboxes` via `IUseCase.AddRoutes`, with `ApiResults.Problem` for
+- [x] 4.3 Expose it at `GET /api/runs/sandboxes` via `IUseCase.AddRoutes`, with `ApiResults.Problem` for
   refusals.
-- [ ] 4.4 Add `OpenSandbox(string sandbox, int columns, int rows)` to `RunTerminalHub`, reusing the byte
+- [x] 4.4 Add `OpenSandbox(string sandbox, int columns, int rows)` to `RunTerminalHub`, reusing the byte
   pump, the one-terminal-per-connection rule and the disposal path; key the second-viewer guard by sandbox
   name as the existing one is keyed by Run id.
-- [ ] 4.5 Order the hub's refusals so the habitat answers first, then permission, then an unresolvable
+- [x] 4.5 Order the hub's refusals so the habitat answers first, then permission, then an unresolvable
   name — and make out-of-namespace and does-not-exist return one identical refusal, so it cannot enumerate
   the machine.
-- [ ] 4.6 Update `ProjectRoles_Should_Constraint`'s `EnforcedOutsideThePipeline` doc comment to name
+- [x] 4.6 Update `ProjectRoles_Should_Constraint`'s `EnforcedOutsideThePipeline` doc comment to name
   `RunTerminalHub.OpenSandbox` as the second enforcer of `run.attach`.
 
 ## 5. The surface
