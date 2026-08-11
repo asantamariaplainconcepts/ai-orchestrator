@@ -64,14 +64,18 @@ sealed class GetLifecycle : IUseCase
             CancellationToken cancellationToken
         )
         {
-            var stages = await database
-                .Projects.Where(project => project.Id == query.ProjectId)
-                .Select(project => project.LifecycleStages)
-                .FirstOrDefaultAsync(cancellationToken);
+            // Materialise, then read the property — the module's stated convention for a projection
+            // whose translation is not obvious. Projecting the primitive collection column directly
+            // would be one query fewer and one unexercised EF translation more, and "an empty list"
+            // for a project that does not exist would make the 404 below unreachable.
+            var project = await database.Projects.FirstOrDefaultAsync(
+                entity => entity.Id == query.ProjectId,
+                cancellationToken
+            );
 
-            // Null distinguishes "no such project" from "a project with no stages yet" — the two
-            // deserve different answers, and an empty list for both would make a 404 unreachable.
-            return stages is null ? ProjectErrors.NotFound(query.ProjectId) : new Response(stages);
+            return project is null
+                ? ProjectErrors.NotFound(query.ProjectId)
+                : new Response(project.LifecycleStages);
         }
     }
 }
