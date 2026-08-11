@@ -60,7 +60,10 @@ public sealed class RunsModule : ModuleBase
             RunPermissions.Approve,
             RunPermissions.Cancel,
             RunPermissions.DismissFailure,
-            RunPermissions.HoldConversation
+            RunPermissions.HoldConversation,
+            // The second addition to ACT-002's list, and the only one that executes anything: see
+            // RunPermissions.Attach for the cost accepted in granting it to Members (#288, #304).
+            RunPermissions.Attach
         );
         services.AddDbContext<RunsDbContext>(options =>
             options.UseNpgsql(

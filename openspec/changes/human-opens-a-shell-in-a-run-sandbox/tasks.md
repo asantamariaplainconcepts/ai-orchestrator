@@ -20,19 +20,19 @@
 - [x] 2.2 **Dropped at spec review.** Live resize was the only thing needing a variadic `ioctl`; the
       requirement is dropped in favour of connect-time geometry via `openpty`'s own `winsize`
       argument, so no pty package, native shim or Linux-arm measurement is needed
-- [ ] 2.3 Confirm the chosen instrument drives `sbx exec -it` specifically, not just `/bin/sh`:
+- [x] 2.3 Confirm the chosen instrument drives `sbx exec -it` specifically, not just `/bin/sh`:
       the spike proved sbx accepts a pty, `PtyCheck` proved .NET can make one, and nothing has yet
       proved the two together
-- [ ] 2.4 Add an interactive-process seam beside `HeadlessProcess` — a long-lived child with
+- [x] 2.4 Add an interactive-process seam beside `HeadlessProcess` — a long-lived child with
       writable stdin, no timeout kill, and `Kill(entireProcessTree: true)` on disposal, because
       killing the wrapper alone orphans the sbx CLI (measured by the spike)
-- [ ] 2.5 A gated test that drives the seam against the real sbx CLI, per ADR-0020: a launcher is
+- [x] 2.5 A gated test that drives the seam against the real sbx CLI, per ADR-0020: a launcher is
       unverified until it has met its real CLI. Assert the pty facts, not a stand-in's idea of them
 
 ## 3. Permission
 
-- [ ] 3.1 Add `RunPermissions.Attach = "run.attach"` with a summary saying why it is not `Read`
-- [ ] 3.2 Grant it to the Admin and Member bundles, and record in the grant's comment that a
+- [x] 3.1 Add `RunPermissions.Attach = "run.attach"` with a summary saying why it is not `Read`
+- [x] 3.2 Grant it to the Admin and Member bundles, and record in the grant's comment that a
       Member's shell spends the machine owner's session (#288) — accepted on #304
 - [ ] 3.3 A test that a caller holding only `run.read` is refused
 

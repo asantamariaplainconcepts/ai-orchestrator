@@ -27,6 +27,24 @@ static class RunPermissions
     public const string HoldConversation = "conversation.hold";
 
     /// <summary>
+    /// Open a shell inside an executing Run's sandbox (#304), where the habitat hosts one —
+    /// self-host only, by ADR-0021.
+    /// <para>
+    /// Distinct from <see cref="Read"/> on purpose: reading a Run observes what happened, while
+    /// attaching to one executes arbitrary commands on the machine it is using. Nothing else in this
+    /// list writes anything outside the product's own records.
+    /// </para>
+    /// <para>
+    /// Granted to the Member bundle as well as the Admin one, with its cost recorded rather than
+    /// hidden: a Run's sandbox carries the machine owner's own session (#288), so a Member's shell
+    /// may act with the owner's credentials. Accepted deliberately on #304 — the alternative was
+    /// withholding from ACT-002 the one affordance that turns a stuck Run into a fixed one — which is
+    /// why every attach is recorded against the Run.
+    /// </para>
+    /// </summary>
+    public const string Attach = "run.attach";
+
+    /// <summary>
     /// Take a failure out of the inbox (#145). Not in ACT-002's list, and granted to Member anyway:
     /// it changes no configuration and destroys no record — the Run stays exactly as readable as it
     /// was — and an inbox only the Admin bundle could clear would stop being the shared queue UC-026
