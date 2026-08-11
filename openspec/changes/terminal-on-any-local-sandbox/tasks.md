@@ -77,12 +77,12 @@
   refused without `run.attach`, permitted for a Member holding it, out-of-namespace and unknown names
   refused identically, and a deployed habitat answering "none hosted" without evaluating permissions.
 - [x] 6.2 Add a functional test that the listing excludes a sandbox outside the claimed namespace.
-- [ ] 6.3 Extend `RealSbxTerminal_Should_Constraint` (DispatchTests, real `sbx`) to open a shell on a
+- [x] 6.3 Extend `RealSbxTerminal_Should_Constraint` (DispatchTests, real `sbx`) to open a shell on a
   listed sandbox by name and prove `Ctrl-C` arrives as a signal — the claim in criterion 3 gets exercised
   rather than asserted.
-- [ ] 6.4 Add a real-`sbx` test that entering a stopped sandbox starts it and returns a working shell,
+- [x] 6.4 Add a real-`sbx` test that entering a stopped sandbox starts it and returns a working shell,
   pinning the behaviour D5 rests on, and leaving the machine as it found it.
-- [ ] 6.5 Add a test that a disposed sandbox ends its open terminal and reports the sandbox as gone.
+- [x] 6.5 Add a test that a disposed sandbox ends its open terminal and reports the sandbox as gone.
 
 ## 7. Docs
 
