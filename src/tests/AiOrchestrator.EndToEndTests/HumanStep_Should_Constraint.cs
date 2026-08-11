@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Playwright;
 using Shouldly;
@@ -6,17 +5,27 @@ using Shouldly;
 namespace AiOrchestrator.EndToEndTests;
 
 /// <summary>
-/// #137 — placing the human review, asserted where it is a fact: in the stored Automations.
+/// #137, rewritten for #310 — requiring a person, asserted where it is a fact: in the stored Automation.
 /// <para>
-/// Driven through the explicit control rather than the drag, and that is not a shortcut. Playwright
-/// cannot perform an HTML5 drag — #110 recorded the same thing — which is precisely why dragging is
-/// sugar and the control is the semantics. Both call one function, so this covers the logic either
-/// gesture reaches.
+/// <b>Rewritten against the board rather than removed.</b> The capability this suite covered survives
+/// the canvas's deletion; only its home moved. It used to press "Require a person here" on the canvas's
+/// connector, which cleared the preceding step's output label. The same sentence is now the boundary's
+/// clear control on the Backlog board, and it clears the claimed transition — the field the hand-off
+/// moved into. A test asserting the canvas would have been asserting a screen that no longer exists;
+/// deleting it would have dropped a capability's only coverage. So it drives the new control and
+/// asserts the new field.
 /// </para>
 /// <para>
-/// The claim worth asserting is that the two human waits stay different things: placing the block
-/// clears the preceding step's output label and leaves approval alone. Conflating them was the first
-/// draft of this change, and it would have drawn one picture for two run-time behaviours.
+/// Driven through the explicit control rather than a drag, and that is not a shortcut. Playwright cannot
+/// perform an HTML5 drag — #110 recorded the same thing — which is precisely why dragging is sugar and
+/// the control is the semantics. Both call one function, so this covers the logic either gesture reaches
+/// (AC 12).
+/// </para>
+/// <para>
+/// The claim worth asserting is that the two human waits stay different things (BR-006 against BR-007):
+/// clearing the claim makes the boundary a person's turn and leaves <c>requiresApproval</c> alone, and
+/// leaves the marks alone too — which is the transition/mark split holding under a gesture. Conflating
+/// them was the first draft of #137, and it would have drawn one picture for two run-time behaviours.
 /// </para>
 /// </summary>
 [Collection(AppHostCollection.Name)]
@@ -24,56 +33,77 @@ namespace AiOrchestrator.EndToEndTests;
 public class HumanStep_Should_Constraint(AppHostFixture fixture)
 {
     [Fact]
-    public async Task PlacingTheHumanReview_Should_BreakTheChainAndLeaveApprovalAlone()
+    public async Task RequiringAPerson_Should_ClearTheClaimAndLeaveApprovalAlone()
     {
         var page = await fixture.Browser.NewPageAsync();
-        var projectId = await CreateProject(page, "Human step — the chain breaks");
+        var projectId = await CreateProject(page, $"Human step — {Guid.NewGuid():N}");
 
-        // Two Automations, chained: grill hands work to propose by writing its trigger label.
-        var upstream = await CreateAutomation(
+        // Two Automations and one claim: grill moves a Story on to `ready-for-proposal`, so the
+        // lifecycle is those two stages and the boundary between them is claimed. The mark is there so
+        // the gesture has something adjacent it must not touch.
+        await CreateAutomation(
             page,
             projectId,
             "ai:grill",
-            "RepositoryPrompt",
-            "ready-for-proposal"
+            toStage: "ready-for-proposal",
+            marks: ["needs-design"]
         );
-        await CreateAutomation(page, projectId, "ready-for-proposal", "RepositoryPrompt", null);
+        await CreateAutomation(page, projectId, "ready-for-proposal");
 
-        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}?tab=automations");
+        await Board(page, projectId);
 
-        // The control that breaks the connection is the one a keyboard reaches and the one the
-        // block's drop shares.
-        var breakChain = page.GetByRole(AriaRole.Button, new() { Name = "Require a person here" });
-        await breakChain.WaitForAsync(new() { Timeout = 30_000 });
-        await breakChain.ClickAsync();
+        var control = page.GetByRole(AriaRole.Button, new() { Name = "Require a person here" });
+        await control.First.WaitForAsync(new() { Timeout = 30_000 });
+        await control.First.ClickAsync();
 
-        // Asserted against the API rather than the picture: the chain is a label agreement, so the
-        // absence of the label is the fact.
-        //
-        // Polled to a deadline rather than read once. The click starts a mutation and returns; a
-        // single read races it and fails about a third of the time, which is exactly the flake
+        // Asserted against the API rather than the picture: the claim is what is stored, so its absence
+        // is the fact. Polled to a deadline rather than read once — the click starts a mutation and
+        // returns, and a single read races it about a third of the time, which is exactly the flake
         // #107 taught this repository to write out of its tests rather than live with.
         var stored = await Eventually(
             () => Automations(page, projectId),
             automations =>
-                automations
-                    .Single(automation => automation.TriggerLabel == "ai:grill")
-                    .OutputLabels.Count == 0
+                automations.Single(automation => automation.TriggerLabel == "ai:grill").ToStage
+                    is null
         );
         var grill = stored.Single(automation => automation.TriggerLabel == "ai:grill");
 
-        // Empty, not "the set lost one member of several": placing a human here removes the edge
-        // this gap represents and leaves any others alone (#165), and this Automation had one.
-        grill.OutputLabels.ShouldBeEmpty();
+        // The boundary is now unclaimed, which is what "a person carries it across" is stored as.
+        grill.ToStage.ShouldBeNull();
 
-        // The other wait, untouched. BR-007's two-phase Run is a different thing from reviewing what
-        // the previous step produced, and the workflow must keep them distinguishable.
+        // The mark survives. Since #310 a mark is not a hand-off, so clearing the hand-off must not
+        // take one with it — the whole point of splitting the two.
+        grill.OutputLabels.ShouldBe(["needs-design"]);
+
+        // The other wait, untouched. BR-007's two-phase Run is a different thing from a person carrying
+        // work across a boundary, and the board must keep them distinguishable.
         grill.RequiresApproval.ShouldBeFalse();
         stored
             .Single(automation => automation.TriggerLabel == "ready-for-proposal")
             .RequiresApproval.ShouldBeFalse();
 
-        _ = upstream;
+        // And the boundary now says so, as a fact about who acts: no validation error, no
+        // "incomplete configuration" marker and no elapsed time (BR-006, AC 3).
+        var boundary = page.Locator("[data-boundary='ready-for-proposal']");
+        await boundary.First.WaitForAsync(new() { Timeout = 15_000 });
+        await Assertions
+            .Expect(boundary.First)
+            .ToContainTextAsync("A person", new() { Timeout = 15_000 });
+        (await page.Locator("[data-boundary] [role=alert]").CountAsync()).ShouldBe(0);
+    }
+
+    /// <summary>Opens the project's Backlog board. No Connector and no Story is needed since #310:
+    /// the columns are the project's lifecycle, which is configuration rather than vendor
+    /// contents.</summary>
+    async Task Board(IPage page, Guid projectId)
+    {
+        // Through the remembered preference rather than the view toggle, whose own label flips on click
+        // — the element Playwright resolved is detached before it finishes checking the click is
+        // stable, which is a race about the toggle in a test about the boundary.
+        await page.AddInitScriptAsync("window.localStorage.setItem('aio:backlog-view', 'board')");
+        // ?tab=operate explicitly: a project with no Connector lands on Settings, because configuring
+        // is the job on day one (ProjectScreen's derived landing tab).
+        await page.GotoAsync($"{fixture.ServerBaseUrl}projects/{projectId}?tab=operate");
     }
 
     /// <summary>
@@ -110,8 +140,8 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
         IPage page,
         Guid projectId,
         string triggerLabel,
-        string action,
-        string? outputLabel
+        string? toStage = null,
+        string[]? marks = null
     )
     {
         var response = await page.APIRequest.PostAsync(
@@ -122,11 +152,12 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
                 {
                     triggerLabel,
                     triggerState = (string?)null,
-                    action,
+                    action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
                     requiresApproval = false,
-                    outputLabels = outputLabel is null ? Array.Empty<string>() : [outputLabel],
+                    outputLabels = marks ?? [],
+                    toStage,
                 },
             }
         );
@@ -153,6 +184,7 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
         Guid Id,
         string TriggerLabel,
         IReadOnlyList<string> OutputLabels,
-        bool RequiresApproval
+        bool RequiresApproval,
+        string? ToStage
     );
 }

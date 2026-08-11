@@ -194,11 +194,24 @@ sealed class RunExecutor(
     }
 
     /// <summary>
-    /// Hands work on (#115, a set since #165): applies every one of this Automation's output labels
-    /// through UC-008's write, so each lands at the vendor, returns as an ordinary StoryChanged and
-    /// is matched like any other label — nothing here knows what happens next. Returns null when
-    /// there was nothing to hand on or everything landed, and otherwise a sentence naming what did
-    /// not.
+    /// Hands work on (#115, a set since #165, a transition plus marks since #310): applies the
+    /// claimed transition's <b>to-stage</b> and every <b>mark</b> through UC-008's write, so each
+    /// lands at the vendor, returns as an ordinary StoryChanged and is matched like any other label —
+    /// nothing here knows what happens next. Returns null when there was nothing to hand on or
+    /// everything landed, and otherwise a sentence naming what did not.
+    /// <para>
+    /// <b>The lifecycle move and the marks travel the same write</b> (#310, design D9), and this
+    /// method is the reason the model needs no dispatch machinery: a person moving a label and an
+    /// Automation applying one are already the same mechanism, so a transition nobody claims needs no
+    /// representation at all. The to-stage goes first, because it is the one label whose arrival
+    /// starts the next step and a reader of the Story should see the move before its annotations —
+    /// but the order is presentation only: the labels come back as vendor deliveries and are matched
+    /// then.
+    /// </para>
+    /// <para>
+    /// Only the board's <i>reading</i> of these labels differs: the to-stage is a column, a mark is
+    /// not. Nothing here distinguishes them, because at the vendor they are labels.
+    /// </para>
     /// <para>
     /// <b>Every label is attempted.</b> Stopping at the first refusal would apply an arbitrary prefix
     /// of the set and report one problem when there might be three — and #165's criterion is that a
@@ -224,8 +237,13 @@ sealed class RunExecutor(
 
         // No default any more (#162): the grill was the one action that defaulted an output label,
         // and with the catalogue gone an Automation that names none hands nothing on. What it hands
-        // on is now entirely what its Admin wired.
-        var labels = automation?.OutputLabels ?? [];
+        // on is now entirely what its Admin wired — and since #310 that is at most one claimed
+        // transition and any number of marks. An Automation claiming neither ends silently.
+        var marks = automation?.OutputLabels ?? [];
+        var labels =
+            automation?.ToStage is { } toStage && !string.IsNullOrWhiteSpace(toStage)
+                ? (IReadOnlyList<string>)[toStage, .. marks]
+                : marks;
 
         var refusals = new List<string>();
 

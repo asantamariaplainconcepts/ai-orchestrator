@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { MoreHorizontal, UserRound, UserRoundPlus } from "lucide-react";
+import { MoreHorizontal, UserRound } from "lucide-react";
 import { Link } from "react-router";
 import { useRuns } from "@/features/runs/useRuns";
 import type { RunView } from "@/features/runs/types";
 import { t } from "@/shared/i18n";
-// Shared with the workflow canvas (#232): one chip, one meaning.
+// Shared with the read-only preview (#232): one chip, one meaning.
 import { GateChip } from "@/shared/ui/gate-chip";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
@@ -17,8 +17,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import { NativeSelect } from "@/shared/ui/native-select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/shared/ui/sheet";
 import { useUpdateAutomation } from "@/features/automations/useAutomations";
+import { useLifecycle } from "@/features/automations/useLifecycle";
+import { requestFor } from "@/features/automations/automationRequest";
+import { claimantsByToStage, fold } from "@/features/automations/workflowGraph";
+import { AUTOMATION_BLOCK, claimPatch, refusalFor } from "@/features/automations/chainDrag";
+import type { Boundary as LifecycleBoundary, DropRefusal } from "@/features/automations/chainDrag";
+import { ApiError } from "@/shared/http/client";
 import { UNTOUCHED, useMoveStory } from "./useMoveStory";
 import type { Automation } from "@/features/automations/types";
 import type { StoryView } from "./types";
@@ -33,110 +40,94 @@ const ACTIVE_STATES: readonly RunView["state"][] = [
 ];
 
 /**
- * The board reads an Automation and, since #128, writes one: placing a person between two steps
- * clears the preceding step's output label through the ordinary update, which resends the whole
- * record. So this is the Automation, not a subset of it.
- *
- * It was a hand-written subset of four fields while the board only read. Widening it rather than
- * threading a callback keeps one type for one thing — and the field that unlocked #128 was
- * `outputLabel`: without it the board could not see an edge, so it could not order by the flow.
+ * The board reads an Automation and writes one, so this is the Automation and not a subset of it.
+ * Since #310 the write is the arrangement itself — which transition an Automation claims — and every
+ * one of them goes through `requestFor`, ADR-0019's one builder.
  */
 export type BoardAutomation = Automation;
 
-/** A column: a step's trigger label, or a place where the flow waits for a person (#128). */
+/** A column: a stage of the project's lifecycle, or the pile Stories start in. */
 interface Pile {
   key: string;
   label: string;
   stories: StoryView[];
-  /** The step this human column follows, when it is one. */
-  after?: BoardAutomation;
 }
 
-/** A legal destination for a move — a step column or Untouched, never a human pile. */
+/** A legal destination for a move. Every column is one now — there are no non-label columns. */
 interface MoveTarget {
   key: string;
   label: string;
 }
 
 /**
- * The pipeline made spatial (#110): columns are the project's enabled Automation trigger labels
- * (design D4), and moving a card IS UC-008's licensed label write — ordinary matching does the
- * rest, so there is no dispatch machinery here at all.
+ * The project's flow, made spatial and now **authored** here (#310, AC 1/2/12).
+ *
  * <p>
- * A view, not a second data source (design D5): same queries as the list, same mutation. That is
- * why a label applied at the vendor moves a card on the next poll with no board-specific code.
+ * Columns are the project's stored lifecycle stages, in the stored order — not a walk over labels.
+ * There used to be one here: it built chains from output labels, put the chained Automations first and
+ * the unchained ones after, and that ordering rule was invented because a derivation could not supply
+ * an order. It is gone, and so is the rule. The order is stored, the owner serves it, and an
+ * Automation that claims no transition contributes no stage — a Story carrying its trigger label needs
+ * no column it did not already have, because that label is a mark.
+ * </p>
+ * <p>
+ * Between every pair of columns is a <b>boundary</b>: the transition into the right-hand stage. At most
+ * one Automation claims it (AC 13), and it is drawn there and nowhere else (AC 2). An unclaimed boundary
+ * is a person's turn — BR-006, so no error, no "incomplete configuration" marker and no clock. The
+ * boundary before the <i>first</i> column is how a step gets placed first (AC 4): assigning an
+ * Automation there gives its own trigger label a stage immediately before the one it moves work into.
+ * </p>
+ * <p>
+ * Every arrangement change is offered by an explicit control and by dragging, and both call this
+ * component's own `assign` — one function per change, two ways in (AC 12). That is not a preference:
+ * Playwright cannot perform an HTML5 drag (#110), so the control sharing the drop's function is what
+ * puts this logic under test at all.
+ * </p>
+ * <p>
+ * Moving a card is unchanged and still UC-008's licensed label write: ordinary matching does the rest,
+ * so there is no dispatch machinery here at all.
  * </p>
  */
 export function KanbanBoard({
   projectId,
   stories,
   automations,
+  canArrange,
 }: {
   projectId: string;
   stories: StoryView[];
   automations: BoardAutomation[];
+  /**
+   * Whether this caller may change the arrangement (BR-009, AC 9). False offers no control that
+   * assigns, moves or clears a claim — and the API refuses one anyway, which is where the guarantee
+   * lives: this only decides what is worth showing.
+   */
+  canArrange: boolean;
 }) {
   const runs = useRuns(projectId, null);
   const move = useMoveStory(projectId);
-  // The board's placing gesture writes the same field the canvas's block does (#128, design D3), so
-  // an Admin who puts a person between two steps on one screen finds the same arrangement on the
-  // other. It goes through the ordinary Automation update, so BR-003 and #115's refusals apply.
+  // The one read that replaced six walks (#310, design D6). Nothing here derives an order.
+  const lifecycle = useLifecycle(projectId);
   const updateAutomation = useUpdateAutomation(projectId);
   const [dragging, setDragging] = useState<{ story: string; from: string } | null>(null);
-  // The hovered legal column while a drag is in flight — what the drop slot renders under.
+  // The hovered legal column while a Story drag is in flight — what the drop slot renders under.
   const [over, setOver] = useState<string | null>(null);
+  // The Automation in flight and the boundary it is over, so a boundary can say what its drop would
+  // do — and why it would not — before the pointer lets go.
+  const [carried, setCarried] = useState<BoardAutomation | null>(null);
+  const [overBoundary, setOverBoundary] = useState<string | null>(null);
   // BR-001's refusal, anchored where the gesture pointed: the target column (or the open sheet).
   const [refused, setRefused] = useState<{ story: string; column: string } | null>(null);
   // The card whose move sheet is open — the touch path's whole gesture (no touch drag).
   const [moving, setMoving] = useState<StoryView | null>(null);
   const [activeColumn, setActiveColumn] = useState<string>(UNTOUCHED);
 
-  const enabled = automations.filter((automation) => automation.enabled);
-
-  // Ordered by the flow, not by when somebody happened to create each Automation (#128, design D1).
-  // Deduplicated: two Automations may share a trigger label, and that is one column, not two.
-  const byTrigger = new Map(enabled.map((automation) => [automation.triggerLabel, automation]));
-  // The first hand-off that lands on a column, since #165 made the output a set: the board is a
-  // row of columns, so it follows the spine the canvas draws and leaves the branches to the canvas,
-  // which has room to say what they are.
-  const handsTo = (automation: BoardAutomation) =>
-    automation.outputLabels
-      .map((label) => byTrigger.get(label))
-      .find((target) => target !== undefined);
-  const receives = new Set(
-    enabled.map((automation) => handsTo(automation)?.id).filter(Boolean) as string[],
-  );
-
-  /** Roots first, then whatever each hands to — the same walk the canvas does. */
-  const chains: BoardAutomation[][] = [];
-  const placed = new Set<string>();
-  for (const root of enabled.filter((automation) => !receives.has(automation.id))) {
-    const chain: BoardAutomation[] = [];
-    let current: BoardAutomation | undefined = root;
-    while (current && !placed.has(current.id)) {
-      placed.add(current.id);
-      chain.push(current);
-      current = handsTo(current);
-    }
-    chains.push(chain);
-  }
-  // A cycle has no root, so its members are still unplaced. Shown rather than dropped.
-  for (const orphan of enabled) {
-    if (!placed.has(orphan.id)) {
-      placed.add(orphan.id);
-      chains.push([orphan]);
-    }
-  }
-
-  // Chains of one are Automations outside the workflow (DEC-053). They still get columns — a Story
-  // can carry `ai:estimate` and has to be somewhere — but after the flow, because the board orders
-  // the flow rather than deciding what exists.
-  const flow = chains.filter((chain) => chain.length > 1);
-  const loose = chains.filter((chain) => chain.length === 1);
-  const ordered = [...flow.flat(), ...loose.flat()];
-  const columns = [...new Set(ordered.map((automation) => automation.triggerLabel))];
+  const stages = lifecycle.data?.stages ?? [];
+  const claimants = claimantsByToStage(automations);
   const gated = new Set(
-    automations.filter((a) => a.enabled && a.requiresApproval).map((a) => a.triggerLabel),
+    automations
+      .filter((automation) => automation.enabled && automation.requiresApproval)
+      .map((automation) => fold(automation.triggerLabel)),
   );
 
   // The latest Run per Story — the one whose state the card wears.
@@ -149,7 +140,9 @@ export function KanbanBoard({
   }
 
   function columnOf(story: StoryView): string {
-    return story.labels.find((label) => columns.includes(label)) ?? UNTOUCHED;
+    return (
+      stages.find((stage) => story.labels.some((label) => fold(label) === fold(stage))) ?? UNTOUCHED
+    );
   }
 
   /** Whether the move was accepted — the sheet stays open on a refusal, so the caller must know. */
@@ -171,25 +164,42 @@ export function KanbanBoard({
   }
 
   /**
-   * A Story has finished at its step when its latest Run succeeded there (#128, design D2). Those
-   * Stories are the ones a person is being waited on for: the step is done and the chain stops.
+   * **The one arrangement function** (AC 12). The boundary's select calls it, and so does its drop —
+   * so the gesture Playwright cannot perform and the control it can drive are the same code, and the
+   * control is what puts the logic under test at all.
+   *
+   * One ordinary Automation update, through `requestFor` so the fields this screen never shows survive
+   * the write (ADR-0019). What travels is `claimPatch`'s answer: the to-stage, and — at any boundary
+   * but the first — the from-stage as the Automation's new trigger, because a claim's from-stage *is*
+   * its trigger (design D2) and a step moved to a later boundary now fires there. Only this Automation
+   * is written, so no other Automation's claimed transition can change as a consequence (AC 5).
+   *
+   * A stage that does not exist yet is created by the write itself — the domain inserts the from-stage
+   * immediately before the to-stage — which is how a step gets placed first without a stage editor
+   * coming into scope (AC 4).
    */
-  function finishedAt(story: StoryView, automation: BoardAutomation): boolean {
-    const run = latestRun.get(story.vendorId);
-    return run?.state === "Succeeded" && run.automationId === automation.id;
+  function assign(automation: BoardAutomation, boundary: LifecycleBoundary) {
+    setCarried(null);
+    setOverBoundary(null);
+    updateAutomation.mutate({
+      id: automation.id,
+      request: requestFor(automation, claimPatch(boundary)),
+    });
   }
 
   /**
-   * The steps a human column follows: the end of a chain that hands work to nobody.
-   *
-   * Only inside the flow, deliberately. An Automation outside the workflow hands to nobody either,
-   * but "a person carries the work onward" means nothing there — `ai:estimate` is a trigger somebody
-   * applies, not a step whose output waits for a decision. A column after each of those would be
-   * noise the reader has to learn to ignore.
+   * Clearing is its own change, not an assignment to nowhere: the step keeps firing at its own stage
+   * and stops handing work on, so the boundary after it becomes a person's turn (AC 3, BR-006). The
+   * trigger is deliberately untouched — clearing a hand-off must not also move the step.
    */
-  const awaitsAPerson = flow
-    .map((chain) => chain[chain.length - 1])
-    .filter((last): last is BoardAutomation => last !== undefined && handsTo(last) === undefined);
+  function clear(automation: BoardAutomation) {
+    setCarried(null);
+    setOverBoundary(null);
+    updateAutomation.mutate({
+      id: automation.id,
+      request: requestFor(automation, { toStage: null }),
+    });
+  }
 
   const piles: Pile[] = [
     {
@@ -197,45 +207,22 @@ export function KanbanBoard({
       label: t("board.untouched"),
       stories: stories.filter((story) => columnOf(story) === UNTOUCHED),
     },
-    ...columns.flatMap((column) => {
-      const automation = byTrigger.get(column);
-      const waiting = automation && awaitsAPerson.includes(automation) ? automation : undefined;
-
-      const step: Pile = {
-        key: column,
-        label: column,
-        stories: stories.filter(
-          (story) => columnOf(story) === column && !(waiting && finishedAt(story, waiting)),
-        ),
-      };
-
-      // The wait given a place, immediately after the step whose output nobody has carried on.
-      return waiting
-        ? [
-            step,
-            {
-              key: `human:${column}`,
-              label: t("board.human"),
-              stories: stories.filter(
-                (story) => columnOf(story) === column && finishedAt(story, waiting),
-              ),
-              after: waiting,
-            } satisfies Pile,
-          ]
-        : [step];
-    }),
+    ...stages.map((stage) => ({
+      key: stage,
+      label: stage,
+      stories: stories.filter((story) => columnOf(story) === stage),
+    })),
   ];
 
-  // A column can disappear under the pager's feet (an Automation disabled mid-visit); the first
-  // pile is always there to fall back on.
+  // A column can disappear under the pager's feet; the first pile is always there to fall back on.
   const mobileActive = piles.some((pile) => pile.key === activeColumn)
     ? activeColumn
     : (piles[0]?.key ?? UNTOUCHED);
 
-  /** The move menu is the semantics; drag is sugar (design D1). Human piles are never targets. */
+  /** The move menu is the semantics; drag is sugar (design D1). Every column is a legal target. */
   const targetsFrom = (current: string): MoveTarget[] =>
     piles
-      .filter((pile) => !pile.after && pile.key !== current)
+      .filter((pile) => pile.key !== current)
       .map((pile) => ({ key: pile.key, label: pile.label }));
 
   const movingRun = moving ? latestRun.get(moving.vendorId) : undefined;
@@ -246,6 +233,15 @@ export function KanbanBoard({
       {move.isError && (
         <p className="text-sm text-destructive" role="alert">
           {t("board.moveFailed")}
+        </p>
+      )}
+      {/* A refused arrangement change, said once and at the top, in the API's own words: BR-003's
+          refusal names the Automation already claiming that transition (AC 6), and a generic line
+          would throw that name away — which is the whole content of the refusal. */}
+      {updateAutomation.isError && (
+        <p className="text-sm text-destructive" role="alert">
+          {(updateAutomation.error instanceof ApiError && updateAutomation.error.detail) ||
+            t("board.arrangeFailed")}
         </p>
       )}
 
@@ -261,10 +257,8 @@ export function KanbanBoard({
               "flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50",
               pile.key === mobileActive
                 ? "bg-primary text-primary-foreground"
-                : pile.after
-                  ? "bg-warning/15 text-warning"
-                  : "bg-muted text-muted-foreground",
-              pile.key !== UNTOUCHED && !pile.after && "font-mono",
+                : "bg-muted text-muted-foreground",
+              pile.key !== UNTOUCHED && "font-mono",
             )}
           >
             {pile.label} <b className="font-semibold">{pile.stories.length}</b>
@@ -274,164 +268,152 @@ export function KanbanBoard({
 
       <div className="flex gap-3 md:snap-x md:overflow-x-auto md:pb-2">
         {piles.map((pile) => (
-          <section
-            key={pile.key}
-            aria-label={pile.label}
-            className={cn(
-              "flex w-full shrink-0 flex-col gap-2 rounded-lg border p-2 transition-colors md:w-64 md:snap-start",
-              pile.key !== mobileActive && "hidden md:flex",
-              // A place, not a marker: the human column is its own kind — warm fill, left accent,
-              // person icon and a one-line explainer, so color is never the only signal.
-              pile.after
-                ? "border-l-4 border-warning/60 border-l-warning bg-warning/10"
-                : "bg-muted/40",
-              over === pile.key && !pile.after && "border-primary bg-accent ring-4 ring-primary/10",
+          <div key={pile.key} className="flex shrink-0 items-stretch gap-3">
+            {/* The boundary into this stage: the transition an Automation claims, drawn between the
+                two columns it joins and on no other (AC 2). Untouched has none — nothing transitions
+                into "carrying no stage label at all". */}
+            {pile.key === UNTOUCHED ? null : (
+              <Boundary
+                // The stage before this one, or null at the head of the flow — where an Automation
+                // assigned here brings its own trigger label as the new first stage (AC 4).
+                boundary={{ from: stages[stages.indexOf(pile.key) - 1] ?? null, to: pile.key }}
+                claimant={claimants.get(fold(pile.key))}
+                automations={automations}
+                canArrange={canArrange}
+                carried={carried}
+                hovered={overBoundary === pile.key}
+                gated={gated}
+                busy={updateAutomation.isPending}
+                // At phone width two columns never share a screen (#2b), so the boundary travels with
+                // the column it leads into — "the transition into what you are looking at" is the
+                // reading that survives having one column on screen. AC 12 asks for an explicit
+                // control at every width the board supports, and this is where it lives on the pager.
+                visible={pile.key === mobileActive}
+                onHover={setOverBoundary}
+                onCarry={setCarried}
+                onAssign={assign}
+                onClear={clear}
+              />
             )}
-            onDragOver={(event) => {
-              // A human column is not a label, so nothing can be dropped into it: a Story arrives
-              // there by its step finishing, never by a gesture.
-              if (pile.after) return;
-              event.preventDefault();
-              setOver(pile.key);
-            }}
-            onDragLeave={(event) => {
-              // Leaving into a child still counts as inside; only a true exit clears the target.
-              if (event.currentTarget.contains(event.relatedTarget as Node)) return;
-              setOver((current) => (current === pile.key ? null : current));
-            }}
-            onDrop={() => {
-              setOver(null);
-              if (pile.after) return;
-              const story = stories.find((candidate) => candidate.vendorId === dragging?.story);
-              if (story) attempt(story, pile.key);
-              setDragging(null);
-            }}
-          >
-            <header className="flex items-center justify-between gap-2 px-1">
-              <span className="flex min-w-0 items-center gap-1.5">
-                {pile.after ? (
-                  <UserRound className="size-3.5 shrink-0 text-warning" aria-hidden="true" />
-                ) : null}
-                <span
-                  className={cn(
-                    "truncate text-xs font-semibold",
-                    pile.after
-                      ? "text-warning"
-                      : pile.key === UNTOUCHED
+
+            <section
+              aria-label={pile.label}
+              data-stage={pile.key === UNTOUCHED ? undefined : pile.key}
+              className={cn(
+                "flex w-full shrink-0 flex-col gap-2 rounded-lg border bg-muted/40 p-2 transition-colors md:w-64 md:snap-start",
+                pile.key !== mobileActive && "hidden md:flex",
+                over === pile.key && "border-primary bg-accent ring-4 ring-primary/10",
+              )}
+              onDragOver={(event) => {
+                // Only a Story: an Automation being moved to a boundary is not a drop a column
+                // accepts, and taking it would put a claim where a label belongs.
+                if (event.dataTransfer.types.includes(AUTOMATION_BLOCK)) return;
+                event.preventDefault();
+                setOver(pile.key);
+              }}
+              onDragLeave={(event) => {
+                // Leaving into a child still counts as inside; only a true exit clears the target.
+                if (event.currentTarget.contains(event.relatedTarget as Node)) return;
+                setOver((current) => (current === pile.key ? null : current));
+              }}
+              onDrop={(event) => {
+                setOver(null);
+                if (event.dataTransfer.types.includes(AUTOMATION_BLOCK)) return;
+                const story = stories.find((candidate) => candidate.vendorId === dragging?.story);
+                if (story) attempt(story, pile.key);
+                setDragging(null);
+              }}
+            >
+              <header className="flex items-center justify-between gap-2 px-1">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span
+                    className={cn(
+                      "truncate text-xs font-semibold",
+                      pile.key === UNTOUCHED
                         ? "tracking-wide text-muted-foreground uppercase"
                         : "font-mono text-muted-foreground",
-                  )}
-                  title={pile.after ? t("board.human.hint") : undefined}
-                >
-                  {pile.label}
+                    )}
+                  >
+                    {pile.label}
+                  </span>
+                  {/* The other wait, and deliberately still on the step's own column: a Run awaiting
+                      approval has reached that step, so a column before it would claim the work had
+                      not arrived (#128, design D2). It stays distinct from an unclaimed boundary,
+                      which is a different thing entirely (BR-007, UC-013, AC 8). */}
+                  {gated.has(fold(pile.key)) ? <GateChip /> : null}
                 </span>
-                {/* The other wait, and deliberately still on the step's own column: a Run awaiting
-                    approval has reached that step, so a column before it would claim the work had
-                    not arrived (#128, design D2). A chip, not a badge — it must not compete with
-                    the run badges the cards wear. */}
-                {gated.has(pile.key) ? <GateChip /> : null}
-              </span>
-              <span className="flex items-center gap-1.5">
-                {/* Only on a step that currently hands work on: placing a person is breaking that
-                    hand-off, and there is nothing to break where the chain already stops. */}
-                {(() => {
-                  const step = byTrigger.get(pile.key);
-                  const next = step ? handsTo(step) : undefined;
-                  return step && next ? (
-                    <button
-                      type="button"
-                      className="rounded p-0.5 text-warning outline-none hover:bg-warning/10 focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                      title={t("board.requirePerson")}
-                      aria-label={t("board.requirePerson")}
-                      disabled={updateAutomation.isPending}
-                      onClick={() =>
-                        updateAutomation.mutate({
-                          id: step.id,
-                          request: {
-                            triggerLabel: step.triggerLabel,
-                            triggerState: step.triggerState,
-                            action: step.action,
-                            runtime: step.runtime,
-                            requiresApproval: step.requiresApproval,
-                            timeoutMinutes: step.timeoutMinutes,
-                            promptPath: step.promptPath ?? null,
-                            outputLabels: [],
-                          },
-                        })
-                      }
-                    >
-                      <UserRoundPlus className="size-3.5" aria-hidden="true" />
-                    </button>
-                  ) : null;
-                })()}
                 <span className="text-xs font-semibold text-muted-foreground">
                   {pile.stories.length}
                 </span>
-              </span>
-            </header>
+              </header>
 
-            {/* The kind, said rather than implied: which step this wait follows, and that the
-                column takes no drops. */}
-            {pile.after ? (
-              <p className="px-1 text-[10.5px] leading-snug text-warning">
-                <span className="font-mono">{pile.after.triggerLabel}</span>{" "}
-                {t("board.human.explainer")}
-              </p>
-            ) : null}
+              {/* BR-001, said where the gesture pointed — on the column, before any write. */}
+              {refused?.column === pile.key && moving === null ? (
+                <p
+                  className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {t("board.refusedActiveRun")}
+                </p>
+              ) : null}
 
-            {/* BR-001, said where the gesture pointed — on the column, before any write. */}
-            {refused?.column === pile.key && moving === null ? (
-              <p
-                className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-xs text-destructive"
-                role="status"
-                aria-live="polite"
-              >
-                {t("board.refusedActiveRun")}
-              </p>
-            ) : null}
+              {/* The drag's visible, readable outcome — an explicit slot naming the label a drop
+                  would apply. */}
+              {over === pile.key && dragging ? (
+                <div className="flex h-13 shrink-0 items-center justify-center gap-1 rounded-md border-2 border-dashed border-primary/60 bg-background/60 text-xs font-medium text-primary">
+                  {t("board.dropToApply")}
+                  <span className={cn(pile.key !== UNTOUCHED && "font-mono")}>{pile.label}</span>
+                </div>
+              ) : null}
 
-            {/* The drag's visible, readable outcome — an explicit slot naming the label a drop
-                would apply. */}
-            {over === pile.key && dragging && !pile.after ? (
-              <div className="flex h-13 shrink-0 items-center justify-center gap-1 rounded-md border-2 border-dashed border-primary/60 bg-background/60 text-xs font-medium text-primary">
-                {t("board.dropToApply")}
-                <span className={cn(pile.key !== UNTOUCHED && "font-mono")}>{pile.label}</span>
-              </div>
-            ) : null}
-
-            {pile.stories.length === 0 ? (
-              <p className="px-1 py-4 text-xs text-muted-foreground">
-                {pile.after ? t("board.human.empty") : t("board.columnEmpty")}
-              </p>
-            ) : (
-              pile.stories.map((story) => (
-                <StoryCard
-                  key={story.vendorId}
-                  projectId={projectId}
-                  story={story}
-                  run={latestRun.get(story.vendorId)}
-                  targets={targetsFrom(pile.key)}
-                  gated={gated}
-                  human={Boolean(pile.after)}
-                  lifted={dragging?.story === story.vendorId}
-                  onDragStart={() => {
-                    setRefused(null);
-                    setDragging({ story: story.vendorId, from: pile.key });
-                  }}
-                  onDragEnd={() => {
-                    setDragging(null);
-                    setOver(null);
-                  }}
-                  onMove={(to) => attempt(story, to)}
-                  onOpenMove={() => {
-                    setRefused(null);
-                    setMoving(story);
-                  }}
-                />
-              ))
-            )}
-          </section>
+              {pile.stories.length === 0 ? (
+                <p className="px-1 py-4 text-xs text-muted-foreground">{t("board.columnEmpty")}</p>
+              ) : (
+                pile.stories.map((story) => (
+                  <StoryCard
+                    key={story.vendorId}
+                    projectId={projectId}
+                    story={story}
+                    run={latestRun.get(story.vendorId)}
+                    targets={targetsFrom(pile.key)}
+                    gated={gated}
+                    lifted={dragging?.story === story.vendorId}
+                    onDragStart={() => {
+                      setRefused(null);
+                      setDragging({ story: story.vendorId, from: pile.key });
+                    }}
+                    onDragEnd={() => {
+                      setDragging(null);
+                      setOver(null);
+                    }}
+                    onMove={(to) => attempt(story, to)}
+                    onOpenMove={() => {
+                      setRefused(null);
+                      setMoving(story);
+                    }}
+                  />
+                ))
+              )}
+            </section>
+          </div>
         ))}
+
+        {/* The end of the flow, stated as the fact it is and asserting nothing about who acts next
+            (AC 8, BR-007): BR-007 permits a Run straight to Executing, and DEC-062 makes pushing the
+            Agent's own act, so any sentence naming an actor here would be wrong for some project.
+            Drawn only once there is a flow to end. */}
+        {stages.length > 0 ? (
+          <div
+            data-flow-end="true"
+            className={cn(
+              "w-40 shrink-0 items-center rounded-lg border border-dashed px-3 py-2 text-xs text-muted-foreground",
+              stages[stages.length - 1] === mobileActive ? "flex" : "hidden md:flex",
+            )}
+          >
+            {t("board.flowEnds")}
+          </div>
+        ) : null}
       </div>
 
       {/* The touch move path: the sheet IS the gesture (#2b) — targets at thumb size, the Gate
@@ -480,7 +462,7 @@ export function KanbanBoard({
                   <span className={cn(target.key !== UNTOUCHED && "font-mono")}>
                     {target.label}
                   </span>
-                  {gated.has(target.key) ? <GateChip /> : null}
+                  {gated.has(fold(target.key)) ? <GateChip /> : null}
                 </button>
               ))
             ) : null}
@@ -489,6 +471,209 @@ export function KanbanBoard({
       </Sheet>
     </div>
   );
+}
+
+/**
+ * One boundary of the lifecycle: the transition into <c>toStage</c>.
+ *
+ * It says three things, in the order a reader needs them: who moves work across it, that a person
+ * carries it when nobody does, and how to change either. The middle one is stated as a fact about who
+ * acts (BR-006, AC 3) — no validation error, no "incomplete configuration" marker, and no elapsed
+ * time, because a human wait is untimed and a clock here would invent an expectation the product does
+ * not hold. It is visually its own kind, distinct from the on-card approval gate, which stays on the
+ * column of the step it gates (AC 8).
+ */
+function Boundary({
+  boundary,
+  claimant,
+  automations,
+  canArrange,
+  carried,
+  hovered,
+  gated,
+  busy,
+  visible,
+  onHover,
+  onCarry,
+  onAssign,
+  onClear,
+}: {
+  /** The transition this boundary is. `from` is null at the head of the flow (AC 4). */
+  boundary: LifecycleBoundary;
+  claimant: BoardAutomation | undefined;
+  automations: BoardAutomation[];
+  canArrange: boolean;
+  carried: BoardAutomation | null;
+  hovered: boolean;
+  gated: ReadonlySet<string>;
+  busy: boolean;
+  visible: boolean;
+  onHover: (toStage: string | null) => void;
+  onCarry: (automation: BoardAutomation | null) => void;
+  onAssign: (automation: BoardAutomation, boundary: LifecycleBoundary) => void;
+  onClear: (automation: BoardAutomation) => void;
+}) {
+  const toStage = boundary.to;
+  const refusal = carried ? refusalFor(carried, boundary, automations) : null;
+
+  /**
+   * What the select offers: every enabled Automation. Deliberately not filtered down to the ones that
+   * would be accepted — BR-003's refusal names the Automation already claiming the transition (AC 6),
+   * and that sentence is the useful answer to "why can this not go here". Hiding the option would
+   * replace a named refusal with an unexplained absence.
+   *
+   * The one exclusion is the Automation already here, because assigning it to where it is does nothing.
+   */
+  const candidates = automations.filter(
+    (automation) => automation.enabled && automation.id !== claimant?.id,
+  );
+
+  return (
+    <div
+      data-boundary={toStage}
+      className={cn(
+        // Full height so it reads as a wall between two columns, but content at the top so the
+        // boundary's own sentence sits level with the column headers either side of it — observed in
+        // the browser: centred, it floated in the middle of a tall empty block (ADR-0001).
+        "w-44 shrink-0 flex-col items-center gap-1.5 self-stretch rounded-lg border border-dashed px-2 py-2",
+        visible ? "flex" : "hidden md:flex",
+        // A place, not a marker: an unclaimed boundary is its own kind — warm fill, dashed edge,
+        // person icon and a one-line explainer, so colour is never the only signal.
+        claimant ? "border-border" : "border-warning/60 bg-warning/10",
+        carried && hovered && !refusal && "border-primary bg-primary/10",
+        carried && hovered && refusal && "border-destructive bg-destructive/10",
+      )}
+      onDragOver={(event) => {
+        if (!canArrange) return;
+        if (!event.dataTransfer.types.includes(AUTOMATION_BLOCK)) return;
+        onHover(toStage);
+        // A refused boundary never calls preventDefault, so the cursor says no-drop before the drop
+        // is attempted — and the sentence below says why, here rather than in a toast afterwards.
+        if (!refusal) event.preventDefault();
+      }}
+      onDragLeave={() => onHover(null)}
+      onDrop={(event) => {
+        onHover(null);
+        if (!canArrange || refusal) return;
+        const id = event.dataTransfer.getData(AUTOMATION_BLOCK);
+        const dragged = automations.find((candidate) => candidate.id === id);
+        if (!dragged) return;
+        event.preventDefault();
+        // The same function the select below calls (AC 12) — one change, two ways in.
+        onAssign(dragged, boundary);
+      }}
+    >
+      {claimant ? (
+        <>
+          <span
+            // Named in the DOM as well as drawn: "this Automation is on this boundary and on no
+            // other" (AC 2) has to be assertable without the assertion tripping over the assign
+            // control's own list of candidates, which names every Automation at every boundary.
+            data-claimant={claimant.triggerLabel}
+            // The handle is the label, not the whole boundary: a region that is entirely draggable
+            // cannot be selected, and the text inside it stops being text.
+            draggable={canArrange}
+            onDragStart={(event) => {
+              event.dataTransfer.setData(AUTOMATION_BLOCK, claimant.id);
+              event.dataTransfer.effectAllowed = "move";
+              // Announced through React rather than read back from the drag: `getData` is
+              // deliberately empty during `dragover` for security, so a boundary could otherwise only
+              // say "something", and saying which claim a drop moves is the point of the gesture.
+              onCarry(claimant);
+            }}
+            onDragEnd={() => onCarry(null)}
+            className={cn(
+              "flex max-w-full items-center gap-1 truncate font-mono text-[11px] font-semibold text-primary",
+              canArrange && "cursor-grab active:cursor-grabbing",
+            )}
+            title={canArrange ? t("board.boundary.move") : undefined}
+          >
+            {claimant.triggerLabel}
+          </span>
+          {gated.has(fold(claimant.triggerLabel)) ? <GateChip /> : null}
+          <span className="text-center text-[10px] leading-snug text-muted-foreground">
+            {t("board.boundary.claimed")}
+          </span>
+        </>
+      ) : (
+        <>
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-warning">
+            <UserRound className="size-3 shrink-0" aria-hidden="true" />
+            {t("board.boundary.person")}
+          </span>
+          <span className="text-center text-[10px] leading-snug text-muted-foreground">
+            {boundary.from === null
+              ? t("board.boundary.firstHint")
+              : t("board.boundary.personHint")}
+          </span>
+        </>
+      )}
+
+      {/* What this drop would do, spelled out before it happens — or the rule that stops it, quoted
+          where the pointer is rather than after the gesture. */}
+      {carried && hovered ? (
+        <span className="text-center text-[10px] leading-snug">
+          {refusal ? (
+            <span className="text-destructive">
+              <span className="font-mono">{carried.triggerLabel}</span> {explain(refusal)}
+            </span>
+          ) : (
+            <span className="text-primary">
+              <span className="font-mono">{carried.triggerLabel}</span>{" "}
+              {t("board.boundary.wouldMoveTo")} <span className="font-mono">{toStage}</span>
+            </span>
+          )}
+        </span>
+      ) : null}
+
+      {/* The explicit controls — the same changes the drag makes, through the same function (AC 12).
+          Offered at every width, and to nobody who may not rearrange (BR-009, AC 9). */}
+      {canArrange ? (
+        <>
+          <NativeSelect
+            className="h-7 w-full text-[11px]"
+            aria-label={`${t("board.boundary.assign")} ${toStage}`}
+            value=""
+            disabled={busy}
+            onChange={(event) => {
+              const chosen = automations.find((candidate) => candidate.id === event.target.value);
+              if (chosen) onAssign(chosen, boundary);
+            }}
+          >
+            {/* Short enough to fit the lane; the control's accessible name above carries the whole
+                sentence, which is what a screen reader reads and what the suite locates it by. */}
+            <option value="">{t("board.boundary.assignShort")}</option>
+            {candidates.map((candidate) => (
+              <option key={candidate.id} value={candidate.id}>
+                {candidate.triggerLabel}
+              </option>
+            ))}
+          </NativeSelect>
+          {claimant ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              className="h-7 text-[11px] text-warning"
+              disabled={busy}
+              // Its own change, not an assignment to nowhere: the step keeps firing at its own stage
+              // and stops handing work on, so this boundary becomes a person's turn (AC 3).
+              onClick={() => onClear(claimant)}
+            >
+              {t("board.boundary.clear")}
+            </Button>
+          ) : null}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+/** The surviving refusal sentences, each naming the rule rather than the symptom. */
+function explain(refusal: DropRefusal): string {
+  if (refusal === "shared") return t("board.boundary.refuseShared");
+  if (refusal === "self") return t("board.boundary.refuseSelf");
+  return t("board.boundary.refuseAlready");
 }
 
 /**
@@ -502,7 +687,6 @@ function StoryCard({
   run,
   targets,
   gated,
-  human,
   lifted,
   onDragStart,
   onDragEnd,
@@ -514,7 +698,6 @@ function StoryCard({
   run: RunView | undefined;
   targets: MoveTarget[];
   gated: ReadonlySet<string>;
-  human: boolean;
   lifted: boolean;
   onDragStart: () => void;
   onDragEnd: () => void;
@@ -530,7 +713,6 @@ function StoryCard({
       onDragEnd={onDragEnd}
       className={cn(
         "group relative flex min-h-11 cursor-grab flex-col gap-1.5 rounded-md border bg-card p-2.5 transition-shadow active:cursor-grabbing md:min-h-0",
-        human && "border-warning/40",
         // The lift: the dragged card visibly leaves the column instead of staying put.
         lifted && "-rotate-1 opacity-90 shadow-lg",
       )}
@@ -578,7 +760,7 @@ function StoryCard({
                   <span className={cn("text-xs", target.key !== UNTOUCHED && "font-mono")}>
                     {target.label}
                   </span>
-                  {gated.has(target.key) ? <GateChip /> : null}
+                  {gated.has(fold(target.key)) ? <GateChip /> : null}
                 </DropdownMenuItem>
               ))}
               <DropdownMenuSeparator />
@@ -594,11 +776,6 @@ function StoryCard({
     </article>
   );
 }
-
-/**
- * The approval gate as a chip on the thing that is gated — the column header or a move target —
- * instead of a badge competing with the run badges the cards wear.
- */
 
 /** What the Story's latest Run is doing, and a way in when it is worth watching. */
 function RunBadge({ projectId, run }: { projectId: string; run: RunView }) {
@@ -629,7 +806,8 @@ function RunBadge({ projectId, run }: { projectId: string; run: RunView }) {
   if (run.state === "AwaitingApproval") {
     return (
       <Link to={to}>
-        {/* The wait carries its age (BR-006): "Plan awaits · 2h" is a queue with a clock. */}
+        {/* This wait carries its age, and it is the Run's own — BR-007's approval gate, not the
+            boundary's. An unclaimed boundary never carries a clock (BR-006). */}
         <Badge className="bg-warning text-warning-foreground">
           {t("board.run.approval")} · {age(run.createdAt)}
         </Badge>
@@ -657,7 +835,7 @@ function RunBadge({ projectId, run }: { projectId: string; run: RunView }) {
   );
 }
 
-/** How long the wait has lasted — BR-006's untimed wait made visible. */
+/** How long a Run has been waiting — the only wait on this board that carries a clock. */
 function age(iso: string): string {
   const minutes = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
   if (minutes < 60) return `${Math.max(minutes, 1)}m`;

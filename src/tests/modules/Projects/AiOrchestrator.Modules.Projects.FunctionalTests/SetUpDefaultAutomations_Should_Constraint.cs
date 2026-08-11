@@ -30,6 +30,23 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
 
     public Task DisposeAsync() => Task.CompletedTask;
 
+    /// <summary>The stored lifecycle, read through the endpoint that serves it — never off the table,
+    /// so what a client would see is what is asserted.</summary>
+    async Task<IReadOnlyList<string>> Stages()
+    {
+        var response = await _client.GetAsync($"/api/projects/{_projectId}/lifecycle");
+        response.EnsureSuccessStatusCode();
+
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        return
+        [
+            .. document
+                .RootElement.GetProperty("stages")
+                .EnumerateArray()
+                .Select(stage => stage.GetString()!),
+        ];
+    }
+
     [Fact]
     public async Task ABodylessCall_Should_ConsentToNothing()
     {
@@ -44,6 +61,31 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
         result.GetProperty("created").GetArrayLength().ShouldBe(0);
         result.GetProperty("skipped").GetArrayLength().ShouldBe(0);
         (await Automations()).GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task InstallingATier_Should_GiveTheProjectALifecycle()
+    {
+        // #310 design D10, and the reason "seed a default lifecycle" could stay out of scope: a stage
+        // exists only as a consequence of an Automation claiming a transition that names it, so a
+        // project that installs the spec-first tier acquires the tier's flow as its lifecycle without
+        // anything seeding one.
+        //
+        // Exercised rather than reasoned about (ADR-0001): a fresh project's lifecycle is empty, and
+        // the assertion is the stored order after the install — which is also the order the board will
+        // draw its columns in, since nothing derives that any more.
+        (await Stages()).ShouldBeEmpty();
+
+        await Invoke(tiers: ["workflow"]);
+
+        // The chain the catalogue claims, in order. `ai:refine` and `ai:status` claim nothing, so they
+        // contribute no stage — a trigger somebody applies on its own is not a place a Story sits.
+        (await Stages()).ShouldBe(["ai:grill", "ai:propose", "ai:implement", "ai:sync"]);
+
+        // Idempotent, like the install itself: a second pass claims nothing new, so the lifecycle is
+        // untouched rather than accumulating a second spelling of every stage.
+        await Invoke(tiers: ["workflow"]);
+        (await Stages()).ShouldBe(["ai:grill", "ai:propose", "ai:implement", "ai:sync"]);
     }
 
     [Fact]

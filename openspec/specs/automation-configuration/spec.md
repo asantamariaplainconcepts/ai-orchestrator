@@ -27,11 +27,17 @@ be arriving in a pending pull request. When the directory does not exist, the li
 project has no Connector, the field SHALL degrade to the plain text input with the reason readable —
 configuration SHALL never be blocked by discovery.
 
-The output labels input SHALL be a picker that also accepts a freely typed value. It SHALL suggest
-the trigger labels of the project's **other enabled** Automations, because wiring the next step of a
-sequential workflow is what this field is most often for, and SHALL NOT suggest the Automation's own
-trigger. Accepting free text SHALL remain possible, because a label may be a mark that triggers
-nothing, or a trigger that does not exist yet.
+The form SHALL ask for the claimed transition and for the marks as **two separate fields**, because
+they are two separate things (see *a transition and a mark are different things*). The transition's
+field SHALL be **single-valued**, so no form on this surface can express a second one, and the marks'
+field SHALL be a set offered whichever answer the hand-on question holds — an Automation that claims no
+transition may still mark the Story.
+
+Both SHALL be pickers that also accept a freely typed value. They SHALL suggest the trigger labels of
+the project's **other enabled** Automations, because naming the next stage of a sequential workflow is
+what the transition's field is most often for, and SHALL NOT suggest the Automation's own trigger.
+Accepting free text SHALL remain possible: a stage may not exist yet, and a mark may name nothing that
+triggers.
 
 A suggestion SHALL be a convenience only: every refusal SHALL also be enforced where the Automation
 is saved, so a caller that does not use the portal is refused identically — and the prompt picker
@@ -72,8 +78,14 @@ SHALL be identical to the one the ungrouped form produced.
 
 #### Scenario: the form offers what is wirable
 
-- **WHEN** an Admin opens the output labels input on a project with other enabled Automations
+- **WHEN** an Admin opens the next-stage input on a project with other enabled Automations
 - **THEN** their trigger labels are offered, and this Automation's own trigger is not
+
+#### Scenario: the claim is one field and the marks are another
+
+- **WHEN** an Admin opens the form
+- **THEN** the claimed transition has one single-valued field, the marks have a field of their own, and
+  there is no way to name a second transition
 
 #### Scenario: a disabled Automation is not offered
 
@@ -374,44 +386,44 @@ SHALL be reported as not found.
 
 ### Requirement: an Automation can hand work on by writing a label when it succeeds
 
-An Automation SHALL carry a **set** of output labels, every one of them applied to the Story through
-the licensed label write when a Run of that Automation succeeds, and applied at no other time. An
-empty set SHALL mean the Automation ends silently. Saving an Automation whose set contains its own
-trigger label SHALL be refused, naming the reason — the refusal SHALL apply to every member, not only
-to a single value.
+An Automation SHALL apply, when a Run of it succeeds and at no other time, its claimed transition's
+**to-stage** where it has one, together with every **mark** it carries. All of them go through the
+licensed label write. An Automation with no claimed transition and no marks SHALL end silently. Saving
+an Automation whose to-stage or whose marks contain its own trigger label SHALL be refused, naming the
+reason — the refusal SHALL apply to every member, not only to a single value.
 
-Labels SHALL be compared the way the vendor compares them, so a set SHALL NOT hold the same label
-twice in two spellings.
+Labels SHALL be compared the way the vendor compares them, so the marks SHALL NOT hold the same label
+twice in two spellings, and a mark SHALL NOT repeat the to-stage.
 
 Every label SHALL be attempted, and a label the vendor could not ensure SHALL be reported to the human
 rather than silently skipped; the Run SHALL fail naming every label that did not land. A Run that
 failed at hand-off MAY already have handed on through the labels that did land, which is what a
-partially applied set means and SHALL be visible on the Story.
+partially applied write means and SHALL be visible on the Story.
 
-#### Scenario: the chain continues past the grill
+#### Scenario: the chain continues past a step
 
-- **WHEN** an Automation with an output label has a Run that succeeds
-- **THEN** the label reaches the vendor, and after reconciliation an Automation triggered by that
-  label has a Run of its own
+- **WHEN** an Automation claiming a transition has a Run that succeeds
+- **THEN** the to-stage label reaches the vendor, and after reconciliation an Automation triggered by
+  that label has a Run of its own
 
 #### Scenario: silence is the default
 
-- **WHEN** an Automation without an output label has a Run that succeeds
+- **WHEN** an Automation with no claimed transition and no marks has a Run that succeeds
 - **THEN** no label is written
 
 #### Scenario: only success hands work on
 
-- **WHEN** a Run of an Automation with an output label fails or is cancelled
+- **WHEN** a Run of an Automation claiming a transition fails or is cancelled
 - **THEN** no label is written
 
 #### Scenario: an Automation may not trigger itself
 
-- **WHEN** an Automation is saved with an output label equal to its trigger label
+- **WHEN** an Automation is saved whose to-stage or whose marks equal its trigger label
 - **THEN** the save is refused with the reason
 
-#### Scenario: several labels leave together
+#### Scenario: the transition and its marks leave together
 
-- **WHEN** an Automation naming several output labels has a Run that succeeds
+- **WHEN** an Automation claiming a transition and carrying marks has a Run that succeeds
 - **THEN** every one of them reaches the vendor through the same write path
 
 #### Scenario: one label the vendor refuses does not hide the others
@@ -422,213 +434,13 @@ partially applied set means and SHALL be visible on the Story.
 
 #### Scenario: the same label twice is one label
 
-- **WHEN** a set is saved containing the same label in two spellings the vendor treats as one
+- **WHEN** marks are saved containing the same label in two spellings the vendor treats as one
 - **THEN** it is stored once
 
 #### Scenario: what was configured before still works
 
 - **WHEN** an Automation configured with a single output label runs after this change
-- **THEN** it behaves exactly as it did, as a set of one
-
-### Requirement: an Admin shapes the pipeline on a canvas
-
-The portal SHALL present a project's Automations as two named things: a **catalogue** of every
-Automation the project has, and a **workflow** — the path they form. An Automation SHALL belong to
-the workflow exactly when it has an edge: it hands work to another, or another hands work to it.
-Every other Automation SHALL appear in the catalogue only, and its absence from the workflow SHALL
-NOT be an error or an omission — it is a trigger that acts on its own when somebody applies its
-label. Membership SHALL be derived from the edges and SHALL NOT be stored.
-
-The catalogue SHALL show each Automation's trigger label, whether it is enabled, and **its relation
-to the workflow** — in the flow, or standalone. That relation SHALL be derived from the same edges
-the workflow draws, so the two surfaces cannot disagree about it. An Automation's action and runtime
-SHALL be shown in the panel that can change them rather than repeated on a row that cannot. Create,
-edit, disable, re-enable and delete SHALL all remain reachable from the tab — create from its
-toolbar, the rest through the panel a catalogue entry opens.
-
-The workflow SHALL render each Automation as a node, with **one edge per output label that equals
-another Automation's trigger label** — several edges leaving one node when several match. The graph
-and its layout SHALL be derived from the Automations themselves, with nothing about the picture
-stored. A chain SHALL read top to bottom at every viewport width, in one layout and one interaction
-model, and SHALL NOT scroll the page sideways. A node SHALL offer editing, opening the same panel a
-catalogue entry opens.
-
-The tab SHALL state how many steps the workflow has and how many times it stops for a person, both
-derived — a count of Automations is a fact about the catalogue and says nothing about the pipeline.
-
-Where several edges leave one node, the workflow SHALL state that they do not run at once: BR-001
-allows one active Run per Story, so a second simultaneous match is ignored rather than queued. A
-picture that draws branches without saying this SHALL be treated as claiming otherwise.
-
-The workflow SHALL let an Admin connect one Automation to another, which **adds** the downstream
-trigger label to the upstream set, and disconnect them, which **removes that label and leaves the
-rest**. It SHALL show where a human is required — a broken chain between two Automations, and an
-Automation that requires approval — and let the Admin add or remove that requirement in both
-positions. Every change available by dragging SHALL be available from an explicit control at every
-viewport width. All changes SHALL go through the ordinary Automation update, so its refusals apply
-unchanged.
-
-#### Scenario: the seeded defaults draw the shipped pipeline
-
-- **WHEN** a project with the default Automations opens the canvas
-- **THEN** grill and propose are connected, the step after propose is shown as requiring a human,
-  and no canvas configuration exists anywhere
-
-#### Scenario: an Automation outside the chain
-
-- **WHEN** a project has an Automation that neither hands work on nor receives it
-- **THEN** it appears in the catalogue and not in the workflow, and nothing reports that as a
-  problem
-
-#### Scenario: a catalogue entry states its relation to the flow
-
-- **WHEN** a project holds both a chained and an unchained Automation
-- **THEN** the chained one reads as in the workflow and the unchained one as standalone, matching
-  what the workflow drew
-
-#### Scenario: the chain does not wrap
-
-- **WHEN** a chain longer than the viewport renders at any width
-- **THEN** it reads top to bottom without wrapping, and neither the chain's own container nor the
-  page scrolls sideways
-
-#### Scenario: how big the flow is
-
-- **WHEN** the Automations tab renders a workflow
-- **THEN** the tab states its number of steps and how many times it stops for a person, and both
-  match the Automations the workflow drew
-
-#### Scenario: a project with no chain at all
-
-- **WHEN** every Automation in a project stands alone
-- **THEN** the catalogue lists them and the workflow shows an empty state saying what would make a
-  flow
-
-#### Scenario: closing the chain makes the pipeline autonomous
-
-- **WHEN** the human requirement is removed from the gap between two Automations
-- **THEN** the upstream Automation's output label becomes the downstream trigger label, and a
-  subsequent successful Run of the upstream Automation causes a Run of the downstream one with
-  no human acting
-
-#### Scenario: opening the chain restores the wait
-
-- **WHEN** a human requirement is placed on a connection
-- **THEN** the upstream output label is cleared and no Run follows automatically
-
-#### Scenario: approval is the same field the form shows
-
-- **WHEN** the human requirement is added to or removed from an Automation itself
-- **THEN** that Automation's approval requirement changes, and the form reflects it
-
-#### Scenario: a refused change is reported, not applied
-
-- **WHEN** a connection would make an Automation trigger itself, or would collide with another
-  Automation's trigger
-- **THEN** the change is refused with its reason and the canvas returns to what is stored
-
-#### Scenario: no gesture is drag-only
-
-- **WHEN** the canvas renders at any width
-- **THEN** every connection and human-requirement change offered by dragging is offered by an
-  explicit control
-
-#### Scenario: two edges leave one node
-
-- **WHEN** an Automation names two output labels that each match another enabled Automation's
-  trigger
-- **THEN** two edges leave that node, and the workflow says that branches serialize rather than run
-  at once
-
-#### Scenario: disconnecting one branch keeps the other
-
-- **WHEN** one of two connections leaving an Automation is removed
-- **THEN** only that label leaves the set, and the other edge still renders
-
-### Requirement: an Admin places the human review by dragging it where the person belongs
-
-The portal SHALL let an Admin drag a human-review block from the catalogue and drop it into a gap
-between two steps of the workflow. Dropping it SHALL clear the **preceding** step's output label, so
-the chain stops there and a person reviews what that step produced before the work continues.
-
-The block SHALL NOT change any step's approval requirement. Reviewing what a step produced and
-approving what a step is about to do are two different waits with two different run-time behaviours
-(BR-007), and the workflow SHALL keep them distinguishable: the block is the first, and the control
-on the step's own card remains the second.
-
-The block SHALL NOT be a persisted entity, and its position SHALL NOT be stored — the absent output
-label is the fact.
-
-Removing the block SHALL restore the preceding step's output label where the step drawn after the
-gap makes the destination unambiguous. Where nothing follows the gap, removal SHALL require naming a
-destination, because a label names one and an absence does not.
-
-Moving the block from one gap to another SHALL clear the new gap's preceding output label **before**
-restoring the old one, so that an interrupted move leaves a review in both places and never in
-neither.
-
-Every change SHALL go through the ordinary Automation update, so its refusals apply unchanged; a
-refused change SHALL return the workflow to what is stored and SHALL show the reason given. While a
-drag is in progress the gaps that can accept the block SHALL be marked, and a gap that would be
-refused SHALL NOT appear as a target.
-
-Dragging SHALL remain sugar: the controls that break and restore a connection SHALL stay available at
-every viewport width, and below the width at which the flow reads left to right, dragging SHALL NOT
-be offered at all.
-
-#### Scenario: placing a person after a step
-
-- **WHEN** an Admin drops the human block into the gap after a step that hands work on
-- **THEN** that step's output label is cleared, the block is drawn in that gap, and no step's
-  approval requirement changes
-
-#### Scenario: the two waits stay different things
-
-- **WHEN** a step requires approval and the gap after it holds no block
-- **THEN** the card shows the approval requirement and the gap shows a connected chain, and neither
-  is drawn as the other
-
-#### Scenario: removing the person where the destination is known
-
-- **WHEN** an Admin removes a block from a gap that has a step drawn after it
-- **THEN** the preceding step's output label becomes that step's trigger label and the chain closes
-
-#### Scenario: removing the person with nothing after the gap
-
-- **WHEN** an Admin removes a block from the end of a chain
-- **THEN** they are asked which Automation the work should be handed to, because an absence names no
-  destination
-
-#### Scenario: moving the person along the flow
-
-- **WHEN** an Admin drags a placed block from one gap to another
-- **THEN** the step before the new gap stops handing work on and the step before the old gap resumes
-
-#### Scenario: an interrupted move fails safe
-
-- **WHEN** the new gap has been broken and the old one has not yet been reconnected
-- **THEN** a person is asked in both places, and no work continues unreviewed
-
-#### Scenario: a refused change changes nothing
-
-- **WHEN** a change would be refused by the ordinary Automation update
-- **THEN** the workflow returns to what is stored and the reason is shown
-
-#### Scenario: an impossible gap is not a target
-
-- **WHEN** a drag is in progress
-- **THEN** the gaps that can accept the block are marked and one that would be refused is not
-  offered
-
-#### Scenario: the same change without dragging
-
-- **WHEN** an Admin uses the explicit break or restore control instead
-- **THEN** the output label changes identically, at every viewport width
-
-#### Scenario: no dragging where the flow is vertical
-
-- **WHEN** the workflow renders below the width at which it reads left to right
-- **THEN** dragging is not offered and every change remains reachable
+- **THEN** it behaves exactly as it did, as a claimed transition with no marks
 
 ### Requirement: a phase timeout is bounded, and the infrastructure honours the bound
 
@@ -920,51 +732,6 @@ gaps are one decision, and four reviews of one decision is the cost this consoli
 - **WHEN** more than one step needs its starter installed
 - **THEN** a single pull request carries them all
 
-### Requirement: the workflow reads top-down at every width
-
-The workflow SHALL render as a single vertical layout at every viewport width. There SHALL NOT be a
-second layout, a second interaction model, or a breakpoint at which the chain changes direction.
-
-Reordering SHALL be available at every width. A capability offered only above a breakpoint is a
-capability the narrower reader does not have.
-
-The chain SHALL NOT scroll horizontally within its own container at any supported width. A branch
-SHALL indent under the step it leaves, in addition to naming that step.
-
-A step SHALL present its trigger, whether a person gates it, and the actions available on it in one
-header, and SHALL NOT be taller than the information it carries.
-
-Where an Automation carries output labels that reach no other Automation, that SHALL be announced on
-the step that owns the labels, because that is where it is corrected — not at the gap that follows.
-
-Where a gap between steps is not being connected, no selection control SHALL render. Connecting
-SHALL remain reachable from a named control, which is what a shipped capability requires; being
-permanently on screen is not.
-
-Where a step requires approval, it SHALL wear the same chip the board's column header uses, so the
-two surfaces cannot disagree about what a human gate is called. That chip's explanatory hint SHALL
-be the caller's, because the reason differs by surface.
-
-#### Scenario: a pipeline is reorderable on a phone
-
-- **WHEN** an Admin opens the workflow at a phone width
-- **THEN** the control for placing a human step is visible and usable
-
-#### Scenario: one direction, no sideways scroll
-
-- **WHEN** the workflow renders at any supported width
-- **THEN** the chain is a column, and it does not scroll horizontally inside its container
-
-#### Scenario: a gap offers nothing until somebody connects
-
-- **WHEN** an Admin looks at a gap nobody is connecting
-- **THEN** no selection control is present, and a named control reveals one when used
-
-#### Scenario: a gated step wears the board's chip
-
-- **WHEN** a step requires approval
-- **THEN** it shows the same chip the board's column header shows for a gated column
-
 ### Requirement: the setup card says what it will create before it is pressed
 
 Where a pipeline has been discovered, the portal SHALL show what pressing the build control would
@@ -1084,17 +851,19 @@ The confirm SHALL NOT be blocked, disabled, or gated behind an extra confirmatio
 workflow with a human hand-off is a workflow this product already supports; the break is
 information, not an error.
 
-A step SHALL be understood to hand work to another exactly when one of its output labels is the
-other's trigger, compared case-insensitively — the same identity BR-003 compares triggers with
-(DEC-056). An output label naming no step in the plan SHALL NOT be treated as a hand-off, so
-excluding a step that hands work to nobody SHALL mark nothing.
+A step SHALL be understood to move work into another exactly when its **claimed transition's to-stage**
+is the other's trigger, compared case-insensitively — the same identity BR-003 compares triggers with
+(DEC-056). A to-stage naming no step in the plan SHALL NOT be treated as a hand-off, so excluding a
+step that claims no transition, or one whose transition this installation does not fill, SHALL mark
+nothing.
 
-For the plan to answer this without a further read, each row SHALL carry the labels its step hands
-on, from the discovery the card has already performed.
+For the plan to answer this without a further read, each row SHALL carry the transition its step claims,
+from the discovery the card has already performed. That transition is single-valued, so a step SHALL
+have at most one provider and "losing one of two providers" SHALL NOT arise.
 
 #### Scenario: excluding a step that feeds another marks the gap
 
-- **WHEN** a step whose output label is another selected step's trigger is excluded
+- **WHEN** a step whose claimed to-stage is another selected step's trigger is excluded
 - **THEN** the plan marks that the receiving step is no longer handed work
 
 #### Scenario: the mark never blocks the press
@@ -1104,7 +873,7 @@ on, from the discovery the card has already performed.
 
 #### Scenario: excluding a step that hands work to nobody marks nothing
 
-- **WHEN** a step with no output label naming another step in the plan is excluded
+- **WHEN** a step claiming no transition into another step in the plan is excluded
 - **THEN** no hand-off gap is marked
 
 #### Scenario: the gap is computed from what discovery already returned
@@ -1206,11 +975,10 @@ unprompted; it is the prompt.
 
 ### Requirement: the Automations tab orders its content by how often it is read
 
-The Automations tab SHALL present the workflow before the catalogue, because the flow is what an
-Admin opens the tab to read and the catalogue is the reference it is built from. At a wide viewport
-the catalogue SHALL sit beside the workflow rather than above or below it; where it cannot, the
-workflow SHALL come first and the Automations the workflow does not already draw SHALL follow it as
-their own named group, so no Automation is shown twice and none is hidden.
+The Automations tab SHALL present the **catalogue** as its content, followed by a read-only picture of
+the flow that catalogue produces. It SHALL NOT present a second surface on which the flow can be
+arranged: the flow is arranged on the board, where an Admin already reads it, and two places to change
+one arrangement is the duplicate description ADR-0022 records.
 
 Setting up a workflow from the repository, and trying a prompt, SHALL be reachable from the tab's
 own toolbar and SHALL open over the tab. They SHALL NOT occupy the tab's vertical space as permanent
@@ -1218,18 +986,23 @@ content: they are reached on a first day or an occasional afternoon, and a tab t
 answers a question its reader did not ask.
 
 **A project with no Automations configured is the exception.** While none exists, the workflow setup
-surface SHALL render inline as the content of the tab, because there is no flow to read and setting
-one up is the only thing to do there. In that state the toolbar SHALL NOT offer a second route to the
-same surface.
+surface SHALL render inline as the content of the tab, because there is nothing to read and setting one
+up is the only thing to do there. In that state the toolbar SHALL NOT offer a second route to the same
+surface.
 
 Every control this ordering moves SHALL remain reachable at every viewport width — a capability
 offered only at one width is a capability withdrawn at the other.
 
-#### Scenario: the workflow is the first thing on the tab
+#### Scenario: the catalogue is the tab's content
 
-- **WHEN** an Admin opens the Automations tab of a project whose Automations form a chain
-- **THEN** the workflow appears before the catalogue, and at a wide viewport the catalogue is beside
-  it
+- **WHEN** an Admin opens the Automations tab of a project whose Automations claim transitions
+- **THEN** the catalogue is shown, followed by the read-only picture of the flow, and each Automation
+  appears exactly once
+
+#### Scenario: the tab arranges nothing
+
+- **WHEN** an Admin opens the Automations tab
+- **THEN** it offers no control that assigns, moves or clears a claimed transition
 
 #### Scenario: a first run offers setup as the tab's content
 
@@ -1242,12 +1015,6 @@ offered only at one width is a capability withdrawn at the other.
 - **WHEN** an Admin chooses to try a prompt, or to set up a workflow from the repository, on a
   project that already has Automations
 - **THEN** the surface opens over the tab and the tab's own content keeps its position
-
-#### Scenario: a narrow viewport shows the unchained Automations as their own group
-
-- **WHEN** the tab renders at a viewport too narrow for the catalogue to sit beside the workflow
-- **THEN** the chain is shown first and the Automations outside it follow under their own group,
-  each Automation appearing exactly once
 
 #### Scenario: no capability is width-dependent
 
@@ -1293,7 +1060,6 @@ selections already use.
 - **WHEN** an Admin sets a credential name for a runtime and the settings are read back
 - **THEN** the name is present, no secret value appears anywhere, and a non-Admin read does not
   include the names
-
 
 ### Requirement: an Automation names the model its Runs think with
 
@@ -1343,89 +1109,282 @@ inherit SHALL remain valid. An unasked machine SHALL NOT be rendered as a runtim
 - **THEN** the form says the models could not be obtained, accepts a written value, and saves —
   never an empty list implying the runtime has none, and never a form that cannot be submitted
 
-### Requirement: the workflow's shape is edited from the picture that draws it
-
-An Admin SHALL be able to place an Automation into the drawn chain, and take one out of it, by
-direct manipulation of the picture. Every such gesture SHALL be an ordinary Automation update that
-changes **output labels only** — the graph stays derived, so the picture cannot come to claim a
-chain that would not fire.
-
-Before a placement happens, the position it would take SHALL state the wiring it performs, naming
-each hand-off it would create. A placement onto the end of a chain states the one hand-off it makes.
-
-A placement that cannot be performed SHALL refuse **at the position it was offered**, naming the
-rule that stops it rather than the symptom: a trigger shared with another enabled Automation
-(BR-003), a loop, a step handed to itself, or an edge that already exists. The refusal SHALL be
-shown while the gesture is still in progress, never reported after it.
-
-Refusing here SHALL NOT be the enforcement. The update the gesture performs is checked where every
-other Automation update is checked, so a rule lives in one place and is explained in another.
-
-Every capability reachable by direct manipulation SHALL also be reachable without it.
-
-After any such change, the drawn chain, the catalogue's account of which Automations are wired in,
-and the count of steps SHALL agree with one another.
-
-#### Scenario: the position says what it would wire
-
-- **WHEN** an Admin holds a standalone Automation over a position between two chained steps
-- **THEN** that position names both hand-offs the placement would create, before it happens
-
-#### Scenario: placing rewrites labels and nothing else
-
-- **WHEN** the Automation is placed between those two steps
-- **THEN** the preceding step hands to it, it hands to what followed, no other field of any
-  Automation changes, and the drawn chain shows the new order
-
-#### Scenario: placing at the end makes one hand-off
-
-- **WHEN** an Automation is placed at the end of a chain
-- **THEN** the last step hands to it, and nothing else changes
-
-#### Scenario: a refused placement names its rule
-
-- **WHEN** a placement would share a trigger with another enabled Automation, close a loop, hand a
-  step to itself, or repeat an edge that exists
-- **THEN** the position refuses while the gesture is in progress, names that rule, and performs
-  nothing
-
-#### Scenario: taking a step out returns it to the catalogue
-
-- **WHEN** a step drawn in the chain is placed back on the catalogue
-- **THEN** whatever handed to it stops doing so, and nothing is invented in its place
-
-#### Scenario: the surfaces agree
-
-- **WHEN** any placement completes
-- **THEN** the chain, the catalogue's in-workflow marking and the step count describe the same
-  workflow
-
 ### Requirement: the workflow shows the board it produces
 
-Where a workflow has at least one chain, the Admin SHALL be shown what that workflow makes of the
-Backlog: one column per step, in the order work moves through them, preceded by where Stories
-start.
+Where a project's lifecycle has at least one stage, the Admin SHALL be shown, in the Automations tab,
+what its catalogue makes of the Backlog: one column per stage, in the stored order, preceded by where
+Stories start.
 
-That view SHALL be derived from the same chains the canvas draws — never a second description of
-the workflow, which could disagree with the first. It SHALL mark the columns that wait for a
-person's approval, and SHALL show where the flow stops and a person carries the work onward.
+That view SHALL be the project's stored lifecycle read back — never a second description of it, which
+could disagree with the first. It SHALL mark the columns that wait for a person's approval, and SHALL
+show that the flow ends at the last stage.
 
-It SHALL be read-only. Wiring happens on the chain; this reacts to it.
+It SHALL be read-only. Arranging happens on the board; this reacts to it.
 
-A column that a placement has just added SHALL be distinguished, so the consequence of the gesture
-is visible where it landed.
+#### Scenario: the columns are the lifecycle's stages
 
-#### Scenario: the columns are the workflow's steps
+- **WHEN** a project's lifecycle holds three stages
+- **THEN** the view shows where Stories start followed by those three columns, in the stored order
 
-- **WHEN** a workflow of three chained steps is drawn
-- **THEN** the preview shows where Stories start followed by those three columns, in that order
+#### Scenario: a gate and an end are both visible
 
-#### Scenario: a gate and a stop are both visible
+- **WHEN** one step waits for approval and the lifecycle's last stage is reached
+- **THEN** that column is marked as gated, and the end of the flow is shown as ending there
 
-- **WHEN** one step waits for approval and the chain ends without handing on
-- **THEN** that column is marked as gated, and the end of the flow shows the person who carries it
+#### Scenario: it cannot be used to arrange anything
 
-#### Scenario: a new column is shown where it landed
+- **WHEN** an Admin looks at this view
+- **THEN** it offers no control that assigns, moves or clears a claimed transition
 
-- **WHEN** an Automation is placed into the chain
-- **THEN** its column appears in the preview and is distinguished from the others
+### Requirement: a project's Story lifecycle is a stored, ordered list of stages
+
+A project SHALL hold a **lifecycle**: a linear, ordered list of stage names, stored on the Project and
+served to every reader by it. No surface SHALL re-derive the order from the Automations, because an
+order a person can rearrange has nowhere else to live (ADR-0022, superseding DEC-053's *"membership is
+derived from the edges and never stored"*).
+
+A stage SHALL come into existence only as a consequence of an Automation claiming a transition that
+names it, and SHALL NOT be removed when nothing claims it any more. Renaming a stage, removing an
+unused one and seeding a lifecycle for a brand-new project are **not** offered.
+
+Stage names SHALL be compared the way the vendor compares labels — case-insensitively (DEC-056), the
+same comparison `lower("TriggerLabel")` in `20260729150023_UniqueAutomationTrigger.cs:25-30` and
+`StringComparer.OrdinalIgnoreCase` in `src/modules/Runs/.../Features/Matching/StoryChangedHandler.cs:59`
+already use — so one stage SHALL NOT appear twice in two spellings.
+
+#### Scenario: the stored order is what every surface reads
+
+- **WHEN** a project's lifecycle is `s1, s2, s3` and any surface renders the flow
+- **THEN** it renders those stages in that order, taken from the project rather than recomputed from
+  the Automations
+
+#### Scenario: a stage outlives the claim that created it
+
+- **WHEN** the Automation that claimed the transition into `s3` is deleted
+- **THEN** `s3` remains a stage of the lifecycle, in its place, and nothing reports that as a problem
+
+#### Scenario: two spellings are one stage
+
+- **WHEN** a claim names a stage differing from an existing stage only in case
+- **THEN** the existing stage is used and no second stage is created
+
+### Requirement: an Automation claims one transition of the lifecycle
+
+An Automation SHALL claim **at most one** transition of its project's lifecycle, and SHALL NOT be able
+to claim two. The transition's **from**-stage SHALL be the Automation's trigger label — what already
+makes it fire — and its **to**-stage SHALL be a single stage name, applied to the Story as the lifecycle
+move when a Run of that Automation succeeds.
+
+An Automation claiming no transition SHALL remain expressible: it acts when somebody applies its
+trigger label, it MAY mark the Story, and the flow ends there. DEC-053's standalone Automation and the
+last stage of a lifecycle both depend on this.
+
+A claim SHALL name two **adjacent** stages of the project's lifecycle. Claiming a transition whose
+from-stage is not yet a stage SHALL insert it immediately before the to-stage, leaving the order of
+every existing stage unchanged. That invariant SHALL be enforced in exactly one place, because a rule
+implemented twice eventually disagrees with itself (`Features/Automations/OverlapGuard.cs:9-13`).
+
+At most one **enabled** Automation SHALL claim any one transition (BR-003). That refusal SHALL name the
+Automation already claiming it, SHALL NOT be evaded by a difference of case (DEC-056), and SHALL leave
+both Automations unchanged. Enforcement SHALL stay where it already is — the expression index
+`IX_automations_trigger_identity`, the in-memory guard that can name the conflict
+(`Features/Automations/OverlapGuard.cs:35-53`), and the client-side explanation — and SHALL NOT gain a
+fourth home.
+
+Branching SHALL be unrepresentable: no API, form or view SHALL accept or draw a second claimed
+transition, and nothing SHALL report that an Automation hands work to more than one place.
+
+#### Scenario: an Automation names one transition
+
+- **WHEN** an Automation's configuration is read
+- **THEN** it names one claimed transition or none, and there is no way to express a second
+
+#### Scenario: a second claimant is refused
+
+- **WHEN** an Admin assigns a second enabled Automation to a transition an enabled Automation already
+  claims
+- **THEN** the save is refused, the refusal names the Automation already claiming that transition, and
+  neither Automation changed
+
+#### Scenario: case does not evade the refusal
+
+- **WHEN** the second claim differs from the first only in the case of the from-stage
+- **THEN** it is refused for the same reason
+
+#### Scenario: a claim names adjacent stages
+
+- **WHEN** a claim would name two stages that are not adjacent in the project's lifecycle
+- **THEN** it is refused, and the lifecycle is unchanged
+
+#### Scenario: an Automation that claims nothing still works
+
+- **WHEN** a Run of an Automation with no claimed transition succeeds
+- **THEN** no lifecycle move is written, whatever marks it carries are applied, and nothing reports the
+  absent transition as a problem
+
+### Requirement: a transition and a mark are different things
+
+An Automation's remaining output labels SHALL be **marks** and nothing else: applied to the Story
+through the licensed write when a Run succeeds, carrying no meaning about the flow. Only the claimed
+transition's to-stage SHALL be treated as a lifecycle move.
+
+A label that matches no stage and no other Automation's trigger SHALL be an ordinary mark, and SHALL
+NOT be reported as a dangling edge or an incomplete configuration — after this separation there is
+nothing for such a warning to be about.
+
+No boundary, column or edge SHALL be drawn for a mark.
+
+#### Scenario: a Story carries both, and only one moves it
+
+- **WHEN** a Run of an Automation claiming `s1 → s2` and marking the Story with `L` succeeds, where `L`
+  is not a stage
+- **THEN** the Story carries both `s2` and `L`, only `s2` is treated as a lifecycle move, and no
+  boundary is drawn for `L`
+
+#### Scenario: a mark is not a fault
+
+- **WHEN** an Automation carries a mark matching no stage and no other Automation's trigger
+- **THEN** nothing marks it as dangling, incomplete or misconfigured
+
+### Requirement: an Admin arranges the whole flow where the board is read
+
+The board SHALL be the surface on which an Admin arranges a project's flow, and SHALL render **one
+column per stage** of the project's lifecycle, in the stored order, whether or not an Automation claims
+the transition into it. A stage SHALL NOT be omitted for having no claimant.
+
+An Automation SHALL be drawn on the **boundary between the two columns it claims**, and on no other
+boundary.
+
+An Admin SHALL be able to assign an Automation to a transition, to move it to another transition, and
+to place an Automation on a transition whose from-stage is not yet a stage — which SHALL make that stage
+the board's first column without disturbing the order of the existing stages. Moving one Automation
+SHALL NOT change any other Automation's claimed transition.
+
+Every arrangement change offered by dragging SHALL also be offered by an explicit control, at every
+viewport width the board supports, and both SHALL go through the same function. This is not a
+preference: an HTML5 drag cannot be performed by the end-to-end suite (`WorkflowCanvas.tsx:248-252`,
+citing #110), so the shared function is what puts the logic under test at all.
+
+Every arrangement change SHALL go through the ordinary Automation update, so BR-003's refusal applies
+unchanged, and a refused change SHALL return the board to what is stored and show the reason given.
+
+An **ACT-002 Member** SHALL be offered no control that assigns, moves or clears a claimed transition,
+**and** a direct API request to change one SHALL be refused on the missing permission — the refusal
+SHALL NOT rest on the absence of a button (BR-009).
+
+The end of the flow SHALL state that the flow ends at the last stage and SHALL assert nothing about who
+acts next, because BR-007 permits a Run to go straight to Executing and DEC-062 makes pushing the
+Agent's own act.
+
+#### Scenario: every stage is a column, claimed or not
+
+- **WHEN** a project whose lifecycle is `s1 → s2 → s3`, with one Automation claiming `s1 → s2`, is
+  opened on the board
+- **THEN** three columns render in the order `s1, s2, s3`, and `s3` is not omitted for having no
+  Automation claiming the transition into it
+
+#### Scenario: an Automation renders on the boundary it claims
+
+- **WHEN** an Automation claiming `s2 → s3` is rendered
+- **THEN** it appears on the boundary between column `s2` and column `s3`, and on no other boundary
+
+#### Scenario: a step can be placed first
+
+- **WHEN** an Admin assigns an Automation to the transition `s0 → s1`, where `s1` is the first column
+  and `s0` is not yet a stage
+- **THEN** `s0` becomes the board's first column, that Automation renders on the `s0 → s1` boundary,
+  and the order of the existing stages is unchanged
+
+#### Scenario: the flow can be reordered
+
+- **WHEN** an Admin assigns an Automation claiming `s1 → s2` to `s2 → s3` through the boundary's
+  explicit control
+- **THEN** it renders on the `s2 → s3` boundary only, the `s1 → s2` boundary reads as waiting for a
+  person, and no other Automation's claimed transition changed
+
+#### Scenario: no arrangement change is drag-only
+
+- **WHEN** the board renders at any width it supports
+- **THEN** every arrangement change offered by dragging is offered by an explicit control, and both go
+  through the same function
+
+#### Scenario: a Member cannot rearrange it
+
+- **WHEN** a signed-in ACT-002 Member opens the board and then calls the API directly to change a
+  claimed transition
+- **THEN** no such control was offered, and the request is refused on the missing permission
+
+#### Scenario: the end states the fact, not the actor
+
+- **WHEN** the board renders the last stage of a project's lifecycle
+- **THEN** the end of the flow states that the flow ends there and asserts nothing about who acts next
+
+### Requirement: an unclaimed transition is a person's turn, not a fault
+
+A boundary between two adjacent stages that no Automation claims SHALL be labelled as **waiting for a
+person**, and SHALL carry no validation error, no "incomplete configuration" marker, and no elapsed-time
+or overdue indication (BR-006 — a human wait is untimed).
+
+A human step SHALL have no representation of its own: it SHALL NOT be a stored entity, a position, or a
+flag. It is a transition nobody claims, and nothing fires until a person moves the label — which works
+because a person applying a label and an Automation applying one are already the same mechanism
+(`src/modules/Runs/.../Features/Execution/RunExecutor.cs:196-231` →
+`src/modules/Runs/.../Features/Matching/StoryChangedHandler.cs:59`).
+
+An unclaimed transition and a Run awaiting approval SHALL remain distinguishable (BR-007, UC-013): the
+approval gate stays on the step that asks for it, and SHALL NOT be drawn as an unclaimed boundary.
+
+#### Scenario: an unclaimed boundary waits for a person
+
+- **WHEN** a lifecycle is `s1 → s2 → s3`, an Automation claims `s1 → s2`, and none claims `s2 → s3`
+- **THEN** the `s2 → s3` boundary is labelled as waiting for a person and carries no validation error,
+  no incomplete-configuration marker and no elapsed-time or overdue indication
+
+#### Scenario: a person moving the label runs the next step
+
+- **WHEN** a person applies the to-stage label of an unclaimed transition to a Story
+- **THEN** it is matched exactly as a label an Automation applied would be, with no board-specific
+  dispatch involved
+
+#### Scenario: the two waits stay different things
+
+- **WHEN** a step requires approval and the boundary after it is unclaimed
+- **THEN** the step shows its approval gate, the boundary reads as a person's turn, and neither is
+  drawn as the other
+
+### Requirement: a configured hand-off survives the move to claimed transitions
+
+Every hand-off configured before this change SHALL be carried across, and the carrying SHALL be
+verified by counting hand-offs rather than by inspecting the schema (ADR-0001).
+
+Each Automation SHALL come to claim the transition
+`(its trigger label → the first of its output labels that matches another enabled Automation's trigger
+label, compared case-insensitively)`. Each project's lifecycle SHALL hold exactly those labels, in the
+order the board drew them (`src/frontend/features/backlog/KanbanBoard.tsx:110-137`). Every remaining
+output label SHALL be kept as a mark, including one that matches no sibling trigger. The number of
+configured hand-offs before SHALL equal the number after.
+
+Comparison SHALL fold case. A migration reading edges case-sensitively would drop edges the canvas
+draws today, because `buildChains` compares through a plain `Map` while product identity is
+case-insensitive (`src/frontend/features/automations/planHandoff.ts:16-20` records this).
+
+The migration SHALL be hand-written. A scaffolded `DropColumn` + `AddColumn` SHALL NOT be accepted:
+`src/modules/Projects/.../Persistence/Migrations/20260730222648_OutputLabelSet.cs:9-19` records that the
+generated form "would have silently discarded every hand-off configured in the deployment: every
+workflow edge, gone, with the schema perfectly correct afterwards."
+
+#### Scenario: every configured hand-off arrives as a claimed transition
+
+- **WHEN** the migration is applied to a database whose Automations have hand-offs configured
+- **THEN** the count of configured hand-offs after equals the count before, and each Automation claims
+  the transition its output label described
+
+#### Scenario: a differently-cased edge is not dropped
+
+- **WHEN** an Automation's output label matches a sibling's trigger label in a different case
+- **THEN** that hand-off becomes a claimed transition, exactly as an identically-cased one does
+
+#### Scenario: an output label matching nothing becomes a mark
+
+- **WHEN** an Automation's output label matches no other enabled Automation's trigger label
+- **THEN** it is kept as a mark and no transition is claimed for it

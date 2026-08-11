@@ -8,9 +8,9 @@ namespace AiOrchestrator.EndToEndTests;
 /// #231 — the New Automation form asks three questions instead of presenting eight peer fields.
 /// <para>
 /// What only a browser can check: that the grouping is actually visible, that the approval control
-/// states its consequence where a reader will meet it, and that answering "stop" removes the label
-/// control rather than merely ignoring it. The request-shape guarantee is asserted in the functional
-/// suite, where the payload can be read.
+/// states its consequence where a reader will meet it, and that answering "stop" removes the
+/// next-stage control rather than merely ignoring it. The request-shape guarantee is asserted in the
+/// functional suite, where the payload can be read.
 /// </para>
 /// </summary>
 [Collection(AppHostCollection.Name)]
@@ -75,14 +75,21 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
         var stop = page.Locator("#after-stop");
         await stop.WaitForAsync(new() { Timeout = 15_000 });
 
-        // Stopping is the default and it is *chosen*: the label control is absent, so there is no
+        // Stopping is the default and it is *chosen*: the next-stage control is absent, so there is no
         // empty field to mistake for "I have not got there yet".
+        //
+        // The field this watches is `#to-stage` since #310, not `#output-label`. The two swapped
+        // meanings: the claimed transition is what "hand on or stop" answers, and the marks beside it
+        // are offered whichever answer it holds — a mark is applied by an Automation that stops just
+        // as readily as by one that hands on, so hiding that field would have made the radio decide
+        // something it does not decide.
         (await stop.GetAttributeAsync("data-state")).ShouldBe("checked");
-        (await page.Locator("#output-label").CountAsync()).ShouldBe(0);
+        (await page.Locator("#to-stage").CountAsync()).ShouldBe(0);
+        (await page.Locator("#output-label").CountAsync()).ShouldBe(1);
 
         await page.Locator("#after-hand-on").ClickAsync();
 
-        await page.Locator("#output-label").WaitForAsync(new() { Timeout = 15_000 });
+        await page.Locator("#to-stage").WaitForAsync(new() { Timeout = 15_000 });
     }
 
     [Fact]
@@ -106,11 +113,12 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task Stopping_Should_StoreTheEmptyLabelSetItHasAlwaysMeant()
+    public async Task Stopping_Should_StoreTheAbsentClaimItHasAlwaysMeant()
     {
-        // The criterion regrouping must not break: "stop" is not a new concept downstream, it is the
-        // empty array it has always been. Asserted on what the API stored, not on what the form
-        // showed — the frontend has no test runner, so the artifact is the only honest witness.
+        // The criterion regrouping must not break: "stop" is not a new concept downstream, it is a
+        // claim on no transition — which is what the empty label set used to mean before #310 gave the
+        // hand-off a field of its own. Asserted on what the API stored, not on what the form showed —
+        // the frontend has no test runner, so the artifact is the only honest witness.
         var page = await fixture.Browser.NewPageAsync();
         var projectId = await CreateProject(page, $"Payload — {Guid.NewGuid():N}");
 
@@ -121,14 +129,14 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
         await page.Locator("#trigger-label").FillAsync("ai:review");
         await page.Locator("#prompt-path").FillAsync("review.md");
 
-        // Type a label, THEN choose to stop. This is the only path where the two behaviours differ:
-        // with no label typed, "stop" and "hand on" both produce an empty array, so a test that
-        // skipped this would pass against the code this change replaced — the false green #189's
-        // retro is about, and the mutation check caught it here.
+        // Name a next stage, THEN choose to stop. This is the only path where the two behaviours
+        // differ: with nothing named, "stop" and "hand on" both store no claim, so a test that skipped
+        // this would pass against the code this change replaced — the false green #189's retro is
+        // about, and the mutation check caught it here.
         await page.Locator("#after-hand-on").ClickAsync();
-        await page.Locator("#output-label").FillAsync("ai:merge");
+        await page.Locator("#to-stage").FillAsync("ai:merge");
         await page.Locator("#after-stop").ClickAsync();
-        (await page.Locator("#output-label").CountAsync()).ShouldBe(0);
+        (await page.Locator("#to-stage").CountAsync()).ShouldBe(0);
 
         // The Automation form's own submit. Named rather than located inside the `<form>`: since
         // design review 6b the button sits in the panel's footer and reaches the form by its id, so
@@ -152,8 +160,11 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
 
         automation.GetProperty("triggerLabel").GetString().ShouldBe("ai:review");
         automation.GetProperty("promptPath").GetString().ShouldBe("review.md");
-        // Empty despite a label having been typed: the radio is the later, more explicit answer,
-        // and honouring a value the Admin then said not to use would obey the field over the person.
+        // Absent despite a stage having been named: the radio is the later, more explicit answer, and
+        // honouring a value the Admin then said not to use would obey the field over the person.
+        automation.GetProperty("toStage").ValueKind.ShouldBe(JsonValueKind.Null);
+        // And no mark was invented out of the stage that was typed and withdrawn: the two fields are
+        // separate things now, so one being declined must not spill into the other.
         automation.GetProperty("outputLabels").GetArrayLength().ShouldBe(0);
         // Default-off, and now chosen rather than left blank.
         automation.GetProperty("requiresApproval").GetBoolean().ShouldBeFalse();

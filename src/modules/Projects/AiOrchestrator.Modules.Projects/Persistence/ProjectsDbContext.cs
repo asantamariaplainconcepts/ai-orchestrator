@@ -26,6 +26,17 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             project.Property(entity => entity.Name).HasMaxLength(200).IsRequired();
             project.HasIndex(entity => entity.Name).IsUnique();
 
+            // The Story lifecycle as a Postgres character varying(200)[] (#310, design D1), the
+            // OutputLabels precedent applied to the other aggregate: array position is the order,
+            // Npgsql maps a List<string> natively, and there is no delimiter to parse. An owned
+            // (Order, Name) table would buy per-stage identity, which only a rename or a prune
+            // needs — and both are out of scope, so it would be identity for a capability nobody is
+            // building.
+            project
+                .PrimitiveCollection(entity => entity.LifecycleStages)
+                .HasColumnName("LifecycleStages")
+                .ElementType(element => element.HasMaxLength(200));
+
             // project-runtimes: the default a runtime-less Automation resolves to, and the
             // credential names per runtime (BR-010 — names, never values).
             project.Property(entity => entity.DefaultRuntime).HasMaxLength(50);
@@ -52,6 +63,11 @@ sealed class ProjectsDbContext(DbContextOptions<ProjectsDbContext> options) : Db
             automation.Property(entity => entity.TriggerLabel).HasMaxLength(200).IsRequired();
             automation.Property(entity => entity.TriggerState).HasMaxLength(100);
             automation.Property(entity => entity.PromptPath).HasMaxLength(300);
+            // The to-stage of the one transition this Automation claims (#310, design D2). A single
+            // nullable column, bounded exactly as the trigger label it is compared against: null is
+            // "claims no transition", and there is no column a second transition could go in — which
+            // is what makes branching unrepresentable rather than merely refused (AC 13).
+            automation.Property(entity => entity.ToStage).HasMaxLength(200);
             // A Postgres text[] (#165, design D1): the set belongs to one Automation, is loaded and
             // saved with it, and is never queried on its own. Npgsql maps a List<string> natively, so
             // there is no delimiter to parse and no value a label could contain that would break it.

@@ -473,6 +473,20 @@ function Plan({
               </span>
               <span className="min-w-0 flex-1 text-xs text-muted-foreground">
                 {t("workflowSetup.wireTo")} <span className="font-mono">{step.promptFile}</span>
+                {/* What this step will claim (#310). The plan said "hands on to a label" while the
+                    model still had one; it says which transition now, because that is what installing
+                    the tier creates — and the stages come into existence as a consequence of it. */}
+                {step.toStage ? (
+                  <>
+                    {" · "}
+                    {t("workflowSetup.movesTo")} <span className="font-mono">{step.toStage}</span>
+                  </>
+                ) : (
+                  <>
+                    {" · "}
+                    {t("workflowSetup.flowEnds")}
+                  </>
+                )}
                 {step.gated ? (
                   <>
                     {" · "}

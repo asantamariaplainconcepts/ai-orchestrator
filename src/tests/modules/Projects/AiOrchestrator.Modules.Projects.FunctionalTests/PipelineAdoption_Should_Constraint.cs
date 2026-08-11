@@ -640,10 +640,10 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
     }
 
     [Fact]
-    public async Task ThePlan_Should_CarryWhatEachStepHandsOnAndWhichTierItIsFrom()
+    public async Task ThePlan_Should_CarryWhichTransitionEachStepClaimsAndWhichTierItIsFrom()
     {
         // The card computes both the broken-hand-off marker and which rows a consent reveals, on a
-        // click — so the labels and the tier have to arrive with the plan. A round trip per checkbox
+        // click — so the claim and the tier have to arrive with the plan. A round trip per checkbox
         // is not an answer.
         fixture.Documents.Directories["ai/prompts"] = StubDirectory.Of(Grill);
 
@@ -654,24 +654,22 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
 
         var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
 
-        // The catalogue's own edges (#273): the spec-first tier wires grill → propose → implement
-        // → sync, so the plan carries exactly those hand-offs — and the marker #262 built is
-        // exercisable again. Asserted by value, not just by count: the labels are what the card's
-        // broken-hand-off computation consumes.
-        string[] LabelsOf(string trigger) =>
-            [
-                .. plan.Single(step => step.GetProperty("trigger").GetString() == trigger)
-                    .GetProperty("outputLabels")
-                    .EnumerateArray()
-                    .Select(label => label.GetString()!),
-            ];
+        // The catalogue's own transitions (#273, restated for #310): the spec-first tier claims
+        // grill → propose → implement → sync, so the plan carries exactly those — and the marker #262
+        // built is exercisable again. Asserted by value, not just by count: the claim is what the
+        // card's broken-hand-off computation consumes, and it is single-valued now because branching
+        // is unrepresentable (AC 13).
+        string? ClaimOf(string trigger) =>
+            plan.Single(step => step.GetProperty("trigger").GetString() == trigger)
+                .GetProperty("toStage")
+                .GetString();
 
-        LabelsOf("ai:grill").ShouldBe(["ai:propose"]);
-        LabelsOf("ai:propose").ShouldBe(["ai:implement"]);
-        LabelsOf("ai:implement").ShouldBe(["ai:sync"]);
-        LabelsOf("ai:sync").ShouldBeEmpty();
-        LabelsOf("ai:refine").ShouldBeEmpty();
-        LabelsOf("ai:status").ShouldBeEmpty();
+        ClaimOf("ai:grill").ShouldBe("ai:propose");
+        ClaimOf("ai:propose").ShouldBe("ai:implement");
+        ClaimOf("ai:implement").ShouldBe("ai:sync");
+        ClaimOf("ai:sync").ShouldBeNull();
+        ClaimOf("ai:refine").ShouldBeNull();
+        ClaimOf("ai:status").ShouldBeNull();
 
         // Every row names its tier, which is what lets a consent add and remove rows client-side.
         plan.ShouldAllBe(step => step.GetProperty("tierId").GetString() == "workflow");

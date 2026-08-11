@@ -83,10 +83,11 @@ sealed class DiscoverPipeline : IUseCase
     /// for it.
     /// </para>
     /// <para>
-    /// <paramref name="OutputLabels"/> is what this step hands on (#262). The card needs it to say,
-    /// as rows are deselected, that a hand-off no longer happens — and that answer has to arrive on
-    /// a click, so it cannot be a round trip. The labels come from the catalogue the plan is already
-    /// walking, so carrying them costs nothing.
+    /// <paramref name="ToStage"/> is the transition this step claims (#262, restated for #310). The
+    /// card needs it to say, as rows are deselected, that a hand-off no longer happens — and that
+    /// answer has to arrive on a click, so it cannot be a round trip. It comes from the catalogue the
+    /// plan is already walking, so carrying it costs nothing. Null means the step claims no transition,
+    /// which is not a gap in the plan: it is a step the flow ends at.
     /// </para>
     /// </summary>
     /// <param name="Installable">
@@ -104,7 +105,7 @@ sealed class DiscoverPipeline : IUseCase
         bool Exists,
         bool Gated,
         bool Installable,
-        IReadOnlyList<string> OutputLabels,
+        string? ToStage,
         string TierId
     );
 
@@ -186,7 +187,7 @@ sealed class DiscoverPipeline : IUseCase
                                 exists,
                                 step.Wiring.RequiresApproval,
                                 installable,
-                                step.Wiring.OutputLabels,
+                                step.Wiring.ToStage,
                                 step.Tier.Id
                             );
                         })

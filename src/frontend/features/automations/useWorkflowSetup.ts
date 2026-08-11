@@ -15,8 +15,12 @@ export interface PlannedStep {
    * `tierId`.
    */
   installable: boolean;
-  /** What this step hands on. Excluding a step named here breaks a hand-off (#262). */
-  outputLabels: string[];
+  /**
+   * The transition this step claims (#262, restated for #310): the stage a Story reaches when it
+   * succeeds, or null for a step the flow ends at. Excluding the step that claims the transition into
+   * another breaks a hand-off, which is what `handoffsBrokenBy` reports.
+   */
+  toStage: string | null;
   /** The tier this step came from, so toggling a consent adds and removes rows with no round trip. */
   tierId: string;
 }

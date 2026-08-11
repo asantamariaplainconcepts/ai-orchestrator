@@ -3977,3 +3977,47 @@ appears fixed: all five `verify-telemetry.mjs` checks pass and `usage.jsonl` is 
 first entry in three to report measured rather than manual time. Worth noting for what the numbers do
 *not* say: the human time reads as ~0 because the metric counts keyboard and reading time in the CLI,
 and this change was steered through a handful of decisions rather than typed.
+
+---
+
+## 2026-08-11 — `automation-claims-a-lifecycle-transition` (#310)
+
+An Automation claims a transition in a stored, ordered Story lifecycle, and the board becomes the one
+place that draws and authors the flow. The canvas is gone. A human step needs no representation at
+all: it is a transition no Automation claims, so nothing fires until a person moves the label — which
+works because a hand-off already travelled through the vendor label, making a person moving a label
+the same mechanism as an Automation applying one.
+
+**What worked: the migration was self-verifying.** 346 functional tests were red *purely* because the
+migration did not exist yet — `PendingModelChangesWarning` is configured as an error, so every
+fixture threw at initialisation. Their return to green was therefore objective proof that the
+migration was right, not a judgement anybody had to trust. Two decisions made that proof mean
+something: the risky group was deliberately separated from the safe ones and implemented under
+supervision, and the tempting `w.Ignore(PendingModelChangesWarning)` was refused. Suppressing it
+would have bought a green suite by disabling the guard that protects every configured hand-off.
+
+**What didn't: the plan's ordering could not produce a green intermediate state, and nobody noticed
+until the middle.** The moment `LifecycleStages` joined the model, all three functional projects
+failed at fixture init; the migration could not precede the model it is written against. Groups 2–6
+are one unavoidably-red window, and that was discovered by exercise during implementation rather
+than stated at proposal time. A task in that window whose only evidence is a functional test cannot
+be honoured, which is why 3.5 and 5.2 sat unticked until group 6 landed.
+
+**What didn't: an acceptance criterion was unimplementable as written.** AC 10 asked that the count of
+configured hand-offs before equal the count after. Read as `(automation, matched label)` pairs that is
+unpreservable — an Automation with two matching output labels had two edges and AC 13 leaves nowhere
+for the second, so the assertion would have raised on the first branching row in the real deployment.
+It was replaced with a stronger per-row guard: every Automation that handed on claims one, none
+invented one, and every label survives as claim-or-mark.
+
+**One change next time:** when a change alters an EF model, the migration belongs in the *same* task
+group as the model change — or the red window is named in `tasks.md` at proposal time. Nobody should
+plan against a green middle that cannot exist.
+
+**Time invested:** not measured (source: **manual**). No `.telemetry/sessions.jsonl` was present in
+the worktree this change was implemented in, so the session→change join had nothing to read. Recorded
+as unmeasured rather than estimated.
+
+**ADR:** [ADR-0022](../adr/0022-an-order-a-person-can-rearrange-is-stored.md) — an order a person can
+rearrange is stored, never derived. It supersedes DEC-053's "membership is derived from the edges and
+never stored". First occurrence of the ordering lesson above, so it earns no ADR of its own yet.

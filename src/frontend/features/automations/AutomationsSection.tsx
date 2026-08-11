@@ -20,14 +20,12 @@ import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
 import { PromptScratchpad } from "./PromptScratchpad";
 import { WorkflowSetupSection } from "./WorkflowSetupSection";
-import { WorkflowCanvas } from "./WorkflowCanvas";
-import { HumanStepBlock } from "./HumanStepBlock";
-import { automationDragProps } from "./automationDrag";
-import { useChainRemoval } from "./useChainRemoval";
+import { BoardPreview } from "./BoardPreview";
 import { ApiError } from "@/shared/http/client";
 import { AUTOMATION_ACTIONS, AGENT_RUNTIMES, EXECUTABLE_ACTIONS } from "./types";
 import type { AgentRuntime, Automation, AutomationAction } from "./types";
-import { summarise, workflowChains, workflowMembers } from "./workflowGraph";
+import { summarise, workflowMembers } from "./workflowGraph";
+import { useLifecycle } from "./useLifecycle";
 import {
   useAgentModels,
   useAutomations,
@@ -45,13 +43,17 @@ import {
 const FORM_ID = "automation-form";
 
 /**
- * The Automations tab, ordered by how often each thing is looked at (design review 6a).
+ * The Automations tab: what this project has, and a read-only picture of the flow it produces.
  *
- * The flow is the daily surface, so it comes first and gets the width. The catalogue becomes a rail
- * beside it — one row per Automation, saying how it relates to the flow — because "what exists" is a
- * reference and "what runs" is the work. Setup and the scratchpad are tools you reach for on a first
- * day or an odd afternoon: they moved out of the vertical stack into the toolbar, where they open
- * over the tab instead of standing between the reader and the flow.
+ * The canvas that used to be the top half of this tab is gone (#310, AC 11). It was the second drawing
+ * of one arrangement, and the arrangement is now stored and authored on the Backlog board — where an
+ * Admin already reads the flow — so a picture here that could also be edited would be exactly the
+ * duplicate description ADR-0022 records. What is left is the catalogue, which is a reference, and the
+ * preview under it, which is the consequence: creating an Automation still shows what it does to the
+ * board without changing tab, and that was the preview's whole reason for existing.
+ *
+ * Setup and the scratchpad are tools you reach for on a first day or an odd afternoon, so they live in
+ * the toolbar and open over the tab rather than standing between the reader and the catalogue.
  *
  * Creating and editing live in a panel rather than inline (design review 6b). Mounting the form
  * above the catalogue moved the page under the reader: opening an edit scrolled the tab to the top
@@ -59,6 +61,9 @@ const FORM_ID = "automation-form";
  */
 export function AutomationsSection({ projectId }: { projectId: string }) {
   const automations = useAutomations(projectId);
+  // The stored lifecycle, read once for this tab (#310, design D6). The rail's "in workflow" tag and
+  // the preview's columns both come from it, so they cannot disagree.
+  const lifecycle = useLifecycle(projectId);
   // Enabling can be refused by BR-003's re-check; disabling never is (design D2).
   const setEnabled = useSetAutomationEnabled(projectId);
   const create = useCreateAutomation(projectId);
@@ -87,9 +92,13 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
   // because they are two things: what is chosen, and what is half-written.
   const [outputLabels, setOutputLabels] = useState<string[]>([]);
-  // An answer, not an absence (#231, design D4). Stored as the same empty array "stop" has
+  // An answer, not an absence (#231, design D4). Stored as a null claim, which is what "stop" has
   // always meant — what changes is that the Admin said which they meant.
   const [handsOn, setHandsOn] = useState(false);
+  // The to-stage of the one transition this Automation claims (#310). Single-valued, so no form on
+  // this surface can express a second one (AC 13) — and carried on every save, because the endpoint
+  // replaces the whole Automation and a field this form omitted would be a claim every edit cleared.
+  const [toStage, setToStage] = useState("");
   const [outputDraft, setOutputDraft] = useState("");
   // Kept as text so blank can mean "BR-005's default" — a number input cannot hold that.
   const [timeoutMinutes, setTimeoutMinutes] = useState("");
@@ -142,6 +151,7 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setPromptPath("");
     setOutputLabels([]);
     setHandsOn(false);
+    setToStage("");
     setOutputDraft("");
     setTimeoutMinutes("");
   }
@@ -171,7 +181,10 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setRequiresApproval(automation.requiresApproval);
     setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
-    setHandsOn(automation.outputLabels.length > 0);
+    // The claim, not the marks: since #310 an Automation that only marks the Story claims no
+    // transition, so "hands on" is the presence of a to-stage and nothing else.
+    setHandsOn(automation.toStage !== null);
+    setToStage(automation.toStage ?? "");
     setOutputDraft("");
     setTimeoutMinutes(String(automation.timeoutMinutes));
   }
@@ -201,13 +214,15 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       // and the server refuses it at save. Trimmed only — the empty case is the server's refusal to
       // give, not this form's to silently swallow.
       promptPath: promptPath.trim() ? promptPath.trim() : null,
-      // The half-typed value counts: an Admin who typed a label and pressed Save meant it, and
-      // silently dropping it is the kind of loss a form should never inflict.
-      // "Stop" is stored as the empty set it has always been (#231, design D4) — nothing
-      // downstream learns a new concept. Typed-then-stopped resolves to stopped: the radio is the
-      // later and more explicit answer, and honouring a label the Admin then said not to use would
-      // be obeying the field over the person.
-      outputLabels: handsOn ? withDraft() : [],
+      // Marks only since #310, and therefore independent of the radio: an Automation that hands
+      // work on may also mark the Story, and one that stops may mark it too. The half-typed value
+      // counts — an Admin who typed a label and pressed Save meant it, and silently dropping it is
+      // the kind of loss a form should never inflict.
+      outputLabels: withDraft(),
+      // The one transition this Automation claims (#310). Typed-then-stopped resolves to stopped:
+      // the radio is the later and more explicit answer, and honouring a stage the Admin then said
+      // not to hand to would be obeying the field over the person.
+      toStage: handsOn && toStage.trim() ? toStage.trim() : null,
       // Always sent, never omitted: the endpoint is a full replace, so a field this form did not
       // carry would be cleared on every edit. Blank means inherit, which is what the server
       // normalises whitespace to anyway.
@@ -227,11 +242,12 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   const saveFailed = editing ? update.isError : create.isError;
 
   const rows = automations.data ?? [];
-  // Which Automations the picture draws, so a rail row can say whether it is wired into anything
-  // (design review 6a). Derived from the same chains the canvas renders — see workflowMembers.
-  const members = workflowMembers(rows);
-  const summary = summarise(workflowChains(rows));
-  const standalone = rows.filter((automation) => !members.has(automation.id));
+  // Read, not derived (#310, ADR-0022). The rail's "in workflow" tag and the preview's columns are one
+  // list served by the aggregate that owns it, so the two cannot disagree the way the canvas and the
+  // board once did.
+  const stages = lifecycle.data?.stages ?? [];
+  const members = workflowMembers(stages, rows);
+  const summary = summarise(stages, rows);
   // The first-run exception (design review 6a): with nothing configured, setup is not a tool tucked
   // into a menu — it IS the content of the tab, and the one press that answers "what should this
   // project have?" before the panel asks you to answer it a field at a time (#229).
@@ -254,7 +270,8 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           runtime={runtime}
           requiresApproval={requiresApproval}
           handsOn={handsOn}
-          outputLabels={handsOn ? withDraft() : []}
+          toStage={toStage}
+          marks={withDraft()}
         />
       </div>
 
@@ -433,65 +450,87 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               </label>
             ))}
           </RadioGroup>
+          {/* The claim, single-valued (#310, AC 13). One input rather than a set, so no form on this
+              surface can express a second transition — and the board is where an arrangement is
+              normally authored, so this field exists for the create that names one from the start. */}
           {handsOn ? (
             <div className="flex flex-col gap-2">
-              <Label htmlFor="output-label">{t("automations.outputLabel")}</Label>
-              {/* Chosen first, each removable: the set is the answer, and the input below is how
-                  it grows. Chips rather than a comma-separated string, because a string makes
-                  the reader parse what the product already knows. */}
-              {outputLabels.length > 0 ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {outputLabels.map((label) => (
-                    <Badge key={label} variant="secondary" className="gap-1 font-mono">
-                      {label}
-                      <button
-                        type="button"
-                        aria-label={`${t("automations.outputLabelRemove")} ${label}`}
-                        onClick={() =>
-                          setOutputLabels(outputLabels.filter((kept) => kept !== label))
-                        }
-                      >
-                        <X className="size-3" aria-hidden="true" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              ) : null}
-              <div className="flex gap-2">
-                {/* A datalist, so one control both suggests and accepts anything — a select
-                    would refuse the label that does not exist yet, which is a legitimate way
-                    to build a workflow forwards. */}
-                <Input
-                  id="output-label"
-                  list="output-label-suggestions"
-                  value={outputDraft}
-                  onChange={(event) => setOutputDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      // Enter adds a label; without this it would submit the whole form, which
-                      // is the wrong thing to do while somebody is still listing destinations.
-                      event.preventDefault();
-                      addOutputLabel();
-                    }
-                  }}
-                  placeholder={t("automations.outputLabelPlaceholder")}
-                />
-                <datalist id="output-label-suggestions">
-                  {outputSuggestions.map((suggestion) => (
-                    <option key={suggestion} value={suggestion} />
-                  ))}
-                </datalist>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={addOutputLabel}
-                  disabled={!outputDraft.trim()}
-                >
-                  {t("automations.outputLabelAdd")}
-                </Button>
-              </div>
+              <Label htmlFor="to-stage">{t("automations.toStage")}</Label>
+              <Input
+                id="to-stage"
+                list="to-stage-suggestions"
+                value={toStage}
+                onChange={(event) => setToStage(event.target.value)}
+                placeholder={t("automations.toStagePlaceholder")}
+              />
+              <datalist id="to-stage-suggestions">
+                {outputSuggestions.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
+              <p className="text-xs text-muted-foreground">{t("automations.toStageHint")}</p>
             </div>
           ) : null}
+
+          {/* Marks, beside the claim and never inside it (#310). A mark that names no stage is the
+              normal case now, not a dangling edge, so this field is offered whichever answer the
+              radio holds. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="output-label">{t("automations.marks")}</Label>
+            <p className="text-xs text-muted-foreground">{t("automations.marksHint")}</p>
+            {/* Chosen first, each removable: the set is the answer, and the input below is how
+                  it grows. Chips rather than a comma-separated string, because a string makes
+                  the reader parse what the product already knows. */}
+            {outputLabels.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {outputLabels.map((label) => (
+                  <Badge key={label} variant="secondary" className="gap-1 font-mono">
+                    {label}
+                    <button
+                      type="button"
+                      aria-label={`${t("automations.outputLabelRemove")} ${label}`}
+                      onClick={() => setOutputLabels(outputLabels.filter((kept) => kept !== label))}
+                    >
+                      <X className="size-3" aria-hidden="true" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            ) : null}
+            <div className="flex gap-2">
+              {/* A datalist, so one control both suggests and accepts anything — a select
+                    would refuse the label that does not exist yet, which is a legitimate way
+                    to build a workflow forwards. */}
+              <Input
+                id="output-label"
+                list="output-label-suggestions"
+                value={outputDraft}
+                onChange={(event) => setOutputDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    // Enter adds a label; without this it would submit the whole form, which
+                    // is the wrong thing to do while somebody is still listing destinations.
+                    event.preventDefault();
+                    addOutputLabel();
+                  }
+                }}
+                placeholder={t("automations.outputLabelPlaceholder")}
+              />
+              <datalist id="output-label-suggestions">
+                {outputSuggestions.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={addOutputLabel}
+                disabled={!outputDraft.trim()}
+              >
+                {t("automations.outputLabelAdd")}
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -583,54 +622,32 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   );
 
   /**
-   * The catalogue as a rail (design review 6a): one row per Automation, its relation to the flow
-   * instead of a repeat of its fields, and the whole row the way into the edit panel.
+   * The catalogue (design review 6a): one row per Automation, its relation to the flow instead of a
+   * repeat of its fields, and the whole row the way into the edit panel.
    *
-   * Below xl the rail cannot sit beside the flow, so it keeps only the Automations the flow does not
-   * already show — the chained ones are on screen as the chain (design review 6c).
+   * It is the tab's content now rather than a rail beside the flow, because the flow moved (#310,
+   * design D7). The arrangement is authored on the board, where it is read; this tab is what exists.
+   * The read-only preview below says what the catalogue makes of that board, so somebody creating an
+   * Automation still sees the consequence without changing tab.
    */
-  // The rail's half of the drag-to-chain gesture (turn 8), declared where `rows` already exists.
-  const removal = useChainRemoval(projectId, rows);
-  // Held here because the gesture starts on either surface — a catalogue row or a step's handle —
-  // and only one of them lives inside the canvas.
-  const [carried, setCarried] = useState<Automation | null>(null);
-
-  const rail = (
-    <aside
-      // The rail is also where a step leaves the chain (turn 8, option 8a): dropping one here
-      // clears whichever label pointed at it, which is the same edit the chain's own controls
-      // make — the gesture is sugar, never a second way to change the data.
-      {...removal}
-      className={cn("min-w-0 flex-col gap-2", standalone.length === 0 ? "hidden xl:flex" : "flex")}
-    >
+  const catalogue = (
+    <aside className="flex min-w-0 flex-col gap-2">
       <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-        <span className="hidden xl:inline">{t("automations.catalogue")}</span>
-        <span className="xl:hidden">{t("automations.standaloneGroup")}</span>
+        {t("automations.catalogue")}
       </span>
-      <p className="hidden text-xs text-muted-foreground xl:block">
-        {t("automations.catalogue.hint")}
-      </p>
+      <p className="text-xs text-muted-foreground">{t("automations.catalogue.hint")}</p>
       <Card className="gap-0 overflow-hidden py-0">
         <ul className="divide-y divide-border">
           {rows.map((automation) => {
             const inWorkflow = members.has(automation.id);
 
             return (
-              <li
-                key={automation.id}
-                // Already drawn above as a step, so the rail repeats it only where the rail sits
-                // beside the flow rather than under it.
-                className={cn(inWorkflow && "hidden xl:block")}
-              >
+              <li key={automation.id}>
                 {/* The row IS the control (design review 6a). It replaced three buttons — Edit,
                     Enable, Delete — which is what made a row wider than the information in it, and
                     put an un-confirmed Delete a mis-aim away from Edit. */}
                 <button
                   type="button"
-                  // Draggable into the chain (8a). The row keeps being the way into the edit
-                  // panel: a click still edits, and the drag is the extra gesture rather than a
-                  // replacement for the one that was already here.
-                  {...automationDragProps(automation, setCarried)}
                   onClick={() => openEdit(automation)}
                   aria-label={`${t("automations.edit")} ${automation.triggerLabel}`}
                   className="flex min-h-11 w-full items-center justify-between gap-2 px-3 py-2 text-left outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50"
@@ -659,13 +676,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           })}
         </ul>
       </Card>
-      {/* The block the workflow's gaps accept (#137). It stays with the catalogue because the flow
-          is built out of it, and stays out of the way below xl, where a drag competes with the
-          gesture that scrolls (design D5). */}
-      <div className="hidden flex-col gap-1 xl:flex">
-        <HumanStepBlock />
-        <p className="text-xs text-muted-foreground">{t("canvas.block.hint")}</p>
-      </div>
     </aside>
   );
 
@@ -679,15 +689,15 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               {tCount(rows.length, "automations.count.one", "automations.count.other")}
             </Badge>
           ) : null}
-          {/* Steps and human stops, both derived (design D4): "6 Automations" is a fact about the
-              catalogue and says nothing about the pipeline. Beside the count, where the two numbers
-              can be read as the two different things they are. */}
-          {summary.steps > 0 ? (
+          {/* Stages and human stops (#310): "6 Automations" is a fact about the catalogue and says
+              nothing about the flow. Beside the count, where the three numbers can be read as the
+              three different things they are. */}
+          {summary.stages > 0 ? (
             <span className="text-xs text-muted-foreground">
               {tCount(
-                summary.steps,
-                "automations.workflow.steps.one",
-                "automations.workflow.steps.other",
+                summary.stages,
+                "automations.workflow.stages.one",
+                "automations.workflow.stages.other",
               )}
               {" · "}
               {tCount(
@@ -757,22 +767,22 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
         </>
       )}
 
-      {/* The flow first and the rail beside it (design review 6a). Two named things, not two views of
-          one list (design D1): the workflow is built out of the catalogue, and a reader who cannot
-          see both at once cannot see that. Stacked below the wide breakpoint. */}
+      {/* The catalogue, and under it the flow that catalogue produces — read-only, because the flow is
+          arranged on the board now (#310, design D7, AC 11). There is no canvas here any more: two
+          drawings of one arrangement is what ADR-0022 was written about, and the board is the one that
+          an Admin already reads. The preview stays so that creating an Automation still shows its
+          consequence without changing tab, which is the whole reason it existed. */}
       {rows.length > 0 && (
-        <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,1fr)_18.75rem]">
+        <div className="flex flex-col gap-4">
+          {catalogue}
           <section className="flex min-w-0 flex-col gap-2">
             <h3 className="text-sm font-semibold">{t("automations.workflow")}</h3>
-            <WorkflowCanvas
-              carried={carried}
-              onCarry={setCarried}
-              projectId={projectId}
-              automations={rows}
-              onEdit={openEdit}
-            />
+            {stages.length === 0 ? (
+              <p className="text-sm text-muted-foreground">{t("automations.workflow.empty")}</p>
+            ) : (
+              <BoardPreview stages={stages} automations={rows} />
+            )}
           </section>
-          {rail}
         </div>
       )}
 

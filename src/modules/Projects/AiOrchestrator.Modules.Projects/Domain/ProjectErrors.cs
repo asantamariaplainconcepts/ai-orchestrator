@@ -75,6 +75,30 @@ static class ProjectErrors
             "That person holds no role on this project, so there is nothing to remove."
         );
 
+    /// <summary>
+    /// The adjacency invariant's refusal (#310, design D4). An Automation claims <i>one step</i> of
+    /// the flow, so a claim spanning two stages with something between them would make the stored
+    /// order and the claim disagree — the failure DEC-053 avoided by not storing an order at all.
+    /// <para>
+    /// The message names the lifecycle it is refusing against, for the reason BR-003's does: a
+    /// refusal that only says "invalid" leaves an Admin guessing which of their stages is in the
+    /// way, while the whole point of a write-time gate is that the fix is obvious while they are
+    /// still looking at it.
+    /// </para>
+    /// </summary>
+    public static Error StagesNotAdjacent(
+        string fromStage,
+        string toStage,
+        IReadOnlyList<string> lifecycle
+    ) =>
+        Error.Validation(
+            "Automation.StagesNotAdjacent",
+            $"'{fromStage}' and '{toStage}' are not next to each other in this project's flow "
+                + $"({string.Join(" → ", lifecycle)}), so no single step goes from one to the other. "
+                + "An Automation claims one step: its to-stage is the stage that follows its trigger "
+                + "label. Claim an adjacent pair, or move the steps between them first."
+        );
+
     public static Error TriggerOverlaps(string label, string? state, string conflictingTrigger) =>
         Error.Conflict(
             "Automation.TriggerOverlaps",

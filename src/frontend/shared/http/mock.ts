@@ -26,10 +26,12 @@ const projects: { id: string; name: string; archivedAt: string | null }[] = [
 ];
 
 let automations = [
-  // The shipped pipeline: grill hands to propose, and propose deliberately hands to nobody —
-  // which is the gap the canvas draws as "a person continues" (#116).
+  // The shipped pipeline (#310): grill claims the transition into `ready-for-proposal`, which claims
+  // no transition of its own — so the board draws the boundary after it as a person's turn. The last
+  // one also carries a mark, which is what makes the transition/mark split demonstrable here: the
+  // board must draw a column for the stage and none for the mark (AC 7).
   auto("ai:grill", "RepositoryPrompt", false, "ready-for-proposal"),
-  auto("ready-for-proposal", "RepositoryPrompt", false, null),
+  auto("ready-for-proposal", "RepositoryPrompt", false, null, ["needs-design"]),
   auto("ai:implement", "RepositoryPrompt", true, null),
   auto("ai:refine", "RepositoryPrompt", false, null),
   auto("ai:estimate", "RepositoryPrompt", false, null),
@@ -40,7 +42,8 @@ function auto(
   triggerLabel: string,
   action: string,
   requiresApproval: boolean,
-  outputLabel: string | null = null,
+  toStage: string | null = null,
+  marks: string[] = [],
 ) {
   return {
     id: crypto.randomUUID(),
@@ -51,14 +54,52 @@ function auto(
     requiresApproval,
     timeoutMinutes: 30,
     enabled: true,
-    // A set since #165. The factory still takes one, because every mock scenario here describes a
-    // single hand-off and inventing branches nobody asked for would be fixture noise.
-    outputLabels: outputLabel === null ? [] : [outputLabel],
+    // Marks only since #310 — the hand-off left this set and became the claim below.
+    outputLabels: marks,
+    // The one transition this Automation claims; its from-stage is the trigger label above.
+    toStage,
     promptPath: null,
     // Null is the shipped state: an Automation thinks with the deployment's model until an Admin
     // chooses otherwise (#291).
     model: null,
   };
+}
+
+/**
+ * The stored stage order, derived the way the aggregate that owns it derives it (#310, ADR-0016).
+ *
+ * The server stores this list; a fixture has nowhere to store it, so it recomputes it from the claims
+ * using the same insertion rules `Project.ClaimTransition` applies. Case is folded throughout, exactly
+ * as the domain folds it (DEC-056): a claim naming a stage that differs only in spelling uses the stage
+ * that exists rather than creating a second spelling of it.
+ */
+function lifecycleStages(): string[] {
+  const stages: string[] = [];
+  const at = (name: string) =>
+    stages.findIndex((stage) => stage.toLowerCase() === name.toLowerCase());
+
+  for (const automation of automations) {
+    if (!automation.enabled || !automation.toStage) continue;
+    const from = automation.triggerLabel;
+    const to = automation.toStage;
+    const fromAt = at(from);
+    const toAt = at(to);
+
+    // Both already stages: the claim is stored and the list is untouched. The server refuses a
+    // non-adjacent pair, so there is nothing here to reorder either.
+    if (fromAt >= 0 && toAt >= 0) continue;
+    if (toAt >= 0) {
+      stages.splice(toAt, 0, from);
+      continue;
+    }
+    if (fromAt >= 0) {
+      stages.splice(fromAt + 1, 0, to);
+      continue;
+    }
+    stages.push(from, to);
+  }
+
+  return stages;
 }
 
 const stories = [
@@ -237,7 +278,7 @@ const mockPlans: Record<
     exists: boolean;
     gated: boolean;
     installable: boolean;
-    outputLabels: string[];
+    toStage: string | null;
     tierId: string;
   }[]
 > = {
@@ -250,7 +291,7 @@ const mockPlans: Record<
       exists: true,
       gated: false,
       installable: false,
-      outputLabels: ["ai:propose"],
+      toStage: "ai:propose",
       tierId: "workflow",
     },
     {
@@ -259,7 +300,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: ["ai:implement"],
+      toStage: "ai:implement",
       tierId: "workflow",
     },
     {
@@ -268,7 +309,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: ["ai:sync"],
+      toStage: "ai:sync",
       tierId: "workflow",
     },
     {
@@ -277,7 +318,7 @@ const mockPlans: Record<
       exists: false,
       gated: true,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
     {
@@ -286,7 +327,7 @@ const mockPlans: Record<
       exists: false,
       gated: false,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
     {
@@ -295,7 +336,7 @@ const mockPlans: Record<
       exists: false,
       gated: false,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
   ],
@@ -308,7 +349,7 @@ const mockPlans: Record<
       exists: true,
       gated: false,
       installable: false,
-      outputLabels: ["ai:propose"],
+      toStage: "ai:propose",
       tierId: "workflow",
     },
     {
@@ -317,7 +358,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: ["ai:implement"],
+      toStage: "ai:implement",
       tierId: "workflow",
     },
     {
@@ -326,7 +367,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: ["ai:sync"],
+      toStage: "ai:sync",
       tierId: "workflow",
     },
     {
@@ -335,7 +376,7 @@ const mockPlans: Record<
       exists: true,
       gated: true,
       installable: false,
-      outputLabels: [],
+      toStage: null,
       tierId: "workflow",
     },
   ],
@@ -658,6 +699,36 @@ const routes: [string, RegExp, Handler][] = [
     }),
   ],
   ["GET", /^\/api\/projects\/[^/]+\/automations$/, () => automations],
+  // The lifecycle the server serves (#310). ADR-0016: the fixture *derives what the server derives*,
+  // so this applies each claim exactly as `Project.ClaimTransition` does — a claim whose to-stage is
+  // already a stage inserts its from-stage immediately before it, a claim out of an existing stage
+  // inserts its to-stage immediately after, and a claim naming neither appends both in order. A
+  // hand-written list here would have been a second description of the same fact, free to drift.
+  ["GET", /^\/api\/projects\/[^/]+\/lifecycle$/, () => ({ stages: lifecycleStages() })],
+  [
+    "POST",
+    /^\/api\/projects\/[^/]+\/automations$/,
+    (_match: RegExpMatchArray, body: unknown) => {
+      const request = body as {
+        triggerLabel: string;
+        action: string;
+        requiresApproval: boolean;
+        toStage?: string | null;
+        outputLabels?: string[];
+      };
+      const created = auto(
+        request.triggerLabel,
+        request.action,
+        request.requiresApproval,
+        request.toStage ?? null,
+        request.outputLabels ?? [],
+      );
+      // A new array, for the same reason the update below builds one: React Query keeps previous data
+      // when a refetch returns the same reference.
+      automations = [...automations, created];
+      return created;
+    },
+  ],
   // The update the canvas actually performs (ADR-0016: a fixture derives what the server
   // derives). Without it every canvas gesture — the human block since #137, drag-to-chain since
   // turn 8 — was undemonstrable here: the request 404'd and the picture never moved, so the mock
@@ -893,26 +964,10 @@ const routes: [string, RegExp, Handler][] = [
       labelNote: null,
     }),
   ],
-  [
-    "PUT",
-    /^\/api\/projects\/[^/]+\/automations\/([^/]+)$/,
-    (match, body) => {
-      const found = automations.find((candidate) => candidate.id === match[1]);
-      if (!found) throw new Error("No such Automation.");
-      Object.assign(found, body as Record<string, unknown>);
-      return found;
-    },
-  ],
-  [
-    "POST",
-    /^\/api\/projects\/[^/]+\/automations$/,
-    (_m, body) => {
-      const request = body as { triggerLabel: string; action: string; requiresApproval: boolean };
-      const created = auto(request.triggerLabel, request.action, request.requiresApproval);
-      automations.push(created);
-      return created;
-    },
-  ],
+  // A second PUT and a second POST for these same two routes used to sit here, shadowed by the ones
+  // above because the first match wins — and the shadowed PUT did `Object.assign` on the held object,
+  // which is exactly the in-place mutation ADR-0016 forbids in this file. Dead and dangerous is worse
+  // than dead: whichever of the two a later edit happened to reorder would silently change behaviour.
   [
     "POST",
     /^\/api\/projects\/[^/]+\/changes\/(\d+)\/runs$/,

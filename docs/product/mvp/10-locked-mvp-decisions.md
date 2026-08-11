@@ -219,6 +219,17 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   first draft of #136 repeated the confusion by describing the palette as "what can be placed" while
   creation lived elsewhere. Locking the vocabulary is the point: a distinction that exists only in
   one implementation's shape survives until the next refactor. Decided 2026-07-29 with #136.
+  **One clause superseded by ADR-0022** (`docs/adr/0022-an-order-a-person-can-rearrange-is-stored.md`,
+  accepted with #310): *"Membership is derived from the edges and never stored."* A project's Story
+  lifecycle is now a stored, ordered list of stages on the Project, and an Automation claims at most
+  one transition along it — because an order a person can rearrange has nowhere else to live, and
+  neither of #310's complaints (place a step first, reorder the flow) is expressible in a derived
+  graph. **Everything else DEC-053 locked stands unchanged:** the catalogue and the workflow are
+  still two things, and an Automation's absence from the workflow is still not an omission — it is a
+  trigger that acts on its own when somebody applies its label. What made the original clause right
+  is honoured rather than discarded: the stored order cannot claim a chain that would not fire,
+  because the transition is tied to the labels at the write — its from-stage *is* the trigger label
+  and its to-stage *is* the label the Run applies.
 - **DEC-054 — the phase timeout is bounded at 60 minutes** *(amends BR-005's
   "Admin-configurable")*: an Admin sets a phase timeout per Automation, default 30 minutes, and the
   product refuses a value above 60. The bound is not a limitation, it is what makes the rule

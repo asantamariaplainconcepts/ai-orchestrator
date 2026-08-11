@@ -146,6 +146,12 @@ export function ProjectScreen() {
             ) : null}
             <BacklogPanel
               projectId={projectId}
+              // BR-009, AC 9: only an Admin is offered a control that changes the arrangement. Read
+              // per project, because that is the only scope in which "your role" has an answer — and
+              // undefined is deliberately not treated as Member, since a screen must not read "I do
+              // not know yet" as a permission. The API refuses either way, which is where the
+              // guarantee lives.
+              canArrange={role === "Admin"}
               connector={connector}
               stories={stories}
               isPending={backlog.isPending}
@@ -226,6 +232,7 @@ function ConnectorHealthBadge({ connector }: { connector: ConnectorView }) {
  */
 function BacklogPanel({
   projectId,
+  canArrange,
   connector,
   stories,
   isPending,
@@ -237,6 +244,8 @@ function BacklogPanel({
   onViewChange,
 }: {
   projectId: string;
+  /** Whether this caller may rearrange the flow on the board (BR-009, AC 9). */
+  canArrange: boolean;
   connector: ConnectorView | null;
   stories: StoryView[];
   isPending: boolean;
@@ -338,8 +347,19 @@ function BacklogPanel({
         <p className="text-sm text-muted-foreground">{t("backlog.empty")}</p>
       )}
 
-      {stories.length > 0 && view === "board" && (
-        <KanbanBoard projectId={projectId} stories={stories} automations={automations} />
+      {/* No longer gated on there being a Story (#310). The board's columns are the project's
+          lifecycle — a fact about its configuration, not about the vendor's contents — and since the
+          board became the surface an Admin arranges that flow on, hiding it until a Story arrives
+          would hide the arrangement behind a backlog. An empty board says "Nothing here." per column,
+          which is a truer answer than a sentence about the backlog standing in for the whole view.
+          It is also what makes the board's write path reachable without a Connector at all. */}
+      {view === "board" && (
+        <KanbanBoard
+          projectId={projectId}
+          stories={stories}
+          automations={automations}
+          canArrange={canArrange}
+        />
       )}
 
       {stories.length > 0 && view === "list" && (
