@@ -40,7 +40,10 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 - **UC-023 — Member reads the documents attached to a Story's work.** The markdown its
   linked change adds or modifies, read live at that change's head through the Connector and
   rendered sanitised. Distinct from UC-013 (an Agent's Plan, which is data on a Run).
-- **UC-024 — Member reviews the file changes a Run produced.** The files its pull request
+- **UC-028 — Member reviews the file changes a Run produced.** *(Numbered UC-024 until 2026-08-11,
+  when it was found to share that id with the grill below. Anything written before that date citing
+  UC-024 may mean either; the archives keep their original wording, because history is a record and
+  not a thing to correct.)* The files its pull request
   touched, with the vendor's unified patch, read live at the change and shown beside the Plan
   that was approved. Binary and over-large patches state why rather than truncating.
 - **UC-009 — System polls the backlog.** Per-project poll (default 60 s, configurable)
