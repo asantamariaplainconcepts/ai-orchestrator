@@ -4,6 +4,7 @@ import { t } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { useSandboxes } from "@/features/sandboxes/useSandboxes";
 import { RuntimesUnavailableCard } from "./RuntimesReadiness";
 import { runtimesBlocked, useRuntimes } from "./useRuntimes";
 
@@ -96,6 +97,9 @@ export function EnvironmentChip({
  */
 function EnvironmentFacts() {
   const runtimes = useRuntimes();
+  // Ambient cadence: the sandboxes screen re-reads at its own pace when watched, and this shares
+  // that query's cache — the fastest visible consumer sets it.
+  const sandboxes = useSandboxes({ refetchInterval: 60_000 });
 
   return (
     <>
@@ -119,6 +123,17 @@ function EnvironmentFacts() {
           to="/runtimes"
         >
           {t("env.viewRuntimes")}
+        </Link>
+      ) : null}
+      {/* Gated on the sandboxes surface's own answer rather than the runtimes' (#311). They agree
+          today, and inferring one habitat question from another is how they would stop agreeing:
+          ADR-0021 refuses a terminal where a Run may still execute perfectly well. */}
+      {sandboxes.data?.hosted ? (
+        <Link
+          className="self-start text-xs text-primary underline-offset-4 hover:underline"
+          to="/sandboxes"
+        >
+          {t("env.viewSandboxes")}
         </Link>
       ) : null}
 

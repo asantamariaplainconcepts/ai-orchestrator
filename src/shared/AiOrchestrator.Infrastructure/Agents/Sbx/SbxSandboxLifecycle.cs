@@ -112,6 +112,11 @@ sealed class SbxSandboxLifecycle(
     /// would reap each other's live Runs. That is out of scope by DEC-016 — one owner, one
     /// machine — and it is written here rather than discovered.
     /// </para>
+    /// <para>
+    /// What counts as ours is <see cref="SbxSandboxRoster"/>'s to say, not this method's (#311). The
+    /// sandboxes surface enters exactly what this sweep deletes, and one definition is what stops those
+    /// two from drifting into disagreeing about whose machine this is.
+    /// </para>
     /// </summary>
     async Task ReapAbandoned(CancellationToken cancellationToken)
     {
@@ -120,35 +125,16 @@ sealed class SbxSandboxLifecycle(
             return;
         }
 
-        var listed = await cli.Run(["ls"], SbxCli.Brief, cancellationToken);
-        if (listed.ExitCode != 0)
+        var abandoned = await SbxSandboxRoster.Claimed(cli, cancellationToken);
+
+        foreach (var sandbox in abandoned)
         {
-            return;
+            await Dispose(sandbox.Name);
         }
 
-        var abandoned = listed
-            .Stdout.Split(
-                '\n',
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries
-            )
-            .Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault())
-            .Where(name =>
-                name is not null
-                && (
-                    name.StartsWith("aio-probe-", StringComparison.Ordinal)
-                    || name.StartsWith("aio-run-", StringComparison.Ordinal)
-                )
-            )
-            .ToArray();
-
-        foreach (var name in abandoned)
+        if (abandoned.Count > 0)
         {
-            await Dispose(name!);
-        }
-
-        if (abandoned.Length > 0)
-        {
-            SandboxLog.Reaped(logger, abandoned.Length);
+            SandboxLog.Reaped(logger, abandoned.Count);
         }
     }
 

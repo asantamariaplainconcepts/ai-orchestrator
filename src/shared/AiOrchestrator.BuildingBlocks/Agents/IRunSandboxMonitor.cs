@@ -21,6 +21,18 @@ public interface IRunSandboxMonitor
     /// </summary>
     string? NameFor(Guid runId);
 
+    /// <summary>
+    /// The Run using the sandbox by this name, or null when none of this process's Runs is (#311) — the
+    /// reverse question, asked by the surface that starts from a sandbox rather than from a Run.
+    /// <para>
+    /// Null is a fact rather than a failed lookup: this ledger holds only what this process created, so a
+    /// sandbox abandoned by an earlier process is genuinely owned by no Run. Persisting the mapping to
+    /// close that gap would reintroduce the lie the ledger exists to avoid — a stored name that outlives
+    /// the sandbox it describes.
+    /// </para>
+    /// </summary>
+    Guid? RunUsing(string sandbox);
+
     /// <summary>Whether this process is the one that would hold sandboxes at all.</summary>
     bool Hosted { get; }
 }
@@ -33,6 +45,8 @@ public interface IRunSandboxMonitor
 public sealed class UnhostedRunSandboxMonitor : IRunSandboxMonitor
 {
     public string? NameFor(Guid runId) => null;
+
+    public Guid? RunUsing(string sandbox) => null;
 
     public bool Hosted => false;
 }

@@ -25,7 +25,47 @@ public interface IRunTerminalHost
     /// </para>
     /// </summary>
     IRunTerminal? Open(Guid runId, int columns, int rows);
+
+    /// <summary>
+    /// Every sandbox on this machine that this product created (#311), whatever Run it belongs to and
+    /// whether or not it belongs to one at all. Empty where no terminal is hosted.
+    /// <para>
+    /// Asynchronous where <see cref="Open(Guid, int, int)"/> is not, and the difference is the point: a
+    /// Run's sandbox is resolved from an in-memory ledger, while this asks the machine. The answer is
+    /// therefore a fact about the machine at the moment it was asked, and stale the instant after.
+    /// </para>
+    /// </summary>
+    Task<IReadOnlyList<LocalSandbox>> List(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A shell inside the named sandbox, or null when that name is not this machine's to enter — it
+    /// names no sandbox, or one this product did not create.
+    /// <para>
+    /// <b>The name is resolved against a fresh listing before it is used, never passed through.</b> A
+    /// caller's name is a memory of a listing they read earlier, and a sandbox may have been reaped and
+    /// its name reused since. Resolving here is what keeps the namespace bound real rather than
+    /// advisory.
+    /// </para>
+    /// </summary>
+    Task<IRunTerminal?> Open(
+        string sandbox,
+        int columns,
+        int rows,
+        CancellationToken cancellationToken
+    );
 }
+
+/// <summary>
+/// One of this machine's sandboxes as a surface sees it (#311).
+/// <para>
+/// <paramref name="Status"/> is the sandbox runtime's own word rather than a boolean, because
+/// entering a stopped sandbox <b>starts</b> it and a reader has to be told that before they click.
+/// <paramref name="RunId"/> is present only for a Run this process is executing: the ledger that
+/// answers it is deliberately unpersisted, so a sandbox left behind by a previous process is a real
+/// sandbox with no Run to attribute it to.
+/// </para>
+/// </summary>
+public sealed record LocalSandbox(string Name, string Status, Guid? RunId, string? Workspace);
 
 /// <summary>
 /// One open shell: bytes in, bytes out, and gone when disposed. Deliberately not a stream pair —
@@ -53,4 +93,19 @@ public sealed class UnhostedRunTerminalHost : IRunTerminalHost
     public bool Hosted => false;
 
     public IRunTerminal? Open(Guid runId, int columns, int rows) => null;
+
+    /// <summary>
+    /// No sandboxes, because this habitat holds none — not an empty machine, an absent ability. The
+    /// surface that calls this must answer from <see cref="Hosted"/> and never from the emptiness of
+    /// this list, or a deployment would read as a machine that happens to have nothing on it.
+    /// </summary>
+    public Task<IReadOnlyList<LocalSandbox>> List(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<LocalSandbox>>([]);
+
+    public Task<IRunTerminal?> Open(
+        string sandbox,
+        int columns,
+        int rows,
+        CancellationToken cancellationToken
+    ) => Task.FromResult<IRunTerminal?>(null);
 }

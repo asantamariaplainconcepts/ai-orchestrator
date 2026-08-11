@@ -36,3 +36,4 @@ A decision that names no check stays advice; the loop exists to turn advice into
 | [0011](0011-a-worktree-session-carries-its-own-telemetry.md) | A worktree session carries its own telemetry, or the retro says which check failed | Accepted |
 | [0012](0012-a-seeded-document-is-the-projects-own.md) | A seeded document is the project's own | Accepted |
 | [0013](0013-an-assertion-must-be-able-to-fail.md) | An assertion must be able to fail | Accepted |
+| [0023](0023-a-hand-rolled-spawn-inherits-nothing-unless-it-says-so.md) | A hand-rolled spawn inherits nothing unless it says so | Accepted |
