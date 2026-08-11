@@ -251,9 +251,15 @@ schema being correct afterwards is not the evidence.
 
 ## Open Questions
 
-- **AC 13's "exactly one".** D3 reads it as *at most one, never two*, so that DEC-053's standalone
-  Automation and the last stage of a lifecycle stay expressible. If the owner means literally exactly
-  one, `ToStage` becomes non-null and both of those cases need an answer before implementation starts.
+- **AC 13's "exactly one" — answered, at spec review, as *at most one, never two*.** D3's reading
+  stands, and the normative text now says so in as many words: *"An Automation SHALL claim **at most
+  one** transition of its project's lifecycle"* and *"An Automation claiming no transition SHALL remain
+  expressible"* (`specs/automation-configuration/spec.md`). AC 13's force is that branching is
+  unrepresentable, not that every Automation must hand on. So `ToStage` is **nullable**, and the
+  migration writes null for every Automation whose output labels matched no sibling trigger. The two
+  cases this preserves are the ones that made the question worth asking: DEC-053's standalone
+  Automation (`ai:estimate`, a trigger that acts on its own) and the last stage of any lifecycle, which
+  has no outgoing boundary at all (AC 8).
 - **Vocabulary.** "Stage" and "transition" are new nouns beside DEC-005's locked ones. Whether they get
   a locked entry is the owner's call; this change uses them consistently and does not invent a DEC.
 - **DEC-053's supersession note.** ADR-0022 supersedes one clause of a *locked* decision. Amending

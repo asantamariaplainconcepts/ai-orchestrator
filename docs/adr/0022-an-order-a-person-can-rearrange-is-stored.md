@@ -1,6 +1,6 @@
 # ADR-0022: an order a person can rearrange is stored, never derived
 
-- **Status:** Proposed <!-- accepted at spec review of #310; see Consequences -->
+- **Status:** Accepted
 - **Date:** 2026-08-11
 - **Deciders:** repository owner (DEC-003); analysis by the agent proposing #310
 - **Tags:** frontend, backend, data model, automations
@@ -91,9 +91,10 @@ supersession SHALL be recorded where DEC-053 lives rather than only here.
   carries stages nothing uses until someone decides what removing one means.
 - **Neutral:** "stage" and "transition" are new nouns standing beside DEC-005's locked vocabulary.
   Whether they get a locked entry of their own is the owner's call, not this ADR's.
-- **Neutral:** this ADR is `Proposed`, not `Accepted`, because it is written in the proposal that
-  noticed the recurrence (`docs/adr/README.md:13-16`) and is reviewed with it. Accepting it is the
-  spec-review gate's act; until then it may still be edited, which an accepted ADR may not be.
+- **Neutral:** this ADR was written `Proposed` in the proposal that noticed the recurrence
+  (`docs/adr/README.md:13-16`) and reviewed with it. It was **accepted at the spec review of #310**,
+  and the status flip was the last edit it may receive: from here it is immutable, and a change of
+  mind is a new ADR superseding this one (`docs/adr/README.md:5-7`).
 
 ## Alternatives considered
 

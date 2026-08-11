@@ -1,14 +1,14 @@
 ## 1. The decision, before any code
 
-- [ ] 1.1 Get **ADR-0022** (`docs/adr/0022-an-order-a-person-can-rearrange-is-stored.md`) accepted at
+- [x] 1.1 Get **ADR-0022** (`docs/adr/0022-an-order-a-person-can-rearrange-is-stored.md`) accepted at
       spec review, and flip its Status from `Proposed` to `Accepted`. It is written now because an ADR
       belongs to the change that noticed the recurrence (`docs/adr/README.md:13-16`); it is not
       accepted yet because accepting it is the reviewer's act, and an accepted ADR may not be edited.
-- [ ] 1.2 Answer design.md's first Open Question before writing the domain: does AC 13's "exactly one
+- [x] 1.2 Answer design.md's first Open Question before writing the domain: does AC 13's "exactly one
       claimed transition" mean *at most one* (this design's reading — D3, so that DEC-053's standalone
       Automation and the last stage stay expressible) or literally one? The nullability of the new
       field depends on the answer, and so does the migration.
-- [ ] 1.3 Record DEC-053's supersession where DEC-053 lives
+- [x] 1.3 Record DEC-053's supersession where DEC-053 lives
       (`docs/product/mvp/10-locked-mvp-decisions.md:209-221`), naming ADR-0022 and limiting it to the
       clause *"membership is derived from the edges and never stored"*. **Needs the owner's assent** —
       a locked decision is not amended unilaterally. While there, report (do not fix) the duplicate
