@@ -58,18 +58,18 @@
 
 ## 5. The surface
 
-- [ ] 5.1 Read `docs/design-system/` and `DESIGN.md` before writing any UI, and compose from the existing
+- [x] 5.1 Read `docs/design-system/` and `DESIGN.md` before writing any UI, and compose from the existing
   kit rather than new primitives.
-- [ ] 5.2 Add the sandboxes screen under `src/frontend/features/`: the listing with name, status and Run
+- [x] 5.2 Add the sandboxes screen under `src/frontend/features/`: the listing with name, status and Run
   where present, its query hook and typed API call.
-- [ ] 5.3 Reuse `features/runs/RunTerminal.tsx`'s xterm transport for the sandbox-keyed terminal instead of
+- [x] 5.3 Reuse `features/runs/RunTerminal.tsx`'s xterm transport for the sandbox-keyed terminal instead of
   adding a second terminal component.
-- [ ] 5.4 State in the surface that entering a stopped sandbox starts it — `sbx exec` on a stopped sandbox
+- [x] 5.4 State in the surface that entering a stopped sandbox starts it — `sbx exec` on a stopped sandbox
   starts it, verified on the real CLI — and render the sandbox-is-gone ending rather than a dead terminal.
-- [ ] 5.5 Render each refusal as its own sentence: no terminal hosted here, no permission, not this
+- [x] 5.5 Render each refusal as its own sentence: no terminal hosted here, no permission, not this
   machine's to enter.
-- [ ] 5.6 Add every string to the typed i18n catalogue; hardcoded JSX copy fails CI (DEC-009, DEC-021).
-- [ ] 5.7 Add the route and its navigation entry, hidden where the habitat hosts no terminal.
+- [x] 5.6 Add every string to the typed i18n catalogue; hardcoded JSX copy fails CI (DEC-009, DEC-021).
+- [x] 5.7 Add the route and its navigation entry, hidden where the habitat hosts no terminal.
 
 ## 6. Tests that exercise the claims
 
@@ -86,16 +86,16 @@
 
 ## 7. Docs
 
-- [ ] 7.1 Add **UC-029 — Member opens a terminal on this machine's sandboxes** to
+- [x] 7.1 Add **UC-029 — Member opens a terminal on this machine's sandboxes** to
   `docs/product/mvp/04-mvp-use-cases.md`, matching the existing entry format and leaving UC-024's
   duplication to #315 / PR #316 rather than colliding with it.
 
 ## 8. Verification — the CI-equivalent gates
 
-- [ ] 8.1 `dotnet csharpier check .` and `dotnet build` clean.
-- [ ] 8.2 `dotnet test` for the Runs module's unit and functional projects, plus `ArchTests`.
-- [ ] 8.3 Frontend: `pnpm lint --max-warnings=0`, `pnpm prettier --check`, `pnpm tsc --noEmit`.
-- [ ] 8.4 `pnpm build` — run it before any E2E, because the E2E suite serves the built bundle and a `.tsx`
+- [x] 8.1 `dotnet csharpier check .` and `dotnet build` clean.
+- [x] 8.2 `dotnet test` for the Runs module's unit and functional projects, plus `ArchTests`.
+- [x] 8.3 Frontend: `pnpm lint --max-warnings=0`, `pnpm prettier --check`, `pnpm tsc --noEmit`.
+- [x] 8.4 `pnpm build` — run it before any E2E, because the E2E suite serves the built bundle and a `.tsx`
   edit is invisible to it until the build runs. Verify the exit code directly rather than through a wrapper
   that can mask a failure.
 - [ ] 8.5 Run the app and open the surface for real: list this machine's sandboxes, open a terminal on one,

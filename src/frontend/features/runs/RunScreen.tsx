@@ -410,7 +410,6 @@ export function RunScreen() {
                     Run is. The preview shows what the agent built; this opens a shell next to it
                     (#304), and like the preview it renders nothing once the Run is over. */}
                 <RunTerminal
-                  projectId={projectId}
                   runId={runId}
                   terminal={runFinished ? undefined : terminal.data}
                   runFinished={runFinished}

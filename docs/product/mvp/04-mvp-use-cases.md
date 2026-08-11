@@ -105,3 +105,12 @@ Actor-scoped, one capability each. Every backlog issue must trace to ≥1 UC
 - **UC-027 — Member watches a Run's output while it executes.** The Run page shows the log
   growing with ≤5s lag, stops following on terminal states, and serves the same full transcript
   afterwards. A crash preserves every line committed before it (#96; DEC-050 revising DEC-031).
+- **UC-029 — Member opens a terminal on this machine's sandboxes.** A machine-scoped surface lists
+  the sandboxes this product created on the machine that executes Runs — the namespace its startup
+  sweep already claims, and no sandbox made outside the product — each with its status and the Run
+  it belongs to where it has one, and each openable in a shell where `Ctrl-C` arrives as a signal.
+  Entering a stopped sandbox starts it, which the surface says beforehand. Self-host only: a
+  deployment answers that no terminal is hosted there, distinguishably from a refusal on
+  permission. Every attach records who, when and which sandbox, including the sandboxes no Run
+  owns. Generalises UC-027's sibling capability from the sandbox of a Run in view to any sandbox on
+  the machine (#311; ADR-0021/DEC-065, `run.attach`).
