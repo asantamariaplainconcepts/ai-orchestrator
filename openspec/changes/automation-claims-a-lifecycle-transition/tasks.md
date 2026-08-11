@@ -16,13 +16,13 @@
 
 ## 2. The lifecycle, stored (design D1)
 
-- [ ] 2.1 Add `LifecycleStages` to `src/modules/Projects/.../Domain/Project.cs` as an ordered list of
+- [x] 2.1 Add `LifecycleStages` to `src/modules/Projects/.../Domain/Project.cs` as an ordered list of
       stage names, with the domain operations the claims need: resolve a stage case-insensitively,
       insert a stage immediately before another, and read the ordered list back.
-- [ ] 2.2 Map it in `src/modules/Projects/.../Persistence/ProjectsDbContext.cs` as a
+- [x] 2.2 Map it in `src/modules/Projects/.../Persistence/ProjectsDbContext.cs` as a
       `character varying(200)[]` primitive collection with a 200-char element type, following the
       `OutputLabels` precedent at `:53-62` — array position is the order.
-- [ ] 2.3 Unit-test the ordering operations in
+- [x] 2.3 Unit-test the ordering operations in
       `src/tests/modules/Projects/AiOrchestrator.Modules.Projects.UnitTests`: inserting before the
       first stage, inserting before a middle stage, and resolving a stage that differs only in case.
 
