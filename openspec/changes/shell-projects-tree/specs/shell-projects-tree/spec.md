@@ -7,6 +7,12 @@ The shell's navigation panel SHALL render each project the caller may see as a r
 be its **Story rows**, and each Story row SHALL nest the project's non-terminal Runs for that
 Story, each linking to `/projects/:id/runs/:runId`. A Story row SHALL link to its story route.
 
+A Run that targets an open **change** rather than a Story (run-on-a-pr) has no Story to nest under —
+a Run targets exactly one of the two, never both, never neither. Such a Run SHALL appear under a row
+for its **change**, named by its number and title, alongside the Story rows. It SHALL NOT be
+dropped: a panel that answers "what is this project doing" cannot stay silent about a Run that is
+executing.
+
 The tree SHALL be rendered from the single navigation component in
 `src/frontend/shared/ui/AppShell.tsx` that already feeds the expanded sidebar, the collapsed rail
 and the mobile sheet, so no container can hold a different set of entries from another.
@@ -22,6 +28,12 @@ counts.
 - **THEN** the project row links to `/projects/:id`, the Story row appears beneath it linking to
   its story route, and the Run appears beneath that Story linking to
   `/projects/:id/runs/:runId`
+
+#### Scenario: a Run on a change still appears
+
+- **WHEN** a project's only live Run targets open change #42 rather than a Story
+- **THEN** a row for change #42 appears under that project carrying the Run, and the Run is not
+  dropped for want of a Story
 
 #### Scenario: the Inbox is untouched
 

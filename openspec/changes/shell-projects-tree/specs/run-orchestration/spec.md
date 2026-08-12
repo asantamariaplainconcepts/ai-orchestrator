@@ -55,8 +55,19 @@ design system's empty value, and a project without Runs SHALL show the empty sta
 The system SHALL additionally expose a **cross-project in-flight read** at `GET /api/in-flight`
 (UC-033) — a third observation surface beside the per-project list and the Inbox. It SHALL report,
 for every project the caller may see, that project's held Stories and its Runs in a non-terminal
-state (`Queued`, `Executing`, `AwaitingInput`), each Run carrying the Story it belongs to so a Run
-is never reported without the work it is doing.
+state (`Queued`, `Executing`, `AwaitingInput`), each Run nested under the **subject** it belongs to
+so a Run is never reported without the work it is doing.
+
+A Run's subject SHALL be whichever of the two it has. A Run targets **exactly one** of a Story or an
+open change — never both, never neither — so a change-targeted Run (run-on-a-pr) SHALL be reported
+under its **change**, identified by change number and title, in the same null-per-kind shape the
+Inbox's entries already use. A change-targeted Run SHALL NOT be omitted: a surface about live work
+that stays silent about a Run that is executing misreports by omission.
+
+The reported states SHALL be enumerated rather than derived as "not terminal". `Planning` and
+`AwaitingApproval` remain in the schema but are unreachable (DEC-067), and this surface reports what
+can be live now; Runs still recorded in those states SHALL remain visible where they already are —
+the Inbox's approval lane — rather than being reported here.
 
 It SHALL be scoped exactly as the Inbox is: by `IProjectPermissions.VisibleProjects`, with
 `null` meaning all and resolved through `IProjectCatalog.ActiveProjectIds` where an enumerable
@@ -101,6 +112,23 @@ defines.
   held Story and the other an `Executing` Run
 - **THEN** both projects are reported, each with its own live work, and every reported Run names
   the Story it belongs to
+
+#### Scenario: a change-targeted Run is reported under its change
+
+- **WHEN** a project has an `Executing` Run targeting open change #42 and no Story Run
+- **THEN** the read reports that project with a node identified by change number 42 and its title,
+  carrying that Run — the Run is neither omitted nor reported without a subject
+
+#### Scenario: a Story that is both held and running is one node
+
+- **WHEN** a Story carries the hold and also has a `Queued` Run
+- **THEN** it is reported once, marked held, with that Run nested under it
+
+#### Scenario: an unreachable state is not reported as in flight
+
+- **WHEN** a project's only non-terminal Run is recorded in `AwaitingApproval`
+- **THEN** the in-flight read reports nothing for it, and the Inbox still lists it in the approval
+  lane
 
 #### Scenario: terminal Runs are not in flight
 

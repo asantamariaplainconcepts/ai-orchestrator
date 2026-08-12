@@ -180,6 +180,28 @@ prompted this.* The data is a **vendor** read per project (`IChangeReader.Open`,
 `/api/inbox/changes`), which D2 and `GetInboxChanges`'s own docstring both forbid on the shell's
 polling cadence. It is not refused on merit — it needs its own issue and its own cadence decision.
 
+### D9 — A tree node's subject is a Story **or** a change (found during implementation)
+
+D4 said the tree is Project → Story → Run. Implementation showed that incomplete: `Run` documents
+that it "targets exactly one of a Story or a change — never both, never neither", and
+`VendorStoryId` is null for a change-targeted Run (run-on-a-pr). D4's shape had nowhere to put one.
+
+Both available readings were wrong. Omitting those Runs makes a panel about live work silent about a
+Run that is executing — a lie by omission on the surface's core claim. Reporting them bare
+contradicts D4's reason for existing, since a Run row without its subject is unreadable.
+
+So a node carries whichever subject it has, which is **the shape `GetInbox.Entry` already uses**: it
+carries `VendorStoryId`/`StoryTitle` *and* `ChangeNumber`/`ChangeTitle`, null per kind, for exactly
+this reason. Reusing it keeps one vocabulary for "what a Run is about" across both cross-project
+surfaces.
+
+The spec deltas were corrected rather than the code bent to the wrong spec.
+
+*Also settled here:* the read enumerates `Queued`/`Executing`/`AwaitingInput` rather than negating
+the terminal set. `Planning` and `AwaitingApproval` are unreachable (DEC-067) but still exist on
+Runs recorded before it — non-terminal, yet not "live now". They stay visible where they already
+are, in the Inbox's approval lane, rather than surfacing in a panel about current work.
+
 ## Risks / Trade-offs
 
 - **A new query on a 30s cadence from every page** → It is Postgres-only: one `Runs` query scoped

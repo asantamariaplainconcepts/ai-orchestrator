@@ -18,19 +18,19 @@
 
 ## 2. The cross-project in-flight read
 
-- [ ] 2.1 Add `GetInFlight.cs` under
+- [x] 2.1 Add `GetInFlight.cs` under
       `src/modules/Runs/AiOrchestrator.Modules.Runs/Features/Observation/UseCases/`, modelled on
       `GetInbox.cs`: `GET /api/in-flight`, `[Requires(Access.FiltersToCaller)]`, internal sealed
       query/response records, `WithTags("Runs")`.
-- [ ] 2.2 Scope it by `IProjectPermissions.VisibleProjects`, falling back to
+- [x] 2.2 Scope it by `IProjectPermissions.VisibleProjects`, falling back to
       `IProjectCatalog.ActiveProjectIds` for the null-means-all caller — the pattern
       `GetInboxChanges` established. A non-visible project must be **absent**, not empty.
-- [ ] 2.3 Report each visible project's non-terminal Runs (`Queued`, `Executing`,
+- [x] 2.3 Report each visible project's non-terminal Runs (`Queued`, `Executing`,
       `AwaitingInput`) grouped under the Story they belong to, and its held Stories from task 1.
       Every Run carries its Story; no Run is reported bare.
-- [ ] 2.4 Keep it read-model-only — the Runs tables and the Postgres Mirror, no vendor call. Add
+- [x] 2.4 Keep it read-model-only — the Runs tables and the Postgres Mirror, no vendor call. Add
       the comment saying why, referencing the hazard `GetInboxChanges` documents.
-- [ ] 2.5 Leave `GET /api/inbox` untouched. Verify by reading `GetInbox.cs` after the change:
+- [x] 2.5 Leave `GET /api/inbox` untouched. Verify by reading `GetInbox.cs` after the change:
       nothing in it moves.
 
 ## 3. Backend verification
