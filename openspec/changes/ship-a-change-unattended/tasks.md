@@ -54,18 +54,30 @@
 
 ## 5. Verification
 
-- [ ] 5.1 `npx --yes @fission-ai/openspec@1.6.0 validate --changes` passes (the CI gate for this
+- [x] 5.1 `npx --yes @fission-ai/openspec@1.6.0 validate --changes` passes (the CI gate for this
       change's only touched paths).
-- [ ] 5.2 `rg -i 'hitl' -g '!.claude/workflow.json' .claude docs CONTRIBUTING.md AGENTS.md` returns
-      nothing — the hold's name still has exactly one home.
-- [ ] 5.3 `rg -n 'remove-label' .claude` shows no command or skill removing the hold label,
+- [x] 5.2 The hold's name still has exactly one home: no `/aio:*` command or skill contains the
+      literal label. **Do not use `rg` for this** — it returned a false negative here (see 6.2);
+      scan with a plain reader that cannot be filtered.
+- [x] 5.3 `rg -n 'remove-label' .claude` shows no command or skill removing the hold label,
       `ship.md` included.
-- [ ] 5.4 Walk each of the 15 acceptance criteria on
+- [x] 5.4 Walk each of the 15 acceptance criteria on
       [#343](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/343) against the
       written command file and mark which are verified by reading and which will first be exercised
       by a real unattended run.
-- [ ] 5.5 Diff-read the three staged command files to confirm each change is purely additive — a
+- [x] 5.5 Diff-read the three staged command files to confirm each change is purely additive — a
       direct `/aio:propose`, `/aio:implement` or `/aio:sync` behaves exactly as it did.
-- [ ] 5.6 State explicitly, in the PR, that this change lands through the **staged** path: a human
+- [x] 5.6 State explicitly, in the PR, that this change lands through the **staged** path: a human
       reads the ADR that authorises the unattended one. `/aio:ship` is not exercised end to end by
       this change, and the criteria that need a real run say so.
+
+## 6. Discovered during implementation
+
+- [x] 6.1 Record the **starter-tier divergence**: `Starter/workflow/` ships byte-identical copies of
+      the six command files; this change edits three and deliberately does not mirror them (product
+      change, out of scope for #343 — and a bigger decision than ADR-0027 made, per ADR-0021's
+      habitat logic). Documented in `design.md`; carried to a tracked issue at sync (ADR-0026).
+- [x] 6.2 Record that **`rg` reported a false negative** on the hold-label scan — it found no `hitl`
+      anywhere outside `.claude/workflow.json` while `DEC-067`, `05-business-rules.md`,
+      `StoryHold.cs` and ~65 other lines contain it. A verification that silently under-reports is
+      worse than none (ADR-0013 — an assertion must be able to fail); the retro carries this.

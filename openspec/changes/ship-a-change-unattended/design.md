@@ -131,6 +131,27 @@ gets no new exceptions.
   The hold plus the comment make the state explicit, and the resumption path is an ordinary
   `/aio:implement`, which applies its own hold at the end as usual.
 
+## Known divergence this change creates, deliberately
+
+`src/modules/Projects/AiOrchestrator.Modules.Projects/Starter/workflow/` ships **byte-identical
+copies** of the six `/aio:*` command files as the product's spec-first starter tier — verified against
+`origin/main` for all six. This change edits `propose.md`, `implement.md` and `sync.md` in
+`.claude/commands/aio/` and **does not mirror them**, so three of the six copies now diverge.
+
+That is the correct outcome for this change, on two grounds. #343 puts product-side changes out of
+scope; and shipping an unreviewed-merge route into other people's repositories is a far larger
+decision than ADR-0027 made — its evidence is one solo maintainer's own machine, which is precisely
+the distinction ADR-0021 drew when it permitted a capability in self-host and refused it in a
+deployment. Each tree stays internally consistent: the starter's copies keep the reviewed loop and
+reference no `ship.md`.
+
+The risk is that the divergence is **silent**. `StarterCatalogue_Should_Constraint` checks frontmatter,
+bodies, path collisions and wiring, and still does not compare the two trees — the gap #323's retro
+recorded. So this change records the divergence here and carries it to a **tracked issue** at sync
+(ADR-0026): whether the starter tier gets the unattended route is a product decision, owed its own
+grill, and "the two trees are no longer identical" needs to be discoverable by whoever next assumes
+they are.
+
 ## Migration Plan
 
 Additive; nothing to migrate. Every existing issue, branch, PR and command behaves as before, and a
