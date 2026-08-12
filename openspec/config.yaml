@@ -15,9 +15,10 @@ context: |
   docs/product/mvp/10-locked-mvp-decisions.md and 07-open-decisions.md). Do not invent
   functionality beyond those documents; surface gaps instead. All product copy is
   English (DEC-021). Coined vocabulary is locked (DEC-005): Agent (never "pod"),
-  Connector, Automation, Run, Plan — plus Habitat, Sandbox, Conversation, Pass, Inbox
-  (v1 glossary). Run states: Queued, Planning, AwaitingApproval, AwaitingInput,
-  Executing, Succeeded, Failed, Cancelled.
+  Connector, Automation, Run, Hold — plus Habitat, Sandbox, Conversation, Pass, Inbox
+  (v1 glossary; Plan and Approval are retired vocabulary, DEC-067). Run states: Queued,
+  AwaitingInput, Executing, Succeeded, Failed, Cancelled — Planning and AwaitingApproval
+  remain in the schema but are unreachable (DEC-067).
 
   Backend (src/modules, src/shared, src/root): .NET modular monolith with Vertical
   Slice Architecture — Module -> Features/<Feature> -> UseCases/<UseCase>. Custom CQS
@@ -37,8 +38,9 @@ context: |
   Run executes (execution locus, BR-016 for Local runs). Agent runtimes are pluggable
   per Automation (DEC-012): Claude Code headless first, opencode second. Secrets exist
   in Postgres, logs and telemetry only as names; the habitat's own store holds the
-  values (Key Vault where provisioned — BR-010, DEC-052). Approval-gated runs are
-  two-phase: plan -> human review in the website -> execute (DEC-040, BR-007).
+  values (Key Vault where provisioned — BR-010, DEC-052). Every Run is single-phase; work
+  waits for a person as a hold on the Story — the reserved label `hitl`, which stops any
+  Automation from starting until somebody removes it (BR-007, DEC-067).
 
   Frontend (src/frontend): React web-only SPA (Vite + React Router + TypeScript),
   pnpm standalone project, served same-origin by the host (dev: Aspire proxy to the

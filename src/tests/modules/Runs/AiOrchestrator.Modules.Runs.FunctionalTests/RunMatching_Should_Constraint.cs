@@ -51,7 +51,7 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
 
     public Task DisposeAsync() => Task.CompletedTask;
 
-    async Task AddAutomation(string label, string? state = null, bool requiresApproval = false) =>
+    async Task AddAutomation(string label, string? state = null) =>
         (
             await _client.PostAsJsonAsync(
                 $"/api/projects/{_projectId}/automations",
@@ -62,7 +62,6 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval,
                 }
             )
         ).EnsureSuccessStatusCode();
@@ -118,23 +117,6 @@ public class RunMatching_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
 
         (await Runs()).ShouldBeEmpty();
         (await QueuedRunIds()).ShouldBeEmpty();
-    }
-
-    [Fact]
-    public async Task ATwoPhaseMatch_Should_CreateAndDispatchLikeAnyOther()
-    {
-        // Until #22 this asserted a refusal. The lane splits at execution, not creation
-        // (approval-gate D1): the Run is created and dispatched, and the worker pauses it on
-        // its Plan — which ApprovalGate_Should_Constraint covers.
-        await AddAutomation("run-me", requiresApproval: true);
-        fixture.Vendor.Stories.Add(new VendorStory("1", "Add login", "open", ["run-me"]));
-
-        await Refresh();
-        await fixture.Probe.WaitForAtLeast(_projectId, 1);
-
-        var run = (await Runs()).Single();
-        run.State.ShouldBe(nameof(RunState.Queued));
-        (await QueuedRunIds()).ShouldBe([run.Id]);
     }
 
     [Fact]

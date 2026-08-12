@@ -4102,3 +4102,43 @@ not.
 **ADR:** none new. Point (1) is a candidate if it recurs — the graduation rule is the second
 occurrence, and this is the first observed. Point (2) is a defect in the mapping hook rather than a
 decision to record.
+
+## 2026-08-12 — hold-replaces-the-plan-gate
+
+Issue #321, PR #322. Supersedes DEC-039 and DEC-040; rewrites BR-007.
+
+**Time (telemetry, captured but unattributed):** session
+`5cf40c6b-52aa-4a88-9e49-9a737a7cdf5e` records 1.80h `cli` active time, $83.02 and ~141M tokens —
+but `sessions.jsonl` maps it to no branch, and the session spans four changes (#321, #323, #324,
+#327), so **no per-change split is derivable**. No `type=user` datapoints on `active_time.total`,
+so human time is not measurable for this change either — the same gap the `product-corpus-v1` entry
+recorded. `verify-telemetry.mjs` passes all five checks: capture works, attribution is what fails.
+Fourteen session records *are* mapped to this branch and carry no usage at all, which is the shape
+of the defect: the ids that are mapped are not the id that did the work.
+
+**What worked:** the grill caught that the idea contradicted two **locked** decisions before any
+code existed — DEC-039, and DEC-040 which the log records as chosen "deliberately, knowing it
+doubles job orchestration" — and then found the argument for reversing them already written in the
+corpus: DEC-062's accepted cost that the approval gate "is a workflow control now, not a
+containment control". That turned a preference into a decision with a citation, which is the whole
+reason it survived review. Writing the spec deltas against the real spec files then caught a fourth
+affected capability the three-way split had missed: `default-automations`, the shipped starter
+chain, which would otherwise have created fresh projects configured with a field that no longer
+existed.
+
+**What didn't:** a spec scenario was written that the design could not support — "a request
+carrying an approval flag is refused as an unknown field", which needs a global JSON
+`UnmappedMemberHandling` policy affecting every endpoint in the product. It was caught at
+implementation and amended on the branch, but it should have been caught while writing the delta.
+Separately, UC-026's real narrowing surfaced from four failing tests rather than from design: the
+proposal named the emptied approval category as a follow-up, but nobody noticed `AwaitingInput` was
+**also** dormant (DEC-062), so "the Inbox loses one of three categories" was in fact "the Inbox has
+one producible category left".
+
+**One change next time:** when writing a spec delta, check each new scenario against the design's
+own decisions before committing it — a scenario asserting enforcement the design never describes is
+invented rather than specified. And when retiring a capability, enumerate what *else* feeds the
+surfaces it touches, not only what it feeds.
+
+**ADR:** none new. The spec-scenario lesson is a candidate if it recurs; this is the first observed
+occurrence and the graduation rule is the second.

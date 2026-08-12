@@ -23,6 +23,26 @@ export function fold(label: string | null | undefined): string {
 }
 
 /**
+ * The hold (BR-007, DEC-067) — the reserved label that stops every Automation until a person
+ * removes it. Mirrors `StoryHold.Label` on the server, which is the enforcement; this copy exists
+ * so a surface can *draw* a hold without asking, and it is a constant rather than configuration for
+ * the same reason the server's is.
+ */
+export const HOLD_LABEL = "hitl";
+
+/**
+ * Whether this Automation stops for a person: the hold is among the marks it applies on success.
+ *
+ * Replaces `requiresApproval` (#321). The question it answers is deliberately the same shape as the
+ * old one — "does the flow wait after this step?" — but the answer now lives where the flow's other
+ * wiring lives, in the marks, rather than in a flag of its own. Case folds, as every comparison here
+ * does: the vendor treats `HITL` and `hitl` as one label, and so must a picture of what it will do.
+ */
+export function holds(automation: Automation | undefined): boolean {
+  return automation?.outputLabels.some((label) => fold(label) === HOLD_LABEL) ?? false;
+}
+
+/**
  * The Automation claiming the transition **into** each stage, keyed by the folded stage name.
  *
  * Keyed by the to-stage rather than the from-stage, because that is the boundary a reader points at:
@@ -90,10 +110,10 @@ export function summarise(stages: readonly string[], automations: Automation[]):
 
   // A boundary per stage: the transition *into* it, including the one into the first stage, which is
   // how a step gets placed first (AC 4). An unclaimed boundary is a person's turn (BR-006); a claimed
-  // one that gates its plan is the other wait, and both are stops.
+  // one whose step applies the hold is the other wait, and both are stops.
   const humanStops = stages.filter((stage) => {
     const claimant = claimants.get(fold(stage));
-    return claimant === undefined || claimant.requiresApproval;
+    return claimant === undefined || holds(claimant);
   }).length;
 
   return { stages: stages.length, humanStops };

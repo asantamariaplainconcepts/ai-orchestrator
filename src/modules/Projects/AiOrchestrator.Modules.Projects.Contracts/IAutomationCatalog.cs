@@ -34,7 +34,6 @@ public sealed record AutomationDetail(
     string Action,
     /// <summary>Null means the Project default, resolved at execution time (project-runtimes).</summary>
     string? Runtime,
-    bool RequiresApproval,
     TimeSpan Timeout,
     /// <summary>Grill only; null means the framework's convention (grill design D5).</summary>
     string? PromptPath = null,
@@ -70,13 +69,17 @@ public sealed record AutomationDetail(
 );
 
 /// <summary>
-/// What matching needs and nothing more: the trigger, the lane flag, and the id to record on
-/// the Run. Action, runtime and timeout stay inside Projects until the dispatch worker needs
-/// them — through this same surface, not through the event.
+/// What matching needs and nothing more: the trigger and the id to record on the Run. Action,
+/// runtime and timeout stay inside Projects until the dispatch worker needs them — through this
+/// same surface, not through the event.
+/// <para>
+/// The lane flag is gone with DEC-067: every Run is single-phase, so there is no lane to choose.
+/// What stops work is the hold on the Story, which matching never sees — the refusal lives at
+/// creation, where <i>Run now</i> passes too (BR-007, BR-013).
+/// </para>
 /// </summary>
 public sealed record AutomationTrigger(
     Guid AutomationId,
     string TriggerLabel,
-    string? TriggerState,
-    bool RequiresApproval
+    string? TriggerState
 );

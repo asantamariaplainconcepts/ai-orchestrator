@@ -159,7 +159,6 @@ public class ModelChain_Should_Constraint(RunsApiFixture fixture) : IAsyncLifeti
                 action = "RepositoryPrompt",
                 promptPath = "story.md",
                 runtime = "ClaudeCodeHeadless",
-                requiresApproval = false,
                 model,
             }
         );

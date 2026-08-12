@@ -154,7 +154,6 @@ public class PromptScratchpad_Should_Constraint(RunsApiFixture fixture) : IAsync
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "estimate.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();
@@ -193,7 +192,6 @@ public class PromptScratchpad_Should_Constraint(RunsApiFixture fixture) : IAsync
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "estimate.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();
@@ -237,7 +235,6 @@ public class PromptScratchpad_Should_Constraint(RunsApiFixture fixture) : IAsync
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();

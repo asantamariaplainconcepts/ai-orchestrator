@@ -53,7 +53,6 @@ public class ClaimedFromStage_Should_Constraint(ProjectsApiFixture fixture) : IA
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
                 toStage,
             }
         );
@@ -68,7 +67,6 @@ public class ClaimedFromStage_Should_Constraint(ProjectsApiFixture fixture) : IA
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
                 toStage,
             }
         );

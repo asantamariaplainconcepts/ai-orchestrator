@@ -487,7 +487,7 @@ function Plan({
                     {t("workflowSetup.flowEnds")}
                   </>
                 )}
-                {step.gated ? (
+                {step.holds ? (
                   <>
                     {" · "}
                     <b className="text-warning-foreground">{t("workflowSetup.gate")}</b>

@@ -23,7 +23,7 @@ namespace AiOrchestrator.EndToEndTests;
 /// </para>
 /// <para>
 /// The claim worth asserting is that the two human waits stay different things (BR-006 against BR-007):
-/// clearing the claim makes the boundary a person's turn and leaves <c>requiresApproval</c> alone, and
+/// clearing the claim makes the boundary a person's turn and leaves the step's marks alone — the hold
 /// leaves the marks alone too — which is the transition/mark split holding under a gesture. Conflating
 /// them was the first draft of #137, and it would have drawn one picture for two run-time behaviours.
 /// </para>
@@ -75,12 +75,10 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
         // take one with it — the whole point of splitting the two.
         grill.OutputLabels.ShouldBe(["needs-design"]);
 
-        // The other wait, untouched. BR-007's two-phase Run is a different thing from a person carrying
-        // work across a boundary, and the board must keep them distinguishable.
-        grill.RequiresApproval.ShouldBeFalse();
-        stored
-            .Single(automation => automation.TriggerLabel == "ready-for-proposal")
-            .RequiresApproval.ShouldBeFalse();
+        // The other wait is a mark now (#321): BR-007's hold lives in `OutputLabels`, so "clearing
+        // the claim leaves the other wait alone" is the assertion directly above — the marks are
+        // untouched, hold or not. Neither Automation here holds, and neither gains one.
+        stored.ShouldAllBe(automation => !automation.OutputLabels.Contains("hitl"));
 
         // And the boundary now says so, as a fact about who acts: no validation error, no
         // "incomplete configuration" marker and no elapsed time (BR-006, AC 3).
@@ -155,7 +153,6 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                     outputLabels = marks ?? [],
                     toStage,
                 },
@@ -184,7 +181,6 @@ public class HumanStep_Should_Constraint(AppHostFixture fixture)
         Guid Id,
         string TriggerLabel,
         IReadOnlyList<string> OutputLabels,
-        bool RequiresApproval,
         string? ToStage
     );
 }

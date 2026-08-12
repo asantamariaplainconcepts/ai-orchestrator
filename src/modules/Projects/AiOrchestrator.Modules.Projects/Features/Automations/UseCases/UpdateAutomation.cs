@@ -41,7 +41,6 @@ sealed class UpdateAutomation : IUseCase
                             request.TriggerState,
                             request.Action,
                             request.Runtime,
-                            request.RequiresApproval,
                             request.TimeoutMinutes,
                             request.PromptPath,
                             request.OutputLabels,
@@ -106,7 +105,6 @@ sealed class UpdateAutomation : IUseCase
         string? TriggerState,
         string Action,
         string? Runtime,
-        bool RequiresApproval,
         int? TimeoutMinutes,
         string? PromptPath = null,
         IReadOnlyList<string>? OutputLabels = null,
@@ -266,7 +264,6 @@ sealed class UpdateAutomation : IUseCase
                 string.IsNullOrWhiteSpace(command.TriggerState) ? null : command.TriggerState,
                 Enum.Parse<AutomationAction>(command.Action),
                 command.Runtime is null ? null : Enum.Parse<AgentRuntime>(command.Runtime),
-                command.RequiresApproval,
                 command.TimeoutMinutes is { } minutes
                     ? TimeSpan.FromMinutes(minutes)
                     : CreateAutomation.DefaultTimeout,

@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.CQS;
+using AiOrchestrator.BuildingBlocks.Domain;
 using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Modules;
 using AiOrchestrator.Modules.Backlog.Contracts;
@@ -99,11 +100,16 @@ sealed class DiscoverPipeline : IUseCase
     /// The tier this step came from, so toggling a consent adds and removes its rows without a round
     /// trip.
     /// </param>
+    /// <param name="Holds">
+    /// Whether this step stops for a person: its marks include the hold, so the Story it finishes
+    /// with starts nothing until somebody clears it (BR-007, DEC-067). It replaced an approval flag
+    /// — the wait moved from inside the step's Run to the boundary after it.
+    /// </param>
     internal sealed record PlannedStep(
         string Trigger,
         string PromptFile,
         bool Exists,
-        bool Gated,
+        bool Holds,
         bool Installable,
         string? ToStage,
         string TierId
@@ -185,7 +191,7 @@ sealed class DiscoverPipeline : IUseCase
                                 step.Trigger,
                                 exists ? file! : step.Prompt.SaveAs,
                                 exists,
-                                step.Wiring.RequiresApproval,
+                                StoryHold.IsHeld(step.Wiring.Marks),
                                 installable,
                                 step.Wiring.ToStage,
                                 step.Tier.Id

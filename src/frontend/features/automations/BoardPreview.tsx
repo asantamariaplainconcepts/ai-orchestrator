@@ -4,7 +4,7 @@ import { t } from "@/shared/i18n";
 import { cn } from "@/shared/lib/utils";
 import { GateChip } from "@/shared/ui/gate-chip";
 import type { Automation } from "./types";
-import { claimantsByToStage, fold } from "./workflowGraph";
+import { claimantsByToStage, fold, holds } from "./workflowGraph";
 
 /**
  * What this project's lifecycle makes of the Backlog board, shown beside the catalogue that produces
@@ -63,7 +63,7 @@ export function BoardPreview({
             // The Automation moving Stories *into* this stage, which is the boundary before it. An
             // absent one is a person's turn (BR-006) and not a fault.
             const claimant = claimants.get(fold(stage));
-            const gated = claimant?.requiresApproval ?? false;
+            const gated = holds(claimant);
 
             return (
               <PreviewColumn

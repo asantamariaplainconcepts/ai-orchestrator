@@ -55,12 +55,7 @@ static class StarterCatalogue
                         prompt.Assumes,
                         Text($"{Prefix}{tier.Id}.{prompt.File}"),
                         prompt.Automation is { } wiring
-                            ? new StarterAutomation(
-                                wiring.Trigger,
-                                wiring.RequiresApproval,
-                                wiring.ToStage,
-                                wiring.Marks
-                            )
+                            ? new StarterAutomation(wiring.Trigger, wiring.ToStage, wiring.Marks)
                             : null
                     )),
                 ],
@@ -125,7 +120,6 @@ static class StarterCatalogue
     /// </summary>
     sealed record ManifestAutomation(
         string Trigger,
-        bool RequiresApproval,
         string? ToStage = null,
         IReadOnlyList<string>? Marks = null
     )
@@ -203,12 +197,7 @@ sealed record StarterPrompt(
 /// into scope.
 /// </para>
 /// </summary>
-sealed record StarterAutomation(
-    string Trigger,
-    bool RequiresApproval,
-    string? ToStage,
-    IReadOnlyList<string> Marks
-);
+sealed record StarterAutomation(string Trigger, string? ToStage, IReadOnlyList<string> Marks);
 
 /// <summary>
 /// Serialization-time shape. <paramref name="TargetPath"/> and <paramref name="AlreadyPresent"/> are

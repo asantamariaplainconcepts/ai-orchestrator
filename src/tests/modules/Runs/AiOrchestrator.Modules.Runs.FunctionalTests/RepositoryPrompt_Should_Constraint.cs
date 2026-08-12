@@ -72,7 +72,6 @@ public class RepositoryPrompt_Should_Constraint(RunsApiFixture fixture) : IAsync
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
-                requiresApproval = false,
                 promptPath = promptName,
             }
         );

@@ -121,7 +121,6 @@ public class ProjectRuntimeSettings_Should_Constraint(ProjectsApiFixture fixture
                 action = "RepositoryPrompt",
                 runtime = (string?)null,
                 promptPath = "story.md",
-                requiresApproval = false,
                 timeoutMinutes = (int?)null,
             }
         );

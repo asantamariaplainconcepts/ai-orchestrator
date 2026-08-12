@@ -133,7 +133,6 @@ public class OutboxDispatch_Should_Constraint(RunsApiFixture fixture) : IAsyncLi
                 triggerLabel = trigger,
                 action = "RepositoryPrompt",
                 runtime = "OpenCode",
-                requiresApproval = false,
                 // The name the fixture seeds a body for, so this test is about the substrate
                 // rather than about a missing prompt file.
                 promptPath = "story.md",

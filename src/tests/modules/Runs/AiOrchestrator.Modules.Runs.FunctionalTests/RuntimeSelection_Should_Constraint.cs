@@ -64,7 +64,6 @@ public class RuntimeSelection_Should_Constraint(RunsApiFixture fixture) : IAsync
                 action = "RepositoryPrompt",
                 promptPath = "story.md",
                 runtime,
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();

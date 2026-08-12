@@ -472,3 +472,31 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   live-doc cutover; UC-030..032 enter the corpus as intended and still owe their own grills.
   Decided 2026-08-11 with #318
   ([ADR-0024](../../adr/0024-the-product-says-what-it-is-an-open-source-dual-habitat-orchestrator.md)).
+
+- **DEC-067 — a hold on the Story is the only way work waits for a person** *(supersedes
+  [DEC-039](#) "approval is a per-Automation toggle" and [DEC-040](#) "approval shape:
+  plan-then-approve")*: the reserved label `hitl` on a Story stops every Automation from starting;
+  an Automation that stops for a person applies it among the marks it already writes; a person
+  clears it in the vendor or the portal and the flow continues. `requiresApproval`, the two-phase
+  Run and the plan-review surface are retired. **Rationale:** DEC-040 chose the richer shape
+  deliberately, "knowing it doubles job orchestration", when a plan phase meant containment — the
+  Agent proposed, nothing was published, a human decided. [DEC-062](#) ended that: with one action
+  running the repository's own prompt, it recorded as an accepted cost that "BR-007's approval gate
+  is a workflow control now, not a containment control", and that "a plan phase publishes nothing"
+  became a prompt-level promise. A workflow control does not need a second Run phase, two Run
+  states and a review surface; it needs to be visible where the work is. The vendor is the source
+  of truth for Stories (BR-008), so the wait belongs on the Story — legible to somebody reading the
+  issue, clearable by anyone who may edit labels (UC-008, BR-009), and needing no resume machinery
+  because removing the label is already an event the loop matches on (BR-015). **Costs accepted and
+  stated:** (1) the review moves from before the work to after it — an Automation acts, and the
+  *next* step is held, so what is reviewed is the pull request rather than a plan; anyone needing a
+  pre-flight stop writes it into the prompt, which is where that promise already lived since
+  DEC-062; (2) UC-013 and UC-015 retire, and UC-026's Inbox loses its approval category — its
+  replacement is a named follow-up, so the Inbox under-reports until that lands; (3) `Planning`,
+  `AwaitingApproval`, `DecideOnPlan` and the `Plan`/`ApprovedAt` columns are kept **unreachable
+  rather than removed**, exactly as DEC-062 kept the dormant `AwaitingInput` wait, because Run
+  states are out of scope here too; a named follow-up deletes them. A hold gates **creation, never
+  execution**: a Run already under way finishes and applies its result, so labelling a Story can
+  never destroy work in flight — ending a Run early stays cancellation (BR-012). The label is a
+  fixed reserved constant, compared case-insensitively like every other label identity (DEC-056).
+  Decided 2026-08-12 with #321.

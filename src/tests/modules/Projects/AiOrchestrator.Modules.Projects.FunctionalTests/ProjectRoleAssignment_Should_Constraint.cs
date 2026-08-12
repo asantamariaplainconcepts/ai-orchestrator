@@ -114,7 +114,6 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                 }
             )
         );
@@ -182,7 +181,6 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                 }
             )
         );
@@ -213,7 +211,6 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                     toStage = "ai:next",
                 }
             )
@@ -262,7 +259,6 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                 }
             )
         );
@@ -319,7 +315,6 @@ public class ProjectRoleAssignment_Should_Constraint(ProjectsApiFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                 }
             )
         );

@@ -156,7 +156,6 @@ public class DeclaredHabitatLimits_Should_Constraint(RunsApiFixture fixture) : I
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "refine.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();

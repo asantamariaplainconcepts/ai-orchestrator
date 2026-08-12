@@ -1,5 +1,6 @@
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using AiOrchestrator.BuildingBlocks.Domain;
 using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Contracts;
@@ -24,6 +25,7 @@ sealed class RunCreator(
     RunsDbContext database,
     IRunDispatcher dispatcher,
     IProjectCatalog projects,
+    IStoryReader stories,
     IConnectorReader connectors,
     ILocalCodeWorkspace localWorkspace,
     RunsOptions options,
@@ -49,6 +51,23 @@ sealed class RunCreator(
         if (!await projects.AcceptsWork(projectId, cancellationToken))
         {
             return new RunCreation.ProjectArchived();
+        }
+
+        // BR-007, before anything else is read or written: a held Story starts nothing (DEC-067).
+        //
+        // Here rather than in the matching handler, for the same reason the archived check above
+        // is here — this is the one path both matching and Run now take, so neither can forget it.
+        // Checking in the handler would leave Run now able to dispatch a held Story by hand, and
+        // BR-013 is explicit that manual dispatch bypasses detection, never a rule.
+        //
+        // Read live rather than from the event: what matters is the labels the Story carries *now*
+        // (BR-015), so a hold applied between the event and this moment is still honoured. A Story
+        // the mirror cannot find is not held — it is absent, which the paths below answer in their
+        // own voice.
+        var story = await stories.Find(projectId, vendorStoryId, cancellationToken);
+        if (StoryHold.IsHeld(story?.Labels))
+        {
+            return new RunCreation.Held();
         }
 
         // Where this Run will execute (#210): the project's code source decides the default,
@@ -307,6 +326,13 @@ abstract record RunCreation
 
     /// <summary>BR-001: the Story already has an active Run; nothing was written.</summary>
     public sealed record AlreadyActive : RunCreation;
+
+    /// <summary>
+    /// BR-007: the Story carries the hold, so nothing starts until a person clears it (DEC-067).
+    /// Nothing was written. Like <see cref="AlreadyActive"/> this is an ordinary outcome rather
+    /// than a fault — a held Story is a flow waiting on somebody, which is what it is for.
+    /// </summary>
+    public sealed record Held : RunCreation;
 
     /// <summary>The Project is retired: no new work, and the caller says so in its own voice.</summary>
     public sealed record ProjectArchived : RunCreation;

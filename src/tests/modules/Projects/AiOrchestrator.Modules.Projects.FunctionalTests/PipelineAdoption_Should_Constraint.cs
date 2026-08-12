@@ -226,7 +226,6 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "mine.md",
-                requiresApproval = false,
             }
         );
         existing.EnsureSuccessStatusCode();
@@ -303,8 +302,12 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
     [Fact]
     public async Task ThePlan_Should_NameTheStepThatWaitsForAPerson()
     {
-        // The gate is a property of the step, and the plan is where somebody decides whether they
+        // The wait is a property of the step, and the plan is where somebody decides whether they
         // want it. Naming it only in the report means learning it after it exists.
+        //
+        // What the step carries changed with #321 — a hold among its marks rather than an approval
+        // flag — and the plan's promise did not: it still says, before the button, which steps stop
+        // for a person.
         ArrangeDsConnect();
 
         var candidate = (await Discover())
@@ -314,7 +317,7 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
 
         var plan = candidate.GetProperty("plan").EnumerateArray().ToList();
 
-        plan.ShouldContain(step => step.GetProperty("gated").GetBoolean());
+        plan.ShouldContain(step => step.GetProperty("holds").GetBoolean());
     }
 
     // #262 — the Admin chooses which of the proposed steps are actually created. The property the
@@ -602,7 +605,6 @@ public class PipelineAdoption_Should_Constraint(ProjectsApiFixture fixture) : IA
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "mine.md",
-                requiresApproval = false,
             }
         );
         existing.EnsureSuccessStatusCode();

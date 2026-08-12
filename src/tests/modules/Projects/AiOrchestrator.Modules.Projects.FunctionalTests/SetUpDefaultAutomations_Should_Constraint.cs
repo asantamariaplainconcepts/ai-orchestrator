@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using AiOrchestrator.BuildingBlocks.Domain;
 using Shouldly;
 
 namespace AiOrchestrator.Modules.Projects.FunctionalTests;
@@ -106,8 +107,14 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
             );
 
         // ai:implement is wired to the tier's own file now that nothing contends for the trigger
-        // (#269), and it still waits for a person — the step that writes code is gated.
-        implement.GetProperty("requiresApproval").GetBoolean().ShouldBeTrue();
+        // (#269), and it still waits for a person — the step that writes code holds the Story when
+        // it finishes, so nothing runs on until somebody has looked (#321, DEC-067). The wait moved
+        // from inside its Run to the boundary after it; the shipped chain still stops here.
+        implement
+            .GetProperty("outputLabels")
+            .EnumerateArray()
+            .Select(label => label.GetString())
+            .ShouldContain(StoryHold.Label);
         implement.GetProperty("promptPath").GetString().ShouldBe("aio-implement.md");
         implement.GetProperty("enabled").GetBoolean().ShouldBeTrue();
 
@@ -155,7 +162,6 @@ public class SetUpDefaultAutomations_Should_Constraint(ProjectsApiFixture fixtur
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "mine.md",
-                requiresApproval = false,
             }
         );
         existing.EnsureSuccessStatusCode();

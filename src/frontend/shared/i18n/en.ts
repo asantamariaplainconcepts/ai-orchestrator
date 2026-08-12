@@ -532,8 +532,10 @@ export const en = {
   "preview.live": "updates live as you wire",
   "preview.untouched": "Untouched",
   "preview.untouchedHint": "where Stories start",
-  "preview.noApproval": "runs without approval",
-  "preview.gate": "plan approved by a person",
+  "preview.noApproval": "hands on by itself",
+  // The hold, on the boundary it stops (#321). It says what waits and who ends the wait, because
+  // "gated" told a reader a gate existed without saying what opens it.
+  "preview.gate": "held for a person",
   "preview.person": "A person",
   "preview.personHint": "carries the work onward",
   "preview.show": "Show board preview",
@@ -552,7 +554,6 @@ export const en = {
   "automations.modelCouldNotAsk":
     "The machine that runs agents could not be asked, so its models are unknown \u2014 this is not a runtime without models. Type one, or leave blank to inherit.",
   "automations.runtimeProjectDefault": "Project default",
-  "automations.approval": "Needs approval",
   "automations.timeout": "Timeout (minutes)",
   "automations.anyState": "any state",
   // Honest about the catalogue: three actions are configurable and cannot execute yet, and
@@ -571,18 +572,18 @@ export const en = {
   "automations.sentence.inState": "in state",
   "automations.sentence.runs": "an agent runs",
   "automations.sentence.on": "on",
-  "automations.sentence.gated": "waits for a human to approve the plan, then",
   "automations.sentence.handsOn": "and moves the story on to",
   "automations.sentence.stops": "and the flow stops there",
   // The marks as their own clause (#310): the move is one fact, a label the vendor carries is
   // another, and one sentence saying both is how the two stopped being told apart.
   "automations.sentence.marks": "also labelling it",
+  // The hold, lifted out of the marks it is stored among (#321): it is the only mark that
+  // changes what happens next, and a list of labels is the wrong place to learn that nothing
+  // else runs until somebody looks.
+  "automations.sentence.holds": "then holds the story until a person clears it",
   "automations.sentence.missingTrigger": "\u2026 (name a trigger label)",
   "automations.sentence.missingStage": "\u2026 (name the stage it moves on to)",
   "automations.sentence.missingPrompt": "\u2026 (name a prompt file)",
-  // Approval states its consequence beside the execution it gates, not beside Save.
-  "automations.approvalExplainer":
-    "The agent plans, stops, and waits in the Inbox. Nothing executes until someone approves.",
   // An absence made into an answer (design D4): the stored value is a claim on no transition, which
   // is what "stop" has always meant.
   "automations.after.handOn": "Move the story to the next stage",
@@ -594,10 +595,7 @@ export const en = {
     "All four actions execute: Implement \u2192 PR opens a pull request; Refine comments on the Story; Transition changes its state; Estimate labels it and explains itself.",
   "automations.table.trigger": "Trigger",
   "automations.table.action": "Action",
-  "automations.table.approval": "Approval",
   "automations.table.timeout": "Timeout",
-  "automations.approvalRequired": "Required",
-  "automations.approvalNone": "Automatic",
   "automations.minutes": "min",
   // Editing (UC-006): disabling stops future matches; enabling can be refused by BR-003.
   "automations.enable": "Enable",
@@ -713,7 +711,7 @@ export const en = {
   "workflowSetup.foundInRepo": "already in the repository",
   "workflowSetup.installStarter": "installs a starter",
   "workflowSetup.exists": "In repo",
-  "workflowSetup.gate": "a person approves",
+  "workflowSetup.gate": "holds for a person",
   "workflowSetup.planMore": "more",
   "workflowSetup.planFewer": "Show fewer",
   "workflowSetup.draftSafety":
@@ -786,8 +784,9 @@ export const en = {
   "board.columnEmpty": "Nothing here.",
   "board.moveTo": "Move to\u2026",
   "board.cardActions": "Card actions",
-  "board.gated": "Approval",
-  "board.gated.hint": "Dropping here starts a plan for a human to approve.",
+  "board.gated": "Hold",
+  "board.gated.hint":
+    "This step holds the story when it finishes \u2014 nothing runs on until a person clears the hold.",
   "board.dropToApply": "Drop to apply",
   "board.viewActiveRun": "View the active Run",
   "board.moveFailed": "The vendor refused the move. Nothing changed.",

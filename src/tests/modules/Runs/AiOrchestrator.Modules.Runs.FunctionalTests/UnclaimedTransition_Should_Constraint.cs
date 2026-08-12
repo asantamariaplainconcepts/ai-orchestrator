@@ -73,7 +73,6 @@ public class UnclaimedTransition_Should_Constraint(RunsApiFixture fixture) : IAs
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
                 toStage,
             }
         );

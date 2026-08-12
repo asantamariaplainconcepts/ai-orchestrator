@@ -55,9 +55,6 @@ namespace AiOrchestrator.Modules.Projects.Persistence.Migrations
                         .HasMaxLength(300)
                         .HasColumnType("character varying(300)");
 
-                    b.Property<bool>("RequiresApproval")
-                        .HasColumnType("boolean");
-
                     b.Property<string>("Runtime")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");

@@ -259,7 +259,6 @@ public class LocalRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
         response.EnsureSuccessStatusCode();

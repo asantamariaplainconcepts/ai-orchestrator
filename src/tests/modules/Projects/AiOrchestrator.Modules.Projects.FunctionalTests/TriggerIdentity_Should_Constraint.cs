@@ -39,7 +39,6 @@ public class TriggerIdentity_Should_Constraint(ProjectsApiFixture fixture) : IAs
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
 

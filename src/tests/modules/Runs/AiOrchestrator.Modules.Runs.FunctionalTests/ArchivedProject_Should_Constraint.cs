@@ -55,7 +55,6 @@ public class ArchivedProject_Should_Constraint(RunsApiFixture fixture) : IAsyncL
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();

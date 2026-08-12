@@ -169,6 +169,9 @@ sealed class RunNow : IUseCase
                     WaitingAtCap: false
                 ),
                 RunCreation.AlreadyActive => RunsErrors.StoryHasActiveRun(command.VendorStoryId),
+                // BR-007/BR-013: Run now bypasses detection, never a rule. The hold is named, and
+                // so is the way out — a person removes a label, and nothing else is required.
+                RunCreation.Held => RunsErrors.StoryHeld(command.VendorStoryId),
                 // The human asked, so the human is told why (#121).
                 RunCreation.ProjectArchived => RunsErrors.ProjectArchived(command.ProjectId),
                 // BR-016 and the impossible pairings (#210): the sentence decided pre-write is

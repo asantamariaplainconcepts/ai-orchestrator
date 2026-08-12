@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Domain;
 using AiOrchestrator.Modules.Projects.Features.Automations;
 using Shouldly;
 
@@ -232,16 +233,22 @@ public class StarterCatalogue_Should_Constraint
         byFile["refine.md"].Automation!.ToStage.ShouldBeNull();
         byFile["status.md"].Automation!.ToStage.ShouldBeNull();
 
-        // And no step marks the Story on the way: a mark is a separate thing now, and the catalogue
-        // invents none.
+        // The only mark the catalogue applies is the hold (DEC-067). It invents no others: a mark
+        // names no stage and moves nothing, and no catalogue step needs one.
         workflow
             .Prompts.Where(prompt => prompt.Automation is not null)
-            .ShouldAllBe(prompt => prompt.Automation!.Marks.Count == 0);
+            .ShouldAllBe(prompt => prompt.Automation!.Marks.All(StoryHold.Is));
 
-        // The gates the chain's hand-offs stop at. Losing one silently would turn an automatic
-        // hand-off into an unattended execution, which is the opposite of what was decided.
-        byFile["propose.md"].Automation!.RequiresApproval.ShouldBeTrue();
-        byFile["implement.md"].Automation!.RequiresApproval.ShouldBeTrue();
-        byFile["sync.md"].Automation!.RequiresApproval.ShouldBeTrue();
+        // Where the chain's hand-offs stop for a person. Losing one silently would turn an
+        // attended hand-off into an unattended execution, which is the opposite of what was
+        // decided — the wait moved from inside the Run to the Story it finishes with, it did not
+        // go away.
+        StoryHold.IsHeld(byFile["propose.md"].Automation!.Marks).ShouldBeTrue();
+        StoryHold.IsHeld(byFile["implement.md"].Automation!.Marks).ShouldBeTrue();
+        StoryHold.IsHeld(byFile["sync.md"].Automation!.Marks).ShouldBeTrue();
+
+        // And the steps that never stopped still do not: grill hands straight on, refine and
+        // status are not on the chain at all.
+        StoryHold.IsHeld(byFile["grill.md"].Automation!.Marks).ShouldBeFalse();
     }
 }

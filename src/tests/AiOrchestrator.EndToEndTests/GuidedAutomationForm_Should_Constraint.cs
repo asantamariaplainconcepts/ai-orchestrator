@@ -54,17 +54,21 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
     }
 
     [Fact]
-    public async Task TheApprovalControl_Should_StateItsConsequence()
+    public async Task TheForm_Should_OfferNoApprovalControl()
     {
-        // It was a bare checkbox beside Save. The word "approval" does not tell a reader that the
-        // Agent stops and waits, which is the thing they are actually deciding.
-        var page = await OpenForm($"Approval — {Guid.NewGuid():N}");
+        // It used to be a switch that explained itself: the Agent plans, stops and waits. There is
+        // nothing left to explain (#321, DEC-067) — a step that stops for a person marks the hold,
+        // which is an ordinary mark in the field the form already has. Asserted in a browser
+        // because "the control is gone" is exactly the kind of claim a unit test cannot make.
+        var page = await OpenForm($"No approval — {Guid.NewGuid():N}");
 
-        await page.Locator("#requires-approval").WaitForAsync(new() { Timeout = 15_000 });
+        await Form(page).WaitForAsync(new() { Timeout = 15_000 });
+
+        (await page.Locator("#requires-approval").CountAsync()).ShouldBe(0);
 
         var text = await Form(page).TextContentAsync();
         text.ShouldNotBeNull();
-        text.ShouldContain("Nothing executes until someone approves");
+        text.ShouldNotContain("Nothing executes until someone approves");
     }
 
     [Fact]
@@ -166,8 +170,6 @@ public class GuidedAutomationForm_Should_Constraint(AppHostFixture fixture)
         // And no mark was invented out of the stage that was typed and withdrawn: the two fields are
         // separate things now, so one being declined must not spill into the other.
         automation.GetProperty("outputLabels").GetArrayLength().ShouldBe(0);
-        // Default-off, and now chosen rather than left blank.
-        automation.GetProperty("requiresApproval").GetBoolean().ShouldBeFalse();
     }
 
     async Task<Guid> CreateProject(IPage page, string name)

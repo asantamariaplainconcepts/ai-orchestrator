@@ -1,5 +1,6 @@
 import { t } from "@/shared/i18n";
 import type { AgentRuntime } from "./types";
+import { HOLD_LABEL, fold } from "./workflowGraph";
 
 /**
  * The form, restated as prose (#231, design D2).
@@ -17,7 +18,6 @@ export function AutomationSentence({
   triggerState,
   promptPath,
   runtime,
-  requiresApproval,
   handsOn,
   toStage,
   marks,
@@ -27,7 +27,6 @@ export function AutomationSentence({
   promptPath: string;
   /** "" means the Project default (#244) — named as such in the sentence. */
   runtime: AgentRuntime | "";
-  requiresApproval: boolean;
   /** The answer to question three, which is not the same as having named a stage yet. */
   handsOn: boolean;
   /** The claimed transition's to-stage (#310); "" while nobody has named one. */
@@ -38,6 +37,9 @@ export function AutomationSentence({
   const trigger = triggerLabel.trim();
   const state = triggerState.trim();
   const prompt = promptPath.trim();
+  // The hold is stored among the marks but said on its own — see the marks clause below.
+  const held = marks.some((label) => fold(label) === HOLD_LABEL);
+  const ordinaryMarks = marks.filter((label) => fold(label) !== HOLD_LABEL);
 
   return (
     <p className="rounded-lg bg-muted px-3.5 py-2.5 text-xs leading-relaxed text-muted-foreground">
@@ -54,8 +56,7 @@ export function AutomationSentence({
       ) : (
         t("automations.sentence.anyState")
       )}
-      , {requiresApproval ? `${t("automations.sentence.gated")} ` : ""}
-      {t("automations.sentence.runs")}{" "}
+      , {t("automations.sentence.runs")}{" "}
       {prompt ? (
         <Token>{prompt}</Token>
       ) : (
@@ -76,12 +77,15 @@ export function AutomationSentence({
         t("automations.sentence.stops")
       )}
       {/* The marks, said as the separate thing they became (#310): the flow moves by the stage
-          above, and these are labels the vendor carries for somebody else to read. */}
-      {marks.length > 0 ? (
+          above, and these are labels the vendor carries for somebody else to read. The hold is
+          lifted out of them (#321): it is stored as a mark, but it is the only one that changes
+          what happens next, and burying "nothing runs until a person looks" in a list of labels
+          would hide the most consequential thing this Automation does. */}
+      {ordinaryMarks.length > 0 ? (
         <>
           {" "}
           {t("automations.sentence.marks")}{" "}
-          {marks.map((label, index) => (
+          {ordinaryMarks.map((label, index) => (
             <span key={label}>
               {index > 0 ? ", " : ""}
               <Token>{label}</Token>
@@ -89,7 +93,7 @@ export function AutomationSentence({
           ))}
         </>
       ) : null}
-      .
+      {held ? <>, {t("automations.sentence.holds")}</> : null}.
     </p>
   );
 }

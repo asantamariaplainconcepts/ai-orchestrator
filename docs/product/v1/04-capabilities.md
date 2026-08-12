@@ -27,8 +27,10 @@ for whom, not how it works.
   vendor.
 - **UC-005 — Admin creates an Automation.** Trigger label/state + action
   ([DEC-026](../mvp/10-locked-mvp-decisions.md), incl. project-written prompts,
-  [DEC-057](../mvp/10-locked-mvp-decisions.md)) + runtime + `requiresApproval` + timeout. Save
-  fails on trigger overlap ([BR-003](05-business-rules.md)).
+  [DEC-057](../mvp/10-locked-mvp-decisions.md)) + runtime + timeout. A step that stops for a
+  person marks the hold among its output labels ([BR-007](05-business-rules.md),
+  [DEC-067](../mvp/10-locked-mvp-decisions.md)); there is no approval flag. Save fails on trigger
+  overlap ([BR-003](05-business-rules.md)).
 - **UC-006 — Admin edits, disables or deletes an Automation.** Disabling stops future matches,
   never touches active Runs. Deletion only while no Run has used it (BR-014, #84).
 
@@ -46,31 +48,34 @@ for whom, not how it works.
   the mirrored description rendered as markdown, sanitised at render, never at rest
   ([BR-008](05-business-rules.md)).
 - **UC-023 — Member reads the documents attached to a Story's work.** The markdown its linked
-  change adds or modifies, read live at that change's head through the Connector. Distinct from
-  UC-013 (an Agent's Plan, which is data on a Run).
+  change adds or modifies, read live at that change's head through the Connector.
 - **UC-028 — Member reviews the file changes a Run produced.** *(Numbered UC-024 until
-  2026-08-11, #316.)* The files its pull request touched, with the vendor's unified patch,
-  shown beside the Plan that was approved. Binary and over-large patches state why rather than
-  truncating.
+  2026-08-11, #316.)* The files its pull request touched, with the vendor's unified patch.
+  Binary and over-large patches state why rather than truncating.
 
-## Dispatch & approval (BC-003)
+## Dispatch (BC-003)
 
 - **UC-011 — System matches an event and creates a Run.** Honoring one-active-run-per-story
-  ([BR-001](05-business-rules.md)) and the project cap ([BR-002](05-business-rules.md));
-  `requiresApproval` routes the Run into the plan phase, otherwise straight to dispatch.
+  ([BR-001](05-business-rules.md)), the project cap ([BR-002](05-business-rules.md)) and the hold
+  ([BR-007](05-business-rules.md)) — a held Story creates nothing. Every Run is single-phase and
+  goes straight to dispatch.
 - **UC-012 — Member triggers Run now.** Chosen Story + Automation, bypassing detection,
   honoring every rule ([BR-013](05-business-rules.md)). Also the re-run path for failures. May
   name the execution locus where a genuine choice exists (#210); [BR-016](05-business-rules.md)
   refuses a dirty folder.
-- **UC-013 — Member/Admin reviews a Plan.** Approves (→ execution dispatched) or rejects
-  (→ Run ends `Cancelled`), mirroring spec review ([DEC-040](../mvp/10-locked-mvp-decisions.md)).
-- **UC-014 — Member/Admin cancels a Run.** Queued/AwaitingApproval → discarded;
-  Planning/Executing → job terminated ([BR-012](05-business-rules.md)).
+- **UC-013 — *Retired.*** Was "Member/Admin reviews a Plan". The plan-then-approve shape it
+  described is superseded by the hold ([DEC-067](../mvp/10-locked-mvp-decisions.md),
+  [BR-007](05-business-rules.md)): work waits on the Story, and what a person reviews is the
+  output a step produced rather than a plan it proposed. The id is retained, never reused
+  (stable IDs, #316).
+- **UC-014 — Member/Admin cancels a Run.** Queued → discarded; Executing → job terminated
+  ([BR-012](05-business-rules.md)).
 
 ## Agent execution (BC-004)
 
-- **UC-015 — Agent produces a Plan (phase 1).** For approval-gated Runs: reads the Story,
-  writes a plan proposal onto the Run, pauses it at `AwaitingApproval`.
+- **UC-015 — *Retired.*** Was "Agent produces a Plan (phase 1)". There is no phase 1: every Run
+  is single-phase ([DEC-067](../mvp/10-locked-mvp-decisions.md),
+  [BR-007](05-business-rules.md)). The id is retained, never reused (stable IDs, #316).
 - **UC-016 — Agent implements a Story → PR.** Clones the code source, implements, opens a PR,
   links it on the Run and the Story. On a Local run the output is a local branch — committed,
   never pushed, no PR ([BR-016](05-business-rules.md)).
@@ -94,8 +99,11 @@ for whom, not how it works.
   output link, logs, cost — and where each Run executed: locus, working folder and branch for
   Local runs ([BR-016](05-business-rules.md), BR-014).
 - **UC-026 — Member sees everything waiting on a human.** The Inbox: one list across projects
-  of every Run awaiting an approval, an answer or a failure decision, newest wait first, with
-  an ambient count in the shell (#94).
+  of every Run awaiting an answer or a failure decision, newest wait first, with an ambient
+  count in the shell (#94). *(The approval category is gone with
+  [DEC-067](../mvp/10-locked-mvp-decisions.md). A held Story is a wait this list does not yet
+  carry — a named follow-up, and until it lands the Inbox under-reports what waits on a
+  person.)*
 - **UC-027 — Member watches a Run's output while it executes.** The Run page shows the log
   growing with ≤5s lag, stops following on terminal states, serves the same full transcript
   afterwards; a crash preserves every line committed before it (#96,

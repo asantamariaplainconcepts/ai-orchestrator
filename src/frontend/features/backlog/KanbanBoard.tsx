@@ -22,7 +22,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/shared/ui/sheet"
 import { useUpdateAutomation } from "@/features/automations/useAutomations";
 import { useLifecycle } from "@/features/automations/useLifecycle";
 import { requestFor } from "@/features/automations/automationRequest";
-import { claimantsByToStage, fold } from "@/features/automations/workflowGraph";
+import { claimantsByToStage, fold, holds } from "@/features/automations/workflowGraph";
 import { AUTOMATION_BLOCK, claimPatch, refusalFor } from "@/features/automations/chainDrag";
 import type { Boundary as LifecycleBoundary, DropRefusal } from "@/features/automations/chainDrag";
 import { ApiError } from "@/shared/http/client";
@@ -126,7 +126,7 @@ export function KanbanBoard({
   const claimants = claimantsByToStage(automations);
   const gated = new Set(
     automations
-      .filter((automation) => automation.enabled && automation.requiresApproval)
+      .filter((automation) => automation.enabled && holds(automation))
       .map((automation) => fold(automation.triggerLabel)),
   );
 
