@@ -59,18 +59,15 @@ sealed class RunExecutor(
             return;
         }
 
-        // The phase router (approval-gate D1): the Run's own record decides. An approval-gated
-        // Run that nobody has approved gets phase 1; everything else gets execution.
-        var planning = await IsPlanPhase(run, cancellationToken);
-
-        if (planning)
-        {
-            run.MarkPlanning(clock.GetUtcNow());
-        }
-        else
-        {
-            run.MarkExecuting(clock.GetUtcNow());
-        }
+        // Every Run is single-phase (DEC-067, BR-007). The phase router is gone with the approval
+        // flag it read: work waits for a person as a hold on the Story, which stops the *next*
+        // Run from being created rather than pausing this one inside itself.
+        //
+        // `MarkPlanning` and `AwaitApproval` survive on the aggregate, now unreachable — this was
+        // the only caller. Kept rather than deleted, exactly as DEC-062 kept the dormant
+        // `AwaitingInput` wait, because Run states are out of this change's scope and the Runs
+        // already recorded in them are history (BR-014: Runs are never deleted).
+        run.MarkExecuting(clock.GetUtcNow());
 
         await database.SaveChangesAsync(cancellationToken);
 
@@ -82,7 +79,7 @@ sealed class RunExecutor(
             Outcome outcome;
             await using (var logWriter = new RunLogWriter(run.Id, scopes, logger))
             {
-                outcome = await Invoke(run, planning, logWriter.Write, cancellationToken);
+                outcome = await Invoke(run, planning: false, logWriter.Write, cancellationToken);
             }
             var result = outcome.Result;
 
@@ -119,12 +116,6 @@ sealed class RunExecutor(
                 {
                     ExecutionLog.AwaitingInput(logger, runId);
                 }
-            }
-            else if (planning && result.Succeeded)
-            {
-                // BR-006: the wait is untimed and holds no cap slot — it is not work.
-                run.AwaitApproval(clock.GetUtcNow(), Truncate(result.Log, PlanLimit));
-                ExecutionLog.AwaitingApproval(logger, runId);
             }
             else if (result.Succeeded)
             {
@@ -169,28 +160,6 @@ sealed class RunExecutor(
         }
 
         await database.SaveChangesAsync(cancellationToken);
-    }
-
-    /// <summary>
-    /// True when this Run still owes a Plan. Reads the Automation rather than a state flag so
-    /// a mid-flight change to the Automation cannot strand a Run in the wrong lane.
-    /// </summary>
-    async Task<bool> IsPlanPhase(Run run, CancellationToken cancellationToken)
-    {
-        if (run.ApprovedAt is not null)
-        {
-            return false;
-        }
-
-        // A change-targeted Run never plans: the launch is the human intent (run-on-a-pr,
-        // UC-012's reasoning), and there is no Automation to carry an approval flag anyway.
-        if (run.AutomationId is not { } automationId)
-        {
-            return false;
-        }
-
-        var automation = await automations.Detail(run.ProjectId, automationId, cancellationToken);
-        return automation?.RequiresApproval ?? false;
     }
 
     /// <summary>

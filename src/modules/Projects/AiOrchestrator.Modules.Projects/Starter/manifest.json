@@ -44,7 +44,6 @@
           "saveAs": "aio-grill.md",
           "automation": {
             "trigger": "ai:grill",
-            "requiresApproval": false,
             "toStage": "ai:propose"
           }
         },
@@ -55,8 +54,8 @@
           "saveAs": "aio-propose.md",
           "automation": {
             "trigger": "ai:propose",
-            "requiresApproval": true,
-            "toStage": "ai:implement"
+            "toStage": "ai:implement",
+            "marks": ["hitl"]
           }
         },
         {
@@ -66,8 +65,8 @@
           "saveAs": "aio-implement.md",
           "automation": {
             "trigger": "ai:implement",
-            "requiresApproval": true,
-            "toStage": "ai:sync"
+            "toStage": "ai:sync",
+            "marks": ["hitl"]
           }
         },
         {
@@ -77,7 +76,7 @@
           "saveAs": "aio-sync.md",
           "automation": {
             "trigger": "ai:sync",
-            "requiresApproval": true
+            "marks": ["hitl"]
           }
         },
         {
@@ -86,8 +85,7 @@
           "assumes": "A retro log.",
           "saveAs": "aio-refine.md",
           "automation": {
-            "trigger": "ai:refine",
-            "requiresApproval": false
+            "trigger": "ai:refine"
           }
         },
         {
@@ -96,8 +94,7 @@
           "assumes": "Lifecycle labels on issues.",
           "saveAs": "aio-status.md",
           "automation": {
-            "trigger": "ai:status",
-            "requiresApproval": false
+            "trigger": "ai:status"
           }
         }
       ]

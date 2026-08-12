@@ -267,7 +267,6 @@ sealed class SetUpDefaultAutomations : IUseCase
                     triggerState: null,
                     AutomationAction.RepositoryPrompt,
                     AgentRuntime.ClaudeCodeHeadless,
-                    step.Wiring.RequiresApproval,
                     CreateAutomation.DefaultTimeout,
                     promptName,
                     step.Wiring.Marks,

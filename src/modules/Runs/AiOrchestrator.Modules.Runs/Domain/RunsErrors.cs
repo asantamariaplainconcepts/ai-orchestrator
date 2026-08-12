@@ -22,6 +22,19 @@ static class RunsErrors
             $"Automation '{automationId}' is not enabled on this project."
         );
 
+    /// <summary>
+    /// BR-007 — the Story carries the hold, so nothing starts (DEC-067). Answering the human where
+    /// matching stays silent, and naming the remedy: the hold is a label, and removing it is the
+    /// whole of it (UC-008).
+    /// </summary>
+    public static Error StoryHeld(string vendorStoryId) =>
+        Error.Conflict(
+            "Runs.StoryHeld",
+            $"Story '{vendorStoryId}' is held for a person (BR-007): while it carries the "
+                + $"'{BuildingBlocks.Domain.StoryHold.Label}' label nothing runs. Remove the label "
+                + "to let the flow continue."
+        );
+
     /// <summary>BR-001 — answering the human where matching stays silent.</summary>
     public static Error StoryHasActiveRun(string vendorStoryId) =>
         Error.Conflict(

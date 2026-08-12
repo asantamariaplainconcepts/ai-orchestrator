@@ -121,9 +121,9 @@ sealed class LocalLoopSeeder(IConfiguration configuration, ILogger<LocalLoopSeed
             """
             INSERT INTO projects.automations
                 ("Id", "ProjectId", "TriggerLabel", "TriggerState", "Action", "Runtime",
-                 "RequiresApproval", "Timeout", "Enabled", "PromptPath")
+                 "Timeout", "Enabled", "PromptPath")
             VALUES (@id, @projectId, 'ai:implement', NULL, 'RepositoryPrompt', 'OpenCode',
-                    false, @timeout, true, 'implement.md')
+                    @timeout, true, 'implement.md')
             """,
             connection
         );

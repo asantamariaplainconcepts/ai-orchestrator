@@ -16,7 +16,6 @@ sealed class Automation : Aggregate
         string? triggerState,
         AutomationAction action,
         AgentRuntime? runtime,
-        bool requiresApproval,
         TimeSpan timeout
     )
     {
@@ -25,7 +24,6 @@ sealed class Automation : Aggregate
         TriggerState = triggerState;
         Action = action;
         Runtime = runtime;
-        RequiresApproval = requiresApproval;
         Timeout = timeout;
         Enabled = true;
     }
@@ -131,9 +129,6 @@ sealed class Automation : Aggregate
     /// </summary>
     public string? Model { get; private set; }
 
-    /// <summary>Per-Automation, not global (DEC-039): true routes the Run through a Plan (BR-007).</summary>
-    public bool RequiresApproval { get; private set; }
-
     /// <summary>Per Agent phase (BR-005). Default 30 minutes, set by the caller.</summary>
     public TimeSpan Timeout { get; private set; }
 
@@ -166,7 +161,6 @@ sealed class Automation : Aggregate
         string? triggerState,
         AutomationAction action,
         AgentRuntime? runtime,
-        bool requiresApproval,
         TimeSpan timeout,
         string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null,
@@ -174,7 +168,7 @@ sealed class Automation : Aggregate
         string? model = null,
         string? toStage = null
     ) =>
-        new(projectId, triggerLabel, triggerState, action, runtime, requiresApproval, timeout)
+        new(projectId, triggerLabel, triggerState, action, runtime, timeout)
         {
             PromptPath = promptPath,
             OutputLabels = outputLabels ?? [],
@@ -189,7 +183,6 @@ sealed class Automation : Aggregate
         string? triggerState,
         AutomationAction action,
         AgentRuntime? runtime,
-        bool requiresApproval,
         TimeSpan timeout,
         string? promptPath = null,
         IReadOnlyList<string>? outputLabels = null,
@@ -202,7 +195,6 @@ sealed class Automation : Aggregate
         TriggerState = triggerState;
         Action = action;
         Runtime = runtime;
-        RequiresApproval = requiresApproval;
         Timeout = timeout;
         PromptPath = promptPath;
         OutputLabels = outputLabels ?? [];

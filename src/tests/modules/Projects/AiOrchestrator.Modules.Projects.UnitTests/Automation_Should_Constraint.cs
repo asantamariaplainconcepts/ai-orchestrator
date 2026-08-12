@@ -21,7 +21,6 @@ public class Automation_Should_Constraint
             state,
             AutomationAction.RepositoryPrompt,
             AgentRuntime.ClaudeCodeHeadless,
-            requiresApproval: false,
             TimeSpan.FromMinutes(30)
         );
 

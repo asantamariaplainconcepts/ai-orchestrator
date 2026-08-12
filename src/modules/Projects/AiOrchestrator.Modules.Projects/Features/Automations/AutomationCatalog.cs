@@ -22,8 +22,7 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
             .Select(automation => new AutomationTrigger(
                 automation.Id,
                 automation.TriggerLabel,
-                automation.TriggerState,
-                automation.RequiresApproval
+                automation.TriggerState
             ))
             .ToListAsync(cancellationToken);
 
@@ -49,7 +48,6 @@ sealed class AutomationCatalog(ProjectsDbContext database) : IAutomationCatalog
                 automation.TriggerLabel,
                 automation.Action.ToString(),
                 automation.Runtime?.ToString(),
-                automation.RequiresApproval,
                 automation.Timeout,
                 automation.PromptPath,
                 automation.OutputLabels,
