@@ -8,7 +8,12 @@ export interface PlannedStep {
   /** The file it wires: an existing one, or the starter that would be installed. */
   promptFile: string;
   exists: boolean;
-  gated: boolean;
+  /**
+   * Whether this step stops for a person: it marks the hold, so the Story it finishes with starts
+   * nothing until somebody clears it (#321). It replaced `gated` — the wait moved from inside the
+   * step's Run to the boundary after it, and the plan row says so before the button is pressed.
+   */
+  holds: boolean;
   /**
    * Whether a starter can be written for this step **without** a consent. A gated step becomes
    * installable once its tier is consented to (#269), which is a decision this card makes — see

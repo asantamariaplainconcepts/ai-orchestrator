@@ -26,7 +26,6 @@ export interface Automation {
   action: AutomationAction;
   /** Null means the Project default, resolved at execution time (#244). */
   runtime: AgentRuntime | null;
-  requiresApproval: boolean;
   timeoutMinutes: number;
   enabled: boolean;
   /**
@@ -55,7 +54,6 @@ export interface CreateAutomationRequest {
   triggerState: string | null;
   action: AutomationAction;
   runtime: AgentRuntime | null;
-  requiresApproval: boolean;
   timeoutMinutes: number | null;
   /** Grill only: where the readiness document lives. Null means the framework's convention. */
   promptPath?: string | null;

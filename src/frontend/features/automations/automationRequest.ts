@@ -20,7 +20,6 @@ export function requestFor(
     triggerState: automation.triggerState,
     action: automation.action,
     runtime: automation.runtime,
-    requiresApproval: automation.requiresApproval,
     timeoutMinutes: automation.timeoutMinutes,
     promptPath: automation.promptPath ?? null,
     outputLabels: automation.outputLabels,

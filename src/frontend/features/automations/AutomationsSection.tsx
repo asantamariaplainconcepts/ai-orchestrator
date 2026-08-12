@@ -14,7 +14,6 @@ import {
 import { ResponsiveDialog } from "@/shared/ui/responsive-dialog";
 import { AutomationSentence } from "./AutomationSentence";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
-import { Switch } from "@/shared/ui/switch";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { NativeSelect } from "@/shared/ui/native-select";
@@ -87,7 +86,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
   // "" means the Project default (#244): stored as null, resolved at execution time.
   const [runtime, setRuntime] = useState<AgentRuntime | "">("");
   const [model, setModel] = useState("");
-  const [requiresApproval, setRequiresApproval] = useState(false);
   const [promptPath, setPromptPath] = useState("");
   // A set since #165, plus the text currently being typed into the picker. Two pieces of state
   // because they are two things: what is chosen, and what is half-written.
@@ -147,7 +145,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setAction("RepositoryPrompt");
     setRuntime("");
     setModel("");
-    setRequiresApproval(false);
     setPromptPath("");
     setOutputLabels([]);
     setHandsOn(false);
@@ -178,7 +175,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
     setAction(automation.action);
     setRuntime(automation.runtime ?? "");
     setModel(automation.model ?? "");
-    setRequiresApproval(automation.requiresApproval);
     setPromptPath(automation.promptPath ?? "");
     setOutputLabels([...automation.outputLabels]);
     // The claim, not the marks: since #310 an Automation that only marks the Story claims no
@@ -207,7 +203,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
       action,
       // "" is the Project default — sent as null (#244).
       runtime: runtime === "" ? null : runtime,
-      requiresApproval,
       // Blank is the default, not zero. Sending 0 would be a timeout of no time at all.
       timeoutMinutes: timeoutMinutes.trim() === "" ? null : Number(timeoutMinutes),
       // Required since #162: with one action, an Automation that names no prompt could never run,
@@ -268,7 +263,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
           triggerState={triggerState}
           promptPath={promptPath}
           runtime={runtime}
-          requiresApproval={requiresApproval}
           handsOn={handsOn}
           toStage={toStage}
           marks={withDraft()}
@@ -393,22 +387,6 @@ export function AutomationsSection({ projectId }: { projectId: string }) {
               placeholder={t("automations.timeoutPlaceholder")}
             />
           </div>
-
-          {/* The consequence beside the execution it gates (design D1). It was a bare checkbox
-              next to Save, which read as a submission option rather than a property of the Run. */}
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-lg border border-warning/50 bg-warning/10 p-3 md:col-span-2">
-            <Switch
-              id="requires-approval"
-              checked={requiresApproval}
-              onCheckedChange={setRequiresApproval}
-            />
-            <span className="flex flex-col gap-0.5">
-              <span className="text-xs font-semibold">{t("automations.approval")}</span>
-              <span className="text-[11px] leading-snug text-muted-foreground">
-                {t("automations.approvalExplainer")}
-              </span>
-            </span>
-          </label>
         </div>
       </section>
 

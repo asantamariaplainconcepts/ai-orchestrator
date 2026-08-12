@@ -30,18 +30,17 @@ let automations = [
   // no transition of its own — so the board draws the boundary after it as a person's turn. The last
   // one also carries a mark, which is what makes the transition/mark split demonstrable here: the
   // board must draw a column for the stage and none for the mark (AC 7).
-  auto("ai:grill", "RepositoryPrompt", false, "ready-for-proposal"),
-  auto("ready-for-proposal", "RepositoryPrompt", false, null, ["needs-design"]),
-  auto("ai:implement", "RepositoryPrompt", true, null),
-  auto("ai:refine", "RepositoryPrompt", false, null),
-  auto("ai:estimate", "RepositoryPrompt", false, null),
-  auto("ai:transition", "RepositoryPrompt", false, null),
+  auto("ai:grill", "RepositoryPrompt", "ready-for-proposal"),
+  auto("ready-for-proposal", "RepositoryPrompt", null, ["needs-design"]),
+  auto("ai:implement", "RepositoryPrompt", null, ["hitl"]),
+  auto("ai:refine", "RepositoryPrompt", null),
+  auto("ai:estimate", "RepositoryPrompt", null),
+  auto("ai:transition", "RepositoryPrompt", null),
 ];
 
 function auto(
   triggerLabel: string,
   action: string,
-  requiresApproval: boolean,
   toStage: string | null = null,
   marks: string[] = [],
 ) {
@@ -51,7 +50,6 @@ function auto(
     triggerState: null,
     action,
     runtime: "OpenCode",
-    requiresApproval,
     timeoutMinutes: 30,
     enabled: true,
     // Marks only since #310 — the hand-off left this set and became the claim below.
@@ -712,14 +710,12 @@ const routes: [string, RegExp, Handler][] = [
       const request = body as {
         triggerLabel: string;
         action: string;
-        requiresApproval: boolean;
         toStage?: string | null;
         outputLabels?: string[];
       };
       const created = auto(
         request.triggerLabel,
         request.action,
-        request.requiresApproval,
         request.toStage ?? null,
         request.outputLabels ?? [],
       );
