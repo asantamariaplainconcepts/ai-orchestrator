@@ -87,14 +87,22 @@
 
 ## 5. Verify with the CI-equivalent gates
 
-- [ ] 5.1 `pnpm --dir src/frontend format:check` (Prettier).
-- [ ] 5.2 `pnpm --dir src/frontend lint` (ESLint `--max-warnings=0`).
-- [ ] 5.3 `pnpm --dir src/frontend typecheck` (`tsc --noEmit`).
-- [ ] 5.4 `pnpm --dir src/frontend build` — the full production pipeline
+- [x] 5.1 `pnpm --dir src/frontend format:check` (Prettier). **Pass** — "All matched files use
+      Prettier code style!"
+- [x] 5.2 `pnpm --dir src/frontend lint` (ESLint `--max-warnings=0`). **Pass**, no output.
+- [x] 5.3 `pnpm --dir src/frontend typecheck` (`tsc --noEmit`). **Pass**, no output.
+- [x] 5.4 `pnpm --dir src/frontend build` — the full production pipeline
       (`tsc --noEmit && vite build && assert-no-mock`). **Run this before the E2E suite**: E2E boots
       the real AppHost and serves the built bundle from `wwwroot`, so a `.ts`/`.tsx` edit is
       invisible to it until the build runs. Check the build's real exit code rather than trusting a
       filtered wrapper's summary.
-- [ ] 5.5 `dotnet build` for the solution, then run the end-to-end tests and confirm the new cases
+      **Pass** — bundle written to `src/root/AiOrchestrator.Server/wwwroot/assets/`, and
+      "production bundle carries no mock adapter". Run through `rtk proxy` so no filter could
+      report a red build as green.
+- [x] 5.5 `dotnet build` for the solution, then run the end-to-end tests and confirm the new cases
       pass and no existing backlog, board or projects-tree test regressed.
-- [ ] 5.6 Run `openspec validate backlog-auto-refresh --strict` and confirm it passes.
+      **Pass** — solution builds; `dotnet csharpier check src` clean over 438 files; the six new
+      cases pass on their own (2m21s), and the **full E2E suite is 54 passed / 0 failed** (2m29s),
+      so nothing the shared hook feeds regressed.
+- [x] 5.6 Run `openspec validate backlog-auto-refresh --strict` and confirm it passes. **Pass** —
+      "Change 'backlog-auto-refresh' is valid".
