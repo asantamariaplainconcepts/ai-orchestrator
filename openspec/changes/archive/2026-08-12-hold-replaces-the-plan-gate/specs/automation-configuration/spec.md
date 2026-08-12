@@ -1,6 +1,22 @@
-## MODIFIED Requirements
+## REMOVED Requirements
 
 ### Requirement: an Admin configures what a trigger label makes an Agent do
+
+**Reason**: the requirement described a form with an approval control, and its scenario "approval
+says what it does" asserted the sentence that control had to state. There is no such control after
+DEC-067: a step that stops for a person marks the hold among its output labels, and the wait moved
+from inside the Run to the Story it finishes with. The requirement is restated below rather than
+left describing a field the form no longer has — the same treatment `azure-devops-connector` gave a
+requirement whose scenario had been overtaken by a decision.
+
+**Migration**: an Admin who wants the flow to stop configures the Automation to mark the hold, in
+the marks field the form already offers. Everything else the requirement said — the one action, the
+required prompt name, the picker, the three questions, the restatement sentence, the transition and
+marks fields — is unchanged and carried into the restatement verbatim.
+
+## ADDED Requirements
+
+### Requirement: an Admin configures what a trigger label makes an Agent do, and there is no approval to give
 
 An Admin SHALL configure, per Project, which trigger label starts a Run, on which runtime and with
 which timeout. Every field SHALL be bounded, and the refusal for an unbounded or unparseable value
@@ -153,13 +169,16 @@ SHALL be identical to the one the ungrouped form produced.
 - **WHEN** an Admin names a label and then chooses to stop rather than hand on
 - **THEN** the label control is not offered, and the Automation is stored with the empty label set
 
+## MODIFIED Requirements
+
 ### Requirement: an Admin edits, disables and re-enables an Automation
 
 An Admin SHALL be able to change an Automation's trigger, action, runtime and timeout, and to
-disable and re-enable it. An edit SHALL face the same BR-003 overlap validation as a create,
-excluding the Automation being edited from the comparison. Enabling SHALL re-run that validation;
-disabling SHALL NOT, because a disabled Automation cannot overlap anything. Editing or disabling
-SHALL NOT affect Runs already active — they complete against the Automation they were created with.
+disable and re-enable it. An edit SHALL face the same BR-003 overlap validation
+as a create, excluding the Automation being edited from the comparison. Enabling SHALL re-run
+that validation; disabling SHALL NOT, because a disabled Automation cannot overlap anything.
+Editing or disabling SHALL NOT affect Runs already active — they complete against the
+Automation they were created with.
 
 This SHALL be reachable from the portal, not only from the API. The editing surface SHALL be the same
 form that creates an Automation, so that the input rules, the field vocabularies and the refusals cannot
@@ -181,7 +200,89 @@ Automation the panel names, and SHALL NOT be offered as controls on a catalogue 
 require a second, distinct confirmation before it is sent: a single click adjacent to Edit is one
 mis-aim away from a deletion nobody intended.
 
-#### Scenario: editing an Automation
+Because the update endpoint is a full replace, an edit SHALL send every field, seeded from the
+Automation's stored values — a field the form omits SHALL NOT be silently reset to its default. The
+timeout SHALL therefore be a visible field in both modes: a value resent on the Admin's behalf is one
+they are entitled to see.
 
-- **WHEN** an Admin changes an Automation's trigger, runtime or timeout and saves
-- **THEN** the stored Automation carries the new values and active Runs are unaffected
+Changing the action to one that reads no document SHALL clear the document name, because a value no
+visible control can reach is a value the Admin cannot manage.
+
+An edit SHALL NOT change whether the Automation is enabled.
+
+Every refusal the panel can provoke — an overlapping save, a refused enable, a refused delete — SHALL
+be reported inside the panel, beside the control that provoked it, and SHALL NOT be reported only
+where the reader is no longer looking.
+
+#### Scenario: an edit that would overlap is refused
+
+- **WHEN** an edit would make the trigger intersect another enabled Automation's
+- **THEN** it is refused with the create-time error and nothing changes
+
+#### Scenario: an unchanged trigger does not overlap itself
+
+- **WHEN** an edit leaves the trigger as it was
+- **THEN** it succeeds — the Automation is not compared against itself
+
+#### Scenario: re-enabling re-checks
+
+- **WHEN** a disabled Automation whose trigger now collides with a newer one is enabled
+- **THEN** it is refused and stays disabled
+
+#### Scenario: disabling stops future matches only
+
+- **WHEN** an Automation with an active Run is disabled
+- **THEN** the Run is unaffected and no new match is made for that trigger
+
+#### Scenario: the form opens on what is stored
+
+- **WHEN** an Admin opens edit on an Automation
+- **THEN** every field shows that Automation's current value, including its timeout
+
+#### Scenario: an untouched timeout survives the edit
+
+- **WHEN** an Admin edits only the trigger label of an Automation whose timeout was set to a
+  non-default value
+- **THEN** the stored timeout is unchanged after the save
+
+#### Scenario: an edit leaves the enabled flag alone
+
+- **WHEN** a disabled Automation is edited and saved
+- **THEN** it is still disabled, and an enabled one is still enabled
+
+#### Scenario: a document name goes when its action does
+
+- **WHEN** an Admin changes the action to one that reads no document
+- **THEN** the stored document name is cleared rather than kept out of sight
+
+#### Scenario: the refusal is the API's own
+
+- **WHEN** a save is refused for overlap or for triggering itself
+- **THEN** the reason the API gave is what the form shows
+
+#### Scenario: opening an edit leaves the page where it was
+
+- **WHEN** an Admin opens an Automation for editing on a tab scrolled away from its top
+- **THEN** the form appears over the tab and the page's scroll position is unchanged
+
+#### Scenario: abandoning and saving both leave the page where it was
+
+- **WHEN** an Admin dismisses the panel by keyboard, by its close control, or by the overlay, or
+  saves it successfully
+- **THEN** the page's scroll position is the same as before the panel opened
+
+#### Scenario: one panel, either surface
+
+- **WHEN** an Admin opens editing from a catalogue entry and then from a workflow node
+- **THEN** both open the same panel on the same Automation's stored values
+
+#### Scenario: a deletion is confirmed before it is sent
+
+- **WHEN** an Admin presses delete in the panel
+- **THEN** nothing is deleted and a distinct confirmation is offered, and only pressing that sends
+  the deletion
+
+#### Scenario: a row offers no destructive control
+
+- **WHEN** an Admin reads the catalogue
+- **THEN** no entry offers delete, and deleting is reachable only through the panel
