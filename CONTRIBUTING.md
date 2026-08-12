@@ -22,7 +22,18 @@ idea / use case ──/aio:grill──▶ needs-refinement ──(resolve gaps)�
    lint, squash-merge)
 ```
 
-One issue rides **one branch and one PR**, reviewed twice on that same PR. At each review stage the
+Or, on one explicit invocation, with no review stage at all:
+
+```
+ready-for-proposal ──/aio:ship──▶ propose ─▶ implement ─▶ sync ─▶ done
+                    (no hold applied, so none is ever cleared)
+                                    │
+                        any refusal ▼
+                              HOLD + comment ──(a person clears it)──▶ resume with the staged command
+```
+
+One issue rides **one branch and one PR**, reviewed twice on that same PR — or, on the unattended
+route, not reviewed at all ([DEC-068](#the-unattended-route-dec-068)). At each review stage the
 reviewer's whole act is **removing one label** — see [The hold](#the-hold) below.
 
 | Step | Command | What happens |
@@ -78,6 +89,7 @@ one of the nine.
 | `/aio:grill` | Runs. It still evaluates and comments, but sets no status — a hold blocks advancing, not talking. |
 | `/aio:status` | Runs, and reports the hold first. It refuses nothing; it is read-only. |
 | `/aio:refine` | Runs, unchanged. It is post-merge and gates nothing. |
+| `/aio:ship` | **Refuses** at the start — its entry gate is `/aio:propose`'s. Mid-run it *applies* the hold to halt, and removes one never. |
 
 **Clearing the hold is the approval.** At both review stages you remove that one label and nothing
 else — the state the next command needs is already in place. `/aio:propose` sets
@@ -119,6 +131,34 @@ grill→propose dead-ends at sync with nothing to archive. Label the issue `lane
 
 Anything user-visible goes through the full loop. The lane is for work with genuinely no
 behavioural delta — not for work in a hurry.
+
+## The unattended route (DEC-068)
+
+[`/aio:ship <issue>`](.claude/commands/aio/ship.md) carries a `ready-for-proposal` issue to `main` in
+one run — propose, implement, sync — with **no review stage**. What it gives up is stated plainly:
+**nobody reads the spec or the diff**, and CI is the only reviewer between a generated change and
+`main`.
+
+- **Your invocation is the authorisation.** It replaces the solo path's in-session go-ahead above,
+  because an unattended run has nobody to ask. Nothing else authorises the merge, so taking this route
+  is always a deliberate, attributable act.
+- **No hold is applied, so none is ever cleared.** The three staged commands each carry an unattended
+  clause: the status advances without the hold, and sync answers its three questions from the
+  invocation. The hold pauses work *between* commands, and this route has no between — so the rule
+  that nothing removes a hold survives untouched.
+- **Any refusal becomes a halt**: the hold goes on, a comment says why, the `status:*` label stays put.
+  You clear the hold and resume with the ordinary command for that label.
+- **Every other gate is unchanged** — the status gates, the WIP cap, CI green before the close-out
+  commit, the commitlint check on the squash message.
+- **The record says it was unattended.** The PR body and the retro entry both say no human read the
+  spec or the diff, and the retro's reflections are marked unconfirmed. That is what keeps the two
+  routes distinguishable in the log, and this decision measurable.
+- **No ADR is written unattended.** Shipping code nobody read is authorised; deciding architecture
+  nobody read is not. A structural finding becomes a tracked issue for a person.
+
+The staged route stays the default. This one is for work whose shape you already accepted at the
+grill — see [ADR-0027](docs/adr/0027-a-change-may-reach-main-unreviewed-on-one-explicit-invocation.md)
+for the evidence, the accepted risks, and the signals that would narrow it again.
 
 ## Merge = archive = sync = retro
 

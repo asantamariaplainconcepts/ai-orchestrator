@@ -44,12 +44,12 @@
 
 ## 4. Documentation
 
-- [ ] 4.1 `CONTRIBUTING.md` — add the unattended route: the loop diagram gains it, a section states
+- [x] 4.1 `CONTRIBUTING.md` — add the unattended route: the loop diagram gains it, a section states
       DEC-068/ADR-0027, what authorises the merge, that a halt applies the hold and hands back, and
       plainly what the route gives up. Link `.claude/commands/aio/ship.md` rather than restating it.
-- [ ] 4.2 `AGENTS.md` — add `/aio:ship` to the command list and to the hold's section, stating that
+- [x] 4.2 `AGENTS.md` — add `/aio:ship` to the command list and to the hold's section, stating that
       it applies no hold on its happy path and removes none ever.
-- [ ] 4.3 Re-read both against `contributor-docs` — *one canonical quick-start* and *CONTRIBUTING
+- [x] 4.3 Re-read both against `contributor-docs` — *one canonical quick-start* and *CONTRIBUTING
       links rather than duplicates* — and remove any mechanics that belong in the command file.
 
 ## 5. Verification
