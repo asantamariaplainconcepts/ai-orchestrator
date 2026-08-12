@@ -119,6 +119,6 @@
 
 ## 8. Close out
 
-- [ ] 8.1 `openspec validate shell-projects-tree` passes.
-- [ ] 8.2 Full solution build and test run green; commit incrementally so the branch keeps its
+- [x] 8.1 `openspec validate shell-projects-tree` passes.
+- [x] 8.2 Full solution build and test run green; commit incrementally so the branch keeps its
       narrative.
