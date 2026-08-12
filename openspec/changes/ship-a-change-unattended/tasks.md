@@ -1,13 +1,13 @@
 ## 1. Record the decision first
 
-- [ ] 1.1 Write `docs/adr/0027-<slug>.md` from `docs/adr/template.md` — a change may reach `main`
+- [x] 1.1 Write `docs/adr/0027-<slug>.md` from `docs/adr/template.md` — a change may reach `main`
       unreviewed on one explicit invocation: the context (two hold-marked review stages), the
       decision, why the staged path stays the default, why the hold-clearing invariant is preserved
       rather than excepted, its evidence, and its check. Allocate the number against `origin/main`
       (`decision-records` — *numbers are allocated against origin/main*).
-- [ ] 1.2 Add **DEC-068** to `docs/product/mvp/10-locked-mvp-decisions.md` in the file's existing
+- [x] 1.2 Add **DEC-068** to `docs/product/mvp/10-locked-mvp-decisions.md` in the file's existing
       style, one entry, citing ADR-0027 and naming what it authorises. Never edit an existing entry.
-- [ ] 1.3 Verify no `OPN-*` entry needs opening or closing for this change, and that
+- [x] 1.3 Verify no `OPN-*` entry needs opening or closing for this change, and that
       `docs/product/mvp/07-open-decisions.md` is left untouched.
 
 ## 2. The unattended clause in each staged command
