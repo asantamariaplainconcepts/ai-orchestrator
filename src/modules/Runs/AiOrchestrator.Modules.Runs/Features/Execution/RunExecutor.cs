@@ -28,6 +28,7 @@ sealed class RunExecutor(
     IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
     ILocalCodeWorkspace localWorkspace,
+    ILocalCheckoutSetup checkoutSetup,
     Microsoft.Extensions.DependencyInjection.IServiceScopeFactory scopes,
     TimeProvider clock,
     ILogger<RunExecutor> logger
@@ -435,6 +436,14 @@ sealed class RunExecutor(
                 );
             }
 
+            // The phase's clock starts HERE, not at the runtime invocation (#332, design D4).
+            // Everything the product does inside the phase before the Agent — creating the checkout,
+            // preparing it — spends the Automation's one budget, and the Agent is invoked with what
+            // is left. A second timeout for setup would let a Run spend a full budget preparing and
+            // another full budget working, which is what DEC-054's ceiling exists to prevent.
+            var budget = automation!.Timeout;
+            var phaseStarted = clock.GetUtcNow();
+
             // Said where a reader will look for it: the transcript (BR-016's companion promise).
             onOutput(
                 $"Running as a local process against '{connector.LocalPath}' — the host's own "
@@ -470,11 +479,79 @@ sealed class RunExecutor(
             run.RecordLocalExecution(local.Value.Path, branch);
             await database.SaveChangesAsync(cancellationToken);
 
+            // The checkout is fresh, so it has no installed dependencies and no build outputs
+            // (#332). Where the Admin configured a command, it runs here — after the checkout
+            // exists and after the Run records which one it worked in, so a Run that dies during a
+            // long install still says where (BR-014) — and before the Agent, which is the whole
+            // point: an Agent asked to make the tests pass must meet a tree where they can run.
+            if (connector.LocalSetupCommand is { } setupCommand)
+            {
+                // Written BEFORE the process starts, so a setup that hangs is legible while it
+                // hangs. UC-027 is about watching a Run execute, and output that appears only at
+                // the end fails that for exactly the phase where it matters most.
+                onOutput($"Preparing the checkout: {setupCommand}");
+
+                var setupOutcome = await checkoutSetup.Run(
+                    setupCommand,
+                    local.Value.Path,
+                    Remaining(budget, phaseStarted),
+                    onOutput,
+                    cancellationToken
+                );
+
+                if (!setupOutcome.Succeeded)
+                {
+                    // Two different failures, deliberately never merged: a build that refused names
+                    // the command and its output; a clock that ran out names the limit, because a
+                    // Run that ran out of time did not fail its build (design D5).
+                    var setupFailure = setupOutcome.TimedOut
+                        ? LocalSetupErrors.TimedOut(setupCommand, budget)
+                        : LocalSetupErrors.Failed(setupCommand, Tail(setupOutcome.Output));
+
+                    // The checkout goes back on this path exactly as on any other failure, so a
+                    // failed setup leaks nothing (design D7).
+                    await localWorkspace.Conclude(
+                        local.Value,
+                        $"ai: {story!.Title}",
+                        succeeded: false,
+                        cancellationToken
+                    );
+
+                    // The runtime was never invoked, which is the criterion: nothing was spent on an
+                    // agent that could not have worked. Nothing retries (BR-004).
+                    return new Outcome(
+                        Failure(setupFailure.Description),
+                        Model: model,
+                        Runtime: runtimeName
+                    );
+                }
+            }
+
+            // What setup did not spend. A budget already gone is the overrun case rather than an
+            // invocation with a dead clock — and the Agent is not started at all, which is the
+            // honest thing to say about it.
+            var agentBudget = Remaining(budget, phaseStarted);
+            if (agentBudget <= TimeSpan.Zero)
+            {
+                await localWorkspace.Conclude(
+                    local.Value,
+                    $"ai: {story!.Title}",
+                    succeeded: false,
+                    cancellationToken
+                );
+
+                return new Outcome(
+                    Failure(LocalSetupErrors.BudgetExhausted(budget).Description),
+                    Model: model,
+                    Runtime: runtimeName
+                );
+            }
+
             var localResult = await selection.Runtime.Execute(
                 new AgentInstruction(
                     instruction,
-                    automation!.Action,
-                    automation.Timeout,
+                    automation.Action,
+                    agentBudget,
                     local.Value.Path,
                     new AgentCredentials(vendorToken, aiKey),
                     onOutput,
@@ -626,6 +703,36 @@ sealed class RunExecutor(
             )
             : (body, null);
     }
+
+    /// <summary>
+    /// What is left of the phase's budget (#332, design D4). Never negative — a caller comparing it
+    /// to zero is asking "is there any time left", and a negative TimeSpan handed to a process
+    /// timeout would be a different question.
+    /// </summary>
+    TimeSpan Remaining(TimeSpan budget, DateTimeOffset phaseStarted)
+    {
+        var left = budget - (clock.GetUtcNow() - phaseStarted);
+        return left > TimeSpan.Zero ? left : TimeSpan.Zero;
+    }
+
+    /// <summary>
+    /// The last of the setup command's output, for the refusal's evidence. The <b>tail</b>, because
+    /// that is where a build error is — the head of a failing install is a hundred lines of
+    /// progress. The whole output is already in the Run's log (BR-014), so the reason carries
+    /// evidence rather than a transcript.
+    /// </summary>
+    static string Tail(string output)
+    {
+        var trimmed = output.TrimEnd();
+        return trimmed.Length <= SetupOutputTail ? trimmed : trimmed[^SetupOutputTail..];
+    }
+
+    /// <summary>
+    /// Comfortably inside <see cref="FailureLimit"/>, which bounds the whole reason: the sentence
+    /// naming the command has to fit beside it, and a tail that consumed the budget would push the
+    /// part saying "the setup failed" out of a truncated reason.
+    /// </summary>
+    const int SetupOutputTail = 600;
 
     static AgentResult Failure(string log) =>
         new(Succeeded: false, Log: log, OutputLink: null, Usage: null);

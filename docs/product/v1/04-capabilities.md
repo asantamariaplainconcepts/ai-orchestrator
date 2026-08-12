@@ -130,7 +130,10 @@ Capabilities this corpus commits to as direction; each still owes a grill
   agent starts. Because the file executes commands, an Admin trusts it **per version**, and a
   changed file requires re-trust; a failed setup ends the Run with a named refusal before the
   agent ever runs. Without this, any real "implement and make the tests pass" story fails on a
-  bare sandbox.
+  bare sandbox. *(Distinct from the setup command an Admin configures beside a Local Run's code
+  source (#332): that one is product-side, so nothing the agent writes can become a command and no
+  trust ceremony is needed. This capability is the repository declaring its own setup, and the
+  per-version trust is the whole of what makes that safe.)*
 - **UC-032 — Member runs one Story through several runtimes and compares.** One dispatch fans
   into sibling Runs — same Story, different runtime or model — each in its own sandbox; the
   portal shows the resulting PRs side by side with per-Run cost ([BR-011](05-business-rules.md)).

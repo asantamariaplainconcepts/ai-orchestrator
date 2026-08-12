@@ -110,16 +110,43 @@ sealed class Connector : Aggregate
     /// </summary>
     public string? LocalPath { get; private set; }
 
-    public void UseLocalFolder(string path)
+    /// <summary>
+    /// The command that makes a Local Run's fresh checkout buildable, run before the Agent starts
+    /// (#332). Null means none, and none is a valid configuration — a checkout that needs no
+    /// preparation is not a misconfigured one.
+    /// <para>
+    /// It lives here, beside the folder, and <b>never</b> in a file in the code source. On this lane
+    /// the repository is what the Agent is editing, and the Agent runs as the machine owner with
+    /// their environment and credentials: a repository file naming commands would let the Agent
+    /// write it in one Run and have the next execute it. That is exactly why UC-031 requires
+    /// per-version trust — a ceremony this field does not need, because nothing the Agent writes can
+    /// become a command (design D1).
+    /// </para>
+    /// <para>
+    /// Held on the Connector rather than per Automation: setup describes <b>the repository</b>, not
+    /// the action being taken, so every Automation on the same folder needs the same tree. Per
+    /// Automation would multiply one fact and let two of them disagree about how the same checkout
+    /// is built.
+    /// </para>
+    /// </summary>
+    public string? LocalSetupCommand { get; private set; }
+
+    public void UseLocalFolder(string path, string? setupCommand = null)
     {
         CodeSource = CodeSource.LocalFolder;
         LocalPath = path;
+        LocalSetupCommand = setupCommand;
     }
 
     public void UseRepositorySource()
     {
         CodeSource = CodeSource.Repository;
         LocalPath = null;
+
+        // Cleared, not merely inapplicable: a stale command surviving a switch would be
+        // configuration nobody can see, and a later switch back to the local folder would execute
+        // it. Hiding and clearing are the same act (connector-configuration).
+        LocalSetupCommand = null;
     }
 
     public static Connector Create(
