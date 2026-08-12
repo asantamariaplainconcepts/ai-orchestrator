@@ -70,39 +70,39 @@
 
 ## 5. The tree in the shell
 
-- [ ] 5.1 Add the typed query hook and types for `/api/in-flight` in a feature slice (not
+- [x] 5.1 Add the typed query hook and types for `/api/in-flight` in a feature slice (not
       `shared/` — that is cross-cutting plumbing only, per `frontend-architecture`), on the same
       30s cadence `useInbox` uses.
-- [ ] 5.2 Add every new string to `src/frontend/shared/i18n/en.ts`. No literal user-facing copy in
+- [x] 5.2 Add every new string to `src/frontend/shared/i18n/en.ts`. No literal user-facing copy in
       JSX — it fails CI (DEC-021).
-- [ ] 5.3 Turn `NavItems` in `src/frontend/shared/ui/AppShell.tsx` into the tree: project rows →
+- [x] 5.3 Turn `NavItems` in `src/frontend/shared/ui/AppShell.tsx` into the tree: project rows →
       `/projects/:id`, Story rows → the story route, Run rows → `/projects/:id/runs/:runId`. Keep
       one component feeding all three containers — two copies is how the phone lost the identity
       block before.
-- [ ] 5.4 Render each Run row's state and each held Story's hold through the shared chip from group
+- [x] 5.4 Render each Run row's state and each held Story's hold through the shared chip from group
       4 — never a treatment defined inside the tree.
-- [ ] 5.5 A project with no live work renders as its row alone: no empty group, no placeholder, no
+- [x] 5.5 A project with no live work renders as its row alone: no empty group, no placeholder, no
       zero count.
-- [ ] 5.6 Keep the Inbox entry and its badge exactly as they are, above or below the tree as the
+- [x] 5.6 Keep the Inbox entry and its badge exactly as they are, above or below the tree as the
       layout dictates — but unchanged in behaviour.
-- [ ] 5.7 Rail behaviour: every project stays present as a glyph at
+- [x] 5.7 Rail behaviour: every project stays present as a glyph at
       `--sidebar-w-collapsed` (64px), and opening one reveals the same children with the same
       destinations via `popover.tsx` — the idiom the environment chip already uses on the rail. Do
       not add a collapsible/accordion primitive; none exists and per-project collapse is out of
       scope.
-- [ ] 5.8 Sheet behaviour: the same entries rendered inline, never a popover inside the drawer
+- [x] 5.8 Sheet behaviour: the same entries rendered inline, never a popover inside the drawer
       (`design-contract`).
-- [ ] 5.9 Every collapsed entry — nested ones included — carries its name via `aria-label` and
+- [x] 5.9 Every collapsed entry — nested ones included — carries its name via `aria-label` and
       `title`.
-- [ ] 5.10 Tokens and kit primitives only; no raw hex, no raw pixel values (DEC-051, `DESIGN.md`).
+- [x] 5.10 Tokens and kit primitives only; no raw hex, no raw pixel values (DEC-051, `DESIGN.md`).
 
 ## 6. Frontend verification
 
-- [ ] 6.1 `pnpm lint` passes at `--max-warnings=0` and `pnpm format:check` passes.
-- [ ] 6.2 `pnpm typecheck` (`tsc --noEmit`) passes.
-- [ ] 6.3 `pnpm build` passes — run it through `rtk proxy` (or plain `pnpm`), never a filter that
+- [x] 6.1 `pnpm lint` passes at `--max-warnings=0` and `pnpm format:check` passes.
+- [x] 6.2 `pnpm typecheck` (`tsc --noEmit`) passes.
+- [x] 6.3 `pnpm build` passes — run it through `rtk proxy` (or plain `pnpm`), never a filter that
       can report success over a broken build.
-- [ ] 6.4 Run the design validator; it reports no raw values in the touched components.
+- [x] 6.4 Run the design validator; it reports no raw values in the touched components.
 
 ## 7. E2E and the corpus
 

@@ -10,7 +10,12 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/sh
 import { ThemeToggle } from "@/shared/ui/ThemeToggle";
 import { ApiError } from "@/shared/http/client";
 import { useInbox } from "@/features/inbox/useInbox";
+import { useInFlight } from "@/features/in-flight/useInFlight";
+import type { InFlightWork } from "@/features/in-flight/types";
+import { useProjects } from "@/features/projects/useProjects";
 import { EnvironmentChip } from "@/features/runtimes/EnvironmentChip";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { HoldChip, RunStateChip } from "@/shared/ui/state-chip";
 import { useCurrentPrincipal } from "@/shared/identity/useCurrentPrincipal";
 
 /**
@@ -328,6 +333,9 @@ function NavItems({
           {collapsed ? null : t("shell.nav.projects")}
         </span>
       </NavLink>
+      {/* The tree (UC-033). It sits under the projects entry rather than replacing it, because that
+          entry is the answer to "no projects yet" and stays the way to the full list. */}
+      <ProjectsTree collapsed={collapsed} onNavigate={onNavigate} />
       <NavLink
         className={item}
         to="/inbox"
@@ -354,5 +362,285 @@ function NavItems({
         {!collapsed && waiting > 0 ? <Badge variant="secondary">{waiting}</Badge> : null}
       </NavLink>
     </nav>
+  );
+}
+
+/**
+ * UC-033 — every visible project, with its live work nested (#335).
+ *
+ * Every project gets a row; only the ones with live work get children. That asymmetry is the
+ * requirement, not an accident: the tree must answer "which projects exist" as well as "what is
+ * happening", so the project list drives the rows and the in-flight read only supplies children. A
+ * project with nothing in flight renders as its row alone — no empty group, no placeholder, no zero.
+ *
+ * Two queries, both already cheap: the projects list the sidebar's own count already reads, and one
+ * cross-project in-flight read on the cadence the inbox query already polls at.
+ */
+function ProjectsTree({ collapsed, onNavigate }: { collapsed: boolean; onNavigate?: () => void }) {
+  const projects = useProjects();
+  const inFlight = useInFlight();
+
+  const workByProject = new Map(
+    (inFlight.data?.projects ?? []).map((project) => [project.projectId, project.work]),
+  );
+
+  // Nothing to draw until the list arrives, and nothing to say about it either: the projects entry
+  // above is already the route to the list, including when the list is empty (AC 7).
+  if (!projects.data || projects.data.projects.length === 0) {
+    return null;
+  }
+
+  return (
+    <ul className="flex flex-col gap-0.5">
+      {projects.data.projects.map((project) => (
+        <ProjectBranch
+          key={project.id}
+          collapsed={collapsed}
+          onNavigate={onNavigate}
+          projectId={project.id}
+          name={project.name}
+          work={workByProject.get(project.id) ?? []}
+        />
+      ))}
+    </ul>
+  );
+}
+
+/**
+ * One project and its children, in whichever container is asking.
+ *
+ * The rail cannot indent: `--sidebar-w-collapsed` is 64px, so children go in a popover — the idiom
+ * the environment chip already uses at this width. The popover renders the *same* `WorkRows` the
+ * expanded tree does, which is what makes "the same children with the same destinations" (#126
+ * design D2) a structural fact rather than a promise two code paths make separately.
+ */
+function ProjectBranch({
+  collapsed,
+  onNavigate,
+  projectId,
+  name,
+  work,
+}: {
+  collapsed: boolean;
+  onNavigate?: () => void;
+  projectId: string;
+  name: string;
+  work: InFlightWork[];
+}) {
+  const to = `/projects/${projectId}`;
+
+  const row = ({ isActive }: { isActive: boolean }) =>
+    cn(
+      "flex min-w-0 items-center gap-2 rounded-md py-1.5 text-sm transition-colors",
+      collapsed ? "justify-center px-2" : "px-3",
+      isActive
+        ? "bg-accent text-accent-foreground"
+        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+    );
+
+  if (collapsed) {
+    // No children, nothing to reveal: the glyph is just the link, and the entry is still present —
+    // the rail drops the label, never the entry.
+    if (work.length === 0) {
+      return (
+        <li>
+          <NavLink
+            className={row}
+            to={to}
+            onClick={onNavigate}
+            aria-label={name}
+            title={name}
+            end={false}
+          >
+            <ProjectGlyph name={name} />
+          </NavLink>
+        </li>
+      );
+    }
+
+    return (
+      <li>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className={cn(row({ isActive: false }), "relative w-full cursor-pointer")}
+              aria-label={name}
+              title={name}
+            >
+              <ProjectGlyph name={name} />
+              {/* Something is happening in here, and at this width there is no room to say what.
+                  A dot is not the state — the state is on the rows inside. */}
+              <span
+                aria-hidden="true"
+                className="absolute top-1 right-1 size-1.5 rounded-full bg-info"
+              />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" side="right" className="w-72 p-2">
+            <NavLink
+              className="block truncate rounded-md px-2 py-1.5 text-sm font-medium hover:bg-muted"
+              to={to}
+              onClick={onNavigate}
+              end={false}
+            >
+              {name}
+            </NavLink>
+            <WorkRows
+              projectId={projectId}
+              work={work}
+              onNavigate={onNavigate}
+              label={t("shell.tree.liveWork")}
+            />
+          </PopoverContent>
+        </Popover>
+      </li>
+    );
+  }
+
+  return (
+    <li className="min-w-0">
+      <NavLink className={row} to={to} onClick={onNavigate} end={false}>
+        <ProjectGlyph name={name} />
+        <span className="min-w-0 flex-1 truncate">{name}</span>
+      </NavLink>
+      {work.length > 0 ? (
+        <WorkRows
+          projectId={projectId}
+          work={work}
+          onNavigate={onNavigate}
+          label={t("shell.tree.liveWork")}
+        />
+      ) : null}
+    </li>
+  );
+}
+
+/**
+ * The children of one project: its subjects, each with its Runs.
+ *
+ * One component for all three containers, for the reason the shell already learned once — two copies
+ * is how the phone lost the identity block, and it is how a rail would quietly offer fewer
+ * destinations than the panel it replaces.
+ */
+function WorkRows({
+  projectId,
+  work,
+  onNavigate,
+  label,
+}: {
+  projectId: string;
+  work: InFlightWork[];
+  onNavigate?: () => void;
+  label: string;
+}) {
+  return (
+    <ul aria-label={label} className="mt-0.5 flex flex-col gap-0.5 border-l pl-3 ml-4">
+      {work.map((entry) => {
+        // Exactly one of the two identifies a node, so this key cannot collide.
+        const key = entry.vendorStoryId ?? `change-${entry.changeNumber}`;
+        return (
+          <li key={key} className="min-w-0">
+            <SubjectRow projectId={projectId} entry={entry} onNavigate={onNavigate} />
+            {entry.runs.length > 0 ? (
+              <ul className="mt-0.5 flex flex-col gap-0.5 border-l pl-3 ml-2">
+                {entry.runs.map((run) => (
+                  <li key={run.runId} className="min-w-0">
+                    <NavLink
+                      className={({ isActive }) =>
+                        cn(
+                          "flex min-w-0 items-center rounded-md px-2 py-1 text-xs transition-colors",
+                          isActive
+                            ? "bg-accent text-accent-foreground"
+                            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                        )
+                      }
+                      to={`/projects/${projectId}/runs/${run.runId}`}
+                      onClick={onNavigate}
+                    >
+                      <RunStateChip state={run.state} />
+                    </NavLink>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
+ * A Story row, or a change row.
+ *
+ * A Story has a route and is therefore a link. A change does not: it lives in the vendor, and the
+ * tree's job here is to group the Runs working on it — so it is a label, and its Runs are the ways
+ * in. Inventing an in-app destination for it, or linking out of the shell to the vendor, would both
+ * be more than this change was asked for.
+ */
+function SubjectRow({
+  projectId,
+  entry,
+  onNavigate,
+}: {
+  projectId: string;
+  entry: InFlightWork;
+  onNavigate?: () => void;
+}) {
+  const content = (
+    <>
+      <span className="min-w-0 flex-1 truncate">
+        {entry.vendorStoryId !== null
+          ? `#${entry.vendorStoryId} ${entry.title ?? t("shell.tree.untitledStory")}`
+          : `#${entry.changeNumber} ${entry.title ?? ""}`.trim()}
+      </span>
+      {/* A hold is a wait on a person; the Runs below carry the waits on a machine. */}
+      {entry.held ? <HoldChip /> : null}
+    </>
+  );
+
+  if (entry.vendorStoryId === null) {
+    return (
+      <span
+        className="flex min-w-0 items-center gap-1.5 px-2 py-1 text-xs text-muted-foreground"
+        title={t("shell.tree.change")}
+      >
+        {content}
+      </span>
+    );
+  }
+
+  return (
+    <NavLink
+      className={({ isActive }) =>
+        cn(
+          "flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors",
+          isActive
+            ? "bg-accent text-accent-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+        )
+      }
+      to={`/projects/${projectId}/stories/${encodeURIComponent(entry.vendorStoryId)}`}
+      onClick={onNavigate}
+    >
+      {content}
+    </NavLink>
+  );
+}
+
+/**
+ * A project's mark. One letter, because the rail has to tell two projects apart and this repository
+ * holds no imagery to tell them apart with (DEC-021) — a letter is text from the project's own name,
+ * not an asset.
+ */
+function ProjectGlyph({ name }: { name: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="grid size-5 shrink-0 place-items-center rounded bg-muted text-[10px] font-semibold text-muted-foreground uppercase"
+    >
+      {name.trim().charAt(0)}
+    </span>
   );
 }

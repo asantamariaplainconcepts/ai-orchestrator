@@ -805,6 +805,17 @@ export const en = {
   "backlog.stats.labelled": "Labelled",
   "backlog.stats.connector": "Connector",
 
+  // The projects tree (#335, UC-033) — the sidebar answers "what is every project doing" without a
+  // navigation per project.
+  "shell.tree.project": "Project",
+  "shell.tree.story": "Story",
+  "shell.tree.run": "Run",
+  // A change node groups the Runs of a run-on-a-pr; the number is how a reader recognises it.
+  "shell.tree.change": "Change",
+  "shell.tree.openProject": "Open this project",
+  "shell.tree.liveWork": "Live work",
+  "shell.tree.untitledStory": "Untitled Story",
+
   // State vocabulary (#335) — the one home for what a Run is doing, rendered by the shared chip in
   // shared/ui/state-chip.tsx. These exist because two surfaces used to render the state enum
   // verbatim: an internal identifier is not copy, and "Queued" reaching a screen untranslated is the
