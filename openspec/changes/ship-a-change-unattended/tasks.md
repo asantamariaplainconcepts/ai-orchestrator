@@ -12,19 +12,19 @@
 
 ## 2. The unattended clause in each staged command
 
-- [ ] 2.1 `.claude/commands/aio/propose.md` — add the unattended-mode clause to step 7 and to the
+- [x] 2.1 `.claude/commands/aio/propose.md` — add the unattended-mode clause to step 7 and to the
       guardrails: in unattended mode the status advances **without** the hold, and every refusal
       becomes a halt that applies the hold and comments the reason. Change nothing about a direct
       invocation.
-- [ ] 2.2 `.claude/commands/aio/implement.md` — same clause: `status:code-review` set without the
+- [x] 2.2 `.claude/commands/aio/implement.md` — same clause: `status:code-review` set without the
       hold; the WIP cap and its refusal enforced unchanged, but as a halt that applies the hold and
       comments the issues holding the cap; the overlap check stays advisory.
-- [ ] 2.3 `.claude/commands/aio/sync.md` — clause for its three human touchpoints: the `/aio:ship`
+- [x] 2.3 `.claude/commands/aio/sync.md` — clause for its three human touchpoints: the `/aio:ship`
       invocation is DEC-016's recorded go-ahead; the retro reflection points (step 4.2) and the
       squash subject (step 8) are derived and used without being presented for confirmation, with the
       retro entry marking its reflections unconfirmed. Every gate and ordering in steps 3–11 applies
       unchanged; each refusal becomes a halt that applies the hold.
-- [ ] 2.4 Confirm all three still read the hold's name from `holdLabel` in `.claude/workflow.json`
+- [x] 2.4 Confirm all three still read the hold's name from `holdLabel` in `.claude/workflow.json`
       and that none of the three files contains the literal label.
 
 ## 3. The command itself

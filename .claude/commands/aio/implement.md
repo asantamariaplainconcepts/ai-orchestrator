@@ -44,13 +44,32 @@ ready for review (HITL #2). Wraps OpenSpec's apply.
 10. Report the PR URL for code + observed-behaviour review, and say that the reviewer's whole act
     is **removing the hold** — no label to set.
 
+**Unattended mode** — set only when invoked by [`/aio:ship`](ship.md) (DEC-068, ADR-0027). Exactly
+three things differ; every gate, ordering and guarantee above applies unchanged.
+
+- **Step 9:** set `status:code-review` **without** the hold. The status travels alone, because no
+  review stage follows.
+- **Step 10:** do not wait. Report the PR and hand back to `/aio:ship`, which continues into
+  `/aio:sync`.
+- **Every refusal above becomes a halt:** apply the hold, comment the specific reason, leave the
+  `status:*` label as it is, and stop. This includes the **WIP gate**, which is enforced exactly as
+  written — the cap is never widened for an unattended run; a run that meets it halts at
+  `status:ready-for-implementation` with the PR still a draft, and the comment lists the issues
+  holding the cap. The hold gate itself stays a plain refusal on an already-held issue.
+- **Unchanged, and worth stating:** the branch-overlap check remains advisory here too. An unattended
+  run prints the warning and proceeds, because a warning that blocks only on this route would be a
+  different rule wearing the same name.
+
 **Guardrails**
 - Never implement an unvalidated proposal.
 - Never implement a **held** issue, and check the hold **before** the WIP gate — a held issue
   consumes no slot and is counted in no WIP tally.
 - Never exceed the WIP limit — the gate runs before anything else except the hold, and the limit
   lives only in `.claude/workflow.json`.
-- Never remove the hold. Clearing it is a person's act, always.
+- Never remove the hold. Clearing it is a person's act, always — in unattended mode too, where the
+  hold is only ever *applied*, by a halt.
+- Unattended mode changes exactly the things its block names, and never a gate — the WIP cap least of
+  all. If a step is not named there, it behaves identically on both routes.
 - The overlap warning is advisory; lifecycle gates and the hold never are.
 - `status:in-progress` is set before the first implementation commit, not after.
 - One PR per issue — never open a second PR.
