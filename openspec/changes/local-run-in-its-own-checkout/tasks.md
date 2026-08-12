@@ -62,8 +62,8 @@
 - [x] 6.1 `dotnet build` clean, no new warnings.
 - [x] 6.2 `dotnet test` green across the affected module and shared test projects.
 - [x] 6.3 CSharpier passes (the pre-commit hook and CI both run it; `--no-verify` is still caught).
-- [ ] 6.4 Exercise a real Local Run end to end in the `aspire run` dev loop against a **dirty** folder
+- [x] 6.4 Exercise a real Local Run end to end in the `aspire run` dev loop against a **dirty** folder
       and confirm by hand: the Run succeeds, the folder is untouched, the branch is present, the
       checkout is gone (ADR-0006 — exercised, never read).
-- [ ] 6.5 Kill the Server mid-Run, restart, and confirm the sweep removes the orphaned checkout and
+- [x] 6.5 Kill the Server mid-Run, restart, and confirm the sweep removes the orphaned checkout and
       leaves its branch.
