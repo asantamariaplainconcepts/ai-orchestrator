@@ -51,9 +51,14 @@ contain hardcoded user-facing strings, enforced by an ESLint rule failing at
 
 Every routed screen SHALL render inside the shared shell — sidebar navigation plus top bar —
 provided by `shared/ui/`, and SHALL NOT compose its own header or navigation. Navigation between
-screens SHALL be sidebar links and breadcrumbs, not per-screen back-links. Feature components
+screens SHALL be sidebar entries and breadcrumbs, not per-screen back-links. Feature components
 SHALL declare no styles; the shell and its parts come from kit classes, and all copy resolves
 through the typed i18n catalogue.
+
+The sidebar's structure SHALL be a **tree**: every project the caller may see, with its live work
+nested beneath it (`shell-projects-tree`). A flat list of top-level links SHALL NOT be the
+sidebar's only structure, because "what is running right now" must not cost a navigation per
+project.
 
 From the medium breakpoint up, the sidebar SHALL be collapsible to an icon rail, and the choice SHALL
 survive a reload. Collapsed SHALL mean a narrower rail, never a hidden panel: every navigation
@@ -62,7 +67,9 @@ expanding, for the same reason the shell keeps both reachable when it folds at p
 breakpoint the control SHALL be absent, because the folded sheet already is the collapsed state.
 
 A collapsed entry SHALL carry its name for assistive technology and on hover, since the label is no
-longer rendered.
+longer rendered. This SHALL hold for **nested** entries as well as top-level ones: where the rail
+cannot show a tree's children inline at `--sidebar-w-collapsed`, opening the parent SHALL reveal the
+same children with the same destinations rather than dropping them.
 
 Both widths SHALL come from the canonical design-system variables rather than from a value written into
 the shell, so that the rendered sidebar cannot disagree with the token that describes it.
@@ -108,6 +115,18 @@ the shell, so that the rendered sidebar cannot disagree with the token that desc
 
 - **WHEN** a navigation entry is shown collapsed
 - **THEN** its name is available to a screen reader and on hover
+
+#### Scenario: the sidebar names the work, not just the sections
+
+- **WHEN** the sidebar renders for a caller with projects
+- **THEN** each visible project is an entry with its live work nested beneath it, and no
+  navigation into a project is required to see that the project has work in flight
+
+#### Scenario: a nested entry survives the collapse
+
+- **WHEN** the sidebar is collapsed and a project with nested children is opened from the rail
+- **THEN** the same children with the same destinations are reachable, none dropped for want of
+  width
 
 ### Requirement: backlog data surfaces show only facts from the live response
 
@@ -272,3 +291,4 @@ set-up-defaults action (#212) once that action exists; until then it SHALL guide
 
 - **WHEN** the checklist renders
 - **THEN** each step's state comes from the live connector, automations and runs data only
+

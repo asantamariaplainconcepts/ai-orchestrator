@@ -796,11 +796,9 @@ export const en = {
   "board.viewActiveRun": "View the active Run",
   "board.moveFailed": "The vendor refused the move. Nothing changed.",
   "board.refusedActiveRun": "This Story already has an active Run — one at a time.",
-  "board.run.executing": "Executing",
-  "board.run.question": "Question",
-  "board.run.approval": "Plan awaits",
-  "board.run.failed": "Failed",
-  "board.run.succeeded": "Done",
+  // The board's own state words are gone (#335): it renders the shared chip now, so these five
+  // would be a second set of names for one vocabulary — exactly the drift the chip was extracted to
+  // end. Their replacements are the "state.run.*" keys above.
   "project.tab.runs": "Runs",
   "project.tab.automations": "Automations",
   "project.tab.settings": "Settings",
@@ -811,6 +809,36 @@ export const en = {
   // "Labelled", not "trigger-labelled": no Automation exists yet to define a trigger (#14).
   "backlog.stats.labelled": "Labelled",
   "backlog.stats.connector": "Connector",
+
+  // The projects tree (#335, UC-033) — the sidebar answers "what is every project doing" without a
+  // navigation per project.
+  "shell.tree.project": "Project",
+  "shell.tree.story": "Story",
+  "shell.tree.run": "Run",
+  // A change node groups the Runs of a run-on-a-pr; the number is how a reader recognises it.
+  "shell.tree.change": "Change",
+  "shell.tree.openProject": "Open this project",
+  "shell.tree.liveWork": "Live work",
+  "shell.tree.untitledStory": "Untitled Story",
+
+  // State vocabulary (#335) — the one home for what a Run is doing, rendered by the shared chip in
+  // shared/ui/state-chip.tsx. These exist because two surfaces used to render the state enum
+  // verbatim: an internal identifier is not copy, and "Queued" reaching a screen untranslated is the
+  // defect, not the wording.
+  "state.run.queued": "Queued",
+  // "Running", not "Executing": the enum's word is for the schema, and this one is for a reader who
+  // wants to know whether something is happening right now.
+  "state.run.executing": "Running",
+  "state.run.awaitingInput": "Question",
+  "state.run.succeeded": "Succeeded",
+  "state.run.failed": "Failed",
+  "state.run.cancelled": "Cancelled",
+  // The two DEC-067 retired. Unreachable for new Runs, still on old ones, so they still need words.
+  "state.run.planning": "Planning",
+  "state.run.awaitingApproval": "Plan awaits",
+  // The hold (BR-007, DEC-067) — a wait on a person, which is why it reads differently from
+  // every wait on a machine above.
+  "state.story.held": "Held",
 
   // Runs — UC-021: the loop's output, observable. Locked vocabulary (Run, Story, Automation).
   "runs.heading": "Runs",

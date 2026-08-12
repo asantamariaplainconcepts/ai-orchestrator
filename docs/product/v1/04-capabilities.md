@@ -113,6 +113,19 @@ for whom, not how it works.
   sandboxes this product created on the machine, each openable in a shell; entering a stopped
   sandbox starts it, saying so beforehand. Every attach records who, when and which sandbox
   (#311).
+- **UC-033 — Member sees every project's live work in one panel.** The shell's sidebar is a tree:
+  each project a row, with its live work nested beneath it at every width — a Story appears when it
+  carries the hold ([BR-007](05-business-rules.md),
+  [DEC-067](../mvp/10-locked-mvp-decisions.md)) or has a Run in `Queued`, `Executing` or
+  `AwaitingInput`, and that Story's Runs nest under it; a Run targeting an open change nests under
+  the change instead. A project with nothing in flight renders as its row alone. Membership is
+  derived at read time and bounded by [BR-001](05-business-rules.md) and
+  [BR-002](05-business-rules.md); it is scoped by [BR-009](05-business-rules.md), so a project the
+  projects list would not show is absent rather than empty. Extends UC-021 and sits **beside**
+  UC-026 without replacing it: the tree answers "what is this project doing", the Inbox answers
+  "what waits on me", so a held Story deliberately appears in both. Membership is never derived from
+  the vendor's own state value, which [DEC-045](../mvp/10-locked-mvp-decisions.md) leaves
+  un-normalised permanently (#335).
 
 ## Intended — grillable, not yet filed
 
