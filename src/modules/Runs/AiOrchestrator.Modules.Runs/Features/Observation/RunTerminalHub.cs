@@ -134,14 +134,22 @@ sealed class RunTerminalHub(
         // Pumped on a background task rather than awaited: this call must return so the client can
         // start typing, and the read blocks until the shell says something.
         //
-        // `Task.Run`, and not a bare `_ = Pump(...)`. An async method runs synchronously until its
-        // first *suspending* await, and this one's first act is a blocking `Read` — so calling it
-        // directly executes the read on the hub's own invocation thread. Once a send completes
-        // synchronously, as a WebSocket send usually does, the loop returns to a read that blocks
-        // until the shell speaks again and this method never returns: the terminal streams perfectly
-        // while the client still waits for `Open` to resolve. Found by opening a real shell in #311
-        // and watching the surface sit on "Opening a shell…" with a working prompt above it.
-        _ = Task.Run(() => Pump(Clients.Caller, terminal, Context.ConnectionId, runId));
+        // Off the hub's thread, and not a bare `_ = Pump(...)`. An async method runs synchronously
+        // until its first *suspending* await, and this one's first act is a blocking `Read` — so
+        // calling it directly executes the read on the hub's own invocation thread. Once a send
+        // completes synchronously, as a WebSocket send usually does, the loop returns to a read that
+        // blocks until the shell speaks again and this method never returns: the terminal streams
+        // perfectly while the client still waits for `Open` to resolve. Found by opening a real
+        // shell in #311 and watching the surface sit on "Opening a shell…" with a working prompt
+        // above it.
+        //
+        // A dedicated thread, not `Task.Run`. The pool is sized for work that *finishes*, and this
+        // work never does — a pump blocks in `Read` for the entire life of the terminal. On the
+        // pool that is one permanently-occupied worker per open terminal, and the pool only grows
+        // by one or two threads a second, so the next pump can wait seconds to *start*. That is not
+        // theoretical: it is what turned #326's own test red, timing out on a ten-second wait for
+        // a read that had not yet been scheduled.
+        _ = PumpOn(() => Pump(Clients.Caller, terminal, Context.ConnectionId, runId));
     }
 
     /// <summary>
@@ -211,9 +219,10 @@ sealed class RunTerminalHub(
             Context.ConnectionAborted
         );
 
-        // `Task.Run` for the reason the Run-keyed path above spells out: the first act of the pump is
-        // a blocking read, and running it on the hub's thread means `OpenSandbox` never returns.
-        _ = Task.Run(() => PumpSandbox(Clients.Caller, terminal, Context.ConnectionId, sandbox));
+        // Its own thread, for both reasons the Run-keyed path above spells out: the first act of the
+        // pump is a blocking read, so the hub's thread would never return — and the read blocks for
+        // the terminal's whole life, so the pool is the wrong place to put it.
+        _ = PumpOn(() => PumpSandbox(Clients.Caller, terminal, Context.ConnectionId, sandbox));
     }
 
     /// <summary>Keystrokes. Unchecked deliberately — see below.</summary>
@@ -235,6 +244,25 @@ sealed class RunTerminalHub(
         Close(Context.ConnectionId);
         return base.OnDisconnectedAsync(exception);
     }
+
+    /// <summary>
+    /// Runs a pump on a thread of its own, off the pool.
+    /// <para>
+    /// One place, so the two entry points cannot drift into scheduling the same blocking loop two
+    /// different ways. <see cref="TaskCreationOptions.LongRunning"/> is the request for a dedicated
+    /// thread; <c>Unwrap</c> because the factory hands back the outer task that merely *started* the
+    /// async one, and a fault inside the pump belongs to the task this returns.
+    /// </para>
+    /// </summary>
+    static Task PumpOn(Func<Task> pump) =>
+        Task
+            .Factory.StartNew(
+                pump,
+                CancellationToken.None,
+                TaskCreationOptions.LongRunning | TaskCreationOptions.DenyChildAttach,
+                TaskScheduler.Default
+            )
+            .Unwrap();
 
     static async Task Pump(
         ISingleClientProxy client,

@@ -60,6 +60,7 @@ public class RunTerminalOutput_Should_Constraint(RunsApiFixture fixture)
     sealed class SpeakingTerminal : IRunTerminal
     {
         readonly byte[] _greeting = System.Text.Encoding.UTF8.GetBytes("hello$ ");
+        readonly ManualResetEventSlim _ended = new(false);
         bool _spoken;
 
         public int Read(byte[] buffer)
@@ -67,8 +68,15 @@ public class RunTerminalOutput_Should_Constraint(RunsApiFixture fixture)
             if (_spoken)
             {
                 // A real shell blocks here until it has something; ending immediately would race the
-                // assertion against the pump's own teardown.
-                Thread.Sleep(Timeout.Infinite);
+                // assertion against the pump's own teardown. The wait is on this terminal's own end
+                // signal rather than `Thread.Sleep(Timeout.Infinite)`, which parked a thread-pool
+                // thread that nothing — not even `Dispose` — could release. The pump runs on the
+                // pool (`RunTerminalHub`'s `Task.Run`), so one unreleasable worker per run of this
+                // test starved the very pool the next test's pump needed.
+                _ended.Wait();
+
+                // Zero is how a shell that has ended reports itself, which is what disposal means.
+                return 0;
             }
 
             _spoken = true;
@@ -78,7 +86,9 @@ public class RunTerminalOutput_Should_Constraint(RunsApiFixture fixture)
 
         public void Write(ReadOnlySpan<byte> data) { }
 
-        public void Dispose() { }
+        // Set, never disposed: a thread may still be inside `Wait()`, and disposing the event under
+        // it would throw where the point is to let it go.
+        public void Dispose() => _ended.Set();
     }
 
     sealed class TestHost : IDisposable
