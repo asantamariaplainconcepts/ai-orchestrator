@@ -4275,3 +4275,54 @@ retro finding that names a fix becomes a tracked issue before the change syncs. 
 application is this entry: #337 (the telemetry endpoint) and #338 (the worktree root detection) were
 filed during this sync, and the ADR is written so that a finding with no concrete remedy still
 creates nothing.
+
+## 2026-08-12 — shell-projects-tree (#335)
+
+**Time:** human ~0.5h (source: **manual**, per
+[ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) — human
+time is recorded, never derived); agent time **unmeasured**. Manual **because capture is broken**,
+not because the change predates telemetry. `verify-telemetry.mjs` fails the same single check #332's
+entry named: `OTEL_EXPORTER_OTLP_ENDPOINT` is UNSET, so exports go to the OTLP default port rather
+than this project's collector. All three sessions are mapped in `.telemetry/sessions.jsonl`
+(`d10e1dc1…`, `d6b2a16a…`, `2ff0e789…` → this change) and `usage.jsonl` holds **zero** matching
+datapoints; its last write was 14:36, before this work began at 17:32. No cost or token figure is
+reported because there is none. This is the **second consecutive** change to lose its measurement to
+an already-tracked defect (#337, open) — the ADR-0026 filing worked, the fix has not happened yet.
+
+**What worked: reading the code before writing the spec, rather than after.** Four design points came
+from verified facts, and every one of them would have been wrong from memory. `Story.Labels` is a
+`text[]` column, so the hold's case fold cannot move into SQL — a translated `Contains` would report
+`HITL` as unheld, which is precisely the failure DEC-056 exists to prevent, and the test for it is
+functional rather than unit because that is the only tier where the claim is real. The Mirror is
+Postgres, so held Stories cost no vendor call, which is what makes a 30-second cadence affordable and
+what separates this surface from the open-changes one whose own docstring forbids exactly that.
+`--sidebar-w-collapsed` is 64px, too narrow to indent, hence the rail's popover. And the kit has no
+collapsible primitive, so none was added.
+
+Also: **distrusting a green result.** Three Playwright tests reporting under a second is not a
+credible time for navigating, collapsing 280px to 64px and opening a popover. Rather than report it,
+the href assertion was mutated to a deliberately wrong value and confirmed to fail with the real
+rendered string — `/projects/<id>/stories/77` — then reverted and re-run green. The tests were sound;
+the difference is that the confidence was earned instead of assumed. The milliseconds were test
+bodies and the AppHost boot was the collection fixture's 35 seconds, which the first reading could
+not distinguish from a no-op suite.
+
+**What didn't: the accepted spec was wrong twice, and implementing it is what found both.** A `Run`
+targets exactly one of a Story or an open change — "never both, never neither", as `Run.cs` says in
+so many words — so `VendorStoryId` is null for a change-targeted Run and the approved Project → Story
+→ Run shape had nowhere to put one. Omitting those Runs would have left a panel about live work
+silent about a Run that is executing; reporting them bare would have defeated the reason Runs nest
+under a subject at all. Separately, "non-terminal" is not "live": DEC-067's retired `Planning` and
+`AwaitingApproval` are neither, and enumerating the live states was the only honest way to say so.
+Both errors were prose that read correctly against other prose. Spec review cannot catch that class
+without opening the file the claim is about, which is an argument for citing real paths in a spec —
+not for reviewing harder.
+
+**One change next time:** read load-bearing config with the file tool, never a shell `cat` a hook may
+rewrite. `workflow.json` came back **without** `holdLabel`, and a `git diff --name-only` came back as
+formatted prose that made a branch-overlap check read as zero files. A filtered read that drops keys
+still parses and still looks complete, which is strictly worse than one that fails. Filed as **#341**
+per ADR-0026 rather than left in this log — the log already recorded this masking twice, for
+`rtk pnpm build` and for `rtk git commit`, and recording it a third time is what ADR-0026 exists to
+stop. No new ADR: 0026 already governs the rule, and the previous entry's own finding was that more
+prose was not the missing part.
