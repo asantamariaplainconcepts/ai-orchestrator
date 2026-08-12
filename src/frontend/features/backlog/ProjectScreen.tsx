@@ -566,6 +566,7 @@ function ConnectorPanel({
   const capabilities = useDeploymentCapabilities();
   const [codeSource, setCodeSource] = useState(connector?.codeSource ?? "Repository");
   const [localPath, setLocalPath] = useState(connector?.localPath ?? "");
+  const [localSetupCommand, setLocalSetupCommand] = useState(connector?.localSetupCommand ?? "");
 
   // Pasting is the default (#124), because the operator who already manages secrets knows to
   // switch and the first-time user does not know a vault exists. A Connector whose secret this
@@ -611,7 +612,10 @@ function ConnectorPanel({
    */
   const advancedLocked = codeIsLocal;
   const storesAdvanced = Boolean(
-    connector?.promptDirectory || connector?.codeRepository || connector?.localPath,
+    connector?.promptDirectory ||
+    connector?.codeRepository ||
+    connector?.localPath ||
+    connector?.localSetupCommand,
   );
   const [advancedOpened, setAdvancedOpened] = useState(storesAdvanced);
   const advancedOpen = advancedLocked || advancedOpened;
@@ -660,6 +664,11 @@ function ConnectorPanel({
           capabilities.data?.canUseLocalFolder && codeSource === "LocalFolder" && localPath.trim()
             ? localPath.trim()
             : null,
+        // Cleared with the source it belongs to, like the code repository above: a command that
+        // survived a switch to Repository would be configuration nobody can see, and a later
+        // switch back would run it (#332).
+        localSetupCommand:
+          codeIsLocal && localSetupCommand.trim() ? localSetupCommand.trim() : null,
       },
       {
         onSuccess: () => {
@@ -901,6 +910,8 @@ function ConnectorPanel({
                     onCodeSource={setCodeSource}
                     localPath={localPath}
                     onLocalPath={setLocalPath}
+                    localSetupCommand={localSetupCommand}
+                    onLocalSetupCommand={setLocalSetupCommand}
                     localFolderReason={capabilities.data.localFolderReason}
                   />
                 ) : null}

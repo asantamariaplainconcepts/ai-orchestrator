@@ -4230,3 +4230,48 @@ worktree `.git` is a *file* — so the test fails on every local full-suite run 
 worktrees this repository now encourages, and passes in CI, which clones. A test that is red locally
 and green remotely trains its reader to ignore a red suite, which is the opposite of what it is for.
 First occurrence of its kind, so it earns no ADR — a one-line fix and an issue, not a decision.
+
+## 2026-08-12 — local-run-checkout-is-ready-to-build (#332)
+
+**Time:** human ~0.3h (source: **manual**, per
+[ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) — human
+time is recorded, never derived); agent time **unmeasured**. Not "manual because the change predates
+telemetry" — manual **because capture is broken**. `verify-telemetry.mjs` fails one check:
+`OTEL_EXPORTER_OTLP_ENDPOINT` is UNSET, so exports went to the OTLP default port rather than this
+project's collector. The session is mapped in `.telemetry/sessions.jsonl`
+(`84657235-0662-40ac-a668-0cc1db8623ec` → this change) and `usage.jsonl` holds **zero** matching
+datapoints. No cost or token figure is reported, because there is none to report and an invented one
+would be worse than the gap. Now tracked as #337.
+
+**What worked: the shell was measured before it was designed around, and both measurements changed
+the design.** `sh -lc` sourced `~/.profile` and wrote an unrelated error into the output *before
+running anything* — so the login shell was rejected, and the setup command instead inherits the
+Server process's own environment, which is exactly the one `LocalAgentProcessHost` already gives the
+Agent. That agreement is the point: a dependency that installs for setup and is missing for the
+Agent is the failure the design forecloses. The second measurement, that `a; b` reports only `b`'s
+status, went into the spec as the shell's own rule rather than being papered over with argument
+parsing the product would then have owned. Both then became assertions in the seam's suite, so they
+are re-checked on every run instead of resting on a probe run once — which is the difference between
+a design that measured and a design that remembers having measured.
+
+**What didn't: two defects this repository had already named, in writing, were paid for again by the
+very next change.** #331's retro recorded the `OTEL_EXPORTER_OTLP_ENDPOINT` gap in its Time line,
+and its "one change next time" was the worktree `.git` root-detection ArchTest — *"a one-line fix and
+an issue, not a decision."* Neither became an issue. This change lost **all** of its telemetry to the
+first, and spent its full-suite investigation on the second, establishing that a red
+`Terraform_Should_NeverConfigureTheLocalOwner` was pre-existing rather than newly broken. Both were
+correctly diagnosed, both were written down in the place the process provides for writing things
+down, and that changed nothing about what happened next. `AGENTS.md` already carries the instruction
+the first would have needed — *"Check it works before starting a change, not at the retro"* — which
+is the evidence that more prose was not the missing part.
+
+**One change next time:** a retro finding that names a fix becomes a **tracked issue** before the
+change syncs. A finding recorded only in the log is a note; the next change does not read the log,
+it hits the defect. Two independent instances inside one change is what separates this from bad
+luck, and it is the second occurrence, so it graduates.
+
+**ADR:** [ADR-0026](../adr/0026-a-retro-finding-that-names-a-fix-becomes-a-tracked-issue.md) — a
+retro finding that names a fix becomes a tracked issue before the change syncs. Its first
+application is this entry: #337 (the telemetry endpoint) and #338 (the worktree root detection) were
+filed during this sync, and the ADR is written so that a finding with no concrete remedy still
+creates nothing.

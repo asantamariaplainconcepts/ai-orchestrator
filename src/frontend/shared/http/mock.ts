@@ -233,6 +233,7 @@ const connector = {
   // dialog and the locus chip rather than only the repository path.
   codeSource: "LocalFolder",
   localPath: "/home/ana/repos/portal",
+  localSetupCommand: "pnpm install --frozen-lockfile",
 };
 
 /** The one tier the catalogue ships (#269), and the paths consenting to it would write. */
@@ -545,6 +546,7 @@ const routes: [string, RegExp, Handler][] = [
         promptDirectory: sent.promptDirectory ?? null,
         codeSource: sent.codeSource ?? "Repository",
         localPath: sent.localPath ?? null,
+        localSetupCommand: sent.localSetupCommand ?? null,
       });
       return {};
     },

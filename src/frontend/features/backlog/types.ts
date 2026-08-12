@@ -18,6 +18,8 @@ export interface ConnectorView {
   /** Repository | LocalFolder (#210); the path travels only with the latter. */
   codeSource: string;
   localPath: string | null;
+  /** #332 — prepares the Run's own checkout before the agent starts. Null means none. */
+  localSetupCommand: string | null;
 }
 
 export interface StoryView {
@@ -67,6 +69,8 @@ export interface ConfigureConnectorRequest {
   /** Repository | LocalFolder (#210); null keeps the API's default (Repository). */
   codeSource: string | null;
   localPath: string | null;
+  /** #332 — sent as null for the repository source: hiding and clearing are one act. */
+  localSetupCommand: string | null;
 }
 
 /** #210 — four facts about one path, enough to name the failing check (mock 3a). */
