@@ -147,6 +147,39 @@ the MOD analyzers and NetArchTest reject. No architectural convention is deviate
 slice, CQS query with `[Requires(Access.FiltersToCaller)]`, internal sealed types, Contracts-only
 cross-module reads.
 
+### D8 — One shared state chip, extracted from the Runs list rather than copied
+
+Every row that has a state renders it through a new shared chip in `shared/ui/`, and
+`RunsSection`'s local `StateBadge` is migrated onto it.
+
+*Why not reuse `StateBadge` where it is:* it is local to
+`src/frontend/features/runs/RunsSection.tsx` and carries three defects the tree would inherit and
+multiply.
+
+1. It renders the **raw enum** as its label (`<Badge …>{state}</Badge>`), which is user-facing copy
+   that never passed through the catalogue — the thing `frontend-architecture`'s i18n requirement
+   exists to prevent.
+2. It paints `Succeeded`, `Executing` **and** `Planning` the same `bg-success` green. A panel whose
+   entire purpose is "what is live" cannot render "running now" identically to "finished". (That
+   `Planning` is in the list at all is residue: DEC-067 made the state unreachable.)
+3. It carries **no glyph** — state arrives as colour plus an untranslated word, against the rule
+   `locus.tsx` states for its own vocabulary: *"always beside a word, never colour alone."*
+
+*Why shared rather than a second chip:* `GateChip`'s docstring already argued this case for the
+board and the canvas — two chips that merely look alike drift the first time one is restyled, and
+the design gate will not catch it because the tokens are right in both. `LocusChip` is the precedent
+to copy: one component, one vocabulary, glyph plus word.
+
+*Scope note:* migrating `RunsSection` is a change to an existing surface, so it is stated as a
+`design-contract` requirement rather than smuggled in as a refactor. It is a small, contained edit,
+and leaving the defective copy in place while the tree renders a correct one would put two
+contradictory state vocabularies on screen at once.
+
+*Rejected — a glyph for the linked change (PR number plus merged/open), the Orca pattern that
+prompted this.* The data is a **vendor** read per project (`IChangeReader.Open`, the surface behind
+`/api/inbox/changes`), which D2 and `GetInboxChanges`'s own docstring both forbid on the shell's
+polling cadence. It is not refused on merit — it needs its own issue and its own cadence decision.
+
 ## Risks / Trade-offs
 
 - **A new query on a 30s cadence from every page** → It is Postgres-only: one `Runs` query scoped
@@ -179,6 +212,7 @@ rollback is a revert, since nothing persists any tree state.
 
 1. **AC 4's literal reading** (D2) — the spec review must accept the new endpoint or name which
    rejected alternative it prefers. This is the one gate on the change.
-2. **Should a held Story with no Run be visually distinct from one with a Run?** The tree shows
-   both; DEC-067 makes the hold a different kind of state from execution. Deferred to the spec
-   review as a copy/treatment question — it changes no data.
+2. ~~Should a held Story with no Run be visually distinct from one with a Run?~~ **Resolved
+   (operator, spec review): yes.** DEC-067 makes the hold a wait on a *person* and execution a wait
+   on a *machine*, so rendering them alike answers "what needs me?" wrongly. Specified in
+   `shell-projects-tree` and carried by the shared chip of D8.

@@ -150,6 +150,46 @@ no longer rendered.
 - **WHEN** the mobile sheet opens
 - **THEN** it renders the same projects, Stories and Runs with the same destinations, inline
 
+### Requirement: every row states what it is doing, by glyph and word
+
+A Run row SHALL state its state — `Queued`, `Executing`, `AwaitingInput` — and a Story row carrying
+the hold SHALL state that it is held. Both SHALL be rendered through the **shared state chip**
+(`design-contract`), never through a treatment local to the tree, so a state looks identical here
+and on the Run detail.
+
+State SHALL be conveyed by a **glyph beside a word**, never by colour alone — the rule
+`src/frontend/shared/ui/locus.tsx` already states for the locus vocabulary. The chip SHALL NOT
+render an internal enum name as its label; every state's copy SHALL resolve through the typed i18n
+catalogue (DEC-021).
+
+Distinct states SHALL be distinguishable from one another. In particular a Story that is **held**
+SHALL be visually distinct from one that is **executing**: DEC-067 makes the hold a wait on a
+person, and execution a wait on a machine, and a panel that renders them alike answers "what needs
+me?" wrongly.
+
+#### Scenario: a Run row names its state
+
+- **WHEN** a project has one `Queued` and one `Executing` Run
+- **THEN** each row carries a glyph and a word naming its own state, from the catalogue, and the
+  two are distinguishable without relying on colour
+
+#### Scenario: a held Story does not look like a running one
+
+- **WHEN** one Story is held with no Run and another has an `Executing` Run
+- **THEN** the two rows are visually distinct, and the held one says it is waiting on a person
+
+#### Scenario: the chip is shared, not local
+
+- **WHEN** the same Run state is rendered in the tree and on the Run detail
+- **THEN** both render through the one shared chip, and no state treatment is defined inside the
+  tree's own components
+
+#### Scenario: no enum names on screen
+
+- **WHEN** any state is rendered in the tree
+- **THEN** its label comes from the i18n catalogue, and no internal state identifier appears as
+  user-facing copy
+
 ### Requirement: the tree is built from the design system and the copy catalogue
 
 Every string the tree renders SHALL resolve through the typed i18n catalogue (DEC-021 — hardcoded

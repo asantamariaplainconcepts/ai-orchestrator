@@ -34,6 +34,11 @@ exists today. No open `OPN-*` is involved (RULE-006).
   `IProjectPermissions.VisibleProjects` (BR-009) exactly as the Inbox is.
 - `IStoryReader` (`AiOrchestrator.Modules.Backlog.Contracts`) gains a **held-Stories read** so the
   tree does not have to fetch every Story id and then `Find` each one.
+- **One shared Run-state chip** joins the kit, and every row that has a state renders through it —
+  glyph beside a word, never colour alone, labels from the catalogue. A held Story reads as held, an
+  executing one as executing. `RunsSection`'s local `StateBadge` is migrated onto it: it renders the
+  raw enum as user-facing copy and paints `Succeeded`, `Executing` and `Planning` the same green,
+  which a panel about live work cannot inherit (design D8).
 - **UC-033 is added to `docs/product/v1/04-capabilities.md`** by this change (RULE-003).
 - The Inbox entry and its ambient count are **unchanged**. A held Story appears in **both**
   surfaces on purpose, and UC-026 keeps its subtraction semantics.
@@ -70,6 +75,9 @@ so. `design.md` records the rejected alternatives.
   a flat list. It gains the tree as the sidebar's structure, and the existing collapse rule
   ("every navigation destination SHALL remain reachable in one click", "a collapsed entry SHALL
   carry its name") is extended to cover tree children.
+- `design-contract`: the kit requirement gains the shared Run-state chip as the one state
+  vocabulary — glyph plus word, distinct treatments for distinct states, no state treatment defined
+  locally inside a feature component.
 - `run-orchestration`: two requirements change. *"Runs are observable per project and per Story"*
   gains the cross-project in-flight read (a third observation surface beside the per-project list
   and the Inbox). *"Cross-module reads happen through the second and third Contracts surfaces"*
@@ -96,6 +104,9 @@ so. `design.md` records the rejected alternatives.
   phone from losing entries before.
 - New query hook + types under an existing feature slice (no new top-level directory; `shared/` is
   for cross-cutting plumbing only).
+- New shared state chip in `src/frontend/shared/ui/`, beside `locus.tsx` and `gate-chip.tsx` which
+  it is modelled on; `src/frontend/features/runs/RunsSection.tsx` migrates onto it and loses its
+  local `StateBadge`.
 - Typed i18n catalogue for every new string (DEC-021 — hardcoded JSX copy fails CI); Platform-theme
   tokens and kit primitives only (DEC-051, `DESIGN.md`).
 

@@ -43,55 +43,74 @@
       reject implementation references), `dotnet test` for the Runs and Backlog projects.
 - [ ] 3.5 CSharpier passes on every touched `.cs` file.
 
-## 4. The tree in the shell
+## 4. One shared state chip
 
-- [ ] 4.1 Add the typed query hook and types for `/api/in-flight` in a feature slice (not
+- [ ] 4.1 Add the shared Run-state chip to `src/frontend/shared/ui/`, modelled on `locus.tsx`:
+      glyph beside a word, tokens only, one exported component. Cover `Queued`, `Executing`,
+      `AwaitingInput` and the terminal states, plus the **hold** as its own distinct treatment.
+- [ ] 4.2 Add every state's label to `src/frontend/shared/i18n/en.ts`. No state's label is an enum
+      name.
+- [ ] 4.3 Give `Executing` and `Succeeded` different glyphs **and** different words — not merely
+      different colours. Verify the chip is legible in greyscale.
+- [ ] 4.4 Migrate `src/frontend/features/runs/RunsSection.tsx` onto the shared chip and delete its
+      local `StateBadge`, which rendered `{state}` verbatim and painted `Succeeded`/`Executing`/
+      `Planning` one green.
+- [ ] 4.5 Grep the frontend for any other local state-to-appearance mapping and migrate or remove
+      it, so the shared chip is the only one (`design-contract`).
+- [ ] 4.6 Check the Run detail and the Runs list by eye after the migration: same states, same
+      words, nothing regressed to a bare colour.
+
+## 5. The tree in the shell
+
+- [ ] 5.1 Add the typed query hook and types for `/api/in-flight` in a feature slice (not
       `shared/` — that is cross-cutting plumbing only, per `frontend-architecture`), on the same
       30s cadence `useInbox` uses.
-- [ ] 4.2 Add every new string to `src/frontend/shared/i18n/en.ts`. No literal user-facing copy in
+- [ ] 5.2 Add every new string to `src/frontend/shared/i18n/en.ts`. No literal user-facing copy in
       JSX — it fails CI (DEC-021).
-- [ ] 4.3 Turn `NavItems` in `src/frontend/shared/ui/AppShell.tsx` into the tree: project rows →
+- [ ] 5.3 Turn `NavItems` in `src/frontend/shared/ui/AppShell.tsx` into the tree: project rows →
       `/projects/:id`, Story rows → the story route, Run rows → `/projects/:id/runs/:runId`. Keep
       one component feeding all three containers — two copies is how the phone lost the identity
       block before.
-- [ ] 4.4 A project with no live work renders as its row alone: no empty group, no placeholder, no
+- [ ] 5.4 Render each Run row's state and each held Story's hold through the shared chip from group
+      4 — never a treatment defined inside the tree.
+- [ ] 5.5 A project with no live work renders as its row alone: no empty group, no placeholder, no
       zero count.
-- [ ] 4.5 Keep the Inbox entry and its badge exactly as they are, above or below the tree as the
+- [ ] 5.6 Keep the Inbox entry and its badge exactly as they are, above or below the tree as the
       layout dictates — but unchanged in behaviour.
-- [ ] 4.6 Rail behaviour: every project stays present as a glyph at
+- [ ] 5.7 Rail behaviour: every project stays present as a glyph at
       `--sidebar-w-collapsed` (64px), and opening one reveals the same children with the same
       destinations via `popover.tsx` — the idiom the environment chip already uses on the rail. Do
       not add a collapsible/accordion primitive; none exists and per-project collapse is out of
       scope.
-- [ ] 4.7 Sheet behaviour: the same entries rendered inline, never a popover inside the drawer
+- [ ] 5.8 Sheet behaviour: the same entries rendered inline, never a popover inside the drawer
       (`design-contract`).
-- [ ] 4.8 Every collapsed entry — nested ones included — carries its name via `aria-label` and
+- [ ] 5.9 Every collapsed entry — nested ones included — carries its name via `aria-label` and
       `title`.
-- [ ] 4.9 Tokens and kit primitives only; no raw hex, no raw pixel values (DEC-051, `DESIGN.md`).
+- [ ] 5.10 Tokens and kit primitives only; no raw hex, no raw pixel values (DEC-051, `DESIGN.md`).
 
-## 5. Frontend verification
+## 6. Frontend verification
 
-- [ ] 5.1 `pnpm lint` passes at `--max-warnings=0` and `pnpm format:check` passes.
-- [ ] 5.2 `pnpm typecheck` (`tsc --noEmit`) passes.
-- [ ] 5.3 `pnpm build` passes — run it through `rtk proxy` (or plain `pnpm`), never a filter that
+- [ ] 6.1 `pnpm lint` passes at `--max-warnings=0` and `pnpm format:check` passes.
+- [ ] 6.2 `pnpm typecheck` (`tsc --noEmit`) passes.
+- [ ] 6.3 `pnpm build` passes — run it through `rtk proxy` (or plain `pnpm`), never a filter that
       can report success over a broken build.
-- [ ] 5.4 Run the design validator; it reports no raw values in the touched components.
+- [ ] 6.4 Run the design validator; it reports no raw values in the touched components.
 
-## 6. E2E and the corpus
+## 7. E2E and the corpus
 
-- [ ] 6.1 E2E in `src/tests/AiOrchestrator.EndToEndTests`: the expanded tree shows a project's
+- [ ] 7.1 E2E in `src/tests/AiOrchestrator.EndToEndTests`: the expanded tree shows a project's
       held Story and in-flight Run with the right destinations. Extend
       `CollapsibleSidebar_Should_Constraint.cs` for the parity claim — the collapsed rail offers
       the same destinations as the expanded tree. A unit test cannot assert this honestly.
-- [ ] 6.2 Build the frontend bundle before running E2E — the suite serves the built output, so a
+- [ ] 7.2 Build the frontend bundle before running E2E — the suite serves the built output, so a
       `.tsx` edit is invisible to it until `pnpm build` has run.
-- [ ] 6.3 Add **UC-033 — a Member sees every project's live work in one panel** to
+- [ ] 7.3 Add **UC-033 — a Member sees every project's live work in one panel** to
       `docs/product/v1/04-capabilities.md`, actor ACT-002, tracing to UC-021 and UC-026 and citing
       BR-009, BR-001, BR-002 and DEC-067 (RULE-003).
-- [ ] 6.4 Confirm no product-corpus requirement changed — only the capability list gained an entry.
+- [ ] 7.4 Confirm no product-corpus requirement changed — only the capability list gained an entry.
 
-## 7. Close out
+## 8. Close out
 
-- [ ] 7.1 `openspec validate shell-projects-tree` passes.
-- [ ] 7.2 Full solution build and test run green; commit incrementally so the branch keeps its
+- [ ] 8.1 `openspec validate shell-projects-tree` passes.
+- [ ] 8.2 Full solution build and test run green; commit incrementally so the branch keeps its
       narrative.
