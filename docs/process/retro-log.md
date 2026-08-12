@@ -4056,3 +4056,49 @@ the execution stage.
 **ADR:** none new — this is (at least) the third occurrence of ADR-0009's enumeration lesson (after
 `sdk-built-images` #257 and `deploy-sdk-images` #260), one step earlier in the pipeline than before.
 Existing ADR covers it; no new one needed.
+
+## 2026-08-12 — terminal-output-test-cannot-pass-in-ci
+
+Issue #327, PR #328. Spec-less lane (DEC-025): removes one test, changes no requirement, so there
+is no OpenSpec bundle to archive.
+
+**Time (telemetry, captured but unattributed):** session `5cf40c6b-52aa-4a88-9e49-9a737a7cdf5e`
+records 1.71h active time and $76.13 — but `sessions.jsonl` maps it to no branch at all, and the
+session spans four changes (#321, #323, #324, #327), so **no per-change split is derivable**.
+Stated as a gap rather than folded into "manual": `verify-telemetry.mjs` passed all five checks, so
+capture is working. The attribution is what failed, and for a structural reason — see the note
+below.
+
+**What worked:** the CI run history was the diagnostic that mattered. Two wrong local diagnoses and
+four red runs collapsed into a decision the moment `gh run list` showed that #326's *own* pull
+request had been red: that single fact turned "which of my changes broke this?" into "this was
+never green", and the remedy followed immediately. Reading `--log-failed` rather than reasoning
+about the failure did the same job a second time, when the test was deleted and a *different* test
+failed.
+
+**What didn't:** a root cause was announced twice on the strength of three green local runs, and
+was wrong twice — first thread-pool starvation in `RunTerminalHub` (a real defect, but not this
+one), then "removing the test makes it green" (a second, unrelated flake was behind it). Both
+hypotheses were written into a commit message and a pull-request body *before* CI had confirmed
+either, so both had to be corrected in public afterwards. Local green says almost nothing about a
+two-core runner; three local runs said no more than one would have.
+
+**One change next time:** when CI is red and local is green, read the run history and
+`--log-failed` **before** forming a hypothesis — and never commit a causal claim to a message or a
+PR body until CI has agreed with it. A hypothesis is cheap; a hypothesis in the permanent record is
+not.
+
+**Notes, carried rather than resolved here:**
+
+1. **A red pull request reached `main`.** #326 merged with its own CI failing, which is what put
+   `main` red and blocked #321 and #323 behind it. `/aio:sync` gates hard on a green rollup before
+   the close-out commit, so either that merge did not go through this path or the gate was
+   overridden. Structural, and worth knowing which — not diagnosed here because a hotfix is the
+   wrong place to answer it.
+2. **The spec-less lane cannot attribute its own telemetry.** The SessionStart hook maps a session
+   to a change via its OpenSpec change directory; this lane has none by definition, so every
+   spec-less change records unattributed time — as this one did.
+
+**ADR:** none new. Point (1) is a candidate if it recurs — the graduation rule is the second
+occurrence, and this is the first observed. Point (2) is a defect in the mapping hook rather than a
+decision to record.
