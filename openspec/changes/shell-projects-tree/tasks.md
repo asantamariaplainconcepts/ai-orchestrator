@@ -106,16 +106,16 @@
 
 ## 7. E2E and the corpus
 
-- [ ] 7.1 E2E in `src/tests/AiOrchestrator.EndToEndTests`: the expanded tree shows a project's
+- [x] 7.1 E2E in `src/tests/AiOrchestrator.EndToEndTests`: the expanded tree shows a project's
       held Story and in-flight Run with the right destinations. Extend
       `CollapsibleSidebar_Should_Constraint.cs` for the parity claim — the collapsed rail offers
       the same destinations as the expanded tree. A unit test cannot assert this honestly.
-- [ ] 7.2 Build the frontend bundle before running E2E — the suite serves the built output, so a
+- [x] 7.2 Build the frontend bundle before running E2E — the suite serves the built output, so a
       `.tsx` edit is invisible to it until `pnpm build` has run.
-- [ ] 7.3 Add **UC-033 — a Member sees every project's live work in one panel** to
+- [x] 7.3 Add **UC-033 — a Member sees every project's live work in one panel** to
       `docs/product/v1/04-capabilities.md`, actor ACT-002, tracing to UC-021 and UC-026 and citing
       BR-009, BR-001, BR-002 and DEC-067 (RULE-003).
-- [ ] 7.4 Confirm no product-corpus requirement changed — only the capability list gained an entry.
+- [x] 7.4 Confirm no product-corpus requirement changed — only the capability list gained an entry.
 
 ## 8. Close out
 
