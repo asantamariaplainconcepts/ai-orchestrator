@@ -1,17 +1,24 @@
 ## 1. Make the backlog surfaces re-read
 
-- [ ] 1.1 Add `refetchInterval: 30_000` and `refetchOnWindowFocus: "always"` to `useBacklog` in
+- [x] 1.1 Add `refetchInterval: 30_000` and `refetchOnWindowFocus: "always"` to `useBacklog` in
       `src/frontend/features/backlog/useBacklog.ts`, with a comment in the file's existing house
       style recording why `"always"` is needed (the global `staleTime: 30_000` would otherwise
       suppress the focus re-read — design D3) and naming the ≤90s stated lag.
-- [ ] 1.2 Add the same two options to `useStory` in the same file, so the Story detail view and the
+- [x] 1.2 Add the same two options to `useStory` in the same file, so the Story detail view and the
       Kanban board inherit the behaviour with no per-screen code (design D1).
-- [ ] 1.3 Confirm by reading `KanbanBoard.tsx`, `ProjectScreen.tsx` and `StoryScreen.tsx` that each
+      Both hooks spread one `mirrorFreshness` const so the two cannot drift apart.
+- [x] 1.3 Confirm by reading `KanbanBoard.tsx`, `ProjectScreen.tsx` and `StoryScreen.tsx` that each
       consumes `useBacklog`/`useStory` and needs no change; if any holds its own copy of the data
       or its own timer, note it here before proceeding.
-- [ ] 1.4 Verify `useStoryDocuments` and `useStoryDocumentContent` remain untouched — no interval,
+      **Confirmed, no change needed.** `ProjectScreen.tsx:87` derives `stories` straight from
+      `backlog.data?.stories ?? []` and passes it to `<KanbanBoard stories={…}>` (`:357-362`);
+      `StoryScreen.tsx:15` calls `useStory` directly. `KanbanBoard` takes `stories` as a prop and
+      re-derives its columns by `.filter()` on every render — its `useState` calls are all
+      interaction state (`dragging`, `over`, `carried`, `refused`, `moving`, `activeColumn`), never
+      a copy of the server data, and no screen runs a timer of its own.
+- [x] 1.4 Verify `useStoryDocuments` and `useStoryDocumentContent` remain untouched — no interval,
       no `"always"` (design D6, acceptance criterion 6).
-- [ ] 1.5 Verify `refetchIntervalInBackground` is set nowhere in the file, so the hidden-tab timer
+- [x] 1.5 Verify `refetchIntervalInBackground` is set nowhere in the file, so the hidden-tab timer
       stays gated on `focusManager.isFocused()` (design D4).
 
 ## 2. Check the interval against the board's drag
