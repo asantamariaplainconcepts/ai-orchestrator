@@ -40,7 +40,6 @@ public class PhaseCeiling_Should_Constraint(ProjectsApiFixture fixture) : IAsync
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
                 timeoutMinutes,
             }
         );

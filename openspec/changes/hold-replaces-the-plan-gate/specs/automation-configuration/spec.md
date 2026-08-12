@@ -9,7 +9,8 @@ SHALL name the field.
 **There SHALL be no approval control.** An Automation does not pause inside itself for a human;
 where the flow must wait, the Automation applies the hold on success and the next Automation is
 refused until a person clears it (see *story-hold*). The form SHALL therefore offer no approval
-flag, and the request it produces SHALL carry none.
+flag, the request it produces SHALL carry none, and the stored Automation SHALL hold no such
+property — a caller that sends one configures nothing.
 
 **The action is one and only one: run the repository's prompt (#162).** Any other action SHALL be
 refused with the ordinary unknown-action refusal. What an Automation *does* is decided by the prompt
@@ -68,11 +69,12 @@ SHALL be identical to the one the ungrouped form produced.
 - **WHEN** an Admin submits a valid trigger label, action and runtime
 - **THEN** the Automation is stored against the Project and appears in its list
 
-#### Scenario: no approval flag is offered or accepted
+#### Scenario: no approval flag is offered or stored
 
 - **WHEN** an Admin opens the create or edit form
-- **THEN** no approval control is present, and a request carrying an approval flag is refused as an
-  unknown field rather than silently ignored
+- **THEN** no approval control is present
+- **AND WHEN** a caller sends a request carrying an approval flag
+- **THEN** the Automation is stored with no such property, and nothing about its execution differs
 
 #### Scenario: an action with no implementation yet
 

@@ -16,69 +16,69 @@
 
 ## 2. The hold constant
 
-- [ ] 2.1 Add the reserved hold label as a constant in `BuildingBlocks`, with case-folding
+- [x] 2.1 Add the reserved hold label as a constant in `BuildingBlocks`, with case-folding
       comparison matching DEC-056, and a unit test that `HITL` and `hitl` are one hold
 
 ## 3. Backend — remove the flag
 
-- [ ] 3.1 Remove `RequiresApproval` from the `Automation` aggregate and its EF configuration
-- [ ] 3.2 Remove it from `AutomationTrigger` and `AutomationDetail` in
+- [x] 3.1 Remove `RequiresApproval` from the `Automation` aggregate and its EF configuration
+- [x] 3.2 Remove it from `AutomationTrigger` and `AutomationDetail` in
       `src/modules/Projects/AiOrchestrator.Modules.Projects.Contracts/IAutomationCatalog.cs`, and
       from `AutomationCatalog`'s projections
-- [ ] 3.3 Remove it from the create/update request contracts, validators and endpoints
-- [ ] 3.4 Add the EF migration dropping the column; keep `Plan` and `ApprovedAt` untouched
-- [ ] 3.5 Verify no code path can reach `Planning` or `AwaitingApproval` — the states,
+- [x] 3.3 Remove it from the create/update request contracts, validators and endpoints
+- [x] 3.4 Add the EF migration dropping the column; keep `Plan` and `ApprovedAt` untouched
+- [x] 3.5 Verify no code path can reach `Planning` or `AwaitingApproval` — the states,
       `DecideOnPlan` and its endpoints stay in place but unreachable (design D6)
 
 ## 4. Backend — enforce the hold
 
-- [ ] 4.1 Inject `IStoryReader` into `RunCreator` (design D2 — the Runs module already references
+- [x] 4.1 Inject `IStoryReader` into `RunCreator` (design D2 — the Runs module already references
       `Backlog.Contracts`)
-- [ ] 4.2 Add a `Held` outcome to the `RunCreation` hierarchy beside `AlreadyActive`
-- [ ] 4.3 Refuse creation in `RunCreator.Create` when the Story carries the hold, before any write,
+- [x] 4.2 Add a `Held` outcome to the `RunCreation` hierarchy beside `AlreadyActive`
+- [x] 4.3 Refuse creation in `RunCreator.Create` when the Story carries the hold, before any write,
       following the BR-001 refusal pattern
-- [ ] 4.4 Confirm the refusal reaches both callers correctly: silent in `StoryChangedHandler`, an
+- [x] 4.4 Confirm the refusal reaches both callers correctly: silent in `StoryChangedHandler`, an
       answering refusal naming the hold on the *Run now* endpoint (BR-013)
-- [ ] 4.5 Confirm an already-active Run is untouched by a hold — no change to the executor, asserted
+- [x] 4.5 Confirm an already-active Run is untouched by a hold — no change to the executor, asserted
       by test rather than by reading
 
 ## 5. Starter catalogue
 
-- [ ] 5.1 Remove `requiresApproval` from the manifest's `automation` blocks and from the manifest
+- [x] 5.1 Remove `requiresApproval` from the manifest's `automation` blocks and from the manifest
       model
-- [ ] 5.2 Add the hold to the output labels of the spec-first tier's propose, implement and sync
+- [x] 5.2 Add the hold to the output labels of the spec-first tier's propose, implement and sync
       steps
-- [ ] 5.3 Update the manifest-enumeration test to refuse a block naming an approval flag
+- [x] 5.3 Update the manifest-enumeration test to refuse a block naming an approval flag
 
 ## 6. Frontend
 
-- [ ] 6.1 Remove `requiresApproval` from `features/automations/types.ts`, `automationRequest.ts` and
+- [x] 6.1 Remove `requiresApproval` from `features/automations/types.ts`, `automationRequest.ts` and
       the form state in `AutomationsSection.tsx`, including the approval `Switch`
-- [ ] 6.2 Drop the gated clause from `AutomationSentence.tsx`
-- [ ] 6.3 Feed `GateChip` from the hold instead of the flag in `BoardPreview.tsx` and
+- [x] 6.2 Drop the gated clause from `AutomationSentence.tsx`
+- [x] 6.3 Feed `GateChip` from the hold instead of the flag in `BoardPreview.tsx` and
       `KanbanBoard.tsx`
-- [ ] 6.4 Recompute `summarise()`'s human-stop count in `workflowGraph.ts` — a claimant that marks
+- [x] 6.4 Recompute `summarise()`'s human-stop count in `workflowGraph.ts` — a claimant that marks
       the hold, or an unclaimed boundary
-- [ ] 6.5 Remove the approval i18n keys and add the hold's copy in `shared/i18n/en.ts` (DEC-009 —
+- [x] 6.5 Remove the approval i18n keys and add the hold's copy in `shared/i18n/en.ts` (DEC-009 —
       hardcoded copy fails CI)
-- [ ] 6.6 Update `shared/http/mock.ts` so the mock surface matches the real one
+- [x] 6.6 Update `shared/http/mock.ts` so the mock surface matches the real one
 
 ## 7. Tests
 
-- [ ] 7.1 Retire the approval-path functional tests and the `requiresApproval` fixtures across
+- [x] 7.1 Retire the approval-path functional tests and the `requiresApproval` fixtures across
       `src/tests/modules/Projects/**`
-- [ ] 7.2 Add functional coverage for the four hold behaviours: event match refused, *Run now*
+- [x] 7.2 Add functional coverage for the four hold behaviours: event match refused, *Run now*
       refused, executing Run unaffected, clearing the hold creates the next Run
-- [ ] 7.3 Add coverage that a stopping Automation writes the hold alongside its other marks and its
+- [x] 7.3 Add coverage that a stopping Automation writes the hold alongside its other marks and its
       claimed transition, in one write
-- [ ] 7.4 Update the migration-shape tests that assert the Automations column list
+- [x] 7.4 Update the migration-shape tests that assert the Automations column list
       (`ClaimedTransitionMigration_Should_Constraint`, `OutputLabelMigration_Should_Constraint`)
 
 ## 8. Verification
 
-- [ ] 8.1 `dotnet build` and `dotnet test` clean, including ArchTests
-- [ ] 8.2 CSharpier + Prettier + `eslint --max-warnings=0` + `tsc --noEmit` clean
-- [ ] 8.3 `pnpm build` — the production bundle, because the E2E suite serves the built output
-- [ ] 8.4 `openspec validate hold-replaces-the-plan-gate` passes
-- [ ] 8.5 Grep the repository for surviving `requiresApproval` / `AwaitingApproval` references and
+- [x] 8.1 `dotnet build` and `dotnet test` clean, including ArchTests
+- [x] 8.2 CSharpier + Prettier + `eslint --max-warnings=0` + `tsc --noEmit` clean
+- [x] 8.3 `pnpm build` — the production bundle, because the E2E suite serves the built output
+- [x] 8.4 `openspec validate hold-replaces-the-plan-gate` passes
+- [x] 8.5 Grep the repository for surviving `requiresApproval` / `AwaitingApproval` references and
       confirm each remaining one is deliberate (the unreachable machinery of design D6)

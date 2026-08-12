@@ -64,7 +64,6 @@ public class BoardArrangement_Should_Constraint(AppHostFixture fixture)
         // And the field the board cannot see is exactly as it was. This is the assertion that was red
         // before the fix, driven then through the control this one replaced.
         grill.Model.ShouldBe("claude-sonnet-4-5");
-        grill.RequiresApproval.ShouldBeFalse();
     }
 
     [Fact]
@@ -349,7 +348,6 @@ public class BoardArrangement_Should_Constraint(AppHostFixture fixture)
                     action = "RepositoryPrompt",
                     runtime = "ClaudeCodeHeadless",
                     promptPath = "story.md",
-                    requiresApproval = false,
                     outputLabels = Array.Empty<string>(),
                     model,
                     toStage,
@@ -379,7 +377,6 @@ public class BoardArrangement_Should_Constraint(AppHostFixture fixture)
         Guid Id,
         string TriggerLabel,
         IReadOnlyList<string> OutputLabels,
-        bool RequiresApproval,
         string? Model,
         string? ToStage
     );

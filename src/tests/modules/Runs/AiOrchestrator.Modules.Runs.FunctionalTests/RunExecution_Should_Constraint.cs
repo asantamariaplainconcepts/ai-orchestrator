@@ -56,7 +56,6 @@ public class RunExecution_Should_Constraint(RunsApiFixture fixture) : IAsyncLife
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();

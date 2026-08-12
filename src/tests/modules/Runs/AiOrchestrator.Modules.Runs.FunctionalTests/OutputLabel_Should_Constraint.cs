@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Domain;
 using AiOrchestrator.Modules.Backlog.Connectors;
 using AiOrchestrator.Modules.Runs.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -68,7 +69,6 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 action,
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
                 // A set since #165; these tests still describe one hand-off, which is now a set of one.
                 outputLabels = outputLabel is null ? Array.Empty<string>() : [outputLabel],
             }
@@ -143,6 +143,75 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
     }
 
     [Fact]
+    public async Task AStoppingAutomation_Should_WriteTheHoldBesideItsOtherMarks()
+    {
+        // #321, AC 4: the hold travels in the *same* licensed write as every other mark, because it
+        // is one — DEC-062's carve-out already permits that write, which is why stopping for a
+        // person needed no new field and no new vendor call.
+        //
+        // Asserted at the vendor rather than on the Automation: what matters is that both labels
+        // landed on the Story, in one pass, so a reader of the issue sees the hand-off and the hold
+        // together rather than one of them arriving later.
+        var refine = await CreateAutomationWithMarks("ai:refine", ["ai:estimate", StoryHold.Label]);
+
+        AgentSays(true, "A helpful comment.");
+        var runId = await Dispatch(refine);
+        await Execute(runId);
+
+        (await Load(runId)).State.ShouldBe("Succeeded");
+
+        var labels = LabelsAtVendor();
+        labels.ShouldContain("ai:estimate");
+        labels.ShouldContain(StoryHold.Label);
+    }
+
+    [Fact]
+    public async Task AHeldStory_Should_StopTheChainTheHandOffJustStarted()
+    {
+        // The two halves meeting: the step hands on *and* holds, so the label the next Automation
+        // triggers on is already on the Story — and still nothing runs. This is the shape the
+        // starter chain ships (propose → implement, held in between).
+        var refine = await CreateAutomationWithMarks("ai:refine", ["ai:estimate", StoryHold.Label]);
+        await Automation("ai:estimate", "RepositoryPrompt", null);
+
+        AgentSays(true, "A helpful comment.");
+        await Execute(await Dispatch(refine));
+
+        LabelsAtVendor().ShouldContain("ai:estimate");
+
+        await _client.PostAsync($"/api/projects/{_projectId}/backlog/refresh", null);
+
+        await using var scope = fixture.Services.CreateAsyncScope();
+        var database = scope.ServiceProvider.GetRequiredService<RunsDbContext>();
+        var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            await Task.Delay(100);
+        }
+
+        // Still one Run: the trigger is present, the hold outranks it (BR-007).
+        (await database.Runs.CountAsync(run => run.ProjectId == _projectId)).ShouldBe(1);
+    }
+
+    async Task<Guid> CreateAutomationWithMarks(string trigger, string[] marks)
+    {
+        var response = await _client.PostAsJsonAsync(
+            $"/api/projects/{_projectId}/automations",
+            new
+            {
+                triggerLabel = trigger,
+                triggerState = (string?)null,
+                action = "RepositoryPrompt",
+                runtime = "ClaudeCodeHeadless",
+                promptPath = "story.md",
+                outputLabels = marks,
+            }
+        );
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
+    }
+
+    [Fact]
     public async Task AnAutomationWithoutAnOutputLabel_Should_EndSilently()
     {
         var refine = await Automation("ai:refine", "RepositoryPrompt", null);
@@ -212,7 +281,6 @@ public class OutputLabel_Should_Constraint(RunsApiFixture fixture) : IAsyncLifet
                 triggerState = (string?)null,
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
-                requiresApproval = false,
                 timeoutMinutes = (int?)null,
                 promptPath = "story.md",
                 outputLabels = new[] { "ai:estimate" },

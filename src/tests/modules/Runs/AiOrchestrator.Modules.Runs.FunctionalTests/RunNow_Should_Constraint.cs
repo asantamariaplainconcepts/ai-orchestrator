@@ -54,7 +54,6 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();
@@ -126,34 +125,6 @@ public class RunNow_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         run.WaitingAtCap.ShouldBeTrue();
         run.Dispatched.ShouldBeFalse();
         (await QueuedRunIds()).ShouldBeEmpty();
-    }
-
-    [Fact]
-    public async Task RunNow_Should_CreateAnApprovalGatedRunLikeAnyOther()
-    {
-        // The lane splits at execution, not creation (approval-gate D1) — until #22 this
-        // returned a "not implemented yet" refusal.
-        var twoPhase = await _client.PostAsJsonAsync(
-            $"/api/projects/{_projectId}/automations",
-            new
-            {
-                triggerLabel = "ai:review",
-                triggerState = (string?)null,
-                action = "RepositoryPrompt",
-                runtime = "ClaudeCodeHeadless",
-                promptPath = "story.md",
-                requiresApproval = true,
-            }
-        );
-        twoPhase.EnsureSuccessStatusCode();
-        var twoPhaseId = (await twoPhase.Content.ReadFromJsonAsync<AutomationResponse>())!.Id;
-
-        var response = await Trigger("9", twoPhaseId);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var run = (await response.Content.ReadFromJsonAsync<RunNowResponse>())!;
-        run.Dispatched.ShouldBeTrue();
-        (await QueuedRunIds()).ShouldBe([run.Id]);
     }
 
     [Fact]

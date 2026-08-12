@@ -48,7 +48,6 @@ public class DismissedFailure_Should_Constraint(RunsApiFixture fixture) : IAsync
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
             }
         );
         automation.EnsureSuccessStatusCode();

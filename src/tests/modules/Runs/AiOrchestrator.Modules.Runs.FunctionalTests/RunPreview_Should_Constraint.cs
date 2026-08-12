@@ -61,7 +61,6 @@ public class RunPreview_Should_Constraint(RunsApiFixture fixture) : IAsyncLifeti
                 action = "RepositoryPrompt",
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval = false,
                 previewPort = 8000,
             }
         );

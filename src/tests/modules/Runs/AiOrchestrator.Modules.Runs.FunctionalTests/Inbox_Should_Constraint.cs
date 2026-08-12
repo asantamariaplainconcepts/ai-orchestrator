@@ -22,7 +22,6 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     string _projectName = "";
     Guid _refineId;
     Guid _grillId;
-    Guid _approvalId;
 
     public async Task InitializeAsync()
     {
@@ -46,14 +45,8 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             )
         ).EnsureSuccessStatusCode();
 
-        _refineId = await CreateAutomation(_projectId, "ai:refine", "RepositoryPrompt", false);
-        _grillId = await CreateAutomation(_projectId, "ai:grill", "RepositoryPrompt", false);
-        _approvalId = await CreateAutomation(
-            _projectId,
-            "ai:implement",
-            "RepositoryPrompt",
-            requiresApproval: true
-        );
+        _refineId = await CreateAutomation(_projectId, "ai:refine", "RepositoryPrompt");
+        _grillId = await CreateAutomation(_projectId, "ai:grill", "RepositoryPrompt");
 
         fixture.Vendor.Documents["docs/process/definition-of-ready.md"] = "Needs criteria.";
         fixture.Vendor.Stories.Add(new VendorStory("1", "First story", "open", [], "Body."));
@@ -76,12 +69,7 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         return project.Id;
     }
 
-    async Task<Guid> CreateAutomation(
-        Guid projectId,
-        string trigger,
-        string action,
-        bool requiresApproval
-    )
+    async Task<Guid> CreateAutomation(Guid projectId, string trigger, string action)
     {
         var response = await _client.PostAsJsonAsync(
             $"/api/projects/{projectId}/automations",
@@ -92,7 +80,6 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
                 action,
                 runtime = "ClaudeCodeHeadless",
                 promptPath = "story.md",
-                requiresApproval,
             }
         );
         response.EnsureSuccessStatusCode();
@@ -124,26 +111,26 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     [Fact]
     public async Task TheKindsOfWaiting_Should_ShareOneList()
     {
-        // Two kinds now, not three (#162, design D5): the grill's question path was the only
-        // producer of "input", and it left with the catalogue. The category still exists in the
-        // vocabulary and nothing enters it — kept dormant deliberately, because changing Run states
-        // was out of scope. This test asserts the two a Run can still reach.
+        // One producible kind now, not two (#321, DEC-067). "Input" left with the catalogue
+        // (#162) and "approval" left with the plan gate; both categories survive in the
+        // vocabulary and the query, and nothing enters either — kept dormant deliberately,
+        // because changing Run states was out of scope then and is out of scope now.
+        //
+        // What this asserts is therefore the list's shape around the one wait a Run can still
+        // reach. UC-026's promise is narrower than it was until the follow-up carries held
+        // Stories in here, and that narrowing is stated rather than hidden behind a test that
+        // seeds a state nothing produces.
 
         // A failure that nobody has re-triggered.
         AgentSays(false, "boom");
         var failed = await Run("1", _refineId);
         await Execute(failed);
 
-        // A plan awaiting its human.
-        AgentSays(true, "The plan.");
-        var planning = await Run("2", _approvalId);
-        await Execute(planning);
-
         var inbox = await Inbox();
 
-        inbox.Count.ShouldBe(2);
-        inbox.Select(entry => entry.WaitingFor).ShouldBe(["approval", "failure"]);
-        inbox.Single(entry => entry.WaitingFor == "failure").StoryTitle.ShouldBe("First story");
+        inbox.Count.ShouldBe(1);
+        inbox.Single().WaitingFor.ShouldBe("failure");
+        inbox.Single().StoryTitle.ShouldBe("First story");
         inbox.ShouldAllBe(entry => entry.ProjectId == _projectId);
         // Cross-project by design (UC-026), so every row names its Project — "which #491?"
         // must never be the reader's problem.
@@ -151,30 +138,19 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task AnApprovalWait_Should_AppearAsApproval()
-    {
-        AgentSays(true, "The plan.");
-        var planning = await Run("1", _approvalId);
-        await Execute(planning);
-
-        var inbox = await Inbox();
-
-        inbox.Single().WaitingFor.ShouldBe("approval");
-    }
-
-    [Fact]
     public async Task Resolution_Should_RemoveTheEntry()
     {
-        // The producible wait is the approval now (#162): the human acting on the entry is what
-        // clears it, which is the property this test has always been about — the actor changed,
-        // the rule did not.
-        AgentSays(true, "The plan.");
-        var planning = await Run("1", _approvalId);
-        await Execute(planning);
+        // Subtraction is the property, and it has outlived two of its actors: the grill's answer
+        // (#162), then the plan approval (#321). What clears an entry now is a person dismissing
+        // a failure — saying they looked and chose not to re-run. The actor changed again; the
+        // rule did not.
+        AgentSays(false, "boom");
+        var failed = await Run("1", _refineId);
+        await Execute(failed);
         (await Inbox()).Count.ShouldBe(1);
 
         (
-            await _client.PostAsync($"/api/projects/{_projectId}/runs/{planning}/reject", null)
+            await _client.PostAsync($"/api/projects/{_projectId}/runs/{failed}/dismiss", null)
         ).EnsureSuccessStatusCode();
 
         (await Inbox()).ShouldBeEmpty();
@@ -194,23 +170,6 @@ public class Inbox_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         var retry = await Run("1", _refineId);
         await Execute(retry);
 
-        (await Inbox()).ShouldBeEmpty();
-    }
-
-    [Fact]
-    public async Task ACancelledWait_Should_LeaveTheInbox()
-    {
-        AgentSays(true, "The plan.");
-        var waiting = await Run("1", _approvalId);
-        await Execute(waiting);
-        (await Inbox()).Count.ShouldBe(1);
-
-        (
-            await _client.PostAsync($"/api/projects/{_projectId}/runs/{waiting}/cancel", null)
-        ).EnsureSuccessStatusCode();
-
-        // Cancelled is terminal-by-human-choice: it waits on nobody and must not linger as a
-        // failure either.
         (await Inbox()).ShouldBeEmpty();
     }
 
