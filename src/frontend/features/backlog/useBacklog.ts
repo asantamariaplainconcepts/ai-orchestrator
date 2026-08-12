@@ -12,8 +12,35 @@ import type {
 
 const backlogKey = (projectId: string) => ["backlog", projectId] as const;
 
+/**
+ * #340 — how the Mirror-backed surfaces stay level with the Mirror. The server reconciles every
+ * 60s (BR-015), but a mounted query used to re-read only on mount or invalidation, so an open
+ * backlog drifted until somebody pressed refresh.
+ *
+ * Stated lag ≤ 90s = 60s server poll + 30s client interval — DEC-050's form, where a poll is
+ * chosen over a push and its worst case is written down rather than implied.
+ *
+ * `"always"` on focus is deliberate and is not the default: with the app-wide
+ * `staleTime: 30_000` (shared/query/queryClient.ts), a plain `true` refetches on focus only when
+ * the data is already stale, so returning to a tab within 30s would show exactly the staleness
+ * this exists to fix. `"always"` scopes that override to the focus event alone, leaving cache
+ * semantics for every other reader of these keys untouched.
+ *
+ * `refetchIntervalInBackground` is deliberately unset: TanStack gates the interval timer on
+ * `focusManager.isFocused()` (`document.visibilityState !== "hidden"`), so a hidden tab is idle
+ * and costs nothing. Setting it would break that.
+ *
+ * Both endpoints read Postgres only — no interval here spends vendor quota (DEC-030). Documents
+ * stay off this: they are live reads at the head ref (design D3), and they are vendor-facing.
+ */
+const mirrorFreshness = {
+  refetchInterval: 30_000,
+  refetchOnWindowFocus: "always",
+} as const;
+
 export function useBacklog(projectId: string) {
   return useQuery({
+    ...mirrorFreshness,
     queryKey: backlogKey(projectId),
     queryFn: () => api.get<BacklogView>(`/api/projects/${projectId}/backlog`),
   });
@@ -21,6 +48,7 @@ export function useBacklog(projectId: string) {
 
 export function useStory(projectId: string, vendorStoryId: string) {
   return useQuery({
+    ...mirrorFreshness,
     queryKey: ["story", projectId, vendorStoryId] as const,
     queryFn: () =>
       api.get<StoryDetail>(

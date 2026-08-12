@@ -4326,3 +4326,54 @@ per ADR-0026 rather than left in this log — the log already recorded this mask
 `rtk pnpm build` and for `rtk git commit`, and recording it a third time is what ADR-0026 exists to
 stop. No new ADR: 0026 already governs the rule, and the previous entry's own finding was that more
 prose was not the missing part.
+
+## 2026-08-12 — backlog-auto-refresh (#340)
+
+**Time:** human ~0.5h (source: **manual**, per
+[ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) — human
+time is recorded, never derived); agent time **unmeasured**. Manual **because capture is broken**,
+not because the change predates telemetry. `verify-telemetry.mjs` fails the same single check the
+last two entries named: `OTEL_EXPORTER_OTLP_ENDPOINT` is UNSET, so exports go to the OTLP default
+port rather than this project's collector. Both sessions are mapped in `.telemetry/sessions.jsonl`
+(`028de7d4…`, `5c61b375…` → this change) and `usage.jsonl` holds **zero** matching datapoints; its
+last write was 14:36, before this work began at 19:57. No cost or token figure is reported because
+there is none. This is the **third consecutive** change to lose its measurement to an already-tracked
+defect (#337, open, `status:backlog`) — the filing worked, the fix has not happened yet.
+
+**What worked: verifying library behaviour against the installed source instead of from memory.**
+Three claims were checked in `@tanstack/query-core@5.101.4` before they entered the design, and two
+of them changed the work. `refetchOnWindowFocus: true` is gated by `staleTime`
+(`queryObserver.js:450-456`), so the obvious implementation would have been silently suppressed for
+exactly the 30-second window acceptance criterion 2 exists to fix — it would have shipped the bug
+under the name of its own fix, and passed review, because the option *looks* like it does the thing.
+Only the literal `"always"` bypasses the gate. Second, the interval timer is already gated on
+`focusManager.isFocused()` (`:215`), which is `document.visibilityState !== "hidden"`
+(`focusManager.js:55-60`) — so "a hidden tab is idle" needed no code, and the task became asserting
+it so a later change cannot flip it silently. The same discipline applied to this repo's own code:
+the design flagged a board-drag hazard, and `useMoveStory.onMutate:52` turned out to already call
+`cancelQueries` with a comment naming that exact hazard. The guard predated the change; a second one
+would have been noise.
+
+**What didn't: two tasks were written against a test harness nobody had opened.** `tasks.md` said to
+"drag a card and hold it across an interval boundary" — but Playwright cannot perform an HTML5 drag,
+and this repository's own `KanbanBoard_Should_Constraint.cs:74-75` says so in a comment written for
+precisely this reason. It also said to "let the server poll reconcile", while the E2E fixture sets
+`Backlog__PollingEnabled = "false"`. Both instructions survived spec review because both read
+correctly as prose. The proposal and the design were sound — what was wrong was the layer that
+encoded assumptions about the *harness*, and one grep of the test project would have falsified both.
+Reworking them mid-implementation produced a better test than the original wording would have: with
+the server poll off, the Mirror is reconciled out-of-band through `page.APIRequest`, which never
+invalidates the browser's cache, so the page catches up on nothing except the behaviour under test.
+Separately, PR #336's merge state was read through `gh pr list --search`, which goes through GitHub's
+lagging search index; it reported an already-merged dependency as `OPEN`, and that wrong answer was
+offered to the human as a reason to stop the command. `gh pr view` reads the API directly and was
+correct.
+
+**One change next time: before writing a task that says "verify X in the harness", open the
+harness.** Concretely — at proposal time, grep the E2E project for the capability the task assumes
+(drag, polling, visibility, request counting) rather than describing the check in prose and
+discovering at implementation time that the harness cannot perform it. This is the previous entry's
+own rule — read the thing the claim is about — extended from load-bearing *config* to load-bearing
+*harness assumptions*. No issue filed and no new ADR: this is the first occurrence, and ADR-0026's
+graduation rule is the second. The `gh pr list --search` staleness is likewise recorded here rather
+than filed, for the same reason.
