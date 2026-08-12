@@ -7,8 +7,8 @@ but not yet scheduled.
 
 | ID | Actor | Kind | May |
 |---|---|---|---|
-| ACT-001 | **Admin** | Human role | Everything: create projects, configure Connectors and credential references, manage Automations (incl. `requiresApproval`, timeout, caps), assign roles — plus everything a Member may. |
-| ACT-002 | **Member** | Human role | View backlog, runs, logs and cost; apply/remove trigger labels on stories ([UC-008](04-capabilities.md)); trigger *Run now* ([UC-012](04-capabilities.md)); approve plans ([UC-013](04-capabilities.md)); answer a waiting Run; cancel runs ([UC-014](04-capabilities.md)). May **not** create or edit project config or Automations. |
+| ACT-001 | **Admin** | Human role | Everything: create projects, configure Connectors and credential references, manage Automations (incl. which steps hold, timeout, caps), assign roles — plus everything a Member may. |
+| ACT-002 | **Member** | Human role | View backlog, runs, logs and cost; apply/remove labels on stories, including clearing a hold ([UC-008](04-capabilities.md), [BR-007](05-business-rules.md)); trigger *Run now* ([UC-012](04-capabilities.md)); answer a waiting Run; cancel runs ([UC-014](04-capabilities.md)). May **not** create or edit project config or Automations. |
 | ACT-003 | **Agent** | System actor | The AI execution unit — a Runtime executing in a per-Run **sandbox** (a microVM with its own kernel: `sbx` locally, an ACA Sandbox in a deployment), or as a child of the portal's own process where no launcher is configured. Reads a story through the Connector, produces a plan (phase 1) and/or executes the configured action (phase 2): open PRs, comment, transition, estimate. Acts only inside a Run created by the orchestrator. |
 | ACT-004 | **Backlog Vendor** | External system | GitHub / Azure DevOps. Source of truth for stories ([BR-008](05-business-rules.md)). Pushes webhook events; answers Connector reads/writes. |
 

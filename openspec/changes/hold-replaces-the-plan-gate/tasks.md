@@ -1,17 +1,17 @@
 ## 1. Corpus and decision
 
-- [ ] 1.1 Allocate the next DEC number against current `origin/main` (expected DEC-067; re-check —
+- [x] 1.1 Allocate the next DEC number against current `origin/main` (expected DEC-067; re-check —
       `decision-records` requires allocation against `origin/main`) and write it in
       `docs/product/mvp/10-locked-mvp-decisions.md`, revising DEC-039 and DEC-040, citing DEC-062's
       stated cost as the rationale and issue #321 as the decision's occasion
-- [ ] 1.2 Rewrite BR-007 in `docs/product/v1/05-business-rules.md` from approval routing to the hold
+- [x] 1.2 Rewrite BR-007 in `docs/product/v1/05-business-rules.md` from approval routing to the hold
       rule; drop the `AwaitingApproval` clauses from BR-001, BR-006 and BR-013
-- [ ] 1.3 Update `docs/product/v1/04-capabilities.md`: retire UC-013 and UC-015, drop the approval
+- [x] 1.3 Update `docs/product/v1/04-capabilities.md`: retire UC-013 and UC-015, drop the approval
       clause from UC-005, UC-006 and UC-011, note UC-026's emptied category and its follow-up
-- [ ] 1.4 Update `docs/product/v1/01-actors-and-responsibilities.md` — ACT-001 no longer manages
+- [x] 1.4 Update `docs/product/v1/01-actors-and-responsibilities.md` — ACT-001 no longer manages
       `requiresApproval`, ACT-002 no longer approves plans; add the hold to
       `docs/product/v1/02-domain-glossary.md`
-- [ ] 1.5 Update `openspec/config.yaml`'s project context, which still states "Approval-gated runs
+- [x] 1.5 Update `openspec/config.yaml`'s project context, which still states "Approval-gated runs
       are two-phase"
 
 ## 2. The hold constant
