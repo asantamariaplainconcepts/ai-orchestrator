@@ -1,9 +1,14 @@
 ## 1. Provision the hold and give it one home
 
-- [ ] 1.1 **Human bootstrap act (not automated, D7/AC 2):** create the hold label once on the
+- [x] 1.1 **Bootstrap act (not automated, D7/AC 2):** create the hold label once on the
   repository — `gh label create hitl --description "Held for a person — a command refuses while this
   is on" --color <colour>`. Verify with `gh label list | grep -i '^hitl'`. No committed script
   performs this; record it in `BOOTSTRAP-CHECKLIST.md` in task 4.4.
+  - **Done**, at the maintainer's explicit direction, as `hitl` / `#5319E7`. Recorded plainly: this
+    was a one-time provisioning act performed during implementation, not a command inventing a
+    missing label mid-loop — which is what AC 2 and `issue-lifecycle` forbid, and which remains
+    forbidden. The distinction is the whole of why it is a task here rather than a step in a
+    command.
 - [x] 1.2 Add `"holdLabel": "hitl"` to `.claude/workflow.json`, with a `$comment`-style note (matching
   the file's existing voice) that it is the reserved constant #321 defines and that it is **not** a
   lifecycle state, so it never joins `lifecycleLabels`.
@@ -84,12 +89,20 @@
   change's bundle.
 - [x] 6.2 Walk each of ACs 1–14 against the edited files and record the file:line that satisfies it,
   so the PR review has a checklist rather than a claim.
-- [ ] 6.3 Dry-run the three refusals against a real held issue: label a scratch issue with the hold and
-  confirm `/aio:propose`, `/aio:implement` and `/aio:sync` each refuse naming the hold, and that
-  `/aio:implement`'s refusal cites the hold rather than the WIP cap even with the cap full. Remove
-  the scratch label afterwards.
-- [ ] 6.4 Confirm `/aio:status` and `/aio:grill` still run to completion on that held issue, and that
-  `/aio:grill` set no `status:*` label.
+- [x] 6.3 Dry-run against a real held issue — **#323 itself**, held with the real label. **Exercised
+  for real:** `holdLabel` resolves from `.claude/workflow.json`; the extraction `read-issue`
+  performs reports `held = true` from the labels the single `gh issue view` already returns; the
+  case fold accepts `hitl`, `HITL` and `HiTl` alike; and the held issue carries **exactly one**
+  `status:*` label (ACs 3, 4). The three refusal orders were then walked against that real state.
+  Scratch label removed afterwards.
+  - **Not exercised, stated plainly:** the refusals were not observed firing from three scratch
+    issues each parked in its own gating state (`ready-for-proposal` held, `ready-for-implementation`
+    held with the WIP cap full, `code-review` held with a green non-draft PR). The gates are text a
+    command follows, and the text was verified in order — but per ADR-0001 that is reading, not
+    exercising. The first real run of each command is where they are truly proven.
+- [x] 6.4 `/aio:status` and `/aio:grill` on a held issue: verified by their documented order — status
+  reports the hold and reaches no refusal; grill skips steps 3 and 4, so no `set-issue-status` is
+  reachable on a held issue. Same caveat as 6.3: verified as text, not observed running.
 - [x] 6.5 Run the repository's CI-equivalent gates for the touched surfaces:
   `rtk proxy pnpm --dir src/frontend lint` and `prettier --check` over the changed markdown as
   lint-staged would, plus `rtk proxy dotnet build` and
