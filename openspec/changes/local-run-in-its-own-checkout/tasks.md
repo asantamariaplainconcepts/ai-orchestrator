@@ -29,7 +29,7 @@
 
 - [x] 3.1 Add a startup sweep that prunes the repository's worktree record and removes checkouts in
       the product's namespace that no live Run owns, skipping any checkout this process is using.
-- [ ] 3.2 Assert in the sweep's own tests that no branch is ever removed (spec scenario "reaping never
+- [x] 3.2 Assert in the sweep's own tests that no branch is ever removed (spec scenario "reaping never
       destroys a Run's output").
 - [x] 3.3 Register the sweep where the sbx reaper is registered, so both run on the same startup path.
 
@@ -39,29 +39,29 @@
       version. Do **not** add any Azure App Configuration package (design D6).
 - [x] 4.2 Compose `AddFeatureManagement()` against the host's `IConfiguration` in the Server's
       composition, consumed by nothing.
-- [ ] 4.3 Assert startup is unchanged with no `FeatureManagement` section present, in every habitat
+- [x] 4.3 Assert startup is unchanged with no `FeatureManagement` section present, in every habitat
       the test tiers cover.
 
 ## 5. Tests
 
-- [ ] 5.1 Replace the functional tests asserting the clean-tree refusal and the checkout-restore path
+- [x] 5.1 Replace the functional tests asserting the clean-tree refusal and the checkout-restore path
       with tests for the new behaviour (spec scenarios 1 and 2).
-- [ ] 5.2 Add a test that two Local Runs for different Stories on one folder execute concurrently,
+- [x] 5.2 Add a test that two Local Runs for different Stories on one folder execute concurrently,
       each in its own checkout.
-- [ ] 5.3 Add a test that a Local Run leaves its branch in the configured folder's repository and its
+- [x] 5.3 Add a test that a Local Run leaves its branch in the configured folder's repository and its
       checkout gone.
-- [ ] 5.4 Add a test that an unusable folder is refused before any write, naming the folder and the
+- [x] 5.4 Add a test that an unusable folder is refused before any write, naming the folder and the
       reason.
-- [ ] 5.5 Add the habitat scenario: where `Habitat:LocalFolderUnavailableReason` is declared, no
+- [x] 5.5 Add the habitat scenario: where `Habitat:LocalFolderUnavailableReason` is declared, no
       worktree is created and no git command runs against a configured path.
-- [ ] 5.6 Follow the repository's naming convention `Subject_Should_Constraint` — the ArchTests
+- [x] 5.6 Follow the repository's naming convention `Subject_Should_Constraint` — the ArchTests
       enforce it.
 
 ## 6. Verification
 
-- [ ] 6.1 `dotnet build` clean, no new warnings.
-- [ ] 6.2 `dotnet test` green across the affected module and shared test projects.
-- [ ] 6.3 CSharpier passes (the pre-commit hook and CI both run it; `--no-verify` is still caught).
+- [x] 6.1 `dotnet build` clean, no new warnings.
+- [x] 6.2 `dotnet test` green across the affected module and shared test projects.
+- [x] 6.3 CSharpier passes (the pre-commit hook and CI both run it; `--no-verify` is still caught).
 - [ ] 6.4 Exercise a real Local Run end to end in the `aspire run` dev loop against a **dirty** folder
       and confirm by hand: the Run succeeds, the folder is untouched, the branch is present, the
       checkout is gone (ADR-0006 — exercised, never read).

@@ -20,7 +20,8 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// Nothing in this class runs <c>branch -D</c>, and a test asserts it stays that way.
 /// </para>
 /// </summary>
-sealed class LocalCheckoutReaper(ILogger<LocalCheckoutReaper> logger) : IHostedService
+sealed class LocalCheckoutReaper(ILogger<LocalCheckoutReaper> logger, string? root = null)
+    : IHostedService
 {
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -40,7 +41,7 @@ sealed class LocalCheckoutReaper(ILogger<LocalCheckoutReaper> logger) : IHostedS
 
     async Task Sweep(CancellationToken cancellationToken)
     {
-        var abandoned = LocalCheckoutRoster.Abandoned();
+        var abandoned = LocalCheckoutRoster.Abandoned(root);
         if (abandoned.Count == 0)
         {
             return;

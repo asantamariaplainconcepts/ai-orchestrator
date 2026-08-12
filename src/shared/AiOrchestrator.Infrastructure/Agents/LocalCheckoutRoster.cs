@@ -31,9 +31,16 @@ static class LocalCheckoutRoster
     public static bool Claims(string? name) =>
         name is not null && name.StartsWith(ClaimedPrefix, StringComparison.Ordinal);
 
+    /// <summary>
+    /// Where checkouts live. Temp by default; overridable only so a test can own a root of its
+    /// own, because a sweep and a live Run sharing the machine's real temp is exactly the
+    /// cross-process hazard this class documents — two test projects would reproduce it.
+    /// </summary>
+    public static string DefaultRoot => Path.GetTempPath();
+
     /// <summary>A fresh checkout path, in the claimed namespace. Not created — that is git's job.</summary>
-    public static string NewCheckout() =>
-        Path.Combine(Path.GetTempPath(), $"{ClaimedPrefix}{Guid.NewGuid():N}");
+    public static string NewCheckout(string? root = null) =>
+        Path.Combine(root ?? DefaultRoot, $"{ClaimedPrefix}{Guid.NewGuid():N}");
 
     /// <summary>Checkouts a Run of this process currently occupies, which no sweep may touch.</summary>
     static readonly ConcurrentDictionary<string, byte> Live = new(StringComparer.Ordinal);
@@ -47,12 +54,12 @@ static class LocalCheckoutRoster
     /// temp cannot be read — "cannot tell" is treated as "nothing to act on", which is what keeps a
     /// startup sweep from throwing on a machine it does not understand.
     /// </summary>
-    public static IReadOnlyList<string> Abandoned()
+    public static IReadOnlyList<string> Abandoned(string? root = null)
     {
         string[] candidates;
         try
         {
-            candidates = Directory.GetDirectories(Path.GetTempPath(), $"{ClaimedPrefix}*");
+            candidates = Directory.GetDirectories(root ?? DefaultRoot, $"{ClaimedPrefix}*");
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {

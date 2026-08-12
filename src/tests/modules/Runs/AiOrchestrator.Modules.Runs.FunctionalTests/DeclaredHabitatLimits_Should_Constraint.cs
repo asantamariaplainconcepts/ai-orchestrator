@@ -179,6 +179,15 @@ public class DeclaredHabitatLimits_Should_Constraint(RunsApiFixture fixture) : I
         // Refused, not failed: no Run row exists — the BR-016 pre-write pattern.
         var runs = await _client.GetFromJsonAsync<JsonElement>($"/api/projects/{_projectId}/runs");
         runs.GetArrayLength().ShouldBe(0);
+
+        // #331 — and no checkout was attempted on the way to that refusal. The declaration is
+        // about a folder this habitat cannot see; touching it to find out would be the container
+        // path error the declared sentence exists to preempt. Asked of this repository rather
+        // than of the machine's temp, which every other test shares.
+        (await Git("worktree", "list"))
+            .Trim()
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Length.ShouldBe(1, "a worktree was created for a locus declared unavailable");
     }
 
     async Task<string> Git(params string[] arguments)
