@@ -16,8 +16,11 @@ change. **Merge = archive = sync = retro**, one commit.
 
 1. **Worktree preflight.** Verify `git rev-parse --show-toplevel` matches the session's working
    directory; abort on mismatch.
-2. Invoke **`read-issue`**. **Gate:** the issue must be `status:code-review` and the PR must not
-   be a draft; refuse otherwise and say what's missing. **Solo path (DEC-016):** GitHub forbids
+2. Invoke **`read-issue`**. **Hold gate — first, before every other check:** if it reports the hold
+   (`holdLabel` in `.claude/workflow.json`), refuse. Nothing is merged, archived, or appended to
+   the retro log. Name the hold and say a person clears it by removing that one label; the code
+   review is not finished until they do. **Gate:** the issue must then be `status:code-review` and
+   the PR must not be a draft; refuse otherwise and say what's missing. **Solo path (DEC-016):** GitHub forbids
    self-approval, so do not gate on a formal PR approval — the recorded review is the human's
    explicit go-ahead in this session plus the PR checklist; state that and get the go-ahead
    before continuing.
@@ -107,6 +110,9 @@ change. **Merge = archive = sync = retro**, one commit.
   Verify the actual protection state with `gh api repos/{owner}/{repo}/rulesets` — do not assume.
 - `/aio:sync` is the **sole owner** of the accurate-subject guarantee: never squash-merge while
   the title still describes the proposal. Whatever set the title upstream, verify it here.
+- **Never sync a held issue.** The hold gate is the first check in step 2, before the draft and
+  rollup checks, so a refusal leaves nothing merged, archived, or written to the retro log.
+- Never remove the hold. Clearing it is a person's act, always.
 - Never set `status:done` before the merge has actually completed.
 - **Never report a change as finished without the deploy's result** where a deploy workflow exists.
   Green PR checks are evidence about the code, not about what is running.
