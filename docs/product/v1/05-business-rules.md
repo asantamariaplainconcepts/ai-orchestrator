@@ -62,11 +62,20 @@ corpus unchanged in force; only citations moved.
 - **BR-015 — One event stream.** Webhook events and polling diffs normalize into identical
   story events before matching; detection behavior must not depend on the source. Poll
   interval: default 60 s, configurable per project.
-- **BR-016 — A Local run requires a clean working tree.** A Run whose execution locus is the
-  host's own folder (#210, self-host — [DEC-049](../mvp/10-locked-mvp-decisions.md)) is refused
-  **before any write** when the folder has uncommitted changes; the refusal names the folder.
-  The check runs again at execution, because the folder belongs to a person who may have typed
-  in between — that failure ends the Run with the same sentence and restores their checkout.
+- **BR-016 — A Local run works in its own checkout.** A Run whose execution locus is the
+  host's own folder (#210, self-host — [DEC-049](../mvp/10-locked-mvp-decisions.md)) executes in
+  a `git` worktree of that folder, created for the Run and removed when it ends. The configured
+  folder is never entered: its `HEAD`, its branch and its uncommitted changes are exactly as
+  their owner left them, whatever state the Run ends in.
+  **The clean-tree requirement this rule used to carry no longer applies** (#331): a dirty folder
+  is refused neither before dispatch nor at execution, and there is no previous checkout to
+  restore on failure. What replaced it is the separate checkout — the Run never touches the
+  folder, so there is nothing for uncommitted work to collide with. Local Runs are consequently
+  not serialised against one another; the project cap (BR-002) is the only bound on how many
+  execute at once. Where the checkout cannot be created — not a repository, or `git` refuses —
+  the Run is refused **before any write**, naming the folder and the reason (BR-004: nothing
+  retries). Checkouts abandoned by a dead process are removed at startup; the branches they
+  produced are not.
   The run branch (`ai/{story}-{slug}`) is the Run's output: committed, never pushed, no PR.
 
 ## Backlog & vendors

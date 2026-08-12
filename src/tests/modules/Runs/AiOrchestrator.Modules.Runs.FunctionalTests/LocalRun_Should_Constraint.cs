@@ -120,15 +120,22 @@ public class LocalRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
         var runId = await RunNow("1");
         await Execute(runId);
 
-        // The read model carries the audit (BR-014 extended): locus, folder, branch.
+        // The read model carries the audit (BR-014 extended): locus, checkout, branch.
         var run = await FindRun(runId);
         run.GetProperty("state").GetString().ShouldBe("Succeeded", $"run: {run.GetRawText()}");
         run.GetProperty("locus").GetString().ShouldBe("Local");
-        run.GetProperty("workingFolder").GetString().ShouldBe(_repoPath);
         var branch = run.GetProperty("branchName").GetString();
         branch.ShouldNotBeNull();
         branch.ShouldStartWith("ai/1-");
         run.GetProperty("outputLink").ValueKind.ShouldBe(JsonValueKind.Null);
+
+        // #331 — the locus names the checkout the Run worked in, distinguishably from the
+        // project's own folder. Handing a reader the path their editor has open would say the
+        // Run happened somewhere it never went.
+        var checkout = run.GetProperty("workingFolder").GetString();
+        checkout.ShouldNotBeNull();
+        checkout.ShouldNotBe(_repoPath);
+        Path.GetFileName(checkout).ShouldStartWith("aio-checkout-");
 
         // The branch really exists in the owner's repository, and nothing has any remote to
         // have been pushed to — the folder never gained one.
@@ -143,8 +150,10 @@ public class LocalRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
     }
 
     [Fact]
-    public async Task ADirtyTree_Should_RefuseBeforeAnyWrite()
+    public async Task ADirtyFolder_Should_NoLongerRefuseTheRun()
     {
+        // Spec scenario 1 (#331). This assertion is the exact inverse of the one it replaced:
+        // the clean-tree refusal was BR-016's, and BR-016 no longer carries it.
         await File.WriteAllTextAsync(Path.Combine(_repoPath, "wip.txt"), "uncommitted");
 
         var response = await _client.PostAsJsonAsync(
@@ -152,12 +161,155 @@ public class LocalRun_Should_Constraint(RunsApiFixture fixture) : IAsyncLifetime
             new { vendorStoryId = "1", automationId = _automationId }
         );
 
-        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
-        (await response.Content.ReadAsStringAsync()).ShouldContain("uncommitted changes");
+        response.EnsureSuccessStatusCode();
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var runId = document.RootElement.GetProperty("id").GetGuid();
 
-        // Refused, not failed: no Run row exists (BR-016's pre-write half).
-        var runs = await _client.GetFromJsonAsync<JsonElement>($"/api/projects/{_projectId}/runs");
-        runs.GetArrayLength().ShouldBe(0);
+        // Accepted *and* executes — a refusal moved to execution time would pass the line above
+        // and still break the promise.
+        await Execute(runId);
+        (await FindRun(runId)).GetProperty("state").GetString().ShouldBe("Succeeded");
+    }
+
+    [Fact]
+    public async Task TheOwnersFolder_Should_BeUntouchedWhateverStateTheRunEndsIn()
+    {
+        // Spec scenario 2 (#331). The owner's folder is dirty and on its own branch before the
+        // Run, and must be identical after — HEAD, branch and uncommitted changes alike.
+        await File.WriteAllTextAsync(Path.Combine(_repoPath, "wip.txt"), "uncommitted");
+        var headBefore = (await Git("rev-parse", "HEAD")).Trim();
+        var branchBefore = (await Git("branch", "--show-current")).Trim();
+        var statusBefore = await Git("status", "--porcelain");
+
+        // Both terminal states, because "whatever state the Run ends in" is the promise — the
+        // failure path is where the old design mutated the folder and had to undo it.
+        fixture.Agent.Result = new AgentResult(
+            Succeeded: false,
+            Log: "the agent failed",
+            OutputLink: null,
+            Usage: new AgentUsage(1, 1, 0m)
+        );
+        await Execute(await RunNow("1"));
+
+        (await Git("rev-parse", "HEAD")).Trim().ShouldBe(headBefore);
+        (await Git("branch", "--show-current")).Trim().ShouldBe(branchBefore);
+        (await Git("status", "--porcelain")).ShouldBe(statusBefore);
+        (await File.ReadAllTextAsync(Path.Combine(_repoPath, "wip.txt"))).ShouldBe("uncommitted");
+    }
+
+    [Fact]
+    public async Task ASucceededRun_Should_LeaveItsBranchAndTakeItsCheckoutAway()
+    {
+        var runId = await RunNow("1");
+        await Execute(runId);
+
+        var run = await FindRun(runId);
+        run.GetProperty("state").GetString().ShouldBe("Succeeded");
+        var branch = run.GetProperty("branchName").GetString()!;
+        var checkout = run.GetProperty("workingFolder").GetString()!;
+
+        // The branch outlives the checkout — that is the whole reason a worktree was chosen over
+        // a clone, and it is what BR-016 promises the owner reaches with ordinary git.
+        (await Git("branch", "--list", branch)).ShouldContain(branch);
+        Directory.Exists(checkout).ShouldBeFalse($"the checkout '{checkout}' outlived its Run");
+
+        // …and git agrees it is gone, not merely that the directory was deleted behind its back.
+        (await Git("worktree", "list")).ShouldNotContain(checkout);
+    }
+
+    [Fact]
+    public async Task TwoLocalRuns_Should_ExecuteAtOnceInCheckoutsOfTheirOwn()
+    {
+        fixture.Vendor.Stories.Add(new VendorStory("2", "Second story", "open", [], "B."));
+        await _client.PostAsync($"/api/projects/{_projectId}/backlog/refresh", null);
+        await fixture.Probe.WaitForAtLeast(_projectId, 2);
+
+        // A barrier, not a sleep: each agent parks until *both* are inside their checkout. If
+        // Local Runs were still serialised, the first would wait for a second that cannot start
+        // and this test would time out — which is the assertion, made deterministic.
+        var bothInFlight = new TaskCompletionSource();
+        var proceed = new TaskCompletionSource();
+        var inFlight = 0;
+        fixture.Agent.OnExecute = async () =>
+        {
+            if (Interlocked.Increment(ref inFlight) == 2)
+            {
+                bothInFlight.TrySetResult();
+            }
+            await proceed.Task.WaitAsync(TimeSpan.FromSeconds(60));
+        };
+
+        var first = await RunNow("1");
+        var second = await RunNow("2");
+        var executing = Task.WhenAll(Execute(first), Execute(second));
+
+        await bothInFlight.Task.WaitAsync(TimeSpan.FromSeconds(60));
+
+        // Both agents are standing in their own checkout right now.
+        var checkouts = fixture
+            .Agent.Instructions.Select(instruction => instruction.WorkspacePath)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        checkouts.Length.ShouldBe(2);
+        checkouts.ShouldAllBe(path => path != _repoPath);
+
+        // Neither observes the other's files — the isolation the concurrency is worth having for.
+        await File.WriteAllTextAsync(Path.Combine(checkouts[0], "only-in-the-first.txt"), "a");
+        File.Exists(Path.Combine(checkouts[1], "only-in-the-first.txt")).ShouldBeFalse();
+
+        proceed.SetResult();
+        await executing;
+
+        // Two Stories, two branches, both left in the owner's repository.
+        var branches = await Git("branch", "--list", "ai/*");
+        branches.ShouldContain("ai/1-");
+        branches.ShouldContain("ai/2-");
+    }
+
+    [Fact]
+    public async Task AFolderThatIsNotARepository_Should_BeRefusedByNameBeforeAnyWrite()
+    {
+        // Spec scenario "an unusable folder is refused by name" (#331) — BR-004: nothing retries,
+        // so the sentence a person reads is the only thing they have to act on.
+        var plain = Directory.CreateTempSubdirectory("not-a-repo-").FullName;
+        try
+        {
+            (
+                await _client.PutAsJsonAsync(
+                    $"/api/projects/{_projectId}/connector",
+                    new
+                    {
+                        owner = "acme",
+                        repository = "portal",
+                        secretName = "acme-pat",
+                        codeSource = "localFolder",
+                        localPath = plain,
+                    }
+                )
+            ).EnsureSuccessStatusCode();
+
+            var response = await _client.PostAsJsonAsync(
+                $"/api/projects/{_projectId}/runs",
+                new { vendorStoryId = "1", automationId = _automationId }
+            );
+
+            response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+            var refusal = await response.Content.ReadAsStringAsync();
+            refusal.ShouldContain(plain);
+            refusal.ShouldContain("not a git repository");
+
+            // Refused, not failed: no Run row exists (BR-016's pre-write half), and nothing was
+            // created inside the folder on the way to finding that out.
+            var runs = await _client.GetFromJsonAsync<JsonElement>(
+                $"/api/projects/{_projectId}/runs"
+            );
+            runs.GetArrayLength().ShouldBe(0);
+            Directory.GetFileSystemEntries(plain).ShouldBeEmpty();
+        }
+        finally
+        {
+            Directory.Delete(plain, recursive: true);
+        }
     }
 
     [Fact]

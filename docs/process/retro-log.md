@@ -4189,3 +4189,44 @@ human time is recorded by a person, never derived from telemetry. Second occurre
 `type=user` gap (after `product-corpus-v1` #318), so it graduates. The determinism lesson above is a
 first occurrence of its own kind and earns no ADR yet; ADR-0001 already covers the instinct it
 violated.
+
+## 2026-08-12 — local-run-in-its-own-checkout (#331)
+
+**Time:** human ~0.25h (source: **manual**, per
+[ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) — human
+time is recorded, never derived); agent 0.12h `cli` active time, $3.18, ~3.21M tokens across 2
+mapped sessions — **a floor, not the cost**. `verify-telemetry.mjs` failed one check:
+`OTEL_EXPORTER_OTLP_ENDPOINT` was UNSET, so most of this change's exports went to the OTLP default
+port rather than this project's collector. The figure is reported with that named defect attached
+rather than as a measurement, because a partial capture presented as a total is worse than no
+number at all.
+
+**What worked: the design measured git instead of assuming it, so implementation was transcription
+rather than discovery.** D1 carried a probe table run against real `git` — `worktree add` from a
+repository with uncommitted changes succeeds, the folder afterwards is unchanged, `worktree remove`
+leaves the branch carrying its commit, and adding a worktree for a branch already checked out
+elsewhere fails with exit 128. Every one of those held exactly as recorded when the code was
+written; nothing in the git layer surprised the implementation. The fourth row paid twice: D2 turned
+"git refuses a branch already checked out" into a *mechanical* second guard for BR-001, so the
+one-Run-per-Story rule gained an enforcement point without gaining a rule. A design that had
+asserted these properties instead of exercising them would have read identically and been worth
+nothing.
+
+**What didn't: the by-hand verification was blocked, repeatedly, by things the change has nothing to
+do with.** Tasks 6.4 and 6.5 cost several cycles before they could even begin — `aspire run` refused
+its port because another worktree's dev loop still held it; the Claude runtime failed with a
+credential default that had to be cleared before the machine's own session could be used, and then
+with "Not logged in" until the run was moved to OpenCode; and the prompt could not be reached at all
+because prompts resolve only from the *vendor repository's default branch*, so a prompt written into
+the scratch folder under test was invisible and the exercise needed a real path on `main` plus a
+hand-written file in the live checkout to drive the commit path. None of this was a defect in the
+change, and all of it was discovered one failure at a time, mid-verification. The lesson is not
+"prepare the environment first" — it is that a task list which ends in "exercise it by hand" is
+under-specified until it also names what the exercise *needs* to be able to run.
+
+**One change next time:** fix the repository-root detection that cannot work in a git worktree.
+`Terraform_Should_NeverConfigureTheLocalOwner` walks up looking for a `.git` **directory**, but in a
+worktree `.git` is a *file* — so the test fails on every local full-suite run in exactly the
+worktrees this repository now encourages, and passes in CI, which clones. A test that is red locally
+and green remotely trains its reader to ignore a red suite, which is the opposite of what it is for.
+First occurrence of its kind, so it earns no ADR — a one-line fix and an issue, not a decision.

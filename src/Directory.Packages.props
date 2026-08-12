@@ -52,6 +52,11 @@
     <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageVersion Include="Microsoft.Extensions.Http.Resilience" Version="10.7.0" />
     <PackageVersion Include="Microsoft.Extensions.ServiceDiscovery" Version="10.7.0" />
+    <!-- Feature state, read from IConfiguration alone (#331, design D6). Deliberately NOT paired
+         with Microsoft.Azure.AppConfiguration.AspNetCore: a managed configuration service in the
+         start path would put a cloud dependency between a stranger with Docker and a running
+         install, and DEC-049 says that stranger must still be able to run it. -->
+    <PackageVersion Include="Microsoft.FeatureManagement" Version="4.6.0" />
     <!-- Aspire dev orchestration. Azure.Storage is the queue substrate (Azurite locally) that
          carries Run dispatch (DEC-013); present from day 0 so the queue contract is never mocked. -->
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.6" />
