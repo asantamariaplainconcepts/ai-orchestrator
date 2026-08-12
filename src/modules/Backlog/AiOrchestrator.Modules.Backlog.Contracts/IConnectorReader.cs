@@ -29,4 +29,11 @@ public sealed record ConnectorSnapshot(
     /// every other call site mention a directory it has no use for.
     /// </summary>
     public string? PromptDirectory { get; init; }
+
+    /// <summary>
+    /// The command that makes a Local Run's fresh checkout buildable, or null for none (#332).
+    /// Travels with <see cref="LocalPath"/> and is meaningless without it. Not positional, for the
+    /// same reason as the prompts directory: the executor is the only caller that wants it.
+    /// </summary>
+    public string? LocalSetupCommand { get; init; }
 }

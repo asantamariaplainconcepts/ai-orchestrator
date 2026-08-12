@@ -34,6 +34,9 @@ sealed class BacklogDbContext(DbContextOptions<BacklogDbContext> options) : DbCo
                 .Property(entity => entity.CodeSource)
                 .HasDefaultValue(CodeSource.Repository);
             connector.Property(entity => entity.LocalPath).HasMaxLength(500);
+            // Nullable with no default: null is "no setup command", which is what every Connector
+            // written before #332 means and a valid configuration in its own right.
+            connector.Property(entity => entity.LocalSetupCommand).HasMaxLength(500);
         });
 
         modelBuilder.Entity<Story>(story =>

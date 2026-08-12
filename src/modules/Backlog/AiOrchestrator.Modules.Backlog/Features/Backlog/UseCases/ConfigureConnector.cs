@@ -48,7 +48,8 @@ sealed class ConfigureConnector : IUseCase
                         request.AccessToken,
                         request.PromptDirectory,
                         request.CodeSource,
-                        request.LocalPath
+                        request.LocalPath,
+                        request.LocalSetupCommand
                     );
                     var result = await sender.Send(command, cancellationToken);
 
@@ -75,7 +76,8 @@ sealed class ConfigureConnector : IUseCase
         string? AccessToken = null,
         string? PromptDirectory = null,
         string? CodeSource = null,
-        string? LocalPath = null
+        string? LocalPath = null,
+        string? LocalSetupCommand = null
     );
 
     /// <summary>
@@ -92,7 +94,8 @@ sealed class ConfigureConnector : IUseCase
         DateTimeOffset? SecretSetAt,
         string? PromptDirectory,
         string CodeSource,
-        string? LocalPath
+        string? LocalPath,
+        string? LocalSetupCommand
     );
 
     // Admin, declared rather than checked (#13, design D1). This use case is where the product's
@@ -110,7 +113,8 @@ sealed class ConfigureConnector : IUseCase
         string? AccessToken = null,
         string? PromptDirectory = null,
         string? CodeSource = null,
-        string? LocalPath = null
+        string? LocalPath = null,
+        string? LocalSetupCommand = null
     ) : ICommand<ErrorOr<Response>>, IScopedToProject;
 
     internal sealed class Validator : AbstractValidator<Command>
@@ -183,6 +187,17 @@ sealed class ConfigureConnector : IUseCase
                     && parsed == CodeSource.LocalFolder
                 )
                 .WithMessage("A local folder code source needs an absolute path on the host.");
+
+            // Length is all this can check, for the same reason the prompts directory is: whether
+            // a tool resolves is knowable only on the machine at the moment it runs, which is why
+            // the refusal for a command that does not work is a Run's, not a save's (#332).
+            //
+            // Deliberately NOT NotEmpty: unlike the path, an empty value is a valid configuration —
+            // a checkout that needs no preparation is not a misconfigured one. The handler stores
+            // blank as null.
+            RuleFor(command => command.LocalSetupCommand!)
+                .MaximumLength(500)
+                .When(command => command.LocalSetupCommand is not null);
         }
     }
 
@@ -358,10 +373,19 @@ sealed class ConfigureConnector : IUseCase
             // source is choosing Repository, and a stale local path must not survive that.
             if (codeSource == CodeSource.LocalFolder)
             {
-                connector.UseLocalFolder(command.LocalPath!.Trim());
+                // Blank clears it back to "none" rather than storing "", so one value means one
+                // thing — the discipline the prompts directory above already follows.
+                connector.UseLocalFolder(
+                    command.LocalPath!.Trim(),
+                    string.IsNullOrWhiteSpace(command.LocalSetupCommand)
+                        ? null
+                        : command.LocalSetupCommand.Trim()
+                );
             }
             else
             {
+                // Clears the setup command with the path: a stale command must not survive a switch
+                // to the repository source and then run on a later switch back.
                 connector.UseRepositorySource();
             }
 
@@ -377,7 +401,8 @@ sealed class ConfigureConnector : IUseCase
                 connector.SecretSetAt,
                 connector.PromptDirectory,
                 connector.CodeSource.ToString(),
-                connector.LocalPath
+                connector.LocalPath,
+                connector.LocalSetupCommand
             );
         }
     }

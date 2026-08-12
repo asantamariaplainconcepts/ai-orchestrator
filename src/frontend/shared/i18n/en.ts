@@ -223,6 +223,11 @@ export const en = {
   "connector.codeSource.valid": "Git repository · branch",
   "connector.codeSource.cleanTree": "clean working tree",
   "connector.codeSource.dirtyTree": "uncommitted changes — a Local Run will refuse to start",
+  // #332 — a Run works in its own checkout, and a fresh checkout has nothing installed.
+  "connector.codeSource.setup": "Setup command (optional)",
+  "connector.codeSource.setupPlaceholder": "pnpm install --frozen-lockfile && pnpm build",
+  "connector.codeSource.setupHint":
+    "Runs in the Run's own checkout before the agent starts, so the agent meets a tree it can build. It shares the Automation's timeout with the agent, and a command that fails ends the Run before the agent runs. Leave it empty if nothing needs preparing.",
   "connector.codeSource.recent": "Recent folders",
   "connector.codeSource.usedBy": "used by",
   // #247 — the habitat withheld the locus; the declared sentence follows this label verbatim.
