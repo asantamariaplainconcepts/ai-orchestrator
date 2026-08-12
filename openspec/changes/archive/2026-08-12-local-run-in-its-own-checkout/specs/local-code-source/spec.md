@@ -1,6 +1,6 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
-### Requirement: a Local Run works in the folder and leaves a branch, never a push
+### Requirement: a Local Run works in its own checkout and leaves a branch, never a push
 
 A Run with locus Local SHALL execute in **its own checkout of** the Connector's configured folder:
 create a `git` worktree of that repository on branch `ai/{vendorStoryId}-{slug}`, hand the worktree's
@@ -55,6 +55,33 @@ retries (BR-004).
 - **THEN** the Run is refused before any write, and the refusal names the folder and the specific
   reason rather than reporting a generic failure
 
+### Requirement: checkouts abandoned by a dead process are reaped
+
+At startup the product SHALL remove the Local-Run checkouts it created that no live Run owns, and
+prune the repository's record of them. Branches those checkouts produced SHALL NOT be removed — the
+branch is the Run's output and outlives the checkout by design.
+
+The sweep exists because the measured failure mode is already on record for the sandbox substrate:
+31 abandoned sandboxes and 125 GB, because a process died before its `finally` ran. A checkout leaks
+the same way and for the same reason.
+
+#### Scenario: a checkout left by a dead process is removed
+
+- **WHEN** the product starts and finds a checkout it created for a Run that is not executing
+- **THEN** the checkout is removed and the repository's worktree record is pruned
+
+#### Scenario: reaping never destroys a Run's output
+
+- **WHEN** an abandoned checkout carrying a committed `ai/{story}-{slug}` branch is reaped
+- **THEN** the branch still exists in the configured folder's repository afterwards
+
+#### Scenario: a live Run's checkout survives the sweep
+
+- **WHEN** the sweep runs while a Local Run is executing
+- **THEN** that Run's checkout is left alone and the Run continues
+
+## MODIFIED Requirements
+
 ### Requirement: a habitat that cannot reach the folder refuses by name
 
 Where the habitat declares the Local locus unavailable, naming a `LocalFolder` code source SHALL be
@@ -85,29 +112,19 @@ declaration, or a request made around the portal, meets the same sentence.
 - **WHEN** the code-source section renders in a declaring habitat
 - **THEN** the local-folder option is not offered and the reason is shown in its place
 
-## ADDED Requirements
+## REMOVED Requirements
 
-### Requirement: checkouts abandoned by a dead process are reaped
+### Requirement: a Local Run works in the folder and leaves a branch, never a push
 
-At startup the product SHALL remove the Local-Run checkouts it created that no live Run owns, and
-prune the repository's record of them. Branches those checkouts produced SHALL NOT be removed — the
-branch is the Run's output and outlives the checkout by design.
+**Reason:** the folder is no longer where a Local Run works (#331), so every clause of this
+requirement that described *the folder* as the workspace has stopped being true — the clean-tree
+verification, the branch created in place, and the restore-the-previous-checkout failure path
+alike. Its replacement is added as a requirement in its own right rather than as an amendment, because
+two of its scenarios assert behaviour this change deliberately deletes: **"a clean tree yields a
+committed branch"** and **"the entry race is caught at execution"**. Keeping them inside a modified
+block would have carried the clean-tree rule forward in the spec while the code refused it.
 
-The sweep exists because the measured failure mode is already on record for the sandbox substrate:
-31 abandoned sandboxes and 125 GB, because a process died before its `finally` ran. A checkout leaks
-the same way and for the same reason.
-
-#### Scenario: a checkout left by a dead process is removed
-
-- **WHEN** the product starts and finds a checkout it created for a Run that is not executing
-- **THEN** the checkout is removed and the repository's worktree record is pruned
-
-#### Scenario: reaping never destroys a Run's output
-
-- **WHEN** an abandoned checkout carrying a committed `ai/{story}-{slug}` branch is reaped
-- **THEN** the branch still exists in the configured folder's repository afterwards
-
-#### Scenario: a live Run's checkout survives the sweep
-
-- **WHEN** the sweep runs while a Local Run is executing
-- **THEN** that Run's checkout is left alone and the Run continues
+**Migration:** none at rest — `LocalWorkspace` is an in-memory record and no stored shape, schema or
+message contract referenced any of this. The behaviour it guaranteed is preserved by *a Local Run
+works in its own checkout and leaves a branch, never a push*, minus the clean-tree precondition,
+which BR-016 is amended in the same change to drop.
