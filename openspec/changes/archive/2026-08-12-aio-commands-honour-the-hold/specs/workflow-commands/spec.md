@@ -1,29 +1,62 @@
-# workflow-commands Specification
+## ADDED Requirements
 
-## Purpose
-TBD - created by archiving change ai-delivery-layer. Update Purpose after archive.
-## Requirements
-### Requirement: the commands are the public API
+### Requirement: the hold is a refusal, and no command ever clears it
 
-Contributors SHALL drive the workflow through `/aio:grill`, `/aio:propose`, `/aio:implement`,
-`/aio:sync`, `/aio:refine`, and `/aio:status`. OpenSpec SHALL be reachable only through `/opsx:*`
-primitives that skills wrap, so the spec engine stays replaceable without touching workflow policy.
+Every mutating `/aio:*` command SHALL read the hold from the issue before it acts, and SHALL refuse
+outright while the issue carries it. A refusal SHALL name the hold and say that a person clears it by
+removing that one label, and SHALL leave every side effect unperformed — no branch, no commit, no
+push, no PR, no label change, no retro entry, no merge.
 
-#### Scenario: swapping the spec engine
+The hold SHALL be compared case-insensitively, the way the vendor compares labels, so `HITL` and
+`hitl` are one hold.
 
-- **WHEN** the spec tool changes
-- **THEN** the `/opsx:*` layer and its skills change, and the `/aio:*` gates do not
+No command, script or workflow in this repository SHALL remove the hold. Clearing it is a person's
+act, always — that is the whole mechanism, and an automation that could undo it would return the
+reviewer to choosing among labels.
 
-### Requirement: every mutating command asserts its worktree first
+#### Scenario: a refusal changes nothing
 
-Before any state-changing git operation, a command SHALL verify that
-`git rev-parse --show-toplevel` matches the session's working directory, and SHALL abort if it
-does not.
+- **WHEN** a mutating command is invoked on a held issue
+- **THEN** it refuses, names the hold and who clears it, and no git or GitHub state changes
 
-#### Scenario: a hijacked worktree aborts the batch
+#### Scenario: the hold folds case
 
-- **WHEN** the resolved repository root differs from the session's directory
-- **THEN** the command aborts before mutating anything and reports both paths
+- **WHEN** the hold label is present spelled in different case from the configured value
+- **THEN** the issue is still held
+
+#### Scenario: nothing in the repository releases a hold
+
+- **WHEN** the `/aio:*` commands and skills are searched for a removal of the hold label
+- **THEN** none exists — only a person removes it
+
+### Requirement: clearing the hold is the approval
+
+At each of the two human review stages the reviewer's whole act SHALL be removing the hold. No
+command SHALL require a further `status:*` change from the reviewer to unlock the next command, and
+the command that runs next SHALL find the issue already in its gating state.
+
+#### Scenario: spec review is released by one label
+
+- **WHEN** a reviewer validates a proposal and removes the hold
+- **THEN** `/aio:implement` proceeds on the already-set `status:ready-for-implementation`, and the
+  reviewer set no label
+
+#### Scenario: code review is released by one label
+
+- **WHEN** a reviewer approves the implementation and removes the hold
+- **THEN** `/aio:sync` proceeds on the already-set `status:code-review`, and the reviewer set no label
+
+### Requirement: refine is untouched by the hold
+
+`/aio:refine` SHALL behave identically whether or not the issue carries the hold. It runs after the
+merge and gates nothing, so a hold has nothing left to stop.
+
+#### Scenario: a held, merged issue still accepts a retro entry
+
+- **WHEN** `/aio:refine` is invoked on a merged issue that carries the hold
+- **THEN** it appends the follow-up retro entry exactly as it would without the hold
+
+## MODIFIED Requirements
 
 ### Requirement: grill gates on the Definition of Ready
 
@@ -153,35 +186,6 @@ OpenSpec change on the branch; and only then create the close-out commit that ca
 - **WHEN** any required check is failing or pending
 - **THEN** sync refuses and names the failing check
 
-### Requirement: sync validates the squash message before merging
-
-`/aio:sync` SHALL lint the exact subject and body it is about to use for the squash commit against
-the repository's commit conventions, and SHALL refuse to merge if they do not pass. The squash
-subject SHALL be the PR title, and the body SHALL NOT contain `[skip ci]`.
-
-#### Scenario: an over-long body is caught while the merge is still preventable
-
-- **WHEN** the intended squash body contains a line longer than the configured limit
-- **THEN** sync refuses to merge and reports the violation, rather than the violation reaching
-  `main` where no hook can prevent it
-
-#### Scenario: the marker never reaches main
-
-- **WHEN** the branch's close-out commit contains `[skip ci]`
-- **THEN** the squash body written to `main` does not
-
-### Requirement: main receives exactly one commit per change
-
-A synced change SHALL appear on `main` as a single squash commit whose subject is the PR title,
-with the change's specs folded into `openspec/specs/`, its bundle archived under
-`openspec/changes/archive/`, and its retro entry present.
-
-#### Scenario: post-merge state
-
-- **WHEN** a change is synced
-- **THEN** `main` gains one commit, no active change bundle remains, and the retro log has a new
-  entry
-
 ### Requirement: status is read-only
 
 `/aio:status` SHALL report an issue's lifecycle position, whether it carries the hold, its PR state,
@@ -197,70 +201,3 @@ it reports, and reporting it is precisely what a stalled reviewer needs.
 
 - **WHEN** `/aio:status` runs on a held issue
 - **THEN** it reports the hold, names removing it as the next act and by whom, and refuses nothing
-
-### Requirement: gating shell steps cannot be masked by a pipe
-
-Any command step whose exit code gates a decision SHALL either set `pipefail` or check the exit
-code explicitly, so a failure piped into another process is never read as success.
-
-#### Scenario: a failing command piped to a formatter
-
-- **WHEN** a gating command's output is piped
-- **THEN** its failure still fails the gate
-
-### Requirement: the hold is a refusal, and no command ever clears it
-
-Every mutating `/aio:*` command SHALL read the hold from the issue before it acts, and SHALL refuse
-outright while the issue carries it. A refusal SHALL name the hold and say that a person clears it by
-removing that one label, and SHALL leave every side effect unperformed — no branch, no commit, no
-push, no PR, no label change, no retro entry, no merge.
-
-The hold SHALL be compared case-insensitively, the way the vendor compares labels, so `HITL` and
-`hitl` are one hold.
-
-No command, script or workflow in this repository SHALL remove the hold. Clearing it is a person's
-act, always — that is the whole mechanism, and an automation that could undo it would return the
-reviewer to choosing among labels.
-
-#### Scenario: a refusal changes nothing
-
-- **WHEN** a mutating command is invoked on a held issue
-- **THEN** it refuses, names the hold and who clears it, and no git or GitHub state changes
-
-#### Scenario: the hold folds case
-
-- **WHEN** the hold label is present spelled in different case from the configured value
-- **THEN** the issue is still held
-
-#### Scenario: nothing in the repository releases a hold
-
-- **WHEN** the `/aio:*` commands and skills are searched for a removal of the hold label
-- **THEN** none exists — only a person removes it
-
-### Requirement: clearing the hold is the approval
-
-At each of the two human review stages the reviewer's whole act SHALL be removing the hold. No
-command SHALL require a further `status:*` change from the reviewer to unlock the next command, and
-the command that runs next SHALL find the issue already in its gating state.
-
-#### Scenario: spec review is released by one label
-
-- **WHEN** a reviewer validates a proposal and removes the hold
-- **THEN** `/aio:implement` proceeds on the already-set `status:ready-for-implementation`, and the
-  reviewer set no label
-
-#### Scenario: code review is released by one label
-
-- **WHEN** a reviewer approves the implementation and removes the hold
-- **THEN** `/aio:sync` proceeds on the already-set `status:code-review`, and the reviewer set no label
-
-### Requirement: refine is untouched by the hold
-
-`/aio:refine` SHALL behave identically whether or not the issue carries the hold. It runs after the
-merge and gates nothing, so a hold has nothing left to stop.
-
-#### Scenario: a held, merged issue still accepts a retro entry
-
-- **WHEN** `/aio:refine` is invoked on a merged issue that carries the hold
-- **THEN** it appends the follow-up retro entry exactly as it would without the hold
-

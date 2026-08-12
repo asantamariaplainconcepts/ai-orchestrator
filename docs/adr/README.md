@@ -38,8 +38,11 @@ A decision that names no check stays advice; the loop exists to turn advice into
 | [0013](0013-an-assertion-must-be-able-to-fail.md) | An assertion must be able to fail | Accepted |
 | [0022](0022-an-order-a-person-can-rearrange-is-stored.md) | An order a person can rearrange is stored, never derived | Accepted |
 | [0023](0023-a-hand-rolled-spawn-inherits-nothing-unless-it-says-so.md) | A hand-rolled spawn inherits nothing unless it says so | Accepted |
+| [0025](0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) | Human time is recorded by a person, never derived from telemetry | Accepted |
 
 <!-- The table stops at 0013 and resumes at 0022: rows for 0014-0021 were never added, although those
      files exist in this directory. #310 added its own row rather than silently backfilling eight
-     entries it did not write, so the gap stays visible until somebody decides to close it. -->
+     entries it did not write, so the gap stays visible until somebody decides to close it. #323 did
+     the same for 0025 — and note 0024 is now missing too, so the gap is growing, not holding. The
+     next change to touch this file should probably just close it. -->
 

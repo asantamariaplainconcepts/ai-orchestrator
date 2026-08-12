@@ -33,3 +33,6 @@ pre-merge retro couldn't see:
 - Time invested comes from telemetry via `collect-usage`; if telemetry is missing, the entry
   says so (manual).
 - This lands as its own commit (the change is already merged) and gates nothing.
+- **The hold does not affect this command.** `/aio:refine` runs after the merge, so a hold has
+  nothing left to stop: a held issue gets its follow-up entry exactly as an unheld one does. And
+  like every other command, this one never removes the hold.

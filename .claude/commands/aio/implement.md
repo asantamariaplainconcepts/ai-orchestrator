@@ -17,6 +17,11 @@ ready for review (HITL #2). Wraps OpenSpec's apply.
 2. Invoke **`read-issue`**. **Gate:** if it is not `status:ready-for-implementation`, stop and
    report the actual status plus the next step (an unvalidated proposal needs its spec review;
    an ungrilled issue needs `/aio:grill <n>`). Do not proceed.
+   - **Hold gate — runs *before* step 3.** If `read-issue` reports the hold (`holdLabel` in
+     `.claude/workflow.json`), refuse now. Name the hold and say a person clears it by removing
+     that one label. The ordering is normative, not stylistic: a held issue must consume no WIP
+     slot and must never appear among the issues holding the cap, and a hold reported as a
+     cap-refusal would send the reader to `/aio:sync` on an unrelated issue.
 3. **WIP gate.** Read `wipLimit` from `.claude/workflow.json` (never hardcode it), then run
    `gh issue list --label status:in-progress --state open`. If the count has reached the limit,
    refuse to start: report the limit, list the issues holding it, and name `/aio:sync` as the way
@@ -34,14 +39,19 @@ ready for review (HITL #2). Wraps OpenSpec's apply.
    incrementally so the branch keeps its narrative.
 7. Push to the same branch (the existing PR updates automatically).
 8. Invoke **`mark-pr-ready`** to flip the draft PR to ready-for-review.
-9. Invoke **`set-issue-status`** → `status:code-review`.
-10. Report the PR URL for code + observed-behaviour review.
+9. Invoke **`set-issue-status`** → `status:code-review`, **and apply the hold in the same
+   `gh issue edit`**. Removing that hold is what lets `/aio:sync` run.
+10. Report the PR URL for code + observed-behaviour review, and say that the reviewer's whole act
+    is **removing the hold** — no label to set.
 
 **Guardrails**
 - Never implement an unvalidated proposal.
-- Never exceed the WIP limit — the gate runs before anything else, and the limit lives only in
-  `.claude/workflow.json`.
-- The overlap warning is advisory; lifecycle gates never are.
+- Never implement a **held** issue, and check the hold **before** the WIP gate — a held issue
+  consumes no slot and is counted in no WIP tally.
+- Never exceed the WIP limit — the gate runs before anything else except the hold, and the limit
+  lives only in `.claude/workflow.json`.
+- Never remove the hold. Clearing it is a person's act, always.
+- The overlap warning is advisory; lifecycle gates and the hold never are.
 - `status:in-progress` is set before the first implementation commit, not after.
 - One PR per issue — never open a second PR.
 - Reuse `openspec-apply-change`; keep commits meaningful (never squash locally — the branch is

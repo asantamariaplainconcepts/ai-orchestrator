@@ -58,6 +58,7 @@ Charter gate:
 
 - [x] **FIRST: the two overdue ADRs written** — [ADR-0001](docs/adr/0001-verify-claims-by-exercising-them.md) (verify claims by exercising them) and [ADR-0002](docs/adr/0002-test-tiers-must-not-provision-their-own-preconditions.md) (a test tier must not hide a precondition the application lacks). Each cites its incidents and names the check that catches the class; both linked from their triggering retro entries
 - [x] Nine `status:*` labels created (one-time `gh label create`), plus `lane:spec-less` — ten total, verified present
+- [x] **The hold label created** (one-time `gh label create`, name from `holdLabel` in `.claude/workflow.json`) — eleven total, verified present as `hitl` / `#5319E7`. Not a `status:*` label and never one of the nine; provisioned by hand like them, because no command may invent it (#323). Until it exists, every command that needs it stops and reports it missing — which is the designed behaviour, not a failure
 - [x] Definition of Ready written **as citations** of `RULE-001..007`, not copies, so a rule change propagates without editing it; names the three open OPNs blocking work today
 - [x] Append-only retro log (4 entries) + ADR template + README + `CONTRIBUTING.md` + `ONBOARDING.md` at **exactly 40 lines** (trimmed from 49 by moving facts to canonical homes — design D4's prediction observed working)
 - [x] Solo path (DEC-016) and spec-less lane (DEC-025) documented in `CONTRIBUTING.md`, along with the no-branch-protection decision stated with its cost

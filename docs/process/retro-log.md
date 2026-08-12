@@ -4142,3 +4142,50 @@ surfaces it touches, not only what it feeds.
 
 **ADR:** none new. The spec-scenario lesson is a candidate if it recurs; this is the first observed
 occurrence and the graduation rule is the second.
+
+## 2026-08-12 — aio-commands-honour-the-hold (#323)
+
+**Time:** human ~0.25h (source: **manual**, per [ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) — human time is recorded, never derived); agent 0.73h `cli`
+active time, $18.78, ~25.59M tokens (telemetry, session
+`c8ca3ebc-bad8-4001-ab31-facac7734775`, mapped by the SessionStart hook at the moment the branch was
+created). `verify-telemetry.mjs` passed all five checks. `active_time.total{type=user}` carried **no**
+datapoints for this session — the second consecutive occurrence, which is what earned ADR-0025 rather
+than a third identical paragraph.
+
+**What worked: the issue's claim about its own surfaces was checked, not restated.** The issue argued
+RULE-004 was satisfied because "surfaces do not overlap — `.claude/` and `docs/` here, `src/` there".
+A `diff` found six **byte-identical** copies of the `/aio:*` command files under
+`src/modules/Projects/.../Starter/workflow/`, shipped as the spec-first starter tier, with **no test
+gating that identity** — `StarterCatalogue_Should_Constraint` checks frontmatter, bodies, path
+collisions and wiring, but never compares the two trees. The conclusion survived (#321 shares no
+file); the premise did not. The proposal recorded the corrected reasoning instead of repeating the
+claim, and the mirror became its own task group — so the catalogue did not ship a loop this
+repository no longer runs.
+
+**What didn't: determinism was asserted from three data points, inside a refusal.** `/aio:sync`
+correctly refused on a red rollup, and the refusal said the failing terminal test was "deterministic,
+not flaky" on the strength of three consecutive failures. Within the hour #327 dropped that test, and
+the next `main` run failed a *different* test that passes 110/110 locally. In a suite with more than
+one flaky test, three failures in a row is bad luck, not evidence. The gate needed one fact — the
+rollup is red — and the added claim was both unnecessary and false. ADR-0001 says exercise a claim
+before recording it; this was a claim about *test behaviour over time*, which three samples cannot
+establish.
+
+**What didn't: the change could not complete its own final step.** AC 13 has `/aio:implement` apply
+the hold when it marks the PR ready — but the label did not exist, and AC 2, added by this same
+change, forbids a command creating one. The bootstrap ordering was invisible at spec review: the
+proposal named provisioning as a task, and nobody noticed that a *later step of the same run* would
+need it. Implementation stopped mid-flight for an out-of-band decision. The rule was right; the
+sequencing was never stated.
+
+**One change next time:** when a change introduces a label, config key, or any precondition its own
+commands then require, `tasks.md` sequences provisioning first **and** the proposal names the command
+step that first consumes it. A precondition whose consumer is inside the same change is not a
+bootstrap footnote — it is an ordering constraint, and it belongs in the spec review where it is
+still cheap.
+
+**ADR:** [ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) —
+human time is recorded by a person, never derived from telemetry. Second occurrence of the
+`type=user` gap (after `product-corpus-v1` #318), so it graduates. The determinism lesson above is a
+first occurrence of its own kind and earns no ADR yet; ADR-0001 already covers the instinct it
+violated.

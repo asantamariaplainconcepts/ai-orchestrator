@@ -2,6 +2,8 @@
   "_comment": "The single home for tunable process values (workflow-commands spec). Every /aio:* command reads these from here; no command or doc may hardcode them. Raising wipLimit requires an ADR (DEC-017).",
   "wipLimit": 2,
   "squashBodyMaxLineLength": 100,
+  "_holdLabelComment": "The hold: a person must act before anything else does. Reserved constant, identical everywhere, never renamed per-repository. It is NOT a lifecycle state, so it never joins lifecycleLabels — an issue carries the hold alongside exactly one status:* label. Provisioned once by hand like the nine; no command invents it. Every mutating /aio:* command refuses while it is on, and nothing in this repository ever removes it — clearing is a person's act, always.",
+  "holdLabel": "hitl",
   "lifecycleLabels": [
     "status:backlog",
     "status:needs-refinement",
