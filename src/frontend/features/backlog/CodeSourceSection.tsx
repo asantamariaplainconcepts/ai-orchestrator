@@ -20,6 +20,8 @@ export function CodeSourceSection({
   onCodeSource,
   localPath,
   onLocalPath,
+  localSetupCommand,
+  onLocalSetupCommand,
   localFolderReason,
 }: {
   projectId: string;
@@ -27,6 +29,8 @@ export function CodeSourceSection({
   onCodeSource: (value: string) => void;
   localPath: string;
   onLocalPath: (value: string) => void;
+  localSetupCommand: string;
+  onLocalSetupCommand: (value: string) => void;
   /** Non-null where the habitat declared the Local locus unavailable (#247). */
   localFolderReason?: string | null;
 }) {
@@ -149,6 +153,24 @@ export function CodeSourceSection({
                     : t("connector.codeSource.cleanTree")}
                 </span>
               ) : null}
+            </p>
+          </div>
+
+          {/* A Run works in its own checkout of that folder, and a fresh checkout has no installed
+              dependencies (#332). Beside the path, because it describes the same folder — and
+              optional, because a checkout that needs no preparation is not misconfigured. */}
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="local-setup-command">{t("connector.codeSource.setup")}</Label>
+            <Input
+              id="local-setup-command"
+              className="font-mono"
+              value={localSetupCommand}
+              onChange={(event) => onLocalSetupCommand(event.target.value)}
+              placeholder={t("connector.codeSource.setupPlaceholder")}
+              aria-describedby="local-setup-hint"
+            />
+            <p id="local-setup-hint" className="text-xs text-muted-foreground">
+              {t("connector.codeSource.setupHint")}
             </p>
           </div>
 
