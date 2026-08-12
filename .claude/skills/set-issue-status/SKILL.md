@@ -12,14 +12,23 @@ Move one issue to a target `status:*` state — one responsibility.
 Adjacent-state transitions (the ones a command normally requests):
 - `backlog → needs-refinement` or `backlog → ready-for-proposal` (via `/aio:grill`, depending on DoR outcome)
 - `needs-refinement → ready-for-proposal` (via `/aio:grill`, once gaps are resolved)
-- `ready-for-proposal → proposal-review` (via `/aio:propose`)
-- `proposal-review → ready-for-implementation` (human validation)
-- `ready-for-implementation → in-progress` (via `/aio:implement`, before its first commit)
-- `in-progress → code-review` (via `/aio:implement`, after push + PR marked ready)
-- `code-review → done` (via `/aio:sync`, only after merge + archive complete)
+- `ready-for-proposal → ready-for-implementation` (via `/aio:propose`, **with the hold applied in the same `gh issue edit`** — the draft PR plus the hold is the spec-review stage)
+- `ready-for-implementation → in-progress` (via `/aio:implement`, before its first commit, once a human has removed the hold)
+- `in-progress → code-review` (via `/aio:implement`, after push + PR marked ready, **with the hold applied in the same `gh issue edit`**)
+- `code-review → done` (via `/aio:sync`, once a human has removed the hold, and only after merge + archive complete)
 - any state `→ blocked` and back, on human decision
 
+`status:proposal-review` is set by no command. It remains one of the nine and is left in place on any issue already carrying it; whether the lifecycle should shrink is a separate decision.
+
 The `status:*` label is the sole lifecycle state — no automation touches GitHub Projects. Projects are label-filtered saved views only, so setting the label here is the whole operation; there is no board field to sync.
+
+## The hold is not a status
+
+The hold (`holdLabel` in `.claude/workflow.json`) says whether anyone may take the work further; the `status:*` label says where the work is. They answer different questions and are never conflated:
+
+- The hold is **not** a `status:*` value, so no transition here ever sets or removes it as one.
+- Where a command applies the hold, it travels in the **same** `gh issue edit` as the status change, so the issue is never briefly unheld in its new state.
+- Removing the hold is a **person's** act. This skill never does it, and neither does any other command.
 
 ## Steps
 
