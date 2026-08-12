@@ -99,6 +99,39 @@ public class LocalCheckoutSetupRunner_Should_Constraint
     }
 
     [Fact]
+    public async Task TheCommand_Should_InheritThisProcesssEnvironment()
+    {
+        if (!OnUnix)
+        {
+            return;
+        }
+
+        using var directory = new TemporaryDirectory();
+
+        // The agreement the whole design rests on (D2): setup runs in the SAME environment
+        // LocalAgentProcessHost gives the Agent, so the two resolve the same PATH and the same
+        // toolchain. A dependency that installs for one and is missing for the other is the failure
+        // this forecloses — and a login shell, which was the alternative, would have given setup a
+        // different environment entirely.
+        Environment.SetEnvironmentVariable("AIO_SETUP_ENVIRONMENT_PROBE", "inherited");
+        try
+        {
+            var outcome = await Run(
+                "echo \"probe=$AIO_SETUP_ENVIRONMENT_PROBE\"",
+                directory.Path,
+                out _
+            );
+
+            outcome.Succeeded.ShouldBeTrue();
+            outcome.Output.ShouldContain("probe=inherited");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("AIO_SETUP_ENVIRONMENT_PROBE", null);
+        }
+    }
+
+    [Fact]
     public async Task ACommandOutlivingItsBudget_Should_BeKilledWithItsChildren()
     {
         if (!OnUnix)
