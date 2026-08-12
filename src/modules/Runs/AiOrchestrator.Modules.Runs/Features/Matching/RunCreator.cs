@@ -107,8 +107,12 @@ sealed class RunCreator(
             return Refused(declared);
         }
 
-        // BR-016, refused before any write (the BR-001 pattern): a Local run must start from a
-        // clean tree, and letting the Run exist first would spend a slot on a refusal.
+        // BR-016, refused before any write (the BR-001 pattern): a Local run needs a repository to
+        // cut its checkout from, and letting the Run exist first would spend a slot on a refusal.
+        //
+        // The clean-tree half of this check is gone (#331). The Run works in its own worktree, so
+        // uncommitted work in the folder collides with nothing — and a refusal that survived here
+        // would go on rejecting Runs the product is now perfectly able to execute.
         if (locus == RunLocus.Local)
         {
             var inspection = await localWorkspace.Inspect(connector!.LocalPath!, cancellationToken);
@@ -117,13 +121,6 @@ sealed class RunCreator(
                 return Refused(
                     $"'{connector.LocalPath}' is not a git repository — a local run needs one "
                         + "to branch in."
-                );
-            }
-            if (inspection.IsClean is not true)
-            {
-                return Refused(
-                    $"The folder '{connector.LocalPath}' has uncommitted changes — commit or "
-                        + "stash them first."
                 );
             }
         }

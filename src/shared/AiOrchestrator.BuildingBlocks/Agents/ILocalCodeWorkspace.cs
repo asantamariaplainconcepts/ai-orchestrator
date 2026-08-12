@@ -20,8 +20,12 @@ public interface ILocalCodeWorkspace
     Task<PathInspection> Inspect(string path, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Re-verifies the tree is clean (the dispatch check races with a human typing in that
-    /// folder), remembers the current ref, and creates + switches to <paramref name="branch"/>.
+    /// Creates the Run <b>its own checkout</b> of <paramref name="path"/> — a git worktree on
+    /// <paramref name="branch"/>, in a product-owned directory outside the configured folder
+    /// (#331, design D1/D3). The configured folder is not written to, checked out, or otherwise
+    /// entered: whatever its owner has uncommitted there stays exactly as it is, which is why a
+    /// clean tree is no longer required. The returned <see cref="LocalWorkspace.Path"/> is the
+    /// checkout, not the folder.
     /// </summary>
     Task<ErrorOr<LocalWorkspace>> Prepare(
         string path,
@@ -30,10 +34,11 @@ public interface ILocalCodeWorkspace
     );
 
     /// <summary>
-    /// Ends the run's occupation of the folder. On success: commits whatever changed and leaves
-    /// the run branch checked out — the branch is the output (never pushed, never a PR). On
-    /// failure: restores the previously checked-out ref so the owner finds their folder as they
-    /// left it. Returns whether anything was committed.
+    /// Ends the Run's occupation of <b>its checkout</b>. On success: commits whatever changed in
+    /// the checkout, then removes it — the branch remains in the owner's repository, because a
+    /// worktree shares its refs, and the branch is the output (never pushed, never a PR). On
+    /// failure: removes the checkout too. Nothing is restored, because nothing in the owner's
+    /// folder was ever changed. Returns whether anything was committed.
     /// </summary>
     Task<ErrorOr<bool>> Conclude(
         LocalWorkspace workspace,
@@ -51,8 +56,11 @@ public sealed record PathInspection(
     bool? IsClean
 );
 
-/// <summary>A prepared local run: the folder, the run branch, and the way back.</summary>
-public sealed record LocalWorkspace(string Path, string Branch, string PreviousRef);
+/// <summary>
+/// A prepared local run: the checkout it works in, the branch that is its output, and the folder
+/// that checkout came from. There is no "way back" — the owner's folder was never left (#331).
+/// </summary>
+public sealed record LocalWorkspace(string Path, string Branch, string Folder);
 
 /// <summary>Stage-named refusals, the <see cref="WorkspaceErrors"/> pattern.</summary>
 public static class LocalWorkspaceErrors
@@ -63,10 +71,15 @@ public static class LocalWorkspaceErrors
             $"'{path}' is not a git repository — a local run needs one to branch in."
         );
 
-    public static Error DirtyTree(string path) =>
-        Error.Validation(
-            "LocalWorkspace.DirtyTree",
-            $"The folder '{path}' has uncommitted changes — commit or stash them first."
+    /// <summary>
+    /// The checkout could not be created (#331). Carries the folder <b>and git's own reason</b>,
+    /// because BR-004 does not retry: whoever reads this is the retry, and "the worktree could
+    /// not be created" tells them nothing they can act on.
+    /// </summary>
+    public static Error CheckoutFailed(string path, string detail) =>
+        Error.Failure(
+            "LocalWorkspace.CheckoutFailed",
+            $"A checkout of '{path}' could not be created for this run: {detail}"
         );
 
     public static Error BranchFailed(string detail) =>

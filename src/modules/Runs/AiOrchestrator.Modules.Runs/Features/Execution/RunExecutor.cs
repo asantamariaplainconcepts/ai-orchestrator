@@ -420,7 +420,8 @@ sealed class RunExecutor(
         }
 
         // The workspace is the locus decision (#210, design D1): same queue, same worker, same
-        // runtime — a Local run works in the Connector's folder, a Sandbox run in a fresh clone.
+        // runtime — a Local run works in its own checkout of the Connector's folder (#331), a
+        // Sandbox run in a fresh clone.
         if (run.Locus == RunLocus.Local)
         {
             if (targetsChange)
@@ -451,11 +452,22 @@ sealed class RunExecutor(
                 return new Outcome(Failure(local.FirstError.Description));
             }
 
+            // The other half of the promise, in the same place: which checkout this worked in, and
+            // that the folder it came from was left alone (#331).
+            onOutput(
+                $"Working in '{local.Value.Path}' — a checkout of '{connector.LocalPath}' on "
+                    + $"'{branch}'. The folder itself is not touched; the branch is the output."
+            );
+
             // Recorded when the workspace actually exists, never predicted — and saved now,
             // not with the terminal state: the outer flow reloads the row to give a human's
             // cancellation the last word (design D3), and an unsaved fact would not survive
             // that reload. A crash mid-run keeps the audit too (BR-014).
-            run.RecordLocalExecution(connector.LocalPath!, branch);
+            //
+            // The checkout, not the Connector's folder (#331): a reader asking where this Run
+            // worked must not be handed the path the owner has open in their editor, which the
+            // Run never touched.
+            run.RecordLocalExecution(local.Value.Path, branch);
             await database.SaveChangesAsync(cancellationToken);
 
             var localResult = await selection.Runtime.Execute(
@@ -477,8 +489,10 @@ sealed class RunExecutor(
                 cancellationToken
             );
 
-            // Success leaves the branch checked out — it IS the output; failure restores the
-            // owner's checkout. A commit that fails turns a claimed success into the truth.
+            // Success commits and gives the checkout back; the branch stays in the owner's
+            // repository — it IS the output. Failure gives the checkout back too, and restores
+            // nothing, because nothing of theirs was ever changed (#331). A commit that fails
+            // turns a claimed success into the truth.
             // (model and runtime ride out on the Outcome — see its summary)
             var concluded = await localWorkspace.Conclude(
                 local.Value,

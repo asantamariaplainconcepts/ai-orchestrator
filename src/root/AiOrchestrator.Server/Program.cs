@@ -35,6 +35,8 @@ builder.AddAgentRuntime();
 builder.AddConversationRuntime();
 builder.AddCodeWorkspace();
 builder.AddLocalCodeWorkspace();
+builder.AddLocalCheckoutReaper();
+builder.AddFeatureState();
 builder.Services.AddSingleton(TimeProvider.System);
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();

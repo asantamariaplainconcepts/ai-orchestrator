@@ -136,7 +136,15 @@ sealed class Run : Aggregate
     /// </summary>
     public RunLocus Locus { get; private set; }
 
-    /// <summary>The host folder a Local run worked in (BR-014's audit, extended). Null for Sandbox.</summary>
+    /// <summary>
+    /// The checkout a Local run worked in (BR-014's audit, extended). Null for Sandbox.
+    /// <para>
+    /// This is the Run's <b>own</b> worktree, not the Connector's configured folder (#331) — the
+    /// two are deliberately distinguishable, because the folder is where the branch ends up and
+    /// the checkout is where the Agent typed. The checkout no longer exists once the Run has
+    /// ended; it is kept as the audit of where the work happened, which is what BR-014 asks for.
+    /// </para>
+    /// </summary>
     public string? WorkingFolder { get; private set; }
 
     /// <summary>The branch a Local run left behind — its output, where Sandbox runs carry a PR link.</summary>

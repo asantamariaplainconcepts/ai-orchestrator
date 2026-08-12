@@ -1,43 +1,43 @@
 ## 1. The seam and the product rule
 
-- [ ] 1.1 Amend BR-016 in `docs/product/v1/05-business-rules.md`: remove the clean-tree requirement
+- [x] 1.1 Amend BR-016 in `docs/product/v1/05-business-rules.md`: remove the clean-tree requirement
       and both refusal sites, state that a Local Run works in its own checkout, and preserve the
       branch-is-the-output sentence verbatim (spec criterion 9, design Migration Plan).
-- [ ] 1.2 Remove `PreviousRef` from `LocalWorkspace` in
+- [x] 1.2 Remove `PreviousRef` from `LocalWorkspace` in
       `src/shared/AiOrchestrator.BuildingBlocks/Agents/ILocalCodeWorkspace.cs`, and delete
       `LocalWorkspaceErrors.DirtyTree`. Update the XML docs on `Prepare`/`Conclude` so they describe
       the checkout, not the folder (design D4).
-- [ ] 1.3 Add the checkout-creation refusal to `LocalWorkspaceErrors` — a stage-named error carrying
+- [x] 1.3 Add the checkout-creation refusal to `LocalWorkspaceErrors` — a stage-named error carrying
       the folder and git's own reason, in the shape `WorkspaceErrors` already uses.
 
 ## 2. The checkout
 
-- [ ] 2.1 Rewrite `LocalFolderWorkspace.Prepare` to create `git worktree add <checkout> -b
+- [x] 2.1 Rewrite `LocalFolderWorkspace.Prepare` to create `git worktree add <checkout> -b
       ai/{vendorStoryId}-{slug}` in the product-owned checkout root, returning that path as
       `LocalWorkspace.Path`. It must not run `git checkout` in the configured folder (design D1, D3).
-- [ ] 2.2 Rewrite `Conclude` to commit in the checkout and then `git worktree remove` it, leaving the
+- [x] 2.2 Rewrite `Conclude` to commit in the checkout and then `git worktree remove` it, leaving the
       branch. On failure it removes the checkout too, and restores nothing — there is nothing to
       restore.
-- [ ] 2.3 Decide and document the checkout root (design Open Question 1) — outside the configured
+- [x] 2.3 Decide and document the checkout root (design Open Question 1) — outside the configured
       folder, namespaced so the reaper recognises the product's own work.
-- [ ] 2.4 Remove the clean-tree pre-write check from `RunCreator` and the execution-time re-check
+- [x] 2.4 Remove the clean-tree pre-write check from `RunCreator` and the execution-time re-check
       from `RunExecutor`; leave every other Local-locus guard intact.
-- [ ] 2.5 Confirm `ValidateLocalPath` and `Inspect` are untouched and `IsClean` still reports (design
+- [x] 2.5 Confirm `ValidateLocalPath` and `Inspect` are untouched and `IsClean` still reports (design
       D4).
 
 ## 3. The reaper
 
-- [ ] 3.1 Add a startup sweep that prunes the repository's worktree record and removes checkouts in
+- [x] 3.1 Add a startup sweep that prunes the repository's worktree record and removes checkouts in
       the product's namespace that no live Run owns, skipping any checkout this process is using.
 - [ ] 3.2 Assert in the sweep's own tests that no branch is ever removed (spec scenario "reaping never
       destroys a Run's output").
-- [ ] 3.3 Register the sweep where the sbx reaper is registered, so both run on the same startup path.
+- [x] 3.3 Register the sweep where the sbx reaper is registered, so both run on the same startup path.
 
 ## 4. Feature management plumbing
 
-- [ ] 4.1 Add `Microsoft.FeatureManagement` to `src/Directory.Packages.props`, pinning the current
+- [x] 4.1 Add `Microsoft.FeatureManagement` to `src/Directory.Packages.props`, pinning the current
       version. Do **not** add any Azure App Configuration package (design D6).
-- [ ] 4.2 Compose `AddFeatureManagement()` against the host's `IConfiguration` in the Server's
+- [x] 4.2 Compose `AddFeatureManagement()` against the host's `IConfiguration` in the Server's
       composition, consumed by nothing.
 - [ ] 4.3 Assert startup is unchanged with no `FeatureManagement` section present, in every habitat
       the test tiers cover.
