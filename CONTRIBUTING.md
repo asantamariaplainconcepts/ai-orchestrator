@@ -14,22 +14,24 @@ idea / use case ──/aio:grill──▶ needs-refinement ──(resolve gaps)�
                                                                             │
                                                               /aio:propose (gate)
                                                                             ▼
-                                              proposal-review ──(human validates)──▶ ready-for-implementation
-                                              draft PR · HITL #1                          (gate, WIP cap)
-                                                                                                │
-   done ◀──/aio:sync── code-review ◀──/aio:implement── in-progress ◀───────────────────────────┘
-  (retro+archive+sync,  same PR, ready · HITL #2   (set before the first commit)
+                                    ready-for-implementation + HOLD ──(human clears the hold)──▶ ready-for-implementation
+                                    draft PR · HITL #1                                                (gate, WIP cap)
+                                                                                                            │
+   done ◀──/aio:sync── code-review ◀──(human clears the hold)── code-review + HOLD ◀──/aio:implement── in-progress ◀──┘
+  (retro+archive+sync,                                          same PR, ready · HITL #2      (set before the first commit)
    lint, squash-merge)
 ```
 
-One issue rides **one branch and one PR**, reviewed twice on that same PR.
+One issue rides **one branch and one PR**, reviewed twice on that same PR. At each review stage the
+reviewer's whole act is **removing one label** — see [The hold](#the-hold) below.
 
 | Step | Command | What happens |
 | --- | --- | --- |
 | 1. Clarify | [`/aio:grill`](.claude/commands/aio/grill.md) | Interrogate an idea, a corpus use case, or an existing issue against the [Definition of Ready](docs/process/definition-of-ready.md). Gaps → commented by name + `status:needs-refinement`; met → `status:ready-for-proposal`. |
-| 2. Propose | [`/aio:propose`](.claude/commands/aio/propose.md) | OpenSpec change on a fresh-based branch whose name ends with the change slug; opens a **draft PR**; `status:proposal-review`. **HITL #1** — the spec is reviewed before code exists. |
-| 3. Validate | *(human)* | Correct the spec on the draft PR, then move to `status:ready-for-implementation`. |
-| 4. Implement | [`/aio:implement`](.claude/commands/aio/implement.md) | `status:in-progress` **before** the first commit; code on the **same** branch and PR; marks the PR ready; `status:code-review`. **HITL #2** — code and observed behaviour. |
+| 2. Propose | [`/aio:propose`](.claude/commands/aio/propose.md) | OpenSpec change on a fresh-based branch whose name ends with the change slug; opens a **draft PR**; sets `status:ready-for-implementation` **and the hold**, in one edit. **HITL #1** — the spec is reviewed before code exists. |
+| 3. Validate | *(human)* | Correct the spec on the draft PR, then **remove the hold**. That is the whole act — no label to set; the next state is already there. |
+| 4. Implement | [`/aio:implement`](.claude/commands/aio/implement.md) | `status:in-progress` **before** the first commit; code on the **same** branch and PR; marks the PR ready; sets `status:code-review` **and the hold**. **HITL #2** — code and observed behaviour. |
+| 4b. Approve | *(human)* | **Remove the hold.** That is what lets `/aio:sync` run. |
 | 5. Sync | [`/aio:sync`](.claude/commands/aio/sync.md) | The only merge path. Verifies CI green *before* writing the `[skip ci]` close-out commit, appends the retro, archives + folds specs, **lints the squash subject and body**, squash-merges one commit, sets `status:done`. |
 | 6. Refine | [`/aio:refine`](.claude/commands/aio/refine.md) | Post-merge findings only — appends a new retro entry, never rewrites one. |
 
@@ -46,13 +48,48 @@ The lifecycle state is the `status:*` label and nothing else. Nine states in ord
 from any state).
 
 Two are **machine gates**: `/aio:propose` runs only on `ready-for-proposal`, `/aio:implement` only
-on `ready-for-implementation`. Two are **human review stages** on the one PR: `proposal-review`
-(draft, spec) and `code-review` (ready, code). Exactly one `status:*` label per issue — the
-commands remove the old one as they add the new.
+on `ready-for-implementation`. The two **human review stages** on the one PR are marked by the hold
+rather than by a state — see below. Exactly one `status:*` label per issue — the commands remove the
+old one as they add the new.
+
+`proposal-review` is set by no command since the hold replaced it. It stays among the nine, and any
+issue already carrying it keeps it; whether the lifecycle should shrink is a separate decision.
 
 The labels were provisioned **once**, manually, with `gh label create`. No committed script
 recreates them, and no command invents a missing one — it stops and says which label is absent.
 If a repo ever needs re-provisioning, that is a deliberate manual operation.
+
+## The hold
+
+An issue may carry a **hold** — the label named by `holdLabel` in
+[`.claude/workflow.json`](.claude/workflow.json) — meaning *a person must act before anything else
+does*. It is the same reserved constant the product uses on a Story, compared case-insensitively,
+and it is never renamed per-repository.
+
+The hold is **not** a `status:*` label. The two answer different questions: the status says where
+the work is, the hold says whether anyone may take it further. A held issue still carries exactly
+one of the nine.
+
+| Command | Behaviour while held |
+| --- | --- |
+| `/aio:propose` | **Refuses** — before any branch or PR exists. |
+| `/aio:implement` | **Refuses**, and checks the hold *before* the WIP gate, so a held issue consumes no slot and never shows up among the issues holding the cap. |
+| `/aio:sync` | **Refuses** — nothing merged, archived, or written to the retro log. |
+| `/aio:grill` | Runs. It still evaluates and comments, but sets no status — a hold blocks advancing, not talking. |
+| `/aio:status` | Runs, and reports the hold first. It refuses nothing; it is read-only. |
+| `/aio:refine` | Runs, unchanged. It is post-merge and gates nothing. |
+
+**Clearing the hold is the approval.** At both review stages you remove that one label and nothing
+else — the state the next command needs is already in place. `/aio:propose` sets
+`status:ready-for-implementation` up front, so an issue reads that state while its spec is still
+unreviewed; the hold is what makes it safe, and nothing can advance while it is on.
+
+**No command, script, or workflow in this repository ever removes the hold.** Clearing it is a
+person's act, always. That is the entire mechanism: it is what makes a hold trustworthy, and an
+automation that could undo it would put you back to choosing among nine labels.
+
+Like the nine, the hold label is provisioned **once**, by hand. A command that needs it and finds
+it missing stops and says so.
 
 If you use a GitHub Project, it is a **label-filtered saved view**. Nothing reconciles it: editing
 a card's status field changes no lifecycle state. Change the label.
@@ -63,10 +100,11 @@ still passes the grill individually to reach ready.
 ## Solo review path (DEC-016)
 
 GitHub forbids approving your own pull request, so `/aio:sync` does **not** gate on a formal PR
-approval. For a solo maintainer the recorded review is the **label transition plus the PR
-checklist**: moving an issue to `ready-for-implementation` records the spec review, and marking
-the PR ready plus ticking the Definition-of-Done boxes records the code review. State the
-go-ahead explicitly when syncing. When a second committer joins, this reverts to real approvals —
+approval. For a solo maintainer the recorded review is the **cleared hold plus the PR checklist**:
+removing the hold at HITL #1 records the spec review, and removing it at HITL #2 — with the
+Definition-of-Done boxes ticked — records the code review. Both are timestamped in the issue's
+event log, which is a better record than the label transitions they replace. State the go-ahead
+explicitly when syncing. When a second committer joins, this reverts to real approvals —
 and the `[skip ci]` mechanism must be revisited at the same time (see below).
 
 ## The spec-less lane (DEC-025)

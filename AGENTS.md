@@ -58,17 +58,29 @@ Spec-first, through the project-owned `/aio:*` commands that wrap OpenSpec. One 
 branch and one PR**, reviewed twice. The lifecycle is nine `status:*` states:
 `backlog → needs-refinement → ready-for-proposal → proposal-review → ready-for-implementation →
 in-progress → code-review → done` (plus `blocked`, reachable from any state). The `status:*`
-label is the **sole** lifecycle state.
+label is the **sole** lifecycle state. (`proposal-review` is now set by no command — the hold
+replaced it; see below.)
+
+Alongside it, an issue may carry a **hold** — the label named by `holdLabel` in
+`.claude/workflow.json`, meaning a person must act before anything else does. It is **not** a
+`status:*` label: a held issue still carries exactly one of the nine. `/aio:propose`,
+`/aio:implement` and `/aio:sync` **refuse** while it is on (implement checks it *before* the WIP
+gate, so a held issue consumes no slot); `/aio:grill` still evaluates and comments but sets no
+status; `/aio:status` reports it and refuses nothing; `/aio:refine` is unaffected. **Nothing in
+this repository ever removes a hold** — clearing it is a person's act, always.
 
 1. **`/aio:grill`** — interrogate an idea (or an existing issue, or a `docs/product/v1/` item) to
    the Definition of Ready, then create/advance the issue. Items depending on an open `OPN-*`
    decision are blocked, never guessed at.
 2. **`/aio:propose`** — `ready-for-proposal` issue → branch (name ends with the change slug, fresh
-   `origin/main` base) → OpenSpec change → **draft PR**. **HITL #1**: the spec is reviewed as text.
-3. Reviewer moves the label → `ready-for-implementation`.
-4. **`/aio:implement`** — refuses beyond the WIP limit (`.claude/workflow.json`); sets
-   `in-progress` before its first commit; same branch, same PR, marks it ready → `code-review`.
-   **HITL #2**: code and observed behaviour.
+   `origin/main` base) → OpenSpec change → **draft PR** → sets `ready-for-implementation` **and the
+   hold**, in one edit. **HITL #1**: the spec is reviewed as text.
+3. Reviewer **removes the hold**. That is the whole act — no label to set; the gating state is
+   already there. Clearing the hold *is* the approval.
+4. **`/aio:implement`** — refuses a held issue **before** the WIP gate, then refuses beyond the WIP
+   limit (`.claude/workflow.json`); sets `in-progress` before its first commit; same branch, same
+   PR, marks it ready → `code-review` **plus the hold**. **HITL #2**: code and observed behaviour,
+   released the same way.
 5. **`/aio:sync`** — the only merge path. Verifies CI green on the PR head **before** creating the
    `[skip ci]` close-out commit; retro + archive + spec-sync on the branch; **lints the squash
    subject and body against commitlint before merging**; squash-merges exactly one commit whose

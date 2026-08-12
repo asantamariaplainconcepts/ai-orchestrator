@@ -16,6 +16,7 @@ never smuggled into feature items.
 | Telemetry: OTel ServiceDefaults + Azure Monitor exporters (product), usage-telemetry stack (framework) | UC-020, retros | DEC-022/023 |
 | Design system (Atlas-style tokens, DESIGN.md, drift gate) | all UI | Bootstrap Phase 4 |
 | Frontend skeleton (Vite React same-origin, slices, i18n catalog + gate) | all UI | DEC-009 |
+| `/aio:*` workflow framework (commands + skills, `.claude/workflow.json`, issue lifecycle, the hold) | every issue in this repository — it is how each one reaches `main` | The loop the product ships as its spec-first starter tier, run on itself first. RULE-003 satisfies traceability for workflow-command items through this row, not a UC |
 
 ## Product (user-visible capabilities)
 
