@@ -1,15 +1,20 @@
 ## 1. The mirror answers "which Stories are held"
 
-- [ ] 1.1 Add the held-Stories member to `IStoryReader`
+- [x] 1.1 Add the held-Stories member to `IStoryReader`
       (`src/modules/Backlog/AiOrchestrator.Modules.Backlog.Contracts/IStoryReader.cs`), returning
       vendor id and title per held Story, with the docstring stating why it exists rather than a
       `VendorStoryIds` + `Find` loop (one round trip per Story, per project, on a shell cadence).
-- [ ] 1.2 Implement it in the Backlog module: project `(VendorId, Title, Labels)` for the project
+- [x] 1.2 Implement it in the Backlog module: project `(VendorId, Title, Labels)` for the project
       and filter with `StoryHold.IsHeld`. Do **not** push the test into SQL — `Labels` is `text[]`
       and its containment operator is case-sensitive (design D3).
-- [ ] 1.3 Unit-test the case fold: Stories labelled `hitl`, `HITL` and `Hitl` are all held; a
+- [x] 1.3 Test the case fold: Stories labelled `hitl`, `HITL` and `Hitl` are all held; a
       Story with no labels and one with unrelated labels are not.
-- [ ] 1.4 `dotnet build` and the Backlog unit tests pass.
+      **Written functional, not unit** (`HeldStories_Should_Constraint.cs`): `StoryHold.IsHeld`'s
+      fold already has unit coverage in `StoryHold_Should_Constraint.cs`, so a second unit test
+      would re-test that and not this. What was untested is the read against real Postgres, where
+      `Labels` is `text[]` — the one place a SQL-side `Contains` would pass in memory and miss
+      `HITL` in production.
+- [x] 1.4 `dotnet build` and the Backlog unit tests pass.
 
 ## 2. The cross-project in-flight read
 
