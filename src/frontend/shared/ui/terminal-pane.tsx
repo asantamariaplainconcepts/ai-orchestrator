@@ -29,7 +29,9 @@ export function TerminalPane({
   onEnded?: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<"connecting" | "live" | "ended">("connecting");
+  // "failed" is not a kind of "ended": a shell that never opened has not ended, and telling a reader
+  // to open one again is wrong advice when the hub refused because somebody else already holds it.
+  const [state, setState] = useState<"connecting" | "live" | "ended" | "failed">("connecting");
 
   // Held in refs so a parent that re-renders (a poll landing, say) cannot tear down a live shell by
   // passing a new closure. The pane opens exactly once per mount, which is what the parent controls.
@@ -79,7 +81,9 @@ export function TerminalPane({
         void connection?.stop();
       });
       connection.onclose(() => {
-        setState("ended");
+        // Only a shell that was live can end. A connection closing behind a refusal must not
+        // overwrite it with a sentence about a shell that never opened.
+        setState((current) => (current === "live" ? "ended" : current));
         latest.current.onEnded?.();
       });
 
@@ -99,7 +103,7 @@ export function TerminalPane({
       } catch (error) {
         // The hub's refusals are sentences a person can act on — no permission, no terminal here,
         // not this machine's sandbox — so they are shown rather than replaced with a generic failure.
-        setState("ended");
+        setState("failed");
         term.write(`\r\n\x1b[31m${(error as Error).message}\x1b[0m\r\n`);
       }
     })();
@@ -114,8 +118,18 @@ export function TerminalPane({
   return (
     <Card className="gap-0 overflow-hidden py-0">
       <div ref={host} className="h-[24rem] w-full bg-surface p-2" />
-      <p className="border-t px-4 py-2 text-xs text-muted-foreground">
-        {state === "connecting" ? t("run.terminal.connecting") : t("run.terminal.fixedSize")}
+      {/* Three states, three sentences. Two of them shared one line until a terminal that opened and
+          then said nothing was indistinguishable from a working one: "sized to this window" is a
+          fact about a LIVE shell, and reading it over a dead one is what made the failure
+          unreadable. `role="status"` because the transition happens without a click. */}
+      <p className="border-t px-4 py-2 text-xs text-muted-foreground" role="status">
+        {state === "connecting"
+          ? t("run.terminal.connecting")
+          : state === "ended"
+            ? t("run.terminal.shellEnded")
+            : state === "failed"
+              ? t("run.terminal.notOpened")
+              : t("run.terminal.fixedSize")}
       </p>
     </Card>
   );

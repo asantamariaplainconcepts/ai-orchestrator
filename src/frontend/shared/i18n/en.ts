@@ -155,6 +155,13 @@ export const en = {
     "This run finished, so its sandbox and your shell went with it. Its output and file changes are below.",
   "run.terminal.fixedSize":
     "Sized to this window when it opened \u2014 resizing the window will not reflow it, but reopening will.",
+  // Said by the pane itself, about the shell rather than about the Run \u2014 a shell ends for reasons a
+  // Run knows nothing about (it exited, the sandbox went, the connection dropped), and until this
+  // existed the footer said "sized to this window" over a terminal that was already dead.
+  "run.terminal.shellEnded": "This shell has ended. Open a terminal again to start a new one.",
+  // A refusal, not an ending. The hub's own sentence is already in the terminal above and says what
+  // to do about it, so this only has to stop the footer claiming a live shell.
+  "run.terminal.notOpened": "The terminal could not be opened — the reason is above.",
   "run.log.waitingForOutput": "No output yet \u2014 following\u2026",
   "connector.heading": "Connector",
   "connector.none": "No backlog connected. Configure a Connector to read Stories.",

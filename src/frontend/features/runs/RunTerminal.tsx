@@ -34,6 +34,11 @@ export function RunTerminal({
   // the terminal vanish unexplained would read as a glitch.
   const [wasOpen, setWasOpen] = useState(false);
 
+  // Whether one is open RIGHT NOW, which is a different question and needs its own answer. Reusing
+  // `wasOpen` for the badge left it reading "live" over a shell that had already ended, because
+  // "ever" never becomes false — the sandboxes surface has kept the two apart since #311.
+  const [live, setLive] = useState(false);
+
   // Never hosted here: not a disabled button, because asking for access would not help and an
   // affordance implying otherwise promises what this habitat cannot keep (ADR-0021).
   if (terminal !== undefined && !terminal.hosted) {
@@ -68,7 +73,7 @@ export function RunTerminal({
     <div className="flex flex-col gap-2">
       <span className="flex flex-wrap items-center gap-2">
         <h2 className="text-sm font-semibold">{t("run.terminal.heading")}</h2>
-        {open && wasOpen ? (
+        {open && live ? (
           <Badge variant="outline" className="border-info/40 bg-info/10 text-info">
             <span className="size-1.5 animate-pulse rounded-full bg-info" aria-hidden="true" />
             {t("run.log.live")}
@@ -80,7 +85,11 @@ export function RunTerminal({
       {open ? (
         <TerminalPane
           invoke={(connection, columns, rows) => connection.invoke("Open", runId, columns, rows)}
-          onLive={() => setWasOpen(true)}
+          onLive={() => {
+            setWasOpen(true);
+            setLive(true);
+          }}
+          onEnded={() => setLive(false)}
         />
       ) : (
         <Card className="gap-0 py-0">
