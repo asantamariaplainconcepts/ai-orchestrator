@@ -29,17 +29,17 @@
 
 ## 3. The command itself
 
-- [ ] 3.1 Create `.claude/commands/aio/ship.md` with the standard front matter (name, description,
+- [x] 3.1 Create `.claude/commands/aio/ship.md` with the standard front matter (name, description,
       category, tags) and its input contract (the issue number; ask if omitted).
-- [ ] 3.2 Write its steps as **invocations, not restatements**: preflight and gate, then
+- [x] 3.2 Write its steps as **invocations, not restatements**: preflight and gate, then
       `/aio:propose` → `/aio:implement` → `/aio:sync`, each in unattended mode, naming only what
       unattended mode changes. It must state no gate, ordering or guarantee of its own.
-- [ ] 3.3 Write its halt contract: on any staged refusal — CI red or pending, the WIP cap, or a
+- [x] 3.3 Write its halt contract: on any staged refusal — CI red or pending, the WIP cap, or a
       question the issue and its spec do not answer — apply the hold, comment the specific reason,
       leave the `status:*` label untouched, and stop with no further mutation.
-- [ ] 3.4 Write its record contract: the PR body and the retro entry each state that the change
+- [x] 3.4 Write its record contract: the PR body and the retro entry each state that the change
       landed with no human reading the spec or the diff, and name `/aio:ship`.
-- [ ] 3.5 Write its guardrails, including the two that must be unmissable: it never removes the hold,
+- [x] 3.5 Write its guardrails, including the two that must be unmissable: it never removes the hold,
       and it never widens a staged command's gate.
 
 ## 4. Documentation
