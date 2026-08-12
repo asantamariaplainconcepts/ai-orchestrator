@@ -26,8 +26,11 @@
       `IProjectCatalog.ActiveProjectIds` for the null-means-all caller — the pattern
       `GetInboxChanges` established. A non-visible project must be **absent**, not empty.
 - [x] 2.3 Report each visible project's non-terminal Runs (`Queued`, `Executing`,
-      `AwaitingInput`) grouped under the Story they belong to, and its held Stories from task 1.
-      Every Run carries its Story; no Run is reported bare.
+      `AwaitingInput`) grouped under the **subject** they belong to, and its held Stories from
+      task 1. No Run is reported bare.
+      **Corrected during implementation** (design D9): a subject is a Story **or** an open change,
+      because `Run` targets exactly one of the two and `VendorStoryId` is null for a change-targeted
+      Run. The original wording assumed every Run has a Story. Specs updated, not the code bent.
 - [x] 2.4 Keep it read-model-only — the Runs tables and the Postgres Mirror, no vendor call. Add
       the comment saying why, referencing the hazard `GetInboxChanges` documents.
 - [x] 2.5 Leave `GET /api/inbox` untouched. Verify by reading `GetInbox.cs` after the change:
@@ -35,18 +38,18 @@
 
 ## 3. Backend verification
 
-- [ ] 3.1 Functional tests in `src/tests/modules/Runs/AiOrchestrator.Modules.Runs.FunctionalTests`:
+- [x] 3.1 Functional tests in `src/tests/modules/Runs/AiOrchestrator.Modules.Runs.FunctionalTests`:
       a project with a held Story and no Run; a project with a `Queued` Run; a project whose only
       Runs are terminal (reports nothing, *including* an undismissed failure the Inbox still
       shows); a project with no live work.
-- [ ] 3.2 The BR-009 test, named for what it asserts: a caller who may see one of two projects
+- [x] 3.2 The BR-009 test, named for what it asserts: a caller who may see one of two projects
       gets a response carrying no id, name, or Story title from the other. This is AC 5 and it is
       a test, not a comment.
-- [ ] 3.3 A test asserting `/api/inbox`'s response is byte-identical before and after live work
+- [x] 3.3 A test asserting `/api/inbox`'s response is byte-identical before and after live work
       exists — the ambient count cannot move (AC 6).
-- [ ] 3.4 `dotnet build` clean, ArchTests and NetArchTest green (the module boundary must still
+- [x] 3.4 `dotnet build` clean, ArchTests and NetArchTest green (the module boundary must still
       reject implementation references), `dotnet test` for the Runs and Backlog projects.
-- [ ] 3.5 CSharpier passes on every touched `.cs` file.
+- [x] 3.5 CSharpier passes on every touched `.cs` file.
 
 ## 4. One shared state chip
 

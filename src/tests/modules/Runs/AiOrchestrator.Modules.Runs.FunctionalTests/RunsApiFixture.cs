@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.BuildingBlocks.Dispatch;
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.IntegrationEvents;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Connectors;
@@ -59,6 +60,14 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
     /// </summary>
     internal FakeConversationRuntime Conversations { get; } = new();
 
+    /// <summary>
+    /// What the caller may see (#335). Defaults to <b>everything</b>, which is what this tier
+    /// already had before the stub existed — so no test that predates it changes behaviour. A
+    /// cross-project surface needs the other case to be assertable: BR-009 is only proven by a
+    /// caller who may see one project and not another.
+    /// </summary>
+    internal StubProjectPermissions Permissions { get; } = new();
+
     // "projects" is spelled out: ProjectsDbContext is internal to its module, and a schema
     // constant is not worth an InternalsVisibleTo.
     protected override string[] SchemasToReset =>
@@ -66,6 +75,19 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
         // clean outbox per test is what a cleared queue used to be — without it, DispatchedRunIds
         // reads every previous test's dispatches.
         [RunsDbContext.Schema, BacklogDbContext.Schema, "projects", "cap"];
+
+    /// <summary>
+    /// The stub goes back with the database, and centrally — never by the test that narrowed it.
+    /// The Backlog fixture learned this the expensive way (see its own note): a class that reset the
+    /// caller itself restored it <i>before</i> its own tests and not after its last one, so a
+    /// narrowed scope leaked into the next class in the collection. Harmless until a second surface
+    /// filtered on it; eight unrelated failures once one did.
+    /// </summary>
+    public override async Task ResetDatabase()
+    {
+        await base.ResetDatabase();
+        Permissions.Reset();
+    }
 
     /// <summary>
     /// Clears the dispatch observable, exactly as it cleared the queue before #296 retired it:
@@ -129,6 +151,9 @@ public sealed class RunsApiFixture : ApiServiceFixtureBase
             services.RemoveAll<IBacklogConnector>();
             services.AddSingleton<IBacklogConnector>(Vendor);
             services.AddSingleton<ISecretResolver>(new StubSecretResolver(SecretNames));
+
+            services.RemoveAll<IProjectPermissions>();
+            services.AddSingleton<IProjectPermissions>(Permissions);
 
             services.AddSingleton(Probe);
             services.AddIntegrationEventHandler<StoryChanged, DeliveryProbe.Handler>();
@@ -654,6 +679,35 @@ sealed class FakeCodeWorkspace : ICodeWorkspace
         return Task.FromResult<ErrorOr<PublishedChange>>(
             PublishError is { } error ? error : new PublishedChange(PullRequestUrl)
         );
+    }
+}
+
+/// <summary>
+/// Project visibility, decided by the test (#335, BR-009).
+/// <para>
+/// <see cref="Visible"/> null means <b>all of them</b> — the same "everything" the real seam answers
+/// for the owner and the self-host habitat, and the default here so that every test written before
+/// this stub existed behaves exactly as it did. A cross-project surface cannot be proven safe
+/// without the other case: a caller who may see one project and not another.
+/// </para>
+/// </summary>
+sealed class StubProjectPermissions : IProjectPermissions
+{
+    public ProjectRole? Role { get; set; } = ProjectRole.Admin;
+
+    /// <summary>Null means all. Set it to fence the caller to specific projects.</summary>
+    public IReadOnlySet<Guid>? Visible { get; set; }
+
+    public Task<ProjectRole?> RoleOn(Guid projectId, CancellationToken cancellationToken) =>
+        Task.FromResult(Role);
+
+    public Task<IReadOnlySet<Guid>?> VisibleProjects(CancellationToken cancellationToken) =>
+        Task.FromResult(Visible);
+
+    public void Reset()
+    {
+        Role = ProjectRole.Admin;
+        Visible = null;
     }
 }
 
