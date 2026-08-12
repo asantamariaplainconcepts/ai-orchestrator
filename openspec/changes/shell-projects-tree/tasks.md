@@ -53,19 +53,19 @@
 
 ## 4. One shared state chip
 
-- [ ] 4.1 Add the shared Run-state chip to `src/frontend/shared/ui/`, modelled on `locus.tsx`:
+- [x] 4.1 Add the shared Run-state chip to `src/frontend/shared/ui/`, modelled on `locus.tsx`:
       glyph beside a word, tokens only, one exported component. Cover `Queued`, `Executing`,
       `AwaitingInput` and the terminal states, plus the **hold** as its own distinct treatment.
-- [ ] 4.2 Add every state's label to `src/frontend/shared/i18n/en.ts`. No state's label is an enum
+- [x] 4.2 Add every state's label to `src/frontend/shared/i18n/en.ts`. No state's label is an enum
       name.
-- [ ] 4.3 Give `Executing` and `Succeeded` different glyphs **and** different words — not merely
+- [x] 4.3 Give `Executing` and `Succeeded` different glyphs **and** different words — not merely
       different colours. Verify the chip is legible in greyscale.
-- [ ] 4.4 Migrate `src/frontend/features/runs/RunsSection.tsx` onto the shared chip and delete its
+- [x] 4.4 Migrate `src/frontend/features/runs/RunsSection.tsx` onto the shared chip and delete its
       local `StateBadge`, which rendered `{state}` verbatim and painted `Succeeded`/`Executing`/
       `Planning` one green.
-- [ ] 4.5 Grep the frontend for any other local state-to-appearance mapping and migrate or remove
+- [x] 4.5 Grep the frontend for any other local state-to-appearance mapping and migrate or remove
       it, so the shared chip is the only one (`design-contract`).
-- [ ] 4.6 Check the Run detail and the Runs list by eye after the migration: same states, same
+- [x] 4.6 Check the Run detail and the Runs list by eye after the migration: same states, same
       words, nothing regressed to a bare colour.
 
 ## 5. The tree in the shell

@@ -4,8 +4,8 @@ import { t, tCount } from "@/shared/i18n";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
+import { RunStateChip } from "@/shared/ui/state-chip";
 import { formatCost, useRuns } from "./useRuns";
-import type { RunView } from "./types";
 
 /**
  * UC-021 — the loop's output, observable. Automation columns are a client-side join with the
@@ -85,7 +85,7 @@ export function RunsSection({
                           ? `PR #${run.targetChangeNumber}`
                           : `#${run.vendorStoryId}`}
                       </Link>
-                      <StateBadge state={run.state} />
+                      <RunStateChip state={run.state} />
                       {automation ? (
                         <>
                           <Badge variant="secondary">{automation.triggerLabel}</Badge>
@@ -123,19 +123,6 @@ export function RunsSection({
       )}
     </div>
   );
-}
-
-function StateBadge({ state }: { state: RunView["state"] }) {
-  if (state === "Succeeded" || state === "Executing" || state === "Planning") {
-    return <Badge className="bg-success text-success-foreground">{state}</Badge>;
-  }
-  if (state === "AwaitingApproval") {
-    return <Badge className="bg-warning text-warning-foreground">{state}</Badge>;
-  }
-  if (state === "Failed") {
-    return <Badge variant="destructive">{state}</Badge>;
-  }
-  return <Badge variant="outline">{state}</Badge>;
 }
 
 /** Relative for recency, absolute past a day — the content fundamentals' rule. */

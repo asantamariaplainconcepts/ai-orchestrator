@@ -6,8 +6,8 @@ import type { RunView } from "@/features/runs/types";
 import { t } from "@/shared/i18n";
 // Shared with the read-only preview (#232): one chip, one meaning.
 import { GateChip } from "@/shared/ui/gate-chip";
+import { RunStateChip } from "@/shared/ui/state-chip";
 import { cn } from "@/shared/lib/utils";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import {
   DropdownMenu,
@@ -777,60 +777,29 @@ function StoryCard({
   );
 }
 
-/** What the Story's latest Run is doing, and a way in when it is worth watching. */
+/**
+ * What the Story's latest Run is doing, and a way in when it is worth watching.
+ *
+ * The state itself comes from the shared chip (#335), so the board and the Runs list cannot
+ * disagree about what a state looks like. What stays here is the board's own addition: a wait
+ * carries its age, which is a fact about *this* surface's question rather than about the state.
+ *
+ * Its own mapping used to live here, and its fallback branch rendered `run.state` verbatim — which
+ * is the branch `Queued` and `Cancelled` took, so the board has been showing an untranslated enum
+ * name on the most ordinary state a Run has.
+ */
 function RunBadge({ projectId, run }: { projectId: string; run: RunView }) {
   const to = `/projects/${projectId}/runs/${run.id}`;
+  const waiting = run.state === "AwaitingInput" || run.state === "AwaitingApproval";
 
-  if (run.state === "Executing" || run.state === "Planning") {
-    return (
-      <Link to={to}>
-        <Badge className="bg-info text-info-foreground">
-          <span
-            className="size-1.5 animate-pulse rounded-full bg-info-foreground/70"
-            aria-hidden="true"
-          />
-          {t("board.run.executing")}
-        </Badge>
-      </Link>
-    );
-  }
-  if (run.state === "AwaitingInput") {
-    return (
-      <Link to={to}>
-        <Badge className="bg-warning text-warning-foreground">
-          {t("board.run.question")} · {age(run.createdAt)}
-        </Badge>
-      </Link>
-    );
-  }
-  if (run.state === "AwaitingApproval") {
-    return (
-      <Link to={to}>
-        {/* This wait carries its age, and it is the Run's own — BR-007's approval gate, not the
-            boundary's. An unclaimed boundary never carries a clock (BR-006). */}
-        <Badge className="bg-warning text-warning-foreground">
-          {t("board.run.approval")} · {age(run.createdAt)}
-        </Badge>
-      </Link>
-    );
-  }
-  if (run.state === "Failed") {
-    return (
-      <Link to={to}>
-        <Badge variant="destructive">{t("board.run.failed")}</Badge>
-      </Link>
-    );
-  }
-  if (run.state === "Succeeded") {
-    return (
-      <Link to={to}>
-        <Badge className="bg-success text-success-foreground">{t("board.run.succeeded")}</Badge>
-      </Link>
-    );
-  }
   return (
-    <Link to={to}>
-      <Badge variant="outline">{run.state}</Badge>
+    <Link className="inline-flex items-center gap-1" to={to}>
+      <RunStateChip state={run.state} />
+      {/* This wait carries its age, and it is the Run's own — BR-007's approval gate, not the
+          boundary's. An unclaimed boundary never carries a clock (BR-006). */}
+      {waiting ? (
+        <span className="text-muted-foreground text-[10px]">{age(run.createdAt)}</span>
+      ) : null}
     </Link>
   );
 }
