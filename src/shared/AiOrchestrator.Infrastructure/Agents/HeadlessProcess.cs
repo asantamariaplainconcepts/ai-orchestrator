@@ -9,7 +9,7 @@ namespace AiOrchestrator.ServiceDefaults.Agents;
 /// habitat had before sandboxing existed — a host that names no sandbox launcher runs exactly
 /// this.
 /// </summary>
-sealed class LocalAgentProcessHost : IAgentProcessHost
+sealed class LocalAgentProcessHost(RunCheckoutHost? checkouts = null) : IAgentProcessHost
 {
     /// <summary>
     /// This host hands the values to the child; it has no way to authenticate on its behalf.
@@ -31,19 +31,64 @@ sealed class LocalAgentProcessHost : IAgentProcessHost
         // having none (run-previews design D2).
         BuildingBlocks.Agents.RunPreview? preview = null,
         Guid? projectId = null,
-        // Ignored: a child of this process has no sandbox to open a shell in, and the monitor
-        // answers "not hosted here" rather than pretending otherwise (ADR-0021).
+        // No longer ignored (#358, DEC-070). This used to read "a child of this process has no sandbox
+        // to open a shell in", which was true while a terminal required one. A host terminal opens in
+        // the Run's own working directory, so this host is the one place that knows both halves of the
+        // pairing a terminal needs — and, like the sbx host, it publishes rather than keeping it as a
+        // parameter nobody stores.
         Guid? runId = null
     ) =>
-        HeadlessProcess.Run(
+        RunAndPublish(
             fileName,
             arguments,
             workingDirectory,
             environment,
             timeout,
             cancellationToken,
-            onOutput
+            onOutput,
+            runId
         );
+
+    async Task<AgentProcessOutcome> RunAndPublish(
+        string fileName,
+        IReadOnlyList<string> arguments,
+        string workingDirectory,
+        IReadOnlyDictionary<string, string> environment,
+        TimeSpan timeout,
+        CancellationToken cancellationToken,
+        Action<string>? onOutput,
+        Guid? runId
+    )
+    {
+        // Published before the agent starts and removed in `finally`, so "this Run has a terminal" is
+        // true exactly while its agent is running. Null where no ledger is registered — a habitat that
+        // hosts no terminal keeps the behaviour it had, rather than paying for a feature it refuses.
+        var published = runId is not null && checkouts is not null;
+        if (published)
+        {
+            checkouts!.Created(runId!.Value, workingDirectory);
+        }
+
+        try
+        {
+            return await HeadlessProcess.Run(
+                fileName,
+                arguments,
+                workingDirectory,
+                environment,
+                timeout,
+                cancellationToken,
+                onOutput
+            );
+        }
+        finally
+        {
+            if (published)
+            {
+                checkouts!.Gone(runId!.Value);
+            }
+        }
+    }
 
     /// <summary>Nothing of its own to be missing: the CLI check is the whole question here.</summary>
     public Task<AgentHostReadiness> CheckReadiness(CancellationToken cancellationToken) =>

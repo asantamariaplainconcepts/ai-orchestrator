@@ -61,13 +61,13 @@ sealed class SbxRunTerminalHost(
         return new SbxRunTerminal(pty);
     }
 
-    public async Task<IReadOnlyList<LocalSandbox>> List(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<TerminalTarget>> List(CancellationToken cancellationToken)
     {
         var claimed = await SbxSandboxRoster.Claimed(_cli, cancellationToken);
 
         return
         [
-            .. claimed.Select(entry => new LocalSandbox(
+            .. claimed.Select(entry => new TerminalTarget(
                 entry.Name,
                 entry.Status,
                 // Attribution, not identity: null means no Run of this process is using it, which is

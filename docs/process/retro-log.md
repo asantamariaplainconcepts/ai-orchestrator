@@ -4743,3 +4743,43 @@ human read this decision before it merged. The three reflection points below are
 - **ADR:** ADR-0029 is authored *by* this change (closing OPN-008), not graduated from it. The
   graduated finding above is filed as its own issue rather than written as an ADR, per `/aio:sync`'s
   unattended clause.
+
+## 2026-08-13 — local-run-terminal (#358, PR #361)
+
+**Route: `/aio:ship 358`, unattended (DEC-068, ADR-0027), on a blanket approval to run the waves. No
+human read this diff before merge. The three reflection points below are UNCONFIRMED.**
+
+- **Worked:** **Deciding first paid off in code, not just in paperwork.** The temptation was to skip
+  #357 and implement straight away — the gap looked like a composition oversight, and the fix looked
+  like moving two registrations past an early return. Writing the decision first surfaced the actual
+  hazard: `posix_spawn` takes the child's **whole** environment, and the sandbox path deliberately
+  inherits it because the sbx CLI panics without `$HOME`. Behind a microVM that is harmless, since
+  nothing crosses the boundary; on the host there is none, so reusing that path would have handed
+  whoever is typing everything the habitat resolved into the server process — a Connector's credential
+  among it. It would have looked correct in review and been wrong in use. The other pleasant surprise
+  was the opposite of a blocker: `posix_spawn_file_actions_addchdir_np` is **not** variadic, unlike the
+  `ioctl` the same file documents .NET as unable to call, so the working directory was a missing
+  parameter rather than a platform limitation.
+- **Didn't:** **Two of the five new tests passed for the wrong reason first, and the second one is the
+  interesting failure.** The missing-directory refusal did not name the directory, because
+  `addchdir_np` only *records* the action — the path is not resolved until the spawn, so the error
+  surfaced somewhere that said "command not found on PATH". And the environment-leak probe matched the
+  command the **tty echoed back** rather than the shell's reply: a terminal echoes what you type, so
+  waiting for a substring that occurs in the command itself returns before anything has been answered.
+  It reported a pass on the echo. That is now the third time today a test was green for a reason
+  unrelated to its claim, and the only thing that caught any of them was deliberately breaking the
+  thing under test. Separately: **this change has no OpenSpec bundle**, because #357 landed its
+  requirements — so `/aio:sync`'s archive step had nothing to do on a Product change that is not on the
+  spec-less lane, which no rule anticipates.
+- **Next time:** When a test asserts an **absence** — no leak, no inheritance, nothing present — the
+  sentinel must be constructed so it *cannot* appear in the stimulus. Here that meant a marker that
+  reads `probe--end` in the output and `probe-$VAR-end` in the echoed command. An absence test whose
+  sentinel appears in its own input cannot fail, and an assertion that cannot fail is worse than none
+  because it is counted as coverage.
+- **Time invested:** human ~0.1h, agent ~1.4h (wall clock), cost unknown — source: **manual**, the
+  sixth consecutive entry, for the same two reasons (#337 capture, #353 attribution). Six in a row is
+  no longer an anecdote about two defects; it is the state of the measurement DEC-068 rests on.
+- **ADR:** none. ADR-0029 already governs this change and was authored by #357. The absence-test point
+  is worth recording but is its first occurrence in that form; the sync-step gap for a bundle-less
+  Product change is noted on #360's neighbourhood rather than filed separately, since it is the same
+  route under examination there.

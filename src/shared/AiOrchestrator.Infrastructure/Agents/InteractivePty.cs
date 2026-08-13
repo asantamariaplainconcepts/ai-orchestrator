@@ -48,12 +48,32 @@ sealed class InteractivePty : IDisposable
     /// Throws <see cref="AgentProcessHostException"/> when the terminal or the child cannot be
     /// created, because a caller holding a half-open terminal has nothing useful to do with it.
     /// </summary>
+    /// <param name="workingDirectory">
+    /// Where the child starts, or null to inherit this process's. Applied with
+    /// <c>posix_spawn_file_actions_addchdir_np</c> — which, unlike the <c>ioctl</c> this file's resize
+    /// note describes, is <b>not</b> variadic, so .NET can make the call. Required by DEC-070: a host
+    /// terminal opens in the Run's own checkout, never wherever the server happens to be running.
+    /// </param>
+    /// <param name="inheritEnvironment">
+    /// Whether the child receives this process's environment with <paramref name="environment"/>
+    /// overlaid, or <b>only</b> what is named.
+    /// <para>
+    /// True is correct for a sandbox launcher: nothing crosses the sandbox boundary, and the CLI needs
+    /// <c>$HOME</c> — measured, it panics without it. False is required for a terminal on the host
+    /// (DEC-070), where there is no boundary and inheriting would hand a shell whatever the habitat
+    /// resolved into the server's environment, including a resolved credential. Defaulted to true so
+    /// the sandbox callers keep the behaviour they were written against, and the host path opts out
+    /// explicitly rather than depending on a default nobody re-reads.
+    /// </para>
+    /// </param>
     public static InteractivePty Start(
         string fileName,
         IReadOnlyList<string> arguments,
         IReadOnlyDictionary<string, string> environment,
         int columns,
-        int rows
+        int rows,
+        string? workingDirectory = null,
+        bool inheritEnvironment = true
     )
     {
         // openpty takes the initial size, which is the whole reason the size is settled here and
@@ -97,25 +117,51 @@ sealed class InteractivePty : IDisposable
             posix_spawn_file_actions_adddup2(actions, slave, StdOut);
             posix_spawn_file_actions_adddup2(actions, slave, StdErr);
 
+            // The child's own directory, where one is named (DEC-070). Refused rather than silently
+            // started elsewhere: a shell that opens in the wrong place looks like it worked, and the
+            // whole point of the bound is that the reader can trust where they are.
+            if (workingDirectory is { Length: > 0 })
+            {
+                var chdir = posix_spawn_file_actions_addchdir_np(actions, workingDirectory);
+                if (chdir != 0)
+                {
+                    close(master);
+                    close(slave);
+                    throw new AgentProcessHostException(
+                        $"The shell could not be started in '{workingDirectory}'. (rc {chdir} — 2 "
+                            + "means the directory does not exist)"
+                    );
+                }
+            }
+
             // argv[0] is the program's own name by convention, so the command is passed twice.
             var argv = Terminated(pointers, [fileName, .. arguments]);
-            // INHERIT, then overlay — not replace. `posix_spawn` takes the child's whole environment,
-            // where `Process.Start` starts from a copy of this process's; matching HeadlessProcess's
-            // contract ("these entries in addition") is what the callers already assume.
+            // INHERIT, then overlay — not replace, *when the caller asks for it*. `posix_spawn` takes
+            // the child's whole environment, where `Process.Start` starts from a copy of this
+            // process's; matching HeadlessProcess's contract ("these entries in addition") is what the
+            // sandbox callers already assume.
             //
             // Measured the hard way: passing only the caller's entries made the sbx CLI die with
             // `panic: $HOME is not defined` before any sandbox was touched. The CLI runs on THIS
             // machine, so inheriting is also what the sandbox boundary expects — nothing here
             // crosses into the sandbox, which is why SbxSandboxLifecycle hands this seam nothing.
+            //
+            // **A host terminal opts out** (DEC-070). There the inheritance is the hazard rather than
+            // the fix: with no sandbox between the shell and the server, an inherited environment hands
+            // whoever is typing whatever the habitat resolved into this process — a Connector's
+            // credential among it. The caller names what the child gets instead.
             var merged = new Dictionary<string, string>(StringComparer.Ordinal);
 
-            foreach (
-                System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables()
-            )
+            if (inheritEnvironment)
             {
-                if (entry.Key is string key && entry.Value is string value)
+                foreach (
+                    System.Collections.DictionaryEntry entry in Environment.GetEnvironmentVariables()
+                )
                 {
-                    merged[key] = value;
+                    if (entry.Key is string key && entry.Value is string value)
+                    {
+                        merged[key] = value;
+                    }
                 }
             }
 
@@ -133,9 +179,19 @@ sealed class InteractivePty : IDisposable
             {
                 close(master);
                 close(slave);
+                // The working directory is named when one was asked for, because `addchdir_np` only
+                // RECORDS the action — the directory is not resolved until the spawn, so a missing
+                // checkout surfaces here rather than above, and "command not found" would be the wrong
+                // thing to read.
                 throw new AgentProcessHostException(
-                    $"The shell could not be started in the sandbox. (posix_spawnp: rc "
-                        + $"{spawned} for '{fileName}' — 2 means the command was not found on PATH)"
+                    $"The shell could not be started"
+                        + (
+                            workingDirectory is { Length: > 0 }
+                                ? $" in '{workingDirectory}'"
+                                : " in the sandbox"
+                        )
+                        + $". (posix_spawnp: rc {spawned} for '{fileName}' — 2 means the command was "
+                        + "not found on PATH, or the working directory does not exist)"
                 );
             }
 
@@ -298,6 +354,16 @@ sealed class InteractivePty : IDisposable
 
     [DllImport("libc", SetLastError = true)]
     static extern int posix_spawn_file_actions_adddup2(IntPtr actions, int fd, int newfd);
+
+    /// <summary>
+    /// The child's working directory, set as a spawn file action. Present on macOS 10.15+ and glibc
+    /// 2.29+, and — unlike <c>ioctl</c>, which this file's resize note explains .NET cannot call —
+    /// <b>not variadic</b>, so there is no marshalling obstacle. The <c>_np</c> suffix is "non-POSIX":
+    /// it is a platform extension rather than part of the standard, which is acceptable here because
+    /// this type is already Unix-only by design.
+    /// </summary>
+    [DllImport("libc", SetLastError = true)]
+    static extern int posix_spawn_file_actions_addchdir_np(IntPtr actions, string path);
 
     [StructLayout(LayoutKind.Sequential)]
     struct Winsize

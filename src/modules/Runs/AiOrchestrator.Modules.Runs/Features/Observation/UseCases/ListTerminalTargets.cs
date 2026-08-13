@@ -15,7 +15,7 @@ namespace AiOrchestrator.Modules.Runs.Features.Observation.UseCases;
 /// <b>Not <c>IScopedToProject</c>, and that is the whole design question.</b> Every other read here names
 /// a project and lets the pipeline's decorator ask for a role on it. A machine's sandboxes belong to the
 /// machine: the sandbox an earlier process abandoned resolves to no Run and therefore to no project, so
-/// there is no project to scope to. <see cref="MachineSandboxAccess"/> is where that widening is
+/// there is no project to scope to. <see cref="MachineTerminalAccess"/> is where that widening is
 /// reasoned about; this use case only orders the questions.
 /// </para>
 /// <para>
@@ -24,7 +24,7 @@ namespace AiOrchestrator.Modules.Runs.Features.Observation.UseCases;
 /// reported as a fact and the permission is not evaluated when it is false.
 /// </para>
 /// </summary>
-sealed class ListMachineSandboxes : IUseCase
+sealed class ListTerminalTargets : IUseCase
 {
     public static void AddRoutes(IEndpointRouteBuilder endpoints) =>
         endpoints
@@ -33,7 +33,7 @@ sealed class ListMachineSandboxes : IUseCase
                 async (ISender sender, CancellationToken cancellationToken) =>
                     Results.Ok(await sender.Send(new Query(), cancellationToken))
             )
-            .WithName(nameof(ListMachineSandboxes))
+            .WithName(nameof(ListTerminalTargets))
             .WithTags("Runs");
 
     /// <summary>
@@ -83,7 +83,7 @@ sealed class ListMachineSandboxes : IUseCase
                 return new Response(Hosted: false, Permitted: false, Sandboxes: []);
             }
 
-            var permitted = await MachineSandboxAccess.MayAttachSomewhere(
+            var permitted = await MachineTerminalAccess.MayAttachSomewhere(
                 permissions,
                 grants.Value,
                 cancellationToken

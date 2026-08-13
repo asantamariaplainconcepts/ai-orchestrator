@@ -168,7 +168,7 @@ sealed class RunTerminalHub(
         }
 
         if (
-            !await MachineSandboxAccess.MayAttachSomewhere(
+            !await MachineTerminalAccess.MayAttachSomewhere(
                 permissions,
                 grants.Value,
                 Context.ConnectionAborted
