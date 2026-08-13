@@ -1,3 +1,4 @@
+using AiOrchestrator.BuildingBlocks.Identity;
 using AiOrchestrator.BuildingBlocks.Secrets;
 using Aspire.Azure.Security.KeyVault;
 using Azure.Identity;
@@ -28,6 +29,11 @@ public static class SecretResolution
     public static TBuilder AddSecretResolution<TBuilder>(this TBuilder builder)
         where TBuilder : IHostApplicationBuilder
     {
+        // Composed for every habitat and before either branch, because which store holds a named
+        // secret and whether this machine has an identity to borrow are different questions
+        // (DEC-069). A vault says nothing about the second.
+        AddConnectorCredentials(builder);
+
         var vaultUri = builder.Configuration[KeyVaultUriKey];
 
         if (string.IsNullOrWhiteSpace(vaultUri))
@@ -53,6 +59,31 @@ public static class SecretResolution
 
         ResolveConnectionStrings(builder);
         return builder;
+    }
+
+    /// <summary>
+    /// The Connector's own credential seam: one resolver, two sources behind it (BR-010).
+    /// <para>
+    /// The host source is composed <b>only</b> in the self-host posture, on the same discriminator
+    /// that composes the LocalOwner identity and the whole code-source surface. A governed
+    /// deployment therefore has no implementation of it at all — the ability is absent rather than
+    /// present and refused, which is the distinction ADR-0021 draws and ADR-0028 follows: a machine
+    /// its operator owns is not one somebody else pays for or administers.
+    /// </para>
+    /// </summary>
+    static void AddConnectorCredentials(IHostApplicationBuilder builder)
+    {
+        if (IdentityHabitat.IsSelfHost(builder.Configuration))
+        {
+            builder.Services.AddSingleton<IHostCredentialResolver, GitCredentialHelperResolver>();
+        }
+
+        builder.Services.AddSingleton<IConnectorCredentialResolver>(
+            provider => new ConnectorCredentialResolver(
+                provider.GetRequiredService<ISecretResolver>(),
+                provider.GetService<IHostCredentialResolver>()
+            )
+        );
     }
 
     /// <summary>
