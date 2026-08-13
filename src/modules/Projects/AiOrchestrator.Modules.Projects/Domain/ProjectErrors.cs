@@ -14,6 +14,21 @@ static class ProjectErrors
     public static Error NotFound(Guid id) =>
         Error.NotFound("Project.NotFound", $"Project '{id}' was not found.");
 
+    /// <summary>
+    /// #347 — naming a folder is offered only where the host is somebody's own machine (DEC-049).
+    /// NotFound rather than Forbidden, for the reason <c>CodeSourceUnavailable</c> gives: on a
+    /// deployment the step is absent, not gated, and a 403 would advertise a capability that can
+    /// never be granted there. Refused rather than ignored — a silently dropped folder would let a
+    /// caller believe their Project was configured.
+    /// </summary>
+    public static Error FolderNotAvailableHere() =>
+        Error.NotFound(
+            "Project.FolderNotAvailableHere",
+            "This deployment cannot create a Project from a folder — that exists only where the "
+                + "orchestrator runs on a machine its owner controls. Create the Project and "
+                + "configure its Connector with the repository's coordinates instead."
+        );
+
     /// <summary>The deliberate-act guard (#121, design D4), naming what to type.</summary>
     public static Error ArchiveNotConfirmed(string name) =>
         Error.Validation(

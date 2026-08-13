@@ -79,6 +79,7 @@ public sealed class BacklogModule : ModuleBase
         // The Contracts read surface — the owner registers its own implementation.
         services.AddScoped<IStoryReader, StoryReader>();
         services.AddScoped<IConnectorReader, ConnectorReader>();
+        services.AddScoped<IConnectorWriter, ConnectorWriter>();
         services.AddScoped<IChangeFileReader, ChangeFileReader>();
         services.AddScoped<IChangeReader, ChangeReader>();
         services.AddScoped<IStoryWriter, StoryWriter>();
