@@ -131,17 +131,10 @@ sealed class RunTerminalHub(
             Context.ConnectionAborted
         );
 
-        // Pumped on a background task rather than awaited: this call must return so the client can
-        // start typing, and the read blocks until the shell says something.
-        //
-        // `Task.Run`, and not a bare `_ = Pump(...)`. An async method runs synchronously until its
-        // first *suspending* await, and this one's first act is a blocking `Read` — so calling it
-        // directly executes the read on the hub's own invocation thread. Once a send completes
-        // synchronously, as a WebSocket send usually does, the loop returns to a read that blocks
-        // until the shell speaks again and this method never returns: the terminal streams perfectly
-        // while the client still waits for `Open` to resolve. Found by opening a real shell in #311
-        // and watching the surface sit on "Opening a shell…" with a working prompt above it.
-        _ = Task.Run(() => Pump(Clients.Caller, terminal, Context.ConnectionId, runId));
+        // Pumped off this call rather than awaited: it must return so the client can start typing, and
+        // the read blocks until the shell says something. Scheduled through the one helper both entry
+        // points use — see StartPump, which is also where the thread choice is argued.
+        StartPump(() => Pump(Clients.Caller, terminal, Context.ConnectionId, runId));
     }
 
     /// <summary>
@@ -211,9 +204,10 @@ sealed class RunTerminalHub(
             Context.ConnectionAborted
         );
 
-        // `Task.Run` for the reason the Run-keyed path above spells out: the first act of the pump is
-        // a blocking read, and running it on the hub's thread means `OpenSandbox` never returns.
-        _ = Task.Run(() => PumpSandbox(Clients.Caller, terminal, Context.ConnectionId, sandbox));
+        // Off this call for the reason the Run-keyed path spells out: the first act of the pump is a
+        // blocking read, and running it here means `OpenSandbox` never returns. The same helper, so the
+        // two entry points cannot drift into two answers for one question (#330 criterion 2).
+        StartPump(() => PumpSandbox(Clients.Caller, terminal, Context.ConnectionId, sandbox));
     }
 
     /// <summary>Keystrokes. Unchecked deliberately — see below.</summary>
@@ -236,7 +230,7 @@ sealed class RunTerminalHub(
         return base.OnDisconnectedAsync(exception);
     }
 
-    static async Task Pump(
+    static void Pump(
         ISingleClientProxy client,
         IRunTerminal terminal,
         string connection,
@@ -255,11 +249,11 @@ sealed class RunTerminalHub(
                     // The shell ended, or the sandbox went with its Run. Both are how a terminal
                     // finishes, and the client is told so it can say the sandbox is gone rather than
                     // leaving a dead terminal on screen.
-                    await client.SendAsync("ended");
+                    Send(client, "ended");
                     return;
                 }
 
-                await client.SendAsync("output", buffer[..read]);
+                Send(client, "output", buffer[..read]);
             }
         }
         // The tab closed mid-write, or the connection went with it. Each of these is how a terminal
@@ -288,7 +282,7 @@ sealed class RunTerminalHub(
     /// exited, or the sandbox was disposed underneath it, which are one event to whoever is watching
     /// (#311 criterion 6) — differing only in which guard it releases.
     /// </summary>
-    static async Task PumpSandbox(
+    static void PumpSandbox(
         ISingleClientProxy client,
         IRunTerminal terminal,
         string connection,
@@ -304,11 +298,11 @@ sealed class RunTerminalHub(
                 var read = terminal.Read(buffer);
                 if (read == 0)
                 {
-                    await client.SendAsync("ended");
+                    Send(client, "ended");
                     return;
                 }
 
-                await client.SendAsync("output", buffer[..read]);
+                Send(client, "output", buffer[..read]);
             }
         }
         catch (OperationCanceledException)
@@ -329,6 +323,54 @@ sealed class RunTerminalHub(
             AttachedSandboxes.TryRemove(sandbox, out _);
         }
     }
+
+    /// <summary>
+    /// Starts a terminal pump on a thread <b>dedicated to it</b> (#330). One helper, both entry points,
+    /// because two call sites answering one question is how they drift — and any future entry point
+    /// starts its pump here too.
+    /// <para>
+    /// <b>Why not the thread pool.</b> The pool is sized for work that finishes; a pump never does. Its
+    /// first act is a blocking <c>Read</c> that does not return until the shell speaks, and the loop
+    /// blocks again for as long as the terminal lives — so every open terminal permanently occupied a
+    /// pool worker, competing with every request the process serves. The pool grows by one or two
+    /// threads a second, so a burst of terminals could also delay unrelated work from starting.
+    /// </para>
+    /// <para>
+    /// <b>Why not <c>TaskCreationOptions.LongRunning</c>, which is the obvious answer and the wrong
+    /// one.</b> Measured 2026-08-13: <c>Task.Factory.StartNew(Func&lt;Task&gt;, …, LongRunning)</c> runs
+    /// the delegate on a dedicated thread only until its first <i>suspending</i> await. At that point the
+    /// delegate returns its <c>Task</c>, the dedicated thread completes its work item and exits, and
+    /// every continuation — including <b>every subsequent blocking <c>Read</c></b> — resumes on a pool
+    /// worker. A probe recording <c>Thread.CurrentThread.IsThreadPoolThread</c> either side of a
+    /// suspending await reported <c>false</c> before and <c>true</c> after. So <c>LongRunning</c> moves
+    /// the <i>first</i> read off the pool and nothing else, which is almost certainly why #327's
+    /// experiment with it "changed nothing in CI" and was reverted.
+    /// </para>
+    /// <para>
+    /// <b>So the loop is synchronous on a real thread</b>, and the sends block it (see <see cref="Send"/>).
+    /// That is sync-over-async, entered deliberately: this thread exists to be blocked, it would
+    /// otherwise be blocked inside <c>Read</c> anyway, and ASP.NET Core has no
+    /// <c>SynchronizationContext</c> to deadlock against. The cost is one thread per open terminal, which
+    /// is the honest price of a duplex stream that lives as long as somebody is watching it.
+    /// </para>
+    /// </summary>
+    internal static void StartPump(Action pump) =>
+        new Thread(pump.Invoke)
+        {
+            // Background, so a pump blocked on a read that will never return cannot hold up shutdown.
+            IsBackground = true,
+            Name = "run-terminal-pump",
+        }.Start();
+
+    /// <summary>
+    /// Sends on the pump's own thread, blocking until it completes. Blocking is the point: this thread is
+    /// dedicated to one terminal, and awaiting here would hand the rest of the loop — the next blocking
+    /// read — back to the thread pool, which is the whole defect <see cref="StartPump"/> exists to fix.
+    /// </summary>
+    static void Send(ISingleClientProxy client, string method, object? argument = null) =>
+        (argument is null ? client.SendAsync(method) : client.SendAsync(method, argument))
+            .GetAwaiter()
+            .GetResult();
 
     static void Close(string connection)
     {
