@@ -4627,3 +4627,41 @@ merge. The three reflection points below are UNCONFIRMED — nobody confirmed th
   ADR-0026's graduation rule (the second) is not met; recorded here so the second is recognisable. Per
   `/aio:sync`'s unattended clause, no ADR is written on this route regardless — DEC-068 authorises
   shipping code nobody read, not deciding architecture nobody read.
+
+## 2026-08-13 — worktree-repository-root (#338, PR #355)
+
+**Route: `/aio:ship 338`, unattended (DEC-068, ADR-0027). No human read this spec or this diff before
+merge. The three reflection points below are UNCONFIRMED — nobody confirmed them.**
+
+- **Worked:** Running the thing before fixing it found a different and worse defect than the one
+  filed. #338 said the ArchTest *fails* in a worktree; it passes. This repository's worktrees live
+  **inside** the main checkout at `.claude/worktrees/<name>`, so the walk does not run off the
+  filesystem root — it steps past the worktree's `.git` **file** and stops at the main checkout's
+  `.git` **directory**. The actual defect was a **silent false green**:
+  `Terraform_Should_NeverConfigureTheLocalOwner` was validating `main`'s `infra/*.tf` while running
+  from a worktree, so since #331 made worktrees routine, every Terraform change made in one has passed
+  #119's first lock unexamined. Proven behaviourally rather than argued — a violating `.tf` planted in
+  the worktree passes before the fix and fails after it. A red test gets ignored; a green test that
+  read the wrong checkout gets believed.
+- **Didn't:** **The grill claimed to have checked the premise, and had checked two of its three
+  claims.** It confirmed the code location (`DeploymentIdentity_Should_Constraint.cs:40`) and that
+  `.git` is a file in a worktree, then asserted the premise verified — without running the test. The
+  skipped claim was the symptom, and the symptom was the false one. This is the **second consecutive**
+  ADR-0026 filing whose central claim did not hold: #341 asserted that `AGENTS.md` guidance had failed,
+  and `rtk` appeared nowhere in `AGENTS.md` at all. In both cases the fix was unchanged and the real
+  defect was worse, so nothing wrong shipped — but the PR body, commit message and retro all argued
+  from a premise that was false, which is the part that persists.
+- **Next time:** `/aio:grill` should require an asserted **symptom** to have been *observed*, not
+  merely located in the code — the Definition of Ready does not currently distinguish those, and both
+  failures fell exactly in the gap. **ADR-0026's graduation rule is now met** (second occurrence), so
+  an ADR is owed.
+- **Time invested:** human ~0.05h, agent ~0.4h (wall clock), cost unknown — source: **manual**, for
+  the two named reasons that also applied to the previous two entries: capture was not running for
+  this session ([#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337), whose
+  fix binds the next session, not this one) and a `lane:spec-less` change cannot be attributed at all
+  ([#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353)).
+- **ADR:** owed but deliberately **not written**. Per `/aio:sync`'s unattended clause, DEC-068
+  authorises shipping code nobody read and not deciding architecture nobody read, so the graduated
+  finding became [#356](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/356)
+  instead. It is a person's to write on a later change — and it is the third ADR this batch has
+  deferred by that rule, which is itself worth noticing.
