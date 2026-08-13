@@ -107,17 +107,35 @@ if (!hasProxy) {
   if (!existsSync(workflowPath)) {
     check('config read keeps its keys', false, '.claude/workflow.json not found');
   } else {
-    const truth = JSON.parse(readFileSync(workflowPath, 'utf8'));
+    // Compared BYTE FOR BYTE rather than by looking for `holdLabel`. The drop is intermittent —
+    // on the version measured 2026-08-13 this file survives intact — so a presence check passes on
+    // a good day and proves nothing. Equality is deterministic: it holds today and fails the moment
+    // a filter starts reshaping this file, whichever key goes first.
+    const raw = readFileSync(workflowPath, 'utf8');
     const read = asAgentRuns('cat .claude/workflow.json');
-    const survived = read.out.includes('holdLabel') && read.out.includes(truth.holdLabel);
-    check(
-      'config read keeps its keys',
-      survived,
-      survived
-        ? `holdLabel survived (${truth.holdLabel})` +
-          (read.filtered ? ` via '${read.command}'` : ', read unfiltered')
-        : `holdLabel was DROPPED by '${read.command}' — the hold gate reads this file`
-    );
+    const identical = read.out.trimEnd() === raw.trimEnd();
+
+    let detail;
+    if (identical) {
+      detail =
+        `${Buffer.byteLength(raw)} bytes, byte-for-byte` +
+        (read.filtered ? ` via '${read.command}'` : ', read unfiltered');
+    } else {
+      // Name the casualties where the file still parses — "some bytes differ" is not actionable,
+      // and which key vanished is the whole point.
+      let lost = [];
+      try {
+        lost = Object.keys(JSON.parse(raw)).filter((key) => !read.out.includes(`"${key}"`));
+      } catch {
+        // Unparseable either side; the byte mismatch is the finding.
+      }
+      detail =
+        `'${read.command}' did not return this file` +
+        (lost.length ? ` — key(s) DROPPED: ${lost.join(', ')}` : ' — content differs') +
+        '. The hold gate reads it.';
+    }
+
+    check('config read is byte-faithful', identical, detail);
   }
 
   // 3. The other recorded failure. Porcelain exists to be parsed, so a formatted answer is a wrong
