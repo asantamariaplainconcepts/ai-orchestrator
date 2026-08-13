@@ -4542,3 +4542,49 @@ ADR that route may owe is written by a person on a later change.
 - **ADR:** none. The "next time" point is structural and is the kind that recurs, but this is its
   **first** occurrence and ADR-0026's graduation rule is the second — recorded here so the second
   one is recognisable rather than pre-empted.
+
+## 2026-08-13 — filter-proxy-passthrough (#341, PR #352)
+
+**Route: `/aio:ship 341`, unattended (DEC-068, ADR-0027). No human read this spec or this diff before
+merge. The three reflection points below are UNCONFIRMED — nobody confirmed them.**
+
+- **Worked:** Negative-testing caught what reading could not. The verifier shipped here was **vacuous
+  twice** before it worked, and both versions looked correct: the first ran its commands with
+  `execSync` inside Node, which bypasses the Claude Code `PreToolUse` hook entirely, so every check
+  compared a command with itself and returned three confident greens; the second resolved the rewrite
+  properly but used `execFileSync`, which throws on any non-zero status, and `rtk rewrite` exits **3**
+  for a rewrite-with-prompt — so the catch reported "no rewrite" and the guard could be deleted with
+  everything still passing. Only `spawnSync` plus an explicit status check made the thing capable of
+  failing, proven by removing the guard and watching it report `git reported 2 path(s), 'rtk git diff
+  --name-only …' reported 3 and added prose decoration`, exit 1. A check that cannot fail is worse
+  than no check, and the only way that was discovered was by deliberately breaking the thing it
+  guards (ADR-0004, applied to a test rather than to infrastructure).
+- **Didn't:** The issue's own premise was wrong, and it took a `grep` to notice. #341 states that
+  *"`AGENTS.md` guidance and three retro entries have not prevented recurrence"* — but `rtk` appeared
+  **nowhere** in `AGENTS.md`. The guidance only ever existed in retro entries, which are read after
+  the fact, so the conclusion drawn from its failure ("more prose is not the missing part") was drawn
+  from an instruction that was never in the place an agent reads before acting. The remedy still
+  holds and is stronger for it, but a filed finding was carried forward for three changes without
+  anyone checking its central claim. Separately, the fix that actually protects this repository lives
+  **outside** it — a passthrough list in the proxy's own config on one machine — and a fresh clone
+  inherits none of it; the committed verifier is the only thing that makes that absence visible
+  rather than silent.
+- **Next time:** When a retro finding claims an existing instruction failed, **verify the instruction
+  exists** before designing around its failure. Cheap (`grep`), and here it changed the shape of the
+  work: the deliverable was closing a gap, not replacing a defence. Second-order: a change whose real
+  fix is out-of-repo should be required to ship the check that detects its absence — which this one
+  did, but by judgement rather than by rule.
+- **Time invested:** human ~0.05h, agent ~1.0h (wall clock), cost unknown — source: **manual**, and
+  broken for two independent reasons, both named rather than absorbed. (1) `OTEL_EXPORTER_OTLP_ENDPOINT`
+  was unset when this session's client started, so nothing was exported at all —
+  [#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337), whose own setting
+  half was fixed *during* this session and therefore binds only the next one; `usage.jsonl` holds
+  **zero** rows for session `254e60f3…`. (2) Even with capture working, this change could not have
+  been attributed: `map-session-change.mjs` keys `change` off a directory under `openspec/changes/`,
+  which a `lane:spec-less` change never has —
+  [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353), filed from this sync.
+- **ADR:** none. The reflections above are structural, and the keying defect is the kind that recurs,
+  but per `/aio:sync`'s unattended clause DEC-068 authorises shipping code nobody read and **not**
+  deciding architecture nobody read — so the finding became
+  [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353) (ADR-0026) instead.
+  The ADR this may owe is written by a person on a later change.
