@@ -89,7 +89,7 @@ sealed class ConfigureConnector : IUseCase
         string Vendor,
         string Owner,
         string Repository,
-        string SecretName,
+        string? SecretName,
         string? CodeRepository,
         DateTimeOffset? SecretSetAt,
         string? PromptDirectory,
@@ -204,7 +204,7 @@ sealed class ConfigureConnector : IUseCase
     internal sealed class Handler(
         BacklogDbContext database,
         IEnumerable<IBacklogConnector> connectors,
-        ISecretResolver secrets,
+        IConnectorCredentialResolver credentials,
         ISecretStore store,
         IConfiguration configuration,
         TimeProvider clock
@@ -257,17 +257,37 @@ sealed class ConfigureConnector : IUseCase
             var named = !string.IsNullOrWhiteSpace(command.SecretName);
             var reusing = !supplied && !named;
 
+            // Whether this configuration reaches the vendor as the machine (DEC-069 / ADR-0028).
+            // Decided here, once, from the posture and what is stored — never inferred later from an
+            // absent secret name, which is how a governed deployment would end up borrowing an
+            // identity it must never have.
+            var onHostPath = false;
+
             if (reusing)
             {
-                // Nothing stored to fall back on: the refusal reads as it always did.
                 if (connector is null)
                 {
-                    return BacklogErrors.CredentialRequired();
-                }
+                    // A self-host deployment may say "neither" and mean it: the host path is the
+                    // third way to satisfy this rule, and it exists only here. A governed
+                    // deployment still has nothing to verify against, and refuses as it always did.
+                    if (!IdentityHabitat.IsSelfHost(configuration))
+                    {
+                        return BacklogErrors.CredentialRequired();
+                    }
 
-                // The derived name is a function of the vendor, so a switch has no credential to keep.
-                if (connector.Vendor != vendor)
+                    onHostPath = true;
+                }
+                else if (connector.AuthenticatesAsHost)
                 {
+                    // Already on the host path: reconfiguring keeps it, and the vendor check below
+                    // does not apply — no secret name binds this credential to the old vendor, so
+                    // there is nothing that cannot vouch for the new one.
+                    onHostPath = true;
+                }
+                else if (connector.Vendor != vendor)
+                {
+                    // The derived name is a function of the vendor, so a switch has no credential
+                    // to keep.
                     return BacklogErrors.CredentialRequiredForVendor(
                         connector.Vendor.ToString(),
                         vendor.ToString()
@@ -285,7 +305,8 @@ sealed class ConfigureConnector : IUseCase
             }
 
             var secretName =
-                supplied ? ConnectorSecret.NameFor(command.ProjectId, vendor)
+                onHostPath ? null
+                : supplied ? ConnectorSecret.NameFor(command.ProjectId, vendor)
                 : reusing ? connector!.SecretName
                 : command.SecretName!;
 
@@ -293,7 +314,7 @@ sealed class ConfigureConnector : IUseCase
             {
                 try
                 {
-                    await store.Store(secretName, command.AccessToken!, cancellationToken);
+                    await store.Store(secretName!, command.AccessToken!, cancellationToken);
                 }
                 catch (SecretStoreUnavailableException exception)
                 {
@@ -305,14 +326,25 @@ sealed class ConfigureConnector : IUseCase
             // verifying with the value we just read back proves the round trip, so a store that
             // truncated it or a habitat whose write did not take is caught here and not at the
             // first poll (design D3).
+            var reference = onHostPath
+                ? CredentialReference.Host(VendorCredentialHosts.For(vendor))
+                : CredentialReference.Named(secretName!);
+
             string token;
             try
             {
-                token = await secrets.Resolve(secretName, cancellationToken);
+                token = (await credentials.Resolve(reference, cancellationToken)).Token;
             }
             catch (SecretNotFoundException)
             {
-                return BacklogErrors.SecretNotFound(secretName);
+                return BacklogErrors.SecretNotFound(secretName!);
+            }
+            catch (HostCredentialUnavailableException unavailable)
+            {
+                // Refused before anything is stored, like every other credential failure here: a
+                // Connector that exists is one that works (UC-004), and a machine that cannot say
+                // who it is has not earned one.
+                return BacklogErrors.HostCredentialUnavailable(unavailable.Message);
             }
 
             var coordinates = new BacklogCoordinates(command.Owner, command.Repository);
@@ -336,19 +368,32 @@ sealed class ConfigureConnector : IUseCase
 
             if (connector is null)
             {
-                connector = Connector.Create(
-                    command.ProjectId,
-                    vendor,
-                    command.Owner,
-                    command.Repository,
-                    secretName
-                );
+                connector = onHostPath
+                    ? Connector.CreateOnHostCredential(
+                        command.ProjectId,
+                        vendor,
+                        command.Owner,
+                        command.Repository
+                    )
+                    : Connector.Create(
+                        command.ProjectId,
+                        vendor,
+                        command.Owner,
+                        command.Repository,
+                        secretName!
+                    );
                 database.Connectors.Add(connector);
             }
             else
             {
                 // At most one Connector per Project: reconfigure in place rather than add.
-                connector.Reconfigure(vendor, command.Owner, command.Repository, secretName);
+                connector.Reconfigure(
+                    vendor,
+                    command.Owner,
+                    command.Repository,
+                    secretName,
+                    onHostPath
+                );
             }
 
             if (supplied)

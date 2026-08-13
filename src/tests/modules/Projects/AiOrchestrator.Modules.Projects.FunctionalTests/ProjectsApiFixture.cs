@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Persistence;
 using AiOrchestrator.SharedFunctionalTests;
@@ -37,6 +38,16 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
     internal StubPromptDirectoryWriter Directories { get; }
 
     /// <summary>
+    /// What this machine says about a named folder (#347). Faked at the seam the create command
+    /// actually calls, so the test decides what the folder is without needing a real repository on
+    /// the runner — which is also what lets the four named checks be exercised at all.
+    /// </summary>
+    internal StubLocalCodeWorkspace Folders { get; } = new();
+
+    /// <summary>The Connector write a named folder produces, at its Contracts seam.</summary>
+    internal StubConnectorWriter Connectors { get; } = new();
+
+    /// <summary>
     /// Mutable stub in a shared fixture, so it is restored here — the leak this hook exists for
     /// (#13). A document one class seeded and never cleared would make another class's "you do not
     /// have this starter yet" quietly wrong.
@@ -50,6 +61,8 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
         Connector.Reset();
         Workspace.Reset();
         Directories.Reset();
+        Folders.Reset();
+        Connectors.Reset();
         await base.ResetDatabase();
     }
 
@@ -69,7 +82,83 @@ public sealed class ProjectsApiFixture : ApiServiceFixtureBase
             services.AddSingleton<ICodeWorkspace>(Workspace);
             services.RemoveAll<BuildingBlocks.Secrets.ISecretResolver>();
             services.AddSingleton<BuildingBlocks.Secrets.ISecretResolver>(new StubSecretResolver());
+            services.RemoveAll<ILocalCodeWorkspace>();
+            services.AddSingleton<ILocalCodeWorkspace>(Folders);
+            services.RemoveAll<IConnectorWriter>();
+            services.AddSingleton<IConnectorWriter>(Connectors);
         });
+    }
+}
+
+/// <summary>
+/// What this machine reports about a named folder (#347). Only <c>Inspect</c> is scripted: the
+/// create flow calls nothing else, and a stub that pretended to prepare checkouts would invite a
+/// test to assert something this seam is not being used for here.
+/// </summary>
+sealed class StubLocalCodeWorkspace : ILocalCodeWorkspace
+{
+    public PathInspection Inspection { get; set; } = Repository("git@github.com:acme/portal.git");
+
+    public static PathInspection Repository(string? origin) =>
+        new(
+            IsDirectory: true,
+            IsGitRepository: true,
+            Branch: "main",
+            IsClean: true,
+            OriginUrl: origin
+        );
+
+    public void Reset() => Inspection = Repository("git@github.com:acme/portal.git");
+
+    public Task<PathInspection> Inspect(
+        string path,
+        CancellationToken cancellationToken = default
+    ) => Task.FromResult(Inspection);
+
+    public Task<ErrorOr<LocalWorkspace>> Prepare(
+        string path,
+        string branch,
+        CancellationToken cancellationToken = default
+    ) => throw new NotSupportedException("The create flow never prepares a checkout.");
+
+    public Task<ErrorOr<bool>> Conclude(
+        LocalWorkspace workspace,
+        string commitMessage,
+        bool succeeded,
+        CancellationToken cancellationToken = default
+    ) => throw new NotSupportedException("The create flow never concludes a checkout.");
+}
+
+/// <summary>
+/// The Connector a named folder produces, recorded rather than written. <see cref="Refusal"/> is
+/// what lets the compensating delete be exercised — the one path that must not leave a Project
+/// behind.
+/// </summary>
+sealed class StubConnectorWriter : IConnectorWriter
+{
+    public List<LocalFolderConnector> Created { get; } = [];
+
+    public Error? Refusal { get; set; }
+
+    public void Reset()
+    {
+        Created.Clear();
+        Refusal = null;
+    }
+
+    public Task<ErrorOr<Success>> CreateFromLocalFolder(
+        Guid projectId,
+        LocalFolderConnector connector,
+        CancellationToken cancellationToken = default
+    )
+    {
+        if (Refusal is { } refusal)
+        {
+            return Task.FromResult<ErrorOr<Success>>(refusal);
+        }
+
+        Created.Add(connector);
+        return Task.FromResult<ErrorOr<Success>>(Result.Success);
     }
 }
 
@@ -122,7 +211,7 @@ sealed class StubConnectorReader : IConnectorReader
             "GitHub",
             "acme",
             "portal",
-            "acme-pat",
+            CredentialReference.Named("acme-pat"),
             "Repository",
             null
         );

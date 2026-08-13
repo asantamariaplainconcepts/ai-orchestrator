@@ -17,7 +17,7 @@ namespace AiOrchestrator.Modules.Projects.Features.Automations;
 /// </summary>
 sealed class StarterInstaller(
     IConnectorReader connectors,
-    ISecretResolver secrets,
+    IConnectorCredentialResolver credentials,
     ICodeWorkspace workspace
 )
 {
@@ -67,12 +67,26 @@ sealed class StarterInstaller(
             return StarterInstallErrors.NoConnector("this project has no Connector");
         }
 
+        if (connector.Credential is not { } credential)
+        {
+            return StarterInstallErrors.NoConnector(
+                "this project's Connector names no credential — reconfigure it before installing "
+                    + "starter prompts"
+            );
+        }
+
         string token;
         try
         {
-            token = await secrets.Resolve(connector.SecretName, cancellationToken);
+            // Through the one seam, so a host-path Connector installs starter prompts as the
+            // machine exactly as it reads Stories (DEC-069).
+            token = (await credentials.Resolve(credential, cancellationToken)).Token;
         }
         catch (SecretNotFoundException exception)
+        {
+            return StarterInstallErrors.NoConnector(exception.Message);
+        }
+        catch (HostCredentialUnavailableException exception)
         {
             return StarterInstallErrors.NoConnector(exception.Message);
         }

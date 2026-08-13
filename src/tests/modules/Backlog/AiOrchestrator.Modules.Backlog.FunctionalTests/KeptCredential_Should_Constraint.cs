@@ -49,7 +49,7 @@ public class KeptCredential_Should_Constraint(BacklogApiFixture fixture) : IAsyn
             )
         ).EnsureSuccessStatusCode();
 
-    async Task<(string SecretName, string? PromptDirectory, string Repository)> Stored()
+    async Task<(string? SecretName, string? PromptDirectory, string Repository)> Stored()
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<BacklogDbContext>();
