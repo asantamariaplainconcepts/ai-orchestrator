@@ -66,13 +66,13 @@
 
 ## 6. The portal
 
-- [ ] 6.1 Add the folder input to the add-Project form, gated on the deployment capabilities read
+- [x] 6.1 Add the folder input to the add-Project form, gated on the deployment capabilities read
       (never a client-derived posture), with its explanation beside it.
-- [ ] 6.2 Show the derived coordinates as editable values, and the named failure where derivation
+- [x] 6.2 Show the derived coordinates as editable values, and the named failure where derivation
       failed.
-- [ ] 6.3 State the permission requirement honestly on the host path — what this configuration
+- [x] 6.3 State the permission requirement honestly on the host path — what this configuration
       requires, not what the credential holds (D6).
-- [ ] 6.4 Every string through the typed i18n catalogue; kit primitives and Platform tokens only.
+- [x] 6.4 Every string through the typed i18n catalogue; kit primitives and Platform tokens only.
 - [ ] 6.5 Frontend tests for the posture gating and the four named failures.
 
 ## 7. Verification — the CI-equivalent gates
