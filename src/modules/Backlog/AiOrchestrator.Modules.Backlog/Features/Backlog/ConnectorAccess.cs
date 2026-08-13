@@ -16,7 +16,7 @@ namespace AiOrchestrator.Modules.Backlog.Features.Backlog;
 sealed class ConnectorAccess(
     BacklogDbContext database,
     IEnumerable<IBacklogConnector> connectors,
-    ISecretResolver secrets
+    IConnectorCredentialResolver credentials
 )
 {
     public async Task<ErrorOr<ConnectorContext>> Resolve(
@@ -44,22 +44,37 @@ sealed class ConnectorAccess(
             );
         }
 
+        // Which source is the Connector's own answer (DEC-069), so the poller and this cannot
+        // drift into two readings of one row.
+        var reference = connector.Credential();
+        if (reference is null)
+        {
+            return BacklogErrors.SecretNotFound(connector.SecretName ?? string.Empty);
+        }
+
         try
         {
-            var token = await secrets.Resolve(connector.SecretName, cancellationToken);
+            var credential = await credentials.Resolve(reference, cancellationToken);
             return new ConnectorContext(
                 implementation,
                 new BacklogCoordinates(connector.Owner, connector.Repository),
-                token
+                credential.Token
             )
             {
                 PromptDirectory = connector.PromptDirectory,
                 CodeSource = connector.CodeSource,
+                CredentialSource = credential.Source,
             };
         }
         catch (SecretNotFoundException)
         {
-            return BacklogErrors.SecretNotFound(connector.SecretName);
+            return BacklogErrors.SecretNotFound(connector.SecretName ?? string.Empty);
+        }
+        catch (HostCredentialUnavailableException unavailable)
+        {
+            // Named separately from a missing secret because the two have nothing in common to
+            // fix: one is a value nobody stored, the other is a machine nobody logged in.
+            return BacklogErrors.HostCredentialUnavailable(unavailable.Message);
         }
     }
 }
@@ -85,4 +100,12 @@ sealed record ConnectorContext(
     /// every call site mention a value most of them have no use for.
     /// </summary>
     public CodeSource CodeSource { get; init; }
+
+    /// <summary>
+    /// Which identity this call authenticates as — the named secret, or the host's credential
+    /// helper and the host it was asked about. Carried so a record of the call can name it rather
+    /// than leave it to inference (ADR-0028; BR-014), which is exactly what
+    /// <c>IAgentProcessHost.CredentialSource</c> already does for the agent's own process.
+    /// </summary>
+    public CredentialSource? CredentialSource { get; init; }
 }

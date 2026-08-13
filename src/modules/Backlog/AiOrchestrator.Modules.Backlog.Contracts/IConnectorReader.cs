@@ -18,7 +18,7 @@ public sealed record ConnectorSnapshot(
     string Vendor,
     string Owner,
     string Repository,
-    string SecretName,
+    string? SecretName,
     string CodeSource,
     string? LocalPath
 )
