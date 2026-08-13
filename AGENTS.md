@@ -115,6 +115,9 @@ archive at sync.
   unvalidated proposal; no exceeding the WIP limit; no merge outside `/aio:sync`.
 - **Verify infrastructure claims by exercising them** — a config existing or a step passing once
   is not evidence it works now (Phase 1's E2E lane proved this twice).
+- **Don't trust filtered command output where it gates a decision** — a config read, `git` porcelain,
+  a build or test verdict. A filtering proxy can drop content and still exit 0; re-run under
+  `rtk proxy` when the exact bytes matter. See [A filtering command proxy can lie to you](#a-filtering-command-proxy-can-lie-to-you-341).
 - **Assert your worktree** (`git rev-parse --show-toplevel` matches the session directory) before
   any mutating git batch.
 - **Confirm shared-state actions** (issues, labels, PRs, retro log) before executing them.
@@ -124,6 +127,43 @@ archive at sync.
   skills against `.claude/skills/writing-great-skills/`.
 - **Append-only history**: never rewrite retro entries or accepted ADRs; supersede.
 
+## A filtering command proxy can lie to you (#341)
+
+Some machines rewrite an agent's shell commands through a token-saving proxy (`rtk`, via a global
+Claude Code hook). **It sometimes drops content while still exiting 0**, and the truncated result
+stays syntactically valid — so nothing signals the loss. This is not hypothetical; it is recorded
+four times in [`docs/process/retro-log.md`](docs/process/retro-log.md):
+
+| What was run | What came back | What it nearly caused |
+|---|---|---|
+| `cat .claude/workflow.json` | the file **without `holdLabel`** | hardcoding `hitl`, or skipping the hold — breaking the gate that stops work proceeding without a person |
+| `git diff --name-only origin/main...HEAD > file` | formatted prose with a `--- Changes ---` header | a branch-overlap check computing **0** changed files where there were **23** |
+| `rtk pnpm build` | success | a broken build reported as green |
+| `rtk prettier --check` | clean | a non-zero exit read as passing |
+
+**The rule.** When a command's output *gates a decision* — a config read, `git` porcelain, a build or
+test result you are about to act on — you must know the bytes are the command's own. Verify:
+
+```bash
+node .config/proxy/verify-command-proxy.mjs
+```
+
+It reproduces the two recorded failures rather than reading configuration, because a green config
+proves nothing here (ADR-0004): the proxy's passthrough list is a **token-wise prefix match with no
+regex**, so a pattern can look correct and match nothing at all.
+
+**What the passthrough list cannot cover** — for these, `rtk proxy <cmd>` is the only guard, and it
+stays a discipline rather than a setting:
+
+- a flag carrying a value (`git log --format=%H`) — only whole tokens match;
+- a redirection (`> file`) or a pipe into a parser (`| jq`, `| wc`, `| comm`) — which is exactly how
+  the 23-files-read-as-0 failure happened;
+- a lossy exit 0 from a build or test filter.
+
+**Do not edit the hook script** to fix this. The proxy hashes its own hook and refuses to execute if
+it changed, which silently disables every rewrite — the same class of invisible failure, in the
+opposite direction. Narrow `[hooks] exclude_commands` in the proxy's config instead.
+
 ## Telemetry
 
 Retro time comes from OpenTelemetry data captured locally. **Check it works before starting a
@@ -132,5 +172,8 @@ change**, not at the retro — nothing recovers telemetry that was never written
 ```bash
 node .config/otel/verify-telemetry.mjs
 ```
+
+The endpoint must be exported from **`~/.zshenv`**, not `~/.zshrc`: zsh reads `.zshrc` only for
+interactive shells, so a non-interactive client inherits nothing and the check still reads `UNSET`.
 
 Setup and the known desktop-client limitation: [docs/process/telemetry-setup.md](docs/process/telemetry-setup.md).
