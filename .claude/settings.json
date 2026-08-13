@@ -20,6 +20,10 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR/.config/otel/map-session-change.mjs\""
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.config/otel/verify-telemetry.mjs\" --preflight"
           }
         ]
       }

@@ -166,8 +166,16 @@ opposite direction. Narrow `[hooks] exclude_commands` in the proxy's config inst
 
 ## Telemetry
 
-Retro time comes from OpenTelemetry data captured locally. **Check it works before starting a
-change**, not at the retro — nothing recovers telemetry that was never written:
+Retro time comes from OpenTelemetry data captured locally. Nothing recovers telemetry that was never
+written, so the check **runs itself at session start** (`--preflight`, wired into `SessionStart` in
+`.claude/settings.json`) rather than relying on anyone remembering it: silent when healthy, loud with
+the failing check and its remedy when not. It **never blocks** — the cost is a lost measurement, not
+an incorrect change.
+
+The instruction to check it manually lived here before and did not work: it was in place for both of
+the occurrences it was meant to prevent (#331, #332), and #332 lost all of its telemetry anyway.
+
+For the full report at any time:
 
 ```bash
 node .config/otel/verify-telemetry.mjs
