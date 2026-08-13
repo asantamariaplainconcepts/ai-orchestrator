@@ -4588,3 +4588,42 @@ merge. The three reflection points below are UNCONFIRMED — nobody confirmed th
   deciding architecture nobody read — so the finding became
   [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353) (ADR-0026) instead.
   The ADR this may owe is written by a person on a later change.
+
+## 2026-08-13 — telemetry-preflight (#337, PR #354)
+
+**Route: `/aio:ship 337`, unattended (DEC-068, ADR-0027). No human read this spec or this diff before
+merge. The three reflection points below are UNCONFIRMED — nobody confirmed them.**
+
+- **Worked:** The defect was partly in the remedy text, and fixing that was most of the value. The old
+  wording told the reader to *"set it in the shell profile the app inherits"* — true, useless, and the
+  direct cause of this fix's own first failed attempt, which put the export in `~/.zshrc` and watched
+  the check keep reporting `UNSET`. zsh reads `.zshrc` only for interactive shells, so a
+  non-interactive client inherits nothing. The remedy now names the file, the anti-file, and the
+  reason. Both branches were then exercised rather than only the happy one: healthy prints one line
+  and exits 0, endpoint-unset prints the failing check and its remedy and **still** exits 0.
+- **Didn't:** **A `SessionStart` hook cannot be exercised by the session that writes it.** The script
+  was verified directly, and the exact configured command string was verified with
+  `CLAUDE_PROJECT_DIR` expanded, both paths — but whether the client actually fires this entry and
+  surfaces its stdout is **unverified**, because doing so requires a session that starts after the
+  change exists. That is precisely ADR-0001's failure mode (shipping a habitat nobody ran), reached by
+  a route that has no way to avoid it from inside the change. The same structural fact applies to the
+  fix itself: the client reads `OTEL_EXPORTER_OTLP_ENDPOINT` at startup, so the session that fixed the
+  variable is not the session that benefits — this change ships unmeasured for the reason it exists to
+  remove, the third consecutive entry to report `manual`.
+- **Next time:** A change whose deliverable is **read at process start** (an env var, a `SessionStart`
+  hook, a client setting) should state in its own PR that it takes effect on the *next* session, and
+  the following change's retro should confirm it fired. Otherwise "fixed" and "verified" get conflated
+  in the record, which is the same conflation ADR-0004 exists to prevent — and here the conflation is
+  invited by the change's own shape rather than by carelessness.
+- **Time invested:** human ~0.05h, agent ~0.5h (wall clock), cost unknown — source: **manual**, for
+  both of the reasons this change and its predecessor name. (1) `usage.jsonl` was last written
+  2026-08-12T14:36Z and holds **zero** rows for session `254e60f3…`: the endpoint was unset when this
+  client started, which is [#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337)
+  itself. (2) Even with capture working this change could not be attributed, because
+  `map-session-change.mjs` keys `change` off a directory under `openspec/changes/` that a
+  `lane:spec-less` change never creates —
+  [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353).
+- **ADR:** none. The "next time" point is structural and this is its **first** clear occurrence, so
+  ADR-0026's graduation rule (the second) is not met; recorded here so the second is recognisable. Per
+  `/aio:sync`'s unattended clause, no ADR is written on this route regardless — DEC-068 authorises
+  shipping code nobody read, not deciding architecture nobody read.
