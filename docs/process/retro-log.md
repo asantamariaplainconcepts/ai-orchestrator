@@ -4377,3 +4377,72 @@ own rule — read the thing the claim is about — extended from load-bearing *c
 *harness assumptions*. No issue filed and no new ADR: this is the first occurrence, and ADR-0026's
 graduation rule is the second. The `gh pr list --search` staleness is likewise recorded here rather
 than filed, for the same reason.
+
+## 2026-08-13 — ship-a-change-unattended (#343)
+
+**Time:** human ~0.5h (source: **manual**, per
+[ADR-0025](../adr/0025-human-time-is-recorded-by-a-person-never-derived-from-telemetry.md) — human
+time is recorded, never derived); agent time **unmeasured**. Manual **because capture is broken**, not
+because the change predates telemetry. `verify-telemetry.mjs` fails the same single check the last
+three entries named: `OTEL_EXPORTER_OTLP_ENDPOINT` is UNSET, so exports go to the OTLP default port
+rather than this project's collector. The session is mapped in `.telemetry/sessions.jsonl`
+(`a51a66a2…` → this change) and `usage.jsonl` holds **zero** matching datapoints; its last write was
+2026-08-12T14:36, before this work began at 21:48. No cost or token figure is reported because there
+is none. This is the **fourth consecutive** change to lose its measurement to already-tracked
+[#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337) (open) — the ADR-0026
+filing worked, the fix has not happened yet.
+
+**What worked: the grill closed a decision instead of routing around a rule.** The request — propose,
+implement and sync with no hold — collided head-on with two locked requirements of
+`openspec/specs/workflow-commands/spec.md`: *the hold is a refusal, and no command ever clears it*,
+and *clearing the hold is the approval*. The collision was surfaced in the grill's first response
+rather than met at implementation, and seven answers across two question clusters turned it into a
+recorded decision (ADR-0027, DEC-068) instead of an exception. The mechanism that resulted preserves
+the invariant **literally**: `/aio:ship` applies no hold on its happy path, so nothing ever clears
+one. RULE-006's instinct — no proposing on a guess — applied to a decision the owner could simply
+make, once it was named.
+
+**What worked: the design changed while it was still free to change.** The proposal first said
+`/aio:ship` would orchestrate the skills directly. Writing `design.md` killed that: it would force
+sync's load-bearing orderings — CI-green before the `[skip ci]` commit, lint before merge — into a
+second file, which is ADR-0003's exact failure and #202's four extra days of red. Reuse-by-invocation
+replaced it, and the result is checkable: `git diff --numstat` shows each of the three staged command
+files replaced **exactly one line**, the "Never remove the hold" guardrail, strengthened rather than
+weakened.
+
+**What didn't: [#341](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/341) was
+filed one change ago, and this change walked straight into it.** #335's entry recorded that the
+filtering command proxy makes `git diff --name-only` come back as prose so a branch-overlap check
+reads as zero files, and filed the issue. Two verifications here were then run through exactly that
+hazard: `rg` reported **no** `hitl` outside `.claude/workflow.json` (≈69 lines contain it, including
+DEC-067, `05-business-rules.md` and `StoryHold.cs`), and `git diff | grep '^-'` reported **no** removed
+lines (there was one per file). Both failed in the direction that reads *clean*, which is the whole
+danger — a check that under-reports looks identical to a check that passed. Redone with a plain
+reader, and `tasks.md` now forbids `rg` for that scan. Fourth occurrence of this masking, with the
+rule already in this log **and** an open issue: prose plus a filed issue did not prevent it, and the
+untaken remedy is mechanical.
+
+**What didn't: the starter mirror was found at verification, not at proposal.**
+`src/modules/Projects/.../Starter/workflow/` ships byte-identical copies of the six `/aio:*` command
+files — all six verified identical to `origin/main` immediately before this change edited three of
+them. Nothing tests that identity, a gap #323's retro named and this change rediscovered at task 5.2.
+Not mirroring is the right call (product scope is out of #343, and shipping an unreviewed-merge route
+into other people's repositories is a bigger decision than ADR-0027 made — ADR-0021's habitat logic),
+but "deliberate" was established *after* the edits rather than in the spec. Second occurrence of the
+same structural gap, so it leaves this log as
+[#346](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/346) per ADR-0026.
+
+**One change next time:** a change that edits a `/aio:*` command file carries a **mirror task in
+`tasks.md` at proposal time** — the starter copies have no test gating their identity, so the check
+belongs in the plan, where spec review can see it, not in the verification pass where it is a lucky
+catch.
+
+**Route:** this change landed through the **staged** path — both holds applied, both cleared by a
+person — which is deliberate: a human read the ADR that authorises the unattended route before that
+route existed. `/aio:ship` is **not** exercised end to end by this change; 6 of the issue's 15
+acceptance criteria first come true on a real unattended run.
+
+**ADR:** none new. ADR-0027 (a change may reach `main` unreviewed, on one explicit invocation) is
+authored *by* this change rather than graduated from it. Both "didn't" findings name concrete remedies
+already tracked as issues (#341, #346), and #335 established the precedent that more prose is not the
+missing part where ADR-0026 already governs.
