@@ -243,7 +243,9 @@ sealed class HoldConversation : IUseCase
                 conversation.Id,
                 new ConversationContext(
                     command.ProjectId,
-                    connector.SecretName,
+                    // Null on the host path: there is no secret to name, and the agent reaches the
+                    // vendor as the machine's own tooling already does (DEC-069).
+                    connector.Credential?.SecretName,
                     new CodeCoordinates(connector.Owner, connector.Repository),
                     storyContext
                 ),

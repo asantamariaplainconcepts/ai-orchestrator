@@ -1,4 +1,5 @@
 using AiOrchestrator.BuildingBlocks.Agents;
+using AiOrchestrator.BuildingBlocks.Secrets;
 using AiOrchestrator.Modules.Backlog.Contracts;
 using AiOrchestrator.Modules.Projects.Persistence;
 using AiOrchestrator.SharedFunctionalTests;
@@ -122,7 +123,7 @@ sealed class StubConnectorReader : IConnectorReader
             "GitHub",
             "acme",
             "portal",
-            "acme-pat",
+            CredentialReference.Named("acme-pat"),
             "Repository",
             null
         );

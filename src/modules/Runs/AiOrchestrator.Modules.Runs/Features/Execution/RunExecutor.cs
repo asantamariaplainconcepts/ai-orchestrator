@@ -24,6 +24,9 @@ sealed class RunExecutor(
     IStoryWriter storyWriter,
     IDocumentReader documents,
     Conversation.ConversationGate conversationGate,
+    IConnectorCredentialResolver credentials,
+    // Still needed beside the Connector's own seam: the AI credential is a genuinely named secret
+    // (#244), unrelated to how the vendor is reached, and the host path says nothing about it.
     ISecretResolver secrets,
     IAgentRuntimeSelector runtimes,
     ICodeWorkspace workspace,
@@ -329,9 +332,15 @@ sealed class RunExecutor(
             // A Local run never resolves the vendor credential (#210, design D5): the folder
             // may point at a different remote entirely, and the host's own tooling already
             // holds whatever identity its owner uses. The transcript states this below.
-            if (run.Locus != RunLocus.Local)
+            // A host-path Connector resolves no vendor token here either, and for the same reason
+            // one line up: the machine's own tooling holds the identity, and an exported empty
+            // variable would SHADOW it (AgentCredentialEnvironment.For). Resolving it to hand the
+            // agent a value would replace the host's auth with a copy that can expire mid-Run.
+            if (run.Locus != RunLocus.Local && connector.Credential is { } credential)
             {
-                vendorToken = await secrets.Resolve(connector.SecretName, cancellationToken);
+                vendorToken = credential.IsHostResolved
+                    ? string.Empty
+                    : (await credentials.Resolve(credential, cancellationToken)).Token;
             }
         }
         catch (SecretNotFoundException exception)

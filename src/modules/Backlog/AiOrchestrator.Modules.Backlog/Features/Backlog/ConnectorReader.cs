@@ -23,7 +23,10 @@ sealed class ConnectorReader(BacklogDbContext database) : IConnectorReader
                 connector.Vendor.ToString(),
                 connector.Owner,
                 connector.Repository,
-                connector.SecretName,
+                // The Connector's own answer to "which source?", so a consumer resolves through the
+                // one seam rather than reconstructing a reference from a name that may not exist
+                // (DEC-069). Null is a corrupt row — see Connector.Credential.
+                connector.Credential(),
                 connector.CodeSource.ToString(),
                 connector.LocalPath
             )

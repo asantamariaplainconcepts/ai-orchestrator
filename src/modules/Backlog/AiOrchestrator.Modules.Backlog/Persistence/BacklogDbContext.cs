@@ -26,7 +26,14 @@ sealed class BacklogDbContext(DbContextOptions<BacklogDbContext> options) : DbCo
             connector.HasIndex(entity => entity.ProjectId).IsUnique();
             connector.Property(entity => entity.Owner).HasMaxLength(200).IsRequired();
             connector.Property(entity => entity.Repository).HasMaxLength(200).IsRequired();
-            connector.Property(entity => entity.SecretName).HasMaxLength(200).IsRequired();
+            // No longer required: a Connector on the host path stores no secret name at all, and a
+            // name that resolved to nothing would be worse than an absent one (DEC-069). What makes
+            // the two states distinguishable is AuthenticatesAsHost below, not this column's
+            // emptiness.
+            connector.Property(entity => entity.SecretName).HasMaxLength(200);
+            // False for every Connector written before this change, which is exactly what they are:
+            // the database default is what makes that true of existing rows rather than hoped for.
+            connector.Property(entity => entity.AuthenticatesAsHost).HasDefaultValue(false);
             connector.Property(entity => entity.LastFailure).HasMaxLength(1000);
             // The database default is what makes every pre-#210 row read as Repository —
             // an int column defaulting to 0 would read as no enum value at all.

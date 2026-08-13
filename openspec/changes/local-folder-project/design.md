@@ -125,9 +125,17 @@ introduced — the folder input is the existing text input with its explanation 
 
 ## Migration Plan
 
-One EF migration on the Backlog schema adding the Connector's credential-source column, nullable, so
-every existing Connector reads back as the named-secret source with no behaviour change. No data
-backfill. Rollback is the down migration; no Connector configured before this change is touched.
+One EF migration on the Backlog schema (`ConnectorHostCredential`) does two things: it makes
+`SecretName` **nullable**, because a host-path Connector stores none, and it adds
+`AuthenticatesAsHost` as a boolean **defaulting to false**. Every Connector configured before this
+change therefore reads back as the named-secret source with no behaviour change and no data backfill.
+Rollback is the down migration.
+
+**The source is stored as that boolean and the `CredentialSource` is derived per read** — it is not a
+stored source column. An earlier draft of this design said "the Connector's credential-source column";
+that would have persisted a value the resolver already knows, and two records of one fact drift. What
+is stored is the *decision* (which path this Connector takes); what is derived is the *report* (which
+identity acted, including the helper's username, which is only knowable at resolution time).
 
 ## Open Questions
 
