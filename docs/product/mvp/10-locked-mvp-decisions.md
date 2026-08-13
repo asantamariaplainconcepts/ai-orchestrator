@@ -523,3 +523,38 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   decision remains measurable. The staged path is unchanged and remains the default. Decided
   2026-08-12 with #343
   ([ADR-0027](../../adr/0027-a-change-may-reach-main-unreviewed-on-one-explicit-invocation.md)).
+
+- **DEC-069 — a self-host Connector may authenticate as its host; a deployment may not**: a self-host
+  deployment MAY reach the vendor as the machine — resolved through the host's **git credential
+  helper**, per read, behind the resolver seam that already exists — for both reads and writes. A
+  governed deployment MAY NOT, and names a credential as before. Closes **OPN-006**, revising #222's
+  finding that the token cannot be hidden in self-host. **Rationale:** the trust model was never the
+  obstacle — this product already delegates to the host's identity twice, and says so as a rule.
+  `AgentCredentialEnvironment.For` exports no vendor token when the host does not supply one, because
+  "an exported empty variable SHADOWS whatever auth the host's own tooling holds"; and a local-folder
+  project's code capabilities are neither verified nor required, because "git runs with the host's
+  credentials". The blast radius is also smaller than the question implied: BR-010 already requires
+  that token values resolve through **one** abstraction, per read, so a host-derived credential is
+  another resolver behind that seam, not a change to the Connector's fourteen signatures. The **git
+  credential helper** was chosen over the `gh` CLI because both vendors have a helper and only one has
+  a CLI — DEC-045's promise that a second vendor slots in without touching the polling loop, the
+  mirror or the API forbids an authentication mode available to GitHub alone. The habitat split
+  follows [ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)
+  on the same ground: a machine its operator owns is not one somebody else pays for or administers.
+  **Costs accepted and stated:** (1) two credential sources behind one resolver, permanently, because
+  a deployment can never have this one; (2) the permission statement degrades from **derived** to
+  **documented** on the host path — the credential-helper protocol carries no scope, no capability and
+  no naming of the application a credential was minted for (exercised, not assumed), so the product
+  cannot tell the operator what to grant and must say so rather than let the form imply otherwise;
+  (3) a write capability that cannot be answered without acting is reported *not verifiable* under the
+  rule that already exists, so a self-host operator can save a Connector that fails later inside a Run
+  — the exact failure verify-before-store exists to prevent; (4) a helper credential can expire
+  mid-Run, where a named PAT does not silently rotate — the same property that removes rotation as the
+  operator's chore. Resolution SHALL be non-interactive and fail with a stated reason rather than
+  wait, so no polling cycle can stall on a credential prompt. What the vendor was touched *as* is
+  reported through a credential source, borrowing `IAgentProcessHost.CredentialSource`'s shape rather
+  than inventing a second mechanism. Unblocks #347 for reads and writes. **Decided unattended:** this
+  decision was made and merged by `/aio:ship 223` with no human reading it (DEC-068), on an issue that
+  names ACT-001 as the deciding actor — recorded so the record is honest about how much review it had.
+  Decided 2026-08-13 with #223
+  ([ADR-0028](../../adr/0028-a-self-host-connector-may-authenticate-as-its-host-a-deployment-may-not.md)).

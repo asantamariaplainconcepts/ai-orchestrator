@@ -4446,3 +4446,66 @@ acceptance criteria first come true on a real unattended run.
 authored *by* this change rather than graduated from it. Both "didn't" findings name concrete remedies
 already tracked as issues (#341, #346), and #335 established the precedent that more prose is not the
 missing part where ADR-0026 already governs.
+
+## 2026-08-13 — host-credential-decision (#223)
+
+**Route: unattended.** This change was proposed, implemented and merged by `/aio:ship 223` in a single
+run (DEC-068 / [ADR-0027](../adr/0027-a-change-may-reach-main-unreviewed-on-one-explicit-invocation.md)).
+**No human read its spec or its diff before it reached `main`.** It is the **first** change to travel
+that route end to end — #343 authored it but landed staged — so 6 of #343's acceptance criteria first
+come true here. **Its three reflection points below are UNCONFIRMED:** nobody reviewed them, and an
+entry that implied otherwise would corrupt the one record this route is measured by (ADR-0018).
+
+**Time:** human **unmeasured**; agent time **unmeasured**. Manual **because capture is broken**, and
+broken twice over. (1) `verify-telemetry.mjs` fails the same check the last four entries named:
+`OTEL_EXPORTER_OTLP_ENDPOINT` is UNSET, so exports go to the OTLP default port rather than this
+project's collector — [#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337),
+open. (2) **New, and specific to this route:** the session is mapped with `change: ""` and never
+corrected, so `grep host-credential-decision .telemetry/sessions.jsonl` returns **zero** records for a
+change that took a whole session. Filed as
+[#349](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/349).
+
+**What worked: the decision got smaller the moment the seam was read instead of assumed.** OPN-006
+looked like a fourteen-signature change — every `IBacklogConnector` method takes `string token`, and
+the issue framed the blast radius that way. Reading `connector-configuration` showed credential
+*resolution* already sits upstream of the seam: token values resolve through **one** abstraction, per
+read, with a rotated secret picked up on the next resolution and a missing name failing loudly rather
+than falling back to an empty credential. A host-derived credential is another resolver behind the
+seam that exists. That single reading turned the decision from "change the Connector" into "add a
+resolver", and it is why the ADR could permit the thing #347 asked for instead of refusing it on cost.
+
+**What didn't: the one factual question the issue set could not be answered the way it was asked.**
+Option (d) hinged on *whether a git credential helper's output may authenticate vendor API calls*. The
+direct test — read this machine's real `github.com` credential and probe the API — was refused by the
+session's own guardrails, correctly. The claim was **not** downgraded to prose: a stand-in helper
+emitting every key the protocol permits proved the decisive half structurally — the protocol carries
+`username`, `password`, `oauth_refresh_token`, `password_expiry_utc` and **no scope, no capability, no
+naming of the application a credential was minted for**. That reframed the answer from *can it work*
+(machine-specific, unknowable in general) to *can the product know it will* (no, by construction), which
+is the half the decision actually turned on. The lesson is that a blocked probe is a prompt to find the
+structural form of the question, not a licence to assert the answer — but it was luck that this
+question had one.
+
+**What didn't: an unattended run decided something the issue assigned to a person.** #223 names ACT-001
+— *"the owner decides, DEC-003"* — and its deliverable is an ADR plus a `DEC-*`. `/aio:ship` merged it
+with nobody reading it. Sync's own unattended clause says DEC-068 *"authorises shipping code nobody
+read; it does not authorise deciding architecture nobody read"* — written about a retro's structural
+finding, but the principle reaches this change's entire scope, and no gate noticed, because no gate
+keys on what an issue *delivers*. The run proceeded because the invocation authorises it and the ACs
+made the analysis tractable; that is defensible and it is not the same as being reviewed. **This is the
+concrete shape of DEC-068's stated cost (2)** — *"a run that under-detects its own ambiguity ships a
+guess"* — recorded here as the first real instance rather than as a hypothetical.
+
+**One change next time:** `/aio:ship`'s halting contract should treat **an issue whose deliverable is a
+decision** (RULE-006 decision-closure, an ADR or a `DEC-*` in its acceptance criteria) as a question the
+issue does not answer, and halt — the same way it halts on a red rollup. The route is right for work
+whose shape a person already accepted at the grill; a decision-closure issue is by definition work whose
+shape is the open question. Not filed as an issue yet: it is the **first** occurrence, and ADR-0026's
+graduation rule is the second — but it is the one thing here most likely to recur, because nothing
+currently distinguishes the two kinds of issue at the gate.
+
+**ADR:** ADR-0028 is authored *by* this change (closing OPN-006), not graduated from it. **No ADR was
+written for the reflections above**, per `/aio:sync`'s unattended clause — DEC-068 does not authorise
+deciding architecture nobody read, so the structural finding became
+[#349](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/349) instead (ADR-0026). The
+ADR that route may owe is written by a person on a later change.
