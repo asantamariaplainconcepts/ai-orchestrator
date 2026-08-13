@@ -4783,3 +4783,35 @@ human read this diff before merge. The three reflection points below are UNCONFI
   is worth recording but is its first occurrence in that form; the sync-step gap for a bundle-less
   Product change is noted on #360's neighbourhood rather than filed separately, since it is the same
   route under examination there.
+
+## 2026-08-13 — terminal-pump-off-the-thread-pool (#330, PR #362)
+
+**Route: `/aio:ship 330`, unattended (DEC-068, ADR-0027), on a blanket approval to run the waves. No
+human read this diff before merge. The three reflection points below are UNCONFIRMED.**
+
+- **Worked:** **The filed fix was wrong, and measuring it is what found that.** This issue proposed
+  `TaskCreationOptions.LongRunning`, and #327 had already tried exactly that — seen it pass locally three
+  times, change nothing in CI, and reverted it. Rather than repeat the experiment, a probe recorded
+  `Thread.CurrentThread.IsThreadPoolThread` either side of a suspending await: **false** before, **true**
+  after. `StartNew(Func<Task>, …, LongRunning)` dedicates a thread only until the first suspending await,
+  then the delegate returns its `Task`, the thread exits, and every continuation — including every
+  subsequent blocking `Read` — resumes on a pool worker. A pump is `Read` → send → `Read`, so the
+  proposed fix would have moved exactly one read off the pool. That explains #327's result, and it means
+  the issue as filed would have shipped a change that satisfied neither of its own first two criteria.
+- **Didn't:** **Criterion 3 was an invitation to repeat #327's mistake, in the same file, in the same
+  month.** It asked for the absence of contention to be *"demonstrated rather than asserted"*, which
+  reads as: open N terminals, race unrelated work, measure. That is precisely the shape #327 removed for
+  being unrunnable on a two-core runner behind a full suite — and #329 exists to put that coverage back
+  in a form CI can run. An acceptance criterion phrased as *demonstrate* rather than *assert* pushed
+  toward a benchmark without anyone intending it. It was met with a deterministic thread property
+  instead, on the ground that a pump which is not on a pool thread cannot contend for one.
+- **Next time:** When a criterion says **"demonstrated rather than asserted"**, ask what it forbids
+  rather than what it invites. The intent was "do not just claim it" — but the literal reading is "write
+  a measurement", and measurements of contention are the flakiest tests there are. The grill should
+  translate such phrasing into the deterministic property that carries the same claim, at the point the
+  criterion is written rather than when it is implemented.
+- **Time invested:** human ~0.05h, agent ~0.7h (wall clock), cost unknown — source: **manual**, the
+  seventh consecutive entry (#337 capture, #353 attribution).
+- **ADR:** none. The sync-over-async choice is argued in the code where it is made, and is a scheduling
+  decision inside one hub rather than an architectural one. The criterion-phrasing point is its first
+  occurrence in that form.
