@@ -20,7 +20,7 @@ namespace AiOrchestrator.Modules.Runs.Features.Observation;
 /// answered the habitat question first, so a deployment never arrives here at all.
 /// </para>
 /// </summary>
-static class MachineSandboxAccess
+static class MachineTerminalAccess
 {
     public static async Task<bool> MayAttachSomewhere(
         IProjectPermissions permissions,

@@ -99,6 +99,28 @@ public static class AgentSandboxComposition
 
         if (string.IsNullOrWhiteSpace(launcher))
         {
+            // A terminal on this machine, where the habitat is one somebody owns (#358, DEC-070). Until
+            // this existed, a terminal was a property of the sbx launcher rather than of locality: the
+            // registrations below sit past this early return, so the one habitat ADR-0021 permits
+            // attaching in resolved `UnhostedRunTerminalHost` and offered nothing.
+            //
+            // Gated on the habitat and not on the absence of a launcher, because those are different
+            // questions. A deployment with no launcher named is misconfigured rather than local, and
+            // DEC-070 permits this in self-host only — so the gate asks the same thing the Connector's
+            // host credential asks, and gets its answer from the same place (ADR-0010: asked, never
+            // inferred).
+            if (BuildingBlocks.Identity.IdentityHabitat.IsSelfHost(builder.Configuration))
+            {
+                builder.Services.AddSingleton<RunCheckoutHost>();
+                builder.Services.AddSingleton<BuildingBlocks.Agents.IRunSandboxMonitor>(provider =>
+                    provider.GetRequiredService<RunCheckoutHost>()
+                );
+                builder.Services.AddSingleton<
+                    BuildingBlocks.Agents.IRunTerminalHost,
+                    LocalRunTerminalHost
+                >();
+            }
+
             builder.Services.AddSingleton<IAgentProcessHost, LocalAgentProcessHost>();
             return;
         }

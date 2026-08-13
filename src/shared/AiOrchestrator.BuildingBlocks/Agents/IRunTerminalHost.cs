@@ -35,7 +35,7 @@ public interface IRunTerminalHost
     /// therefore a fact about the machine at the moment it was asked, and stale the instant after.
     /// </para>
     /// </summary>
-    Task<IReadOnlyList<LocalSandbox>> List(CancellationToken cancellationToken);
+    Task<IReadOnlyList<TerminalTarget>> List(CancellationToken cancellationToken);
 
     /// <summary>
     /// A shell inside the named sandbox, or null when that name is not this machine's to enter — it
@@ -65,7 +65,7 @@ public interface IRunTerminalHost
 /// sandbox with no Run to attribute it to.
 /// </para>
 /// </summary>
-public sealed record LocalSandbox(string Name, string Status, Guid? RunId, string? Workspace);
+public sealed record TerminalTarget(string Name, string Status, Guid? RunId, string? Workspace);
 
 /// <summary>
 /// One open shell: bytes in, bytes out, and gone when disposed. Deliberately not a stream pair —
@@ -99,8 +99,8 @@ public sealed class UnhostedRunTerminalHost : IRunTerminalHost
     /// surface that calls this must answer from <see cref="Hosted"/> and never from the emptiness of
     /// this list, or a deployment would read as a machine that happens to have nothing on it.
     /// </summary>
-    public Task<IReadOnlyList<LocalSandbox>> List(CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<LocalSandbox>>([]);
+    public Task<IReadOnlyList<TerminalTarget>> List(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<TerminalTarget>>([]);
 
     public Task<IRunTerminal?> Open(
         string sandbox,
