@@ -73,12 +73,12 @@
 - [x] 6.3 State the permission requirement honestly on the host path — what this configuration
       requires, not what the credential holds (D6).
 - [x] 6.4 Every string through the typed i18n catalogue; kit primitives and Platform tokens only.
-- [ ] 6.5 Frontend tests for the posture gating and the four named failures.
+- [x] 6.5 Frontend tests for the posture gating and the four named failures.
 
 ## 7. Verification — the CI-equivalent gates
 
-- [ ] 7.1 `dotnet build` clean, and CSharpier formatting applied.
-- [ ] 7.2 `dotnet test` — unit, functional and arch tests green.
-- [ ] 7.3 `pnpm lint --max-warnings=0`, `pnpm tsc --noEmit`, Prettier check.
-- [ ] 7.4 `pnpm build` — the production bundle, because the E2E suite serves the built bundle.
-- [ ] 7.5 `openspec validate --strict` for this change.
+- [x] 7.1 `dotnet build` clean, and CSharpier formatting applied.
+- [x] 7.2 `dotnet test` — unit, functional and arch tests green.
+- [x] 7.3 `pnpm lint --max-warnings=0`, `pnpm tsc --noEmit`, Prettier check.
+- [x] 7.4 `pnpm build` — the production bundle, because the E2E suite serves the built bundle.
+- [x] 7.5 `openspec validate --strict` for this change.
