@@ -4509,3 +4509,36 @@ written for the reflections above**, per `/aio:sync`'s unattended clause — DEC
 deciding architecture nobody read, so the structural finding became
 [#349](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/349) instead (ADR-0026). The
 ADR that route may owe is written by a person on a later change.
+
+## 2026-08-13 — ssh-net-advisory (PR #351, no issue)
+
+- **Worked:** The halt paid for itself. `/aio:ship 347` stopped on a red build instead of pushing
+  through it, and the cause was checked on a detached `origin/main` worktree rather than assumed —
+  one command turned "probably not mine" into a fact, which is what let this land as its own change
+  instead of being smuggled into a feature PR. Pinning beat suppressing: NuGet's audit was right
+  ([GHSA-q939-rpr3-3284](https://github.com/advisories/GHSA-q939-rpr3-3284), high, everything
+  `<= 2025.1.0`) and 2026.0.0 was already published. The bump was then **exercised** rather than
+  trusted — the Backlog functional suite, 97 tests against real Testcontainers Postgres, passes on
+  it. A green build could not have shown that a major-version jump in a transitive dependency leaves
+  Testcontainers working at runtime, and that is the claim the pin actually rests on (ADR-0001).
+- **Didn't:** An advisory published against a **pinned transitive** dependency turned every branch in
+  the repository red simultaneously, with no owner and no signal. `TreatWarningsAsErrors` promoted it
+  to a build error in every test project, so `dotnet test` could not run at all and no branch could
+  reach CI-green — `main` included, whose own last run was green at 08:15Z the same day. At the
+  console this is indistinguishable from "you broke the build", and nothing in the repository says
+  "main is red for a reason that is not yours". Separately, this change carries **no issue and no
+  telemetry**: PR-only at the maintainer's explicit direction (so DEC-025's lane is knowingly
+  incomplete — no `lane:spec-less` label to carry, no `status:done` to set), and
+  `.telemetry/sessions.jsonl` does not exist in this worktree at all, so the time below is manual.
+  That is the second live instance of the attribution gap
+  [#349](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/349) names, reached by a
+  different route than the one it describes.
+- **Next time:** Treat a dependency-audit failure as an **infrastructure event, not a change
+  defect** — put the "does `origin/main` fail identically?" check inside the `/aio:*` halt path, so
+  the diagnosis is automatic instead of a judgement call made well. It cost one command here only
+  because the halt happened to prompt the question.
+- **Time invested:** human ~0.1h, agent ~0.6h, cost unknown (source: **manual** — no
+  `.telemetry/sessions.jsonl` in this worktree, so `collect-usage` had nothing to join on)
+- **ADR:** none. The "next time" point is structural and is the kind that recurs, but this is its
+  **first** occurrence and ADR-0026's graduation rule is the second — recorded here so the second
+  one is recognisable rather than pre-empted.
