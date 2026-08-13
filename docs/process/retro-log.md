@@ -4815,3 +4815,33 @@ human read this diff before merge. The three reflection points below are UNCONFI
 - **ADR:** none. The sync-over-async choice is argued in the code where it is made, and is a scheduling
   decision inside one hub rather than an architectural one. The criterion-phrasing point is its first
   occurrence in that form.
+
+## 2026-08-13 — terminal-output-covered-again (#329, PR #363)
+
+**Route: `/aio:ship 329`, unattended (DEC-068, ADR-0027), on a blanket approval to run the waves. No
+human read this diff before merge. The three reflection points below are UNCONFIRMED.**
+
+- **Worked:** **The hard part was removed by a change nobody planned it for.** #329 had been open since
+  #327 because the test needed a deterministic transport, and making SignalR's long-polling deterministic
+  under `TestServer` is genuinely difficult. Then #330 turned the pump into a **synchronous** loop for an
+  entirely unrelated reason — thread-pool occupancy — and the test stopped needing a transport at all: it
+  calls `Pump` directly and the call *returns* when the terminal ends. Three tests in ~12ms against a
+  ten-second budget, with no wall-clock number in the file. Sequencing #330 first was chosen for
+  criterion 2's "one helper" argument, and the payoff turned out to be somewhere else entirely.
+- **Didn't:** **Criterion 2 is not met yet, and ticking it would have been the easy lie.** It asks that
+  the test pass on a CI runner *"demonstrated by consecutive green runs, not by one"*. There has been
+  **one**. The merge produces a second and the next pull request a third, so the criterion accrues after
+  this change rather than within it — which means the box is ticked on evidence that does not exist yet.
+  Recorded here instead of quietly counting the one run as satisfaction. The honest reading is that #329
+  is *implemented* now and *demonstrated* in two more runs' time.
+- **Next time:** An acceptance criterion whose evidence can only accumulate **after** the change merges
+  cannot be satisfied by the change that carries it. Either the grill rewrites it to something the change
+  can show (this test passes in CI, and here is the run), or the issue is explicitly left open pending
+  observation. Silently treating "it passed once" as "consecutive green runs" is how a criterion stops
+  meaning anything — and this repository already has an ADR about measurements licensing only what they
+  measured (ADR-0018).
+- **Time invested:** human ~0.05h, agent ~0.5h (wall clock), cost unknown — source: **manual**, the
+  eighth consecutive entry (#337 capture, #353 attribution).
+- **ADR:** none. The criterion-accrual point is its first occurrence in that form; it is close kin to
+  #330's "demonstrated rather than asserted" finding, and if a third appears the family is worth an ADR
+  about how acceptance criteria are phrased.

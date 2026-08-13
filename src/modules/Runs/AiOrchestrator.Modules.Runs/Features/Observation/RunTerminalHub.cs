@@ -230,7 +230,7 @@ sealed class RunTerminalHub(
         return base.OnDisconnectedAsync(exception);
     }
 
-    static void Pump(
+    internal static void Pump(
         ISingleClientProxy client,
         IRunTerminal terminal,
         string connection,
@@ -282,7 +282,7 @@ sealed class RunTerminalHub(
     /// exited, or the sandbox was disposed underneath it, which are one event to whoever is watching
     /// (#311 criterion 6) — differing only in which guard it releases.
     /// </summary>
-    static void PumpSandbox(
+    internal static void PumpSandbox(
         ISingleClientProxy client,
         IRunTerminal terminal,
         string connection,
