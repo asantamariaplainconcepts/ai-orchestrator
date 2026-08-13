@@ -47,11 +47,17 @@ public sealed class LocalFolderWorkspace : ILocalCodeWorkspace
         var branch = await RunGit(path, ["branch", "--show-current"], cancellationToken);
         var status = await RunGit(path, ["status", "--porcelain"], cancellationToken);
 
+        // A repository with no `origin` exits non-zero here, which is a fact about the folder rather
+        // than a failure of the inspection — the caller reports "no origin" as one of its four
+        // named checks (#347).
+        var origin = await RunGit(path, ["remote", "get-url", "origin"], cancellationToken);
+
         return new PathInspection(
             true,
             true,
             branch.Stdout.Trim() is { Length: > 0 } name ? name : null,
-            string.IsNullOrWhiteSpace(status.Stdout)
+            string.IsNullOrWhiteSpace(status.Stdout),
+            origin.ExitCode == 0 && origin.Stdout.Trim() is { Length: > 0 } url ? url : null
         );
     }
 
