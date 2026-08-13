@@ -96,6 +96,29 @@ change. **Merge = archive = sync = retro**, one commit.
       sequential — each only reachable once the previous cleared — so not watching cost four extra
       days of red.
 
+**Unattended mode** — set only when invoked by [`/aio:ship`](ship.md) (DEC-068, ADR-0027). This
+command has three places where it speaks to a person; unattended mode answers all three from the
+invocation and changes **nothing** about steps 3, 5, 6, 7, 9, 10 or 11, whose orderings are the whole
+reason this command exists.
+
+- **Step 2 (DEC-016's go-ahead):** the `/aio:ship` invocation *is* the recorded go-ahead. Do not ask.
+- **Step 4.2 (the retro's three reflection points):** derive them from the change's actual history as
+  usual, then record them **without** presenting them for confirmation, and have `retro-entry` mark
+  the reflections **unconfirmed** — nobody confirmed them, and an entry that implies otherwise
+  corrupts the one record this route is measured by.
+- **Step 8 (the squash subject):** derive it and lint it as usual, with no verdict presented and no
+  confirmation awaited. The commitlint gate is unchanged and still refuses.
+- **Step 4.4 (a structural reflection):** invoke **no** `write-adr` here. DEC-068 authorises shipping
+  *code* nobody read; it does not authorise deciding architecture nobody read. A structural finding
+  becomes a **tracked issue** instead (ADR-0026), and the retro entry links it — the ADR, if it is
+  owed, is written by a person on a later change.
+- **Every refusal above becomes a halt:** apply the hold, comment the specific reason, leave the
+  `status:*` label as it is, and stop. A red or pending rollup at step 6 therefore leaves the issue at
+  `status:code-review`, held, with **no** close-out commit — the ordering that makes step 6 meaningful
+  is exactly what makes this halt safe.
+- **Step 11 is unchanged and still not a gate.** The merge is irreversible whichever route reached it,
+  so a red deploy is reported, loudly, with its failing step.
+
 **Guardrails**
 - **Gate CI green *before* the close-out commit, never after** (step 6). Refuse on a draft, a red
   rollup, or a pending check. The `[skip ci]` commit's empty rollup proves nothing; never read it
@@ -112,7 +135,13 @@ change. **Merge = archive = sync = retro**, one commit.
   the title still describes the proposal. Whatever set the title upstream, verify it here.
 - **Never sync a held issue.** The hold gate is the first check in step 2, before the draft and
   rollup checks, so a refusal leaves nothing merged, archived, or written to the retro log.
-- Never remove the hold. Clearing it is a person's act, always.
+- Never remove the hold. Clearing it is a person's act, always — in unattended mode too, where the
+  hold is only ever *applied*, by a halt.
+- Unattended mode suppresses exactly three questions and one ADR, and never a gate, an ordering or a
+  lint. If a step is not named in its block, it behaves identically on both routes.
+- **An unattended retro entry says so** — that the change landed with no human reading its spec or its
+  diff, and that its reflections are unconfirmed. Without that, the retro log cannot tell the two
+  routes apart and no future claim about either is measurable (ADR-0018).
 - Never set `status:done` before the merge has actually completed.
 - **Never report a change as finished without the deploy's result** where a deploy workflow exists.
   Green PR checks are evidence about the code, not about what is running.

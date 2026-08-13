@@ -66,8 +66,10 @@ Alongside it, an issue may carry a **hold** — the label named by `holdLabel` i
 `status:*` label: a held issue still carries exactly one of the nine. `/aio:propose`,
 `/aio:implement` and `/aio:sync` **refuse** while it is on (implement checks it *before* the WIP
 gate, so a held issue consumes no slot); `/aio:grill` still evaluates and comments but sets no
-status; `/aio:status` reports it and refuses nothing; `/aio:refine` is unaffected. **Nothing in
-this repository ever removes a hold** — clearing it is a person's act, always.
+status; `/aio:status` reports it and refuses nothing; `/aio:refine` is unaffected. `/aio:ship`
+applies **no** hold on its happy path — it needs none, having no pause between stages — and applies
+one to halt. **Nothing in this repository ever removes a hold** — clearing it is a person's act,
+always, on every route.
 
 1. **`/aio:grill`** — interrogate an idea (or an existing issue, or a `docs/product/v1/` item) to
    the Definition of Ready, then create/advance the issue. Items depending on an open `OPN-*`
@@ -88,6 +90,14 @@ this repository ever removes a hold** — clearing it is a person's act, always.
 6. **`/aio:refine`** — append a post-merge retro finding.
 
 `/aio:status` is read-only and reports where an issue sits plus the next command.
+
+**`/aio:ship`** — the unattended route (DEC-068, ADR-0027): steps 2, 4 and 5 in one run, with **no**
+review stage. It owns no gates; it runs those three commands in *unattended mode*, whose whole content
+is that the status advances without the hold and sync answers its three human questions from the
+invocation. The invocation is the recorded authorisation, in place of DEC-016's go-ahead. Any refusal
+becomes a **halt**: the hold goes on, a comment says why, the `status:*` label stays — a person clears
+it and resumes with the ordinary staged command. Every other gate is untouched, no ADR is written
+unattended, and the PR body and retro entry both record that nobody read the spec or the diff.
 
 **Solo path (DEC-016):** GitHub forbids self-approval, so review gates are recorded as the label
 transition + the PR checklist, not as a formal PR approval.

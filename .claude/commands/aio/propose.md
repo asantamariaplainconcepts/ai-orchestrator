@@ -40,6 +40,18 @@ for human review (HITL #1). Wraps OpenSpec — the developer never calls `/opsx:
 8. Report the draft PR URL and **wait**: no code until a human validates the spec and **removes the
    hold**. Say so explicitly — clearing the hold is the approval, and the reviewer sets no label.
 
+**Unattended mode** — set only when invoked by [`/aio:ship`](ship.md) (DEC-068, ADR-0027). Exactly
+three things differ; every gate, ordering and guarantee above applies unchanged.
+
+- **Step 7:** advance to `status:ready-for-implementation` **without** the hold. The status travels
+  alone, because no review stage follows.
+- **Step 8:** do not wait. There is nothing to release, so report the draft PR and hand back to
+  `/aio:ship`, which continues into `/aio:implement`.
+- **Every refusal above becomes a halt:** apply the hold, comment the specific reason on the issue,
+  leave the `status:*` label as it is, and stop. The one exception is the hold gate itself — an issue
+  that is *already* held is refused, not re-held, and nothing is commented that the hold does not
+  already say.
+
 **Guardrails**
 - Never propose an issue that isn't `status:ready-for-proposal` — on gate failure, point to
   `/aio:grill <n>`, never a bare refusal.
@@ -48,7 +60,10 @@ for human review (HITL #1). Wraps OpenSpec — the developer never calls `/opsx:
 - The issue reads `status:ready-for-implementation` while its spec is still unreviewed — that is
   the design, and the hold is what makes it safe. The state says where the work is; the hold says
   nobody may take it further.
-- Never remove the hold. Clearing it is a person's act, always.
+- Never remove the hold. Clearing it is a person's act, always — in unattended mode too, where the
+  hold is only ever *applied*, by a halt.
+- Unattended mode changes exactly the three things its block names, and never a gate. If a step is
+  not named there, it behaves identically on both routes.
 - Never propose scope that depends on an open `OPN-*` decision.
 - The PR is a draft on purpose (unmergeable) — it enforces the spec-review gate.
 - The branch base must be current `origin/<default>` at creation; the branch name must end with

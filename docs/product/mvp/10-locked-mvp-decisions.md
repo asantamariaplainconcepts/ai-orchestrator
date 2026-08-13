@@ -500,3 +500,26 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   never destroy work in flight — ending a Run early stays cancellation (BR-012). The label is a
   fixed reserved constant, compared case-insensitively like every other label identity (DEC-056).
   Decided 2026-08-12 with #321.
+
+- **DEC-068 — a change may reach `main` unreviewed, on one explicit invocation**: `/aio:ship <issue>`
+  carries an unheld `status:ready-for-proposal` issue to a squash-merge on `main` in a single
+  unattended run — propose, implement and sync with no review stage between them. The invocation is
+  the authorisation, replacing DEC-016's in-session go-ahead, which an unattended run has nobody to
+  ask. **Rationale:** the human's recorded time per change is 15–30 minutes total (retro entries
+  #323, #331, #332, #335, #340), so the two later gates cost three interruptions rather than hours of
+  reading; and #323's retro records a spec review that missed an ordering constraint only running the
+  thing surfaced. The owner's attention is most productive at the grill, and this spends it there.
+  **Mechanism:** the three staged commands each carry one unattended clause — advance the status
+  **without** applying the hold, and treat the invocation as sync's go-ahead — so no hold is ever
+  created on this path and nothing ever clears one; the invariant that *no command removes the hold*
+  is preserved literally, not excepted. Every refusal becomes a halt that applies the hold and
+  comments the reason, leaving an issue indistinguishable from any other awaiting a person. **Costs
+  accepted and stated:** (1) a defective change can reach `main` unread — #323's false "deterministic,
+  not flaky" claim is the concrete shape of that risk, and on this route such a sentence merges;
+  (2) halting on an unanswered question is a judgement, not a gate, so a run that under-detects its
+  own ambiguity ships a guess; (3) unattended mode is conditional behaviour in three command files.
+  CI green stays a hard gate and is the only automated reviewer; the PR body and the retro entry must
+  state that no human read the spec or the diff, so unreviewed changes stay countable and this
+  decision remains measurable. The staged path is unchanged and remains the default. Decided
+  2026-08-12 with #343
+  ([ADR-0027](../../adr/0027-a-change-may-reach-main-unreviewed-on-one-explicit-invocation.md)).
