@@ -55,7 +55,7 @@ it from a posture, and never from provoking a refusal.
 - **WHEN** the deployment composes a store that accepts writes
 - **THEN** pasting leads and naming is available beside it, as before
 
-#### Scenario: the posture does not decide how a credential is supplied
+#### Scenario: the posture does not decide this
 
 - **WHEN** a self-host deployment composes a writable store
 - **THEN** pasting is offered, exactly as it is in a cloud deployment
