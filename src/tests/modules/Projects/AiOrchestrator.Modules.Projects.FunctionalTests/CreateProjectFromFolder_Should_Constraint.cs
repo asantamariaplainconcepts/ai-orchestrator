@@ -3,6 +3,8 @@ using System.Net.Http.Json;
 using AiOrchestrator.BuildingBlocks.Agents;
 using AiOrchestrator.Modules.Projects.Persistence;
 using ErrorOr;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -18,11 +20,29 @@ public class CreateProjectFromFolder_Should_Constraint(ProjectsApiFixture fixtur
 {
     const string Folder = "/Users/owner/code/portal";
 
-    readonly HttpClient _client = fixture.CreateClient();
+    WebApplicationFactory<Program>? _selfHost;
+    HttpClient _client = null!;
 
-    public Task InitializeAsync() => fixture.ResetDatabase();
+    public async Task InitializeAsync()
+    {
+        await fixture.ResetDatabase();
 
-    public Task DisposeAsync() => Task.CompletedTask;
+        // Naming a folder exists only where the orchestrator runs on a machine its owner controls
+        // (DEC-049), so the posture comes from a derived factory carrying
+        // <c>Identity:Mode=LocalOwner</c> — the way the product composes it — rather than by faking
+        // the habitat check. The shared fixture's own host has no mode, which is the deployment
+        // posture, and there every call below is refused before the folder is ever inspected.
+        _selfHost = fixture.WithWebHostBuilder(builder =>
+            builder.UseSetting("Identity:Mode", "LocalOwner")
+        );
+        _client = _selfHost.CreateClient();
+    }
+
+    public Task DisposeAsync()
+    {
+        _selfHost?.Dispose();
+        return Task.CompletedTask;
+    }
 
     [Fact]
     public async Task ANamedFolder_Should_ConfigureTheConnectorInTheSameStep()
