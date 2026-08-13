@@ -558,3 +558,31 @@ one-stop reading); DEC-026+ were made in the Phase 0 product grill.
   names ACT-001 as the deciding actor — recorded so the record is honest about how much review it had.
   Decided 2026-08-13 with #223
   ([ADR-0028](../../adr/0028-a-self-host-connector-may-authenticate-as-its-host-a-deployment-may-not.md)).
+- **DEC-070 — a terminal may open on the host in self-host, bounded to the Run's own checkout; a
+  deployment refuses it**: `run.attach` MAY yield a shell on the machine itself where no sandbox
+  exists, in the self-host habitat only. The bounds are requirements rather than intentions: the
+  working directory is the Run's own checkout (`aio-checkout-*`, which #331/#332 already place
+  outside the operator's folder and reap); the child's environment is **not** inherited from the
+  server process; the shell is a named one rather than the operator's login shell; and the audit
+  record distinguishes a host terminal from a sandbox terminal, borrowing
+  `IAgentProcessHost.CredentialSource`'s shape "so the source is never left to inference". Closes
+  **OPN-008**. **Rationale:** a terminal is currently a property of the sbx launcher rather than of
+  locality — `AgentSandboxComposition` registers `IRunTerminalHost` only in the sbx branch and the
+  local branch returns before it — so the one habitat ADR-0021 permits attaching in is the one
+  habitat with no terminal. DEC-065 does not already cover this: it was decided about a session
+  *inside a Run's sandbox*, and its companion requirement ("a human attached to a sandbox does not
+  extend its life") presumes one exists; every terminal shipped under it opens inside a microVM.
+  **Costs accepted and stated:** (1) **the bound is a product boundary, not a kernel one** — a shell
+  opened in the Run's checkout can still `cd /`, so this buys a sane default and an honest
+  description and **not** isolation, and nothing in the product may imply otherwise; anyone who wants
+  isolation runs the sbx launcher, which is unchanged; (2) two terminal hosts now exist permanently,
+  because a deployment can never have this one; (3) the seam's sandbox-shaped names stop being true —
+  `LocalSandbox`, `MachineSandboxAccess`, `ListMachineSandboxes` — and SHALL be renamed as part of the
+  capability rather than left to be discovered, because a type called `LocalSandbox` holding a
+  checkout path is a small lie a later reader takes literally. The deployed refusal stays *not
+  available in this habitat*, distinct from *not permitted for you*. Unblocks #358. **Decided
+  unattended:** written and merged by `/aio:ship` with no human reading it, on a blanket approval to
+  run the waves (DEC-068). The reservation that a decision-shaped issue should halt that route was
+  raised before proceeding and overridden by the approval — recorded so the record is honest that
+  this decision had **no** review. Decided 2026-08-13 with #357
+  ([ADR-0029](../../adr/0029-a-terminal-may-open-on-the-host-bounded-to-the-runs-own-checkout.md)).

@@ -55,7 +55,19 @@ proposing work that depends on one of these — a decision-closure task goes fir
   [ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)
   drew, on the same ground).
 
-**Closed:** OPN-001, OPN-002, OPN-003, OPN-004, OPN-005, OPN-006, OPN-007 — see [10-locked-mvp-decisions.md](10-locked-mvp-decisions.md).
+- **OPN-008 — whether a terminal may open outside a sandbox on a machine its operator owns.**
+  *(Recorded and closed together by #357; the entry is kept so the question and its blocking scope
+  stay readable.)* Unmade: whether `run.attach` may yield a shell on the **host** where no sandbox
+  exists. Today the grant is bounded by construction — a shell inside a per-Run sbx microVM that dies
+  with the Run — and `AgentSandboxComposition` registers the terminal only in the sbx branch, so the
+  one habitat [ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)
+  permits attaching in is the one habitat with no terminal. DEC-065 does not settle it: it was decided
+  about a session *inside a sandbox*, and its companion requirement presumes one exists. **Blocked:**
+  any terminal in the default local habitat, and the sandbox-shaped names the seam carries. **Closed:**
+  by [DEC-070](10-locked-mvp-decisions.md) — a bounded host terminal in self-host, refused in a
+  deployment ([ADR-0029](../../adr/0029-a-terminal-may-open-on-the-host-bounded-to-the-runs-own-checkout.md)).
+
+**Closed:** OPN-001, OPN-002, OPN-003, OPN-004, OPN-005, OPN-006, OPN-007, OPN-008 — see [10-locked-mvp-decisions.md](10-locked-mvp-decisions.md).
 
 **None remain open.** *(This file asserted that once before while #223 was open — corrected
-by #301, and true again only now that #223 has closed OPN-006.)*
+by #301, true again once #223 closed OPN-006, and true again now that #357 has closed OPN-008.)*
