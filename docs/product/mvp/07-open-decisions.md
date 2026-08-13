@@ -38,10 +38,24 @@ proposing work that depends on one of these — a decision-closure task goes fir
   always a deployment argument and a machine its operator owns is not one someone else
   pays for.
 
-**Closed:** OPN-001, OPN-002, OPN-003, OPN-004, OPN-005, OPN-007 — see [10-locked-mvp-decisions.md](10-locked-mvp-decisions.md).
+- **OPN-006 — whether a self-host backlog read can use the host's own credentials.**
+  *(Recorded and closed together by #223; the entry is kept so the question and its
+  blocking scope stay readable.)* Unmade: whether a self-host deployment may reach the
+  vendor as the machine — through the host's own tooling — rather than as a credential
+  the operator supplied, given that a Local Run already runs git with the host's
+  credentials and an agent in local mode already reaches the vendor as whatever the
+  machine is logged in as (`AgentCredentialEnvironment.For`). **Blocked:** hiding the
+  credential in self-host, and any host-derived vendor authentication — concretely
+  [#347](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/347), which
+  needs vendor writes as well as reads. **Closed:** by
+  [ADR-0028](../../adr/0028-a-self-host-connector-may-authenticate-as-its-host-a-deployment-may-not.md)
+  and [DEC-069](10-locked-mvp-decisions.md) — permitted in self-host through the machine's
+  git credential helper, refused in a governed deployment, because a deployment has no host
+  identity to borrow and the machine is not the operator's (the same asymmetry
+  [ADR-0021](../../adr/0021-a-developers-own-machine-may-hold-a-session-a-deployment-may-not.md)
+  drew, on the same ground).
 
-**Still open:** OPN-006 — whether a self-host backlog read can use the host's own
-credentials — tracked in [#223](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/223)
-and never written into this file. Recorded here so the count is honest; the entry itself
-belongs to whichever change closes it. *(This file previously asserted "None remain open"
-while #223 was open — corrected by #301.)*
+**Closed:** OPN-001, OPN-002, OPN-003, OPN-004, OPN-005, OPN-006, OPN-007 — see [10-locked-mvp-decisions.md](10-locked-mvp-decisions.md).
+
+**None remain open.** *(This file asserted that once before while #223 was open — corrected
+by #301, and true again only now that #223 has closed OPN-006.)*

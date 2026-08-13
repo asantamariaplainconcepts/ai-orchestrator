@@ -6,22 +6,17 @@ All vendor access SHALL go through a single connector abstraction exposing verif
 retrieval. Vendor SDK types SHALL NOT appear outside the implementation that owns them, so a
 second vendor can be added without touching any caller.
 
-**What the seam carries as its credential SHALL be stated, not implied by a parameter type.** Every
-method takes a credential today, and the absence of any other shape is legible only from the fact
-that the parameter is a `string`. Exactly one of two answers SHALL be recorded here, citing the ADR
-that closed OPN-006:
+**The seam SHALL receive a resolved credential value, and SHALL NOT be able to tell where it came
+from** (OPN-006, closed by ADR-0028 / DEC-069). A credential may be resolved from a named secret or,
+in self-host, from the machine's git credential helper; that choice belongs to the resolver, which
+already sits upstream of this seam, and a vendor implementation SHALL NOT branch on it. This is what
+keeps the decision to authenticate as the host out of fourteen method signatures and out of both
+vendor implementations.
 
-- **the credential is always a resolved secret value**, supplied by the operator and resolved by
-  name at the moment of use (BR-010), and no other shape reaches the seam; or
-- **the credential may instead name a resolution the host performs**, in which case this requirement
-  SHALL state that a vendor implementation SHALL NOT be able to tell the two apart — the seam
-  resolves before dispatch — and that any host resolution SHALL be non-interactive and SHALL fail
-  with a stated reason rather than blocking, so no polling cycle can stall on a credential prompt.
-
-A shape that works for one vendor and not the other SHALL NOT be introduced, whichever answer is
-recorded: a second vendor slotting in without touching the polling loop, the mirror, or the API is
-this requirement's existing promise, and an authentication mode available only to GitHub would break
-it. *(The answer is written by the change that closes OPN-006; this text is what it replaces.)*
+**No authentication mode SHALL exist for one vendor and not the other.** A mode available only where
+a particular vendor CLI happens to be installed would break this requirement's standing promise that
+a second vendor slots in without touching the polling loop, the mirror, or the API — which is why the
+host path is the git credential helper, which both vendors have, rather than a vendor's own CLI.
 
 #### Scenario: adding a vendor
 
@@ -33,10 +28,11 @@ it. *(The answer is written by the change that closes OPN-006; this text is what
 - **WHEN** code outside the GitHub implementation is inspected
 - **THEN** no GitHub SDK type appears in a signature, a domain type, or an API contract
 
-#### Scenario: the credential's shape is stated
+#### Scenario: the seam cannot tell how its credential was obtained
 
-- **WHEN** the seam is read to learn whether a credential is always a resolved value
-- **THEN** the requirement states one of the two answers explicitly and cites the ADR that decided it
+- **WHEN** a Connector's credential is resolved from the host's credential helper rather than from a
+  named secret
+- **THEN** the seam's signatures are unchanged and no vendor implementation behaves differently
 
 #### Scenario: no vendor-specific authentication mode
 

@@ -7,20 +7,24 @@ remote wherever the code lives: reading Stories, verifying the Connector and wri
 one in every posture. Only a Local Run's workspace skips a vendor credential, and that is git
 rather than the backlog.
 
-**Whether the host's own identity may stand in for that credential SHALL be recorded, not left
-implicit.** OPN-006 asks whether a self-host deployment may authenticate vendor reads — and, per
-#347, vendor writes — as the machine rather than as a credential the operator supplied. Exactly one
-of two answers SHALL be stated here, in requirement text, and its ADR SHALL be cited:
+**A self-host deployment MAY instead authenticate as its host; a governed deployment SHALL NOT**
+(OPN-006, closed by ADR-0028 / DEC-069). Where the host path is used:
 
-- **the host's identity SHALL NOT authenticate vendor access**, in any posture, and the paragraph
-  above stands unqualified; or
-- **the host's identity MAY authenticate vendor access in self-host**, in which case this
-  requirement SHALL name: which vendor operations it covers, how the credential is resolved
-  non-interactively, what the operator is told to grant given that the resolution carries no scope,
-  and what a Run's record says about which identity acted.
+- It SHALL cover **both reads and writes** — every vendor operation the Connector performs, not a
+  subset, because a configuration that still requires a minted credential for writes has not spared
+  the operator minting one.
+- The credential SHALL be resolved from the **machine's git credential helper**, through the same
+  resolver seam every other resolution uses, per read. A vendor-specific CLI SHALL NOT be the
+  source: an authentication mode available for one vendor and not the other is forbidden by
+  `connector-seam`.
+- Resolution SHALL be **non-interactive**. A helper that cannot answer without prompting SHALL fail
+  with a stated reason rather than wait, so a polling cycle can never stall on a credential prompt.
+  It SHALL NOT fall back to an empty or default credential, as no resolution may.
+- The product SHALL report **which identity touched the vendor** — the named secret, or the host's
+  credential helper and the host it was asked about — so the source is never left to inference.
 
-Leaving the question to inference SHALL NOT satisfy this requirement. *(The answer is written by the
-change that closes OPN-006; this text is what it replaces.)*
+A governed deployment SHALL name a credential, as before. The difference between the two habitats is
+deliberate: a deployment has no host identity to borrow, and its machine is not the operator's.
 
 **Which of the two ways to supply it are offered SHALL follow what the deployment can do, not what
 posture it is in.** Naming an existing secret SHALL always be available: a resolver is composed in
@@ -51,16 +55,33 @@ it from a posture, and never from provoking a refusal.
 - **WHEN** the deployment composes a store that accepts writes
 - **THEN** pasting leads and naming is available beside it, as before
 
-#### Scenario: the posture does not decide this
+#### Scenario: the posture does not decide how a credential is supplied
 
 - **WHEN** a self-host deployment composes a writable store
 - **THEN** pasting is offered, exactly as it is in a cloud deployment
 
-#### Scenario: the host-identity question is answered in the text
+#### Scenario: a self-host Connector authenticates as its host
 
-- **WHEN** this requirement is read to learn whether a self-host deployment may reach the vendor as
-  the machine rather than as a supplied credential
-- **THEN** it states one of the two answers explicitly and cites the ADR that decided it
+- **WHEN** a self-host deployment configures a Connector using the host path
+- **THEN** vendor reads and writes both proceed on a credential resolved from the machine's git
+  credential helper, and no vendor token is stored
+
+#### Scenario: a deployment cannot borrow a host identity
+
+- **WHEN** a governed deployment configures a Connector
+- **THEN** the host path is not offered, and a credential is named as before
+
+#### Scenario: a helper that would prompt fails instead of waiting
+
+- **WHEN** resolution through the host's credential helper cannot complete without prompting
+- **THEN** it fails with a stated reason, the polling cycle does not stall, and no empty or default
+  credential is substituted
+
+#### Scenario: the record says which identity acted
+
+- **WHEN** a Run's record is read to learn how the vendor was reached
+- **THEN** it names either the secret the Connector named, or the host's credential helper and the
+  host it was asked about
 
 ### Requirement: the product states the permissions it needs
 
@@ -72,12 +93,14 @@ and the same list SHALL be documented where somebody minting one will look.
 The list SHALL be derived from the same capability set verification uses, so a capability cannot
 exist without saying what to grant for it, and the documentation cannot drift from the code.
 
-**Where a credential is not minted through this product, the guarantee SHALL be stated at the
-strength it actually holds.** A credential resolved from the host carries no scope, no capability
-and no naming of the application it was minted for, so the permission list for such a credential
-SHALL NOT be presented as derived from what that credential holds. Whether such a path exists at all
-is decided by the change that closes OPN-006; if it does, this requirement SHALL state what the
-operator is told instead, and SHALL NOT report an unknown permission as a satisfied one.
+**Where the credential is resolved from the host, the statement SHALL be documented rather than
+derived, and SHALL say so.** The git credential-helper protocol carries no scope, no capability and
+no naming of the application a credential was minted for, so the product cannot determine what a
+host-resolved credential may do. It SHALL NOT present such a list as derived from that credential's
+own permissions, and SHALL NOT report an unknown permission as a satisfied one. Where a vendor
+discloses a credential's scopes on its own API responses, the product MAY use that to enrich the
+statement; it SHALL NOT rely on it, because it is a vendor's courtesy and not a property of the
+resolution.
 
 #### Scenario: the form says what to grant
 
@@ -89,8 +112,8 @@ operator is told instead, and SHALL NOT report an unknown permission as a satisf
 - **WHEN** the configuration's code source is a local folder
 - **THEN** the stated permissions exclude cloning, pushing and opening pull requests
 
-#### Scenario: an unminted credential is not described as verified-by-derivation
+#### Scenario: a host-resolved credential is not described as verified-by-derivation
 
-- **WHEN** a credential the operator did not mint through this product is used, where that is
-  permitted at all
-- **THEN** the permission statement does not claim to be derived from that credential's own scopes
+- **WHEN** the credential is resolved from the host's credential helper
+- **THEN** the permission statement is presented as what this configuration requires, not as what
+  that credential holds, and no unknown permission is reported as satisfied
