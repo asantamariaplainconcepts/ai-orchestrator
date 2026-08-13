@@ -1,7 +1,9 @@
+using AiOrchestrator.BuildingBlocks.Secrets;
+
 namespace AiOrchestrator.Modules.Backlog.Contracts;
 
 /// <summary>
-/// The Connector as other modules may know it: coordinates and the credential's <b>name</b>
+/// The Connector as other modules may know it: coordinates and a <b>reference</b> to the credential
 /// (BR-010 — the value is resolved by whoever holds a vault identity, never read from here).
 /// </summary>
 public interface IConnectorReader
@@ -18,7 +20,7 @@ public sealed record ConnectorSnapshot(
     string Vendor,
     string Owner,
     string Repository,
-    string SecretName,
+    CredentialReference? Credential,
     string CodeSource,
     string? LocalPath
 )
@@ -29,6 +31,13 @@ public sealed record ConnectorSnapshot(
     /// every other call site mention a directory it has no use for.
     /// </summary>
     public string? PromptDirectory { get; init; }
+
+    /// <summary>
+    /// Whether this Connector reaches the vendor as the machine (DEC-069). Derived from
+    /// <see cref="Credential"/> so no consumer has to know how the reference is shaped, and so
+    /// "there is no secret name" cannot be mistaken for "there is no credential".
+    /// </summary>
+    public bool AuthenticatesAsHost => Credential?.IsHostResolved ?? false;
 
     /// <summary>
     /// The command that makes a Local Run's fresh checkout buildable, or null for none (#332).

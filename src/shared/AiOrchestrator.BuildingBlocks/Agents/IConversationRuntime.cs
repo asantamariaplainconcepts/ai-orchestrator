@@ -41,7 +41,12 @@ public interface IConversationRuntime
 /// </param>
 public sealed record ConversationContext(
     Guid ProjectId,
-    string SecretName,
+    /// <summary>
+    /// Null where the Connector authenticates as its host (DEC-069): there is no secret to name,
+    /// and the agent reaches the vendor as the machine's own tooling already does. A deployed
+    /// conversation can never be on that path, because the host path is self-host only.
+    /// </summary>
+    string? SecretName,
     CodeCoordinates Code,
     string? StoryContext
 );

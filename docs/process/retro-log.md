@@ -4665,3 +4665,45 @@ merge. The three reflection points below are UNCONFIRMED — nobody confirmed th
   finding became [#356](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/356)
   instead. It is a person's to write on a later change — and it is the third ADR this batch has
   deferred by that rule, which is itself worth noticing.
+
+## 2026-08-13 — local-folder-project (#347, PR #350)
+
+**Route: `/aio:ship 347`, unattended (DEC-068, ADR-0027), on a blanket approval to run the waves. No
+human read this diff before merge. The three reflection points below are UNCONFIRMED.**
+
+- **Worked:** The change was assessed before it was continued, and the assessment was the whole value.
+  `tasks.md` was **0 of 35 checked** while sections 1–5 were substantively complete — so the checkbox
+  record was useless in both directions, and reading it either way would have been wrong. Checking the
+  artifacts the tasks name (`CredentialReference`, `IConnectorCredentialResolver`,
+  `IHostCredentialResolver`, `GitCredentialHelperResolver`, the `ConnectorHostCredential` migration)
+  established what was really done in one pass, and `git diff --name-only origin/main...` returning
+  **zero** `src/frontend/` files established what was not: section 6, the portal — which is the issue's
+  **headline** acceptance criterion. A change with all seven CI checks green was one unimplemented
+  section away from shipping its mechanism without its capability.
+- **Didn't:** **Task 6.5 could not be done as written, and nothing said so until it was attempted.** It
+  asks for "frontend tests", and this repository has **no frontend test framework** — no vitest, no
+  testing-library, no `test` script, zero `*.test.tsx`. The task had been sitting in an approved,
+  spec-validated bundle since the proposal, and `openspec-validate` passes happily on a task that
+  cannot be performed. It was resolved by using the E2E suite, the only lane that exercises the built
+  UI, which needed no new dependency — but that was a choice made at implementation time about a
+  question the proposal should have settled. Related: criterion 6.2 says the derived coordinates are
+  "editable before saving" while the issue also forbids a new HTTP surface and derivation happens
+  inside the create handler, so there is nothing to edit before saving; it was implemented as a
+  read-back with editing in the Connector's own form, which is a *reading* of the criterion rather
+  than a transcription of it.
+- **Next time:** A task that names a **test kind the repository does not have** should fail the grill,
+  not the implementation. The Definition of Ready checks that criteria are evaluable; it does not check
+  that they are *performable with what exists*. Cheap test: for each task naming a tool, lane or
+  framework, confirm the repository has one. This is the same family as
+  [#356](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/356) — a claim accepted
+  without being exercised — reached from the tasks side rather than the symptom side.
+- **Time invested:** human ~0.1h, agent ~1.5h (wall clock), cost unknown — source: **manual**, for the
+  reasons the previous three entries name and this one inherits: capture was not running for this
+  session ([#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337) — its fix
+  binds the next session, not this one) and attribution keys off a live `openspec/changes/<name>`
+  directory, which this change had while implementing and no longer has once archived
+  ([#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353)).
+- **ADR:** none. The "next time" point is structural but this is its first clear occurrence as a
+  *tasks-side* failure, so ADR-0026's graduation rule is not met; recorded here so the second is
+  recognisable, and noted on #356 as adjacent evidence. Per `/aio:sync`'s unattended clause no ADR is
+  written on this route regardless.

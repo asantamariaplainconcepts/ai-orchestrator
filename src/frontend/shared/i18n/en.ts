@@ -12,6 +12,30 @@ export const en = {
   "projects.create.placeholder": "Phoenix",
   "projects.create.submit": "Create project",
   "projects.create.pending": "Creating…",
+  // #347 — naming a folder on this machine. Present only where the habitat offers it; a deployment
+  // never renders these because the input is absent there, not disabled.
+  "projects.create.folder": "Folder on this machine (optional)",
+  "projects.create.folderPlaceholder": "/Users/you/code/phoenix",
+  "projects.create.folderExplanation":
+    "A git repository on this machine. Its origin names the vendor, the owner and the repository, so there is nothing else to fill in and no token to mint.",
+  // Stated as a requirement of the configuration, never as a claim about the credential: the git
+  // credential helper carries no scope and no capability, so the product cannot report what was
+  // granted and must not let the form imply it checked (DEC-069's stated cost 2).
+  "projects.create.folderPermissions":
+    "Reads and writes reach the vendor as whoever this machine's git is signed in as. That sign-in needs access to the repository's issues and pull requests — the product cannot verify what it was granted, so it does not claim to.",
+  "projects.create.folderDerived": "The folder configured this project's connector",
+  "projects.create.folderVendor": "Vendor",
+  "projects.create.folderOwner": "Owner",
+  "projects.create.folderRepository": "Repository",
+  "projects.create.folderCodeRepository": "Code repository",
+  "projects.create.folderEditable": "Change any of these in the project's connector settings.",
+  "projects.create.folderTypeThemIn":
+    "The project was created — set its coordinates in the connector settings.",
+  "projects.create.folderFailed.notADirectory": "That path is not a directory on this machine.",
+  "projects.create.folderFailed.notAGitRepository": "That folder is not a git repository.",
+  "projects.create.folderFailed.noOrigin": "That repository has no origin remote to read.",
+  "projects.create.folderFailed.unknownVendor":
+    "That origin is neither a GitHub nor an Azure DevOps remote.",
   "projects.loading": "Loading projects…",
   "projects.error": "Could not load projects.",
   "projects.count.one": "project",

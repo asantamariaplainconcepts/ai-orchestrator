@@ -32,7 +32,7 @@ sealed class GetBacklog : IUseCase
         string Vendor,
         string Owner,
         string Repository,
-        string SecretName,
+        string? SecretName,
         /// <summary>When the product itself stored the token (#124); null when it did not.</summary>
         DateTimeOffset? SecretSetAt,
         string? CodeRepository,

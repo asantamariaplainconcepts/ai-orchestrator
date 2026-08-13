@@ -20,7 +20,7 @@ namespace AiOrchestrator.Modules.Backlog.Features.Backlog;
 sealed class BacklogSynchroniser(
     BacklogDbContext database,
     IEnumerable<IBacklogConnector> connectors,
-    ISecretResolver secrets,
+    IConnectorCredentialResolver credentials,
     TimeProvider clock,
     IIntegrationEventPublisher events
 )
@@ -117,14 +117,27 @@ sealed class BacklogSynchroniser(
             );
         }
 
+        var reference = connector.Credential();
+        if (reference is null)
+        {
+            return BacklogErrors.SecretNotFound(connector.SecretName ?? string.Empty);
+        }
+
         string token;
         try
         {
-            token = await secrets.Resolve(connector.SecretName, cancellationToken);
+            token = (await credentials.Resolve(reference, cancellationToken)).Token;
         }
         catch (SecretNotFoundException)
         {
-            return BacklogErrors.SecretNotFound(connector.SecretName);
+            return BacklogErrors.SecretNotFound(connector.SecretName ?? string.Empty);
+        }
+        catch (HostCredentialUnavailableException unavailable)
+        {
+            // The poll is exactly where a helper that wanted a human would have hung, so this
+            // refusal is the point of the non-interactive rule (UC-009). It becomes the Connector's
+            // recorded failure like any other, rather than a cycle that never returns.
+            return BacklogErrors.HostCredentialUnavailable(unavailable.Message);
         }
 
         var coordinates = new BacklogCoordinates(connector.Owner, connector.Repository);

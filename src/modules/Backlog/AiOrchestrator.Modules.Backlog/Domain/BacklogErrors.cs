@@ -74,6 +74,15 @@ static class BacklogErrors
         Error.Validation("Connector.SecretNotFound", $"No secret named '{secretName}' was found.");
 
     /// <summary>
+    /// The machine could not say who it is for this vendor (DEC-069). Distinct from
+    /// <see cref="SecretNotFound"/>: one is a value nobody stored, the other is a machine nobody
+    /// logged in, and the two have nothing in common to fix. Carries git's own reason, because
+    /// BR-004 does not retry — whoever reads this is the retry.
+    /// </summary>
+    public static Error HostCredentialUnavailable(string detail) =>
+        Error.Validation("Connector.HostCredentialUnavailable", detail);
+
+    /// <summary>
     /// #210 — the code-source surface exists only where the host is somebody's own machine.
     /// NotFound rather than Forbidden on purpose: on a cloud deployment the surface is absent,
     /// not gated, and a 403 would advertise a capability that can never be granted there.

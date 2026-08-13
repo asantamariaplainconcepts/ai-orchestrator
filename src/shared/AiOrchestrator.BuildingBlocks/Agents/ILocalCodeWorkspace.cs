@@ -48,12 +48,20 @@ public interface ILocalCodeWorkspace
     );
 }
 
-/// <summary>The four facts validation reports. Null branch/clean when it is not a repository.</summary>
+/// <summary>
+/// The facts validation reports. Null branch/clean when it is not a repository.
+/// <para>
+/// <paramref name="OriginUrl"/> is what lets a named folder answer for itself which vendor and which
+/// coordinates a Project should use (#347) — null when the folder is not a repository or has no
+/// `origin`, which the caller must tell apart from a remote it simply could not parse.
+/// </para>
+/// </summary>
 public sealed record PathInspection(
     bool IsDirectory,
     bool IsGitRepository,
     string? Branch,
-    bool? IsClean
+    bool? IsClean,
+    string? OriginUrl = null
 );
 
 /// <summary>

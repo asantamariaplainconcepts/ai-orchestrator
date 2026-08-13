@@ -93,7 +93,13 @@ sealed class InProcessConversationRuntime(
                 ? string.Empty
                 : await secrets.Resolve(selection.CredentialSecretName, cancellationToken);
 
-            var projectToken = await secrets.Resolve(context.SecretName, cancellationToken);
+            // Empty on the host path (DEC-069): no secret was named because the machine's own
+            // tooling holds the identity, and exporting an empty vendor token is deliberately what
+            // lets that tooling be used — an exported *value* would shadow it
+            // (AgentCredentialEnvironment.For).
+            var projectToken = context.SecretName is null
+                ? string.Empty
+                : await secrets.Resolve(context.SecretName, cancellationToken);
 
             // A workspace per pass here, deliberately: this habitat has one process and no session
             // to keep warm, so caching one would be a lifetime to manage for no latency anybody

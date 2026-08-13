@@ -45,7 +45,7 @@ public class PastedToken_Should_Constraint(BacklogApiFixture fixture) : IAsyncLi
             }
         );
 
-    async Task<(string SecretName, DateTimeOffset? SetAt)> StoredConnector()
+    async Task<(string? SecretName, DateTimeOffset? SetAt)> StoredConnector()
     {
         await using var scope = fixture.Services.CreateAsyncScope();
         var database = scope.ServiceProvider.GetRequiredService<BacklogDbContext>();
@@ -67,7 +67,7 @@ public class PastedToken_Should_Constraint(BacklogApiFixture fixture) : IAsyncLi
         secretName.ShouldBe($"connector-github-{_projectId:N}");
         setAt.ShouldNotBeNull();
 
-        fixture.Secrets.Stored[secretName].ShouldBe(Token);
+        fixture.Secrets.Stored[secretName!].ShouldBe(Token);
     }
 
     [Fact]
@@ -111,7 +111,7 @@ public class PastedToken_Should_Constraint(BacklogApiFixture fixture) : IAsyncLi
         (await Paste("github_pat_22FGHIJ_therotatedvalue")).EnsureSuccessStatusCode();
 
         var (secretName, _) = await StoredConnector();
-        fixture.Secrets.Stored[secretName].ShouldBe("github_pat_22FGHIJ_therotatedvalue");
+        fixture.Secrets.Stored[secretName!].ShouldBe("github_pat_22FGHIJ_therotatedvalue");
 
         // One name, one entry: rotation leaves no orphan for anybody to clean up.
         fixture.Secrets.Stored.Count.ShouldBe(1);
