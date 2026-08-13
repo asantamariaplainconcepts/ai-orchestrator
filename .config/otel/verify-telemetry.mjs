@@ -65,7 +65,10 @@ check(
       : !enabled
         ? 'CLAUDE_CODE_ENABLE_TELEMETRY is not set'
         : 'enabled but OTEL_EXPORTER_OTLP_ENDPOINT is UNSET — exports are going to the OTLP ' +
-          'default port, not ours. Set it in the shell profile the app inherits; project ' +
+          'default port, not ours. Export it from ~/.zshenv (NOT ~/.zshrc — zsh reads .zshrc ' +
+          'only for interactive shells, so a non-interactive client inherits nothing and this ' +
+          'check still reads UNSET after an edit that looked right): ' +
+          'export OTEL_EXPORTER_OTLP_ENDPOINT="http://localhost:4327". Project ' +
           '.claude/settings.json does not deliver OTEL_* to every client.'
 );
 
@@ -135,6 +138,40 @@ check(
     ? `${sessionCount} real session record(s)`
     : 'no non-probe records — the SessionStart hook has never fired in a real session'
 );
+
+// --preflight: the form a SessionStart hook runs (#337). Two differences from the manual form,
+// both deliberate.
+//
+// It ALWAYS EXITS 0. The cost of broken telemetry is a lost measurement, not an incorrect change,
+// so refusing to start work over it would stop a repository being worked on for a reason unrelated
+// to the change in front of you — and would have blocked the very batch of changes that fixed it.
+// The failure is loud; it is deliberately not a gate.
+//
+// It is QUIET WHEN HEALTHY. A preflight that prints five green lines at every session start is
+// ceremony, and ceremony is what gets skimmed past on the day it finally has something to say.
+//
+// This exists because the instruction did not work. AGENTS.md already said to check telemetry
+// before starting a change rather than at the retro; that sentence was in place for both of the
+// occurrences it was meant to prevent (#331, #332), and #332 lost all of its telemetry anyway.
+// A person cannot remember a precondition they never see, so the machine raises it instead.
+if (process.argv.includes('--preflight')) {
+  const broken = results.filter((r) => !r.ok);
+
+  if (broken.length === 0) {
+    process.stdout.write('otel: telemetry capture verified.\n');
+    process.exit(0);
+  }
+
+  process.stdout.write(
+    `otel: TELEMETRY IS NOT BEING CAPTURED — ${broken.length} check(s) failed. Work done now will ` +
+      'have no measured time, and nothing recovers telemetry that was never written.\n'
+  );
+  for (const { name, detail } of broken) {
+    process.stdout.write(`  - ${name}: ${detail}\n`);
+  }
+  process.stdout.write('  Not blocking. Full detail: node .config/otel/verify-telemetry.mjs\n');
+  process.exit(0);
+}
 
 const width = Math.max(...results.map((r) => r.name.length));
 for (const { name, ok, detail } of results) {

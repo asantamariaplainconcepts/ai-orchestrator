@@ -4542,3 +4542,126 @@ ADR that route may owe is written by a person on a later change.
 - **ADR:** none. The "next time" point is structural and is the kind that recurs, but this is its
   **first** occurrence and ADR-0026's graduation rule is the second — recorded here so the second
   one is recognisable rather than pre-empted.
+
+## 2026-08-13 — filter-proxy-passthrough (#341, PR #352)
+
+**Route: `/aio:ship 341`, unattended (DEC-068, ADR-0027). No human read this spec or this diff before
+merge. The three reflection points below are UNCONFIRMED — nobody confirmed them.**
+
+- **Worked:** Negative-testing caught what reading could not. The verifier shipped here was **vacuous
+  twice** before it worked, and both versions looked correct: the first ran its commands with
+  `execSync` inside Node, which bypasses the Claude Code `PreToolUse` hook entirely, so every check
+  compared a command with itself and returned three confident greens; the second resolved the rewrite
+  properly but used `execFileSync`, which throws on any non-zero status, and `rtk rewrite` exits **3**
+  for a rewrite-with-prompt — so the catch reported "no rewrite" and the guard could be deleted with
+  everything still passing. Only `spawnSync` plus an explicit status check made the thing capable of
+  failing, proven by removing the guard and watching it report `git reported 2 path(s), 'rtk git diff
+  --name-only …' reported 3 and added prose decoration`, exit 1. A check that cannot fail is worse
+  than no check, and the only way that was discovered was by deliberately breaking the thing it
+  guards (ADR-0004, applied to a test rather than to infrastructure).
+- **Didn't:** The issue's own premise was wrong, and it took a `grep` to notice. #341 states that
+  *"`AGENTS.md` guidance and three retro entries have not prevented recurrence"* — but `rtk` appeared
+  **nowhere** in `AGENTS.md`. The guidance only ever existed in retro entries, which are read after
+  the fact, so the conclusion drawn from its failure ("more prose is not the missing part") was drawn
+  from an instruction that was never in the place an agent reads before acting. The remedy still
+  holds and is stronger for it, but a filed finding was carried forward for three changes without
+  anyone checking its central claim. Separately, the fix that actually protects this repository lives
+  **outside** it — a passthrough list in the proxy's own config on one machine — and a fresh clone
+  inherits none of it; the committed verifier is the only thing that makes that absence visible
+  rather than silent.
+- **Next time:** When a retro finding claims an existing instruction failed, **verify the instruction
+  exists** before designing around its failure. Cheap (`grep`), and here it changed the shape of the
+  work: the deliverable was closing a gap, not replacing a defence. Second-order: a change whose real
+  fix is out-of-repo should be required to ship the check that detects its absence — which this one
+  did, but by judgement rather than by rule.
+- **Time invested:** human ~0.05h, agent ~1.0h (wall clock), cost unknown — source: **manual**, and
+  broken for two independent reasons, both named rather than absorbed. (1) `OTEL_EXPORTER_OTLP_ENDPOINT`
+  was unset when this session's client started, so nothing was exported at all —
+  [#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337), whose own setting
+  half was fixed *during* this session and therefore binds only the next one; `usage.jsonl` holds
+  **zero** rows for session `254e60f3…`. (2) Even with capture working, this change could not have
+  been attributed: `map-session-change.mjs` keys `change` off a directory under `openspec/changes/`,
+  which a `lane:spec-less` change never has —
+  [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353), filed from this sync.
+- **ADR:** none. The reflections above are structural, and the keying defect is the kind that recurs,
+  but per `/aio:sync`'s unattended clause DEC-068 authorises shipping code nobody read and **not**
+  deciding architecture nobody read — so the finding became
+  [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353) (ADR-0026) instead.
+  The ADR this may owe is written by a person on a later change.
+
+## 2026-08-13 — telemetry-preflight (#337, PR #354)
+
+**Route: `/aio:ship 337`, unattended (DEC-068, ADR-0027). No human read this spec or this diff before
+merge. The three reflection points below are UNCONFIRMED — nobody confirmed them.**
+
+- **Worked:** The defect was partly in the remedy text, and fixing that was most of the value. The old
+  wording told the reader to *"set it in the shell profile the app inherits"* — true, useless, and the
+  direct cause of this fix's own first failed attempt, which put the export in `~/.zshrc` and watched
+  the check keep reporting `UNSET`. zsh reads `.zshrc` only for interactive shells, so a
+  non-interactive client inherits nothing. The remedy now names the file, the anti-file, and the
+  reason. Both branches were then exercised rather than only the happy one: healthy prints one line
+  and exits 0, endpoint-unset prints the failing check and its remedy and **still** exits 0.
+- **Didn't:** **A `SessionStart` hook cannot be exercised by the session that writes it.** The script
+  was verified directly, and the exact configured command string was verified with
+  `CLAUDE_PROJECT_DIR` expanded, both paths — but whether the client actually fires this entry and
+  surfaces its stdout is **unverified**, because doing so requires a session that starts after the
+  change exists. That is precisely ADR-0001's failure mode (shipping a habitat nobody ran), reached by
+  a route that has no way to avoid it from inside the change. The same structural fact applies to the
+  fix itself: the client reads `OTEL_EXPORTER_OTLP_ENDPOINT` at startup, so the session that fixed the
+  variable is not the session that benefits — this change ships unmeasured for the reason it exists to
+  remove, the third consecutive entry to report `manual`.
+- **Next time:** A change whose deliverable is **read at process start** (an env var, a `SessionStart`
+  hook, a client setting) should state in its own PR that it takes effect on the *next* session, and
+  the following change's retro should confirm it fired. Otherwise "fixed" and "verified" get conflated
+  in the record, which is the same conflation ADR-0004 exists to prevent — and here the conflation is
+  invited by the change's own shape rather than by carelessness.
+- **Time invested:** human ~0.05h, agent ~0.5h (wall clock), cost unknown — source: **manual**, for
+  both of the reasons this change and its predecessor name. (1) `usage.jsonl` was last written
+  2026-08-12T14:36Z and holds **zero** rows for session `254e60f3…`: the endpoint was unset when this
+  client started, which is [#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337)
+  itself. (2) Even with capture working this change could not be attributed, because
+  `map-session-change.mjs` keys `change` off a directory under `openspec/changes/` that a
+  `lane:spec-less` change never creates —
+  [#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353).
+- **ADR:** none. The "next time" point is structural and this is its **first** clear occurrence, so
+  ADR-0026's graduation rule (the second) is not met; recorded here so the second is recognisable. Per
+  `/aio:sync`'s unattended clause, no ADR is written on this route regardless — DEC-068 authorises
+  shipping code nobody read, not deciding architecture nobody read.
+
+## 2026-08-13 — worktree-repository-root (#338, PR #355)
+
+**Route: `/aio:ship 338`, unattended (DEC-068, ADR-0027). No human read this spec or this diff before
+merge. The three reflection points below are UNCONFIRMED — nobody confirmed them.**
+
+- **Worked:** Running the thing before fixing it found a different and worse defect than the one
+  filed. #338 said the ArchTest *fails* in a worktree; it passes. This repository's worktrees live
+  **inside** the main checkout at `.claude/worktrees/<name>`, so the walk does not run off the
+  filesystem root — it steps past the worktree's `.git` **file** and stops at the main checkout's
+  `.git` **directory**. The actual defect was a **silent false green**:
+  `Terraform_Should_NeverConfigureTheLocalOwner` was validating `main`'s `infra/*.tf` while running
+  from a worktree, so since #331 made worktrees routine, every Terraform change made in one has passed
+  #119's first lock unexamined. Proven behaviourally rather than argued — a violating `.tf` planted in
+  the worktree passes before the fix and fails after it. A red test gets ignored; a green test that
+  read the wrong checkout gets believed.
+- **Didn't:** **The grill claimed to have checked the premise, and had checked two of its three
+  claims.** It confirmed the code location (`DeploymentIdentity_Should_Constraint.cs:40`) and that
+  `.git` is a file in a worktree, then asserted the premise verified — without running the test. The
+  skipped claim was the symptom, and the symptom was the false one. This is the **second consecutive**
+  ADR-0026 filing whose central claim did not hold: #341 asserted that `AGENTS.md` guidance had failed,
+  and `rtk` appeared nowhere in `AGENTS.md` at all. In both cases the fix was unchanged and the real
+  defect was worse, so nothing wrong shipped — but the PR body, commit message and retro all argued
+  from a premise that was false, which is the part that persists.
+- **Next time:** `/aio:grill` should require an asserted **symptom** to have been *observed*, not
+  merely located in the code — the Definition of Ready does not currently distinguish those, and both
+  failures fell exactly in the gap. **ADR-0026's graduation rule is now met** (second occurrence), so
+  an ADR is owed.
+- **Time invested:** human ~0.05h, agent ~0.4h (wall clock), cost unknown — source: **manual**, for
+  the two named reasons that also applied to the previous two entries: capture was not running for
+  this session ([#337](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/337), whose
+  fix binds the next session, not this one) and a `lane:spec-less` change cannot be attributed at all
+  ([#353](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/353)).
+- **ADR:** owed but deliberately **not written**. Per `/aio:sync`'s unattended clause, DEC-068
+  authorises shipping code nobody read and not deciding architecture nobody read, so the graduated
+  finding became [#356](https://github.com/asantamariaplainconcepts/ai-orchestrator/issues/356)
+  instead. It is a person's to write on a later change — and it is the third ADR this batch has
+  deferred by that rule, which is itself worth noticing.
