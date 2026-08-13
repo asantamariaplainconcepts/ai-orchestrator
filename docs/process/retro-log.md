@@ -4707,3 +4707,39 @@ human read this diff before merge. The three reflection points below are UNCONFI
   *tasks-side* failure, so ADR-0026's graduation rule is not met; recorded here so the second is
   recognisable, and noted on #356 as adjacent evidence. Per `/aio:sync`'s unattended clause no ADR is
   written on this route regardless.
+
+## 2026-08-13 — local-terminal-decision (#357, PR #359)
+
+**Route: `/aio:ship 357`, unattended (DEC-068, ADR-0027), on a blanket approval to run the waves. No
+human read this decision before it merged. The three reflection points below are UNCONFIRMED.**
+
+- **Worked:** The decision was not allowed to inherit its answer. The tempting move was to read DEC-065
+  ("a machine its operator owns is not one somebody else pays for or administers") as already permitting
+  a host terminal and skip straight to #358. It does not: DEC-065 was decided about a session *inside a
+  Run's sandbox*, its companion requirement literally presumes one exists, and every terminal shipped
+  under it opens inside a microVM. Naming that gap is what turned "obviously allowed" into a real
+  question with a real cost — and the cost is now written where an implementer will hit it: the child's
+  environment must **not** be inherited from the server process, because `posix_spawn` takes the whole
+  environment and the sbx path deliberately inherits, which is harmless behind a boundary and not
+  harmless without one. That would have been found at runtime, on a host, with the server's environment
+  in a shell.
+- **Didn't:** **This is the second time a decision-shaped issue reached `main` unread**, and the first
+  time it happened over a stated objection. #223's retro recorded the reservation exactly — that
+  `/aio:ship`'s halting contract *"should treat an issue whose deliverable is a decision as a question
+  the issue does not answer, and halt"* — logged as a first occurrence awaiting a second. This is the
+  second. It was raised before proceeding and overridden by an explicit approval, which is a legitimate
+  thing for the product authority to do; what is **not** legitimate is the record being ambiguous about
+  it, so ADR-0029 and DEC-070 both say plainly that this had no review. A reader may treat option (c) as
+  a proposal that shipped rather than a position anyone defended.
+- **Next time:** ADR-0026's graduation rule is now **met** for the decision-shaped-issue finding —
+  second occurrence — so the ADR it owes is due, and it cannot be written on this route. It should say
+  whether a blanket approval is sufficient authorisation for a `DEC-*`, or whether decision-closure
+  issues need a per-issue acknowledgement even when the loop is authorised. Tracked rather than written
+  here, per the unattended clause.
+- **Time invested:** human ~0.05h, agent ~0.6h (wall clock), cost unknown — source: **manual**, same two
+  causes as the four entries before it (#337 for capture, #353 for attribution). Five consecutive
+  `manual` entries is now itself the measurement: DEC-068 was authorised on measured per-change time,
+  and the route it created has produced none.
+- **ADR:** ADR-0029 is authored *by* this change (closing OPN-008), not graduated from it. The
+  graduated finding above is filed as its own issue rather than written as an ADR, per `/aio:sync`'s
+  unattended clause.
